@@ -1,0 +1,2679 @@
+{
+  "Carentan": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 12.8646,
+      "top": 24.0625,
+      "width": 6.3542,
+      "height": 1.3021,
+      "image": "maps/points/labels/Carentan_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 26.8229,
+      "top": 28.9062,
+      "width": 9.2708,
+      "height": 1.3021,
+      "image": "maps/points/labels/Carentan_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 47.8125,
+      "top": 24.0625,
+      "width": 9.0104,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 67.7083,
+      "top": 26.6667,
+      "width": 4.9479,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 79.5833,
+      "top": 30.625,
+      "width": 7.2917,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 12.5521,
+      "top": 45.9896,
+      "width": 7.0312,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 34.8958,
+      "top": 43.4375,
+      "width": 3.8542,
+      "height": 3.9583,
+      "image": "maps/points/labels/Carentan_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.1979,
+      "top": 43.3854,
+      "width": 7.6563,
+      "height": 1.25,
+      "image": "maps/points/labels/Carentan_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 66.5104,
+      "top": 39.1667,
+      "width": 9.4271,
+      "height": 2.7604,
+      "image": "maps/points/labels/Carentan_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 83.3854,
+      "top": 46.6667,
+      "width": 8.3333,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 11.9792,
+      "top": 62.6042,
+      "width": 6.3542,
+      "height": 1.3021,
+      "image": "maps/points/labels/Carentan_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 25.5208,
+      "top": 58.2812,
+      "width": 8.5417,
+      "height": 1.4062,
+      "image": "maps/points/labels/Carentan_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 45.7292,
+      "top": 55.0521,
+      "width": 9.3229,
+      "height": 3.9062,
+      "image": "maps/points/labels/Carentan_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 63.0208,
+      "top": 70.0,
+      "width": 7.1354,
+      "height": 1.1979,
+      "image": "maps/points/labels/Carentan_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 80.1042,
+      "top": 62.9687,
+      "width": 11.875,
+      "height": 1.3542,
+      "image": "maps/points/labels/Carentan_34.png"
+    }
+  },
+  "Driel": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 26.0938,
+      "top": 3.9583,
+      "width": 11.5104,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 46.4583,
+      "top": 4.4792,
+      "width": 9.7396,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 64.9479,
+      "top": 5.1562,
+      "width": 8.8542,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 28.1771,
+      "top": 26.4062,
+      "width": 5.0521,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 49.0625,
+      "top": 24.0625,
+      "width": 5.625,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 66.7188,
+      "top": 21.9792,
+      "width": 5.4688,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 26.3542,
+      "top": 47.2396,
+      "width": 7.2917,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 47.5521,
+      "top": 40.5729,
+      "width": 7.8125,
+      "height": 0.8854,
+      "image": "maps/points/labels/Driel_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 66.875,
+      "top": 42.8125,
+      "width": 10.0521,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 27.3438,
+      "top": 64.375,
+      "width": 4.4792,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 48.0729,
+      "top": 64.4271,
+      "width": 7.6563,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 67.5,
+      "top": 63.2812,
+      "width": 6.7188,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 27.3438,
+      "top": 82.2396,
+      "width": 5.3125,
+      "height": 1.1458,
+      "image": "maps/points/labels/Driel_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 43.1771,
+      "top": 82.0833,
+      "width": 11.5104,
+      "height": 1.0938,
+      "image": "maps/points/labels/Driel_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 69.2188,
+      "top": 82.2396,
+      "width": 3.2292,
+      "height": 0.9375,
+      "image": "maps/points/labels/Driel_43.png"
+    }
+  },
+  "ElAlamein": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 11.8229,
+      "top": 25.8854,
+      "width": 7.3958,
+      "height": 0.0521,
+      "image": "maps/points/labels/ElAlamein_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 27.9687,
+      "top": 24.8958,
+      "width": 7.0312,
+      "height": 1.1458,
+      "image": "maps/points/labels/ElAlamein_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 47.1875,
+      "top": 23.6979,
+      "width": 10.5729,
+      "height": 1.1458,
+      "image": "maps/points/labels/ElAlamein_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 68.5938,
+      "top": 25.1563,
+      "width": 5.7812,
+      "height": 1.0938,
+      "image": "maps/points/labels/ElAlamein_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 80.5729,
+      "top": 24.4271,
+      "width": 8.6979,
+      "height": 0.8333,
+      "image": "maps/points/labels/ElAlamein_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 9.9479,
+      "top": 39.8438,
+      "width": 7.9167,
+      "height": 1.0938,
+      "image": "maps/points/labels/ElAlamein_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 28.5938,
+      "top": 42.7604,
+      "width": 4.3229,
+      "height": 1.1458,
+      "image": "maps/points/labels/ElAlamein_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 47.2917,
+      "top": 43.2292,
+      "width": 2.8646,
+      "height": 1.1458,
+      "image": "maps/points/labels/ElAlamein_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 64.2708,
+      "top": 41.6146,
+      "width": 9.7396,
+      "height": 1.1979,
+      "image": "maps/points/labels/ElAlamein_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 81.7188,
+      "top": 42.9167,
+      "width": 9.3229,
+      "height": 0.4688,
+      "image": "maps/points/labels/ElAlamein_24.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 25.7812,
+      "top": 63.0729,
+      "width": 6.8229,
+      "height": 0.625,
+      "image": "maps/points/labels/ElAlamein_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 49.1667,
+      "top": 60.8333,
+      "width": 3.5937,
+      "height": 0.5729,
+      "image": "maps/points/labels/ElAlamein_32.png"
+    }
+  },
+  "Elsenborn": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 25.1563,
+      "top": 10.5729,
+      "width": 10.8333,
+      "height": 1.1979,
+      "image": "maps/points/labels/Elsenborn_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 47.3438,
+      "top": 8.9062,
+      "width": 6.0938,
+      "height": 0.4167,
+      "image": "maps/points/labels/Elsenborn_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 73.3854,
+      "top": 10.4167,
+      "width": 4.4271,
+      "height": 1.1979,
+      "image": "maps/points/labels/Elsenborn_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 30.5729,
+      "top": 23.3854,
+      "width": 8.1771,
+      "height": 1.1979,
+      "image": "maps/points/labels/Elsenborn_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 51.1979,
+      "top": 28.6458,
+      "width": 7.6042,
+      "height": 0.4167,
+      "image": "maps/points/labels/Elsenborn_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 70.9896,
+      "top": 30.5208,
+      "width": 7.8646,
+      "height": 0.1562,
+      "image": "maps/points/labels/Elsenborn_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 22.7083,
+      "top": 45.2604,
+      "width": 12.2396,
+      "height": 1.1458,
+      "image": "maps/points/labels/Elsenborn_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 42.4479,
+      "top": 45.9896,
+      "width": 6.3542,
+      "height": 0.5729,
+      "image": "maps/points/labels/Elsenborn_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 67.2917,
+      "top": 47.9688,
+      "width": 5.625,
+      "height": 1.1979,
+      "image": "maps/points/labels/Elsenborn_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 23.8542,
+      "top": 63.2292,
+      "width": 10.5729,
+      "height": 0.625,
+      "image": "maps/points/labels/Elsenborn_31.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 67.1875,
+      "top": 63.8021,
+      "width": 5.625,
+      "height": 0.7812,
+      "image": "maps/points/labels/Elsenborn_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 33.2812,
+      "top": 78.3333,
+      "width": 6.4583,
+      "height": 0.2604,
+      "image": "maps/points/labels/Elsenborn_41.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 66.0938,
+      "top": 80.1042,
+      "width": 5.3646,
+      "height": 0.4688,
+      "image": "maps/points/labels/Elsenborn_43.png"
+    }
+  },
+  "Foy": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 20.0521,
+      "top": 6.25,
+      "width": 9.7917,
+      "height": 1.5104,
+      "image": "maps/points/labels/Foy_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 50.5208,
+      "top": 5.8854,
+      "width": 9.375,
+      "height": 1.4583,
+      "image": "maps/points/labels/Foy_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 64.6354,
+      "top": 3.4896,
+      "width": 9.1667,
+      "height": 1.3542,
+      "image": "maps/points/labels/Foy_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 30.5208,
+      "top": 20.3646,
+      "width": 8.4896,
+      "height": 1.3021,
+      "image": "maps/points/labels/Foy_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 44.0104,
+      "top": 26.5104,
+      "width": 2.1354,
+      "height": 1.3021,
+      "image": "maps/points/labels/Foy_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 69.1667,
+      "top": 23.4896,
+      "width": 7.5,
+      "height": 1.4062,
+      "image": "maps/points/labels/Foy_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 20.1562,
+      "top": 36.1979,
+      "width": 6.0417,
+      "height": 1.4062,
+      "image": "maps/points/labels/Foy_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 45.625,
+      "top": 44.6875,
+      "width": 8.5417,
+      "height": 1.7188,
+      "image": "maps/points/labels/Foy_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 69.0625,
+      "top": 41.1458,
+      "width": 7.5,
+      "height": 1.3542,
+      "image": "maps/points/labels/Foy_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 26.7188,
+      "top": 58.6979,
+      "width": 7.1875,
+      "height": 1.4062,
+      "image": "maps/points/labels/Foy_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 50.3125,
+      "top": 63.4896,
+      "width": 9.3229,
+      "height": 1.3542,
+      "image": "maps/points/labels/Foy_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 68.4375,
+      "top": 57.5521,
+      "width": 9.0625,
+      "height": 1.3021,
+      "image": "maps/points/labels/Foy_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 18.0729,
+      "top": 75.2604,
+      "width": 10.3125,
+      "height": 1.5104,
+      "image": "maps/points/labels/Foy_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 43.4896,
+      "top": 77.3438,
+      "width": 7.3438,
+      "height": 1.4583,
+      "image": "maps/points/labels/Foy_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 68.2292,
+      "top": 76.6667,
+      "width": 9.8438,
+      "height": 1.4583,
+      "image": "maps/points/labels/Foy_43.png"
+    }
+  },
+  "Hill400": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 12.6042,
+      "top": 26.6667,
+      "width": 8.8542,
+      "height": 1.5625,
+      "image": "maps/points/labels/Hill400_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 25.5208,
+      "top": 23.4375,
+      "width": 9.8958,
+      "height": 1.5104,
+      "image": "maps/points/labels/Hill400_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 48.1771,
+      "top": 28.5417,
+      "width": 5.1042,
+      "height": 2.0312,
+      "image": "maps/points/labels/Hill400_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 58.0729,
+      "top": 24.4271,
+      "width": 10.8333,
+      "height": 1.3542,
+      "image": "maps/points/labels/Hill400_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 76.875,
+      "top": 28.6979,
+      "width": 11.5625,
+      "height": 1.5625,
+      "image": "maps/points/labels/Hill400_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 11.4583,
+      "top": 46.8229,
+      "width": 12.2396,
+      "height": 1.1979,
+      "image": "maps/points/labels/Hill400_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 27.7083,
+      "top": 49.5833,
+      "width": 11.7188,
+      "height": 2.2396,
+      "image": "maps/points/labels/Hill400_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.9792,
+      "top": 47.2396,
+      "width": 4.5833,
+      "height": 1.1458,
+      "image": "maps/points/labels/Hill400_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 60.8333,
+      "top": 43.5938,
+      "width": 8.125,
+      "height": 1.1979,
+      "image": "maps/points/labels/Hill400_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 87.4479,
+      "top": 40.0521,
+      "width": 4.5833,
+      "height": 1.1979,
+      "image": "maps/points/labels/Hill400_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 13.2812,
+      "top": 66.9271,
+      "width": 9.375,
+      "height": 1.4583,
+      "image": "maps/points/labels/Hill400_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 26.4062,
+      "top": 60.625,
+      "width": 5.5208,
+      "height": 1.4583,
+      "image": "maps/points/labels/Hill400_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 44.5312,
+      "top": 57.9167,
+      "width": 11.4583,
+      "height": 1.875,
+      "image": "maps/points/labels/Hill400_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 62.3958,
+      "top": 67.2917,
+      "width": 7.1875,
+      "height": 1.6667,
+      "image": "maps/points/labels/Hill400_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 82.0833,
+      "top": 65.0,
+      "width": 5.8854,
+      "height": 1.3542,
+      "image": "maps/points/labels/Hill400_34.png"
+    }
+  },
+  "HurtgenV2": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 6.3542,
+      "top": 20.1042,
+      "width": 13.8021,
+      "height": 1.3021,
+      "image": "maps/points/labels/HurtgenV2_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 25.0521,
+      "top": 25.8854,
+      "width": 11.7188,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 49.8438,
+      "top": 19.2188,
+      "width": 6.3542,
+      "height": 1.25,
+      "image": "maps/points/labels/HurtgenV2_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 70.7292,
+      "top": 26.6146,
+      "width": 3.5417,
+      "height": 1.3021,
+      "image": "maps/points/labels/HurtgenV2_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 80.7292,
+      "top": 24.4792,
+      "width": 11.4062,
+      "height": 1.25,
+      "image": "maps/points/labels/HurtgenV2_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 5.9896,
+      "top": 44.7917,
+      "width": 9.0625,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 29.375,
+      "top": 43.8021,
+      "width": 5.8854,
+      "height": 1.25,
+      "image": "maps/points/labels/HurtgenV2_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 43.8542,
+      "top": 46.0938,
+      "width": 5.0521,
+      "height": 1.3021,
+      "image": "maps/points/labels/HurtgenV2_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 64.7396,
+      "top": 48.2812,
+      "width": 7.4479,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 77.7604,
+      "top": 47.0312,
+      "width": 10.625,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 8.1771,
+      "top": 61.4062,
+      "width": 7.1875,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 25.8854,
+      "top": 56.4062,
+      "width": 4.7917,
+      "height": 1.3021,
+      "image": "maps/points/labels/HurtgenV2_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 42.8646,
+      "top": 64.4271,
+      "width": 10.1562,
+      "height": 2.2917,
+      "image": "maps/points/labels/HurtgenV2_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 67.0833,
+      "top": 69.0104,
+      "width": 5.8333,
+      "height": 1.3021,
+      "image": "maps/points/labels/HurtgenV2_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 78.0729,
+      "top": 69.0104,
+      "width": 7.8646,
+      "height": 1.3542,
+      "image": "maps/points/labels/HurtgenV2_34.png"
+    }
+  },
+  "Juno": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 26.4583,
+      "top": 8.8542,
+      "width": 7.4479,
+      "height": 1.25,
+      "image": "maps/points/labels/Juno_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 46.7708,
+      "top": 8.8542,
+      "width": 5.9896,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 68.6458,
+      "top": 8.8542,
+      "width": 2.7083,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 27.2396,
+      "top": 23.3854,
+      "width": 5.2083,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 47.4479,
+      "top": 23.2812,
+      "width": 5.0521,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 71.875,
+      "top": 21.5625,
+      "width": 7.0833,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 26.3021,
+      "top": 45.7812,
+      "width": 7.5521,
+      "height": 1.0417,
+      "image": "maps/points/labels/Juno_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.0417,
+      "top": 45.5208,
+      "width": 8.2292,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 66.9792,
+      "top": 45.625,
+      "width": 7.5521,
+      "height": 1.1458,
+      "image": "maps/points/labels/Juno_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 25.8333,
+      "top": 64.3229,
+      "width": 8.6458,
+      "height": 1.25,
+      "image": "maps/points/labels/Juno_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 45.625,
+      "top": 64.3229,
+      "width": 9.3229,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 64.1146,
+      "top": 64.1146,
+      "width": 11.0938,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 24.1667,
+      "top": 79.5833,
+      "width": 12.6562,
+      "height": 1.25,
+      "image": "maps/points/labels/Juno_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 44.7396,
+      "top": 78.75,
+      "width": 7.0312,
+      "height": 1.1979,
+      "image": "maps/points/labels/Juno_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 65.1042,
+      "top": 79.2188,
+      "width": 8.6979,
+      "height": 1.25,
+      "image": "maps/points/labels/Juno_43.png"
+    }
+  },
+  "Kharkov": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 28.3854,
+      "top": 8.2812,
+      "width": 6.5104,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 48.5417,
+      "top": 8.2292,
+      "width": 11.0938,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 65.6771,
+      "top": 8.4896,
+      "width": 9.9479,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 27.8646,
+      "top": 22.1354,
+      "width": 6.8229,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 50.3125,
+      "top": 23.9062,
+      "width": 7.4479,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 68.8542,
+      "top": 23.0208,
+      "width": 9.375,
+      "height": 1.0938,
+      "image": "maps/points/labels/Kharkov_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 28.6458,
+      "top": 41.6667,
+      "width": 5.7292,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 51.0417,
+      "top": 42.3438,
+      "width": 4.1667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Kharkov_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 69.8438,
+      "top": 41.5104,
+      "width": 5.2604,
+      "height": 1.1979,
+      "image": "maps/points/labels/Kharkov_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 32.5521,
+      "top": 64.0625,
+      "width": 7.6563,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 48.9062,
+      "top": 60.6771,
+      "width": 10.5729,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 70.4688,
+      "top": 62.6042,
+      "width": 6.3542,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 25.625,
+      "top": 80.625,
+      "width": 11.1458,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 48.9583,
+      "top": 79.8958,
+      "width": 6.5104,
+      "height": 1.1458,
+      "image": "maps/points/labels/Kharkov_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 68.2812,
+      "top": 79.4271,
+      "width": 4.8438,
+      "height": 1.1979,
+      "image": "maps/points/labels/Kharkov_43.png"
+    }
+  },
+  "Kursk": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 27.4479,
+      "top": 9.0625,
+      "width": 9.6875,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 51.0417,
+      "top": 10.1042,
+      "width": 4.2188,
+      "height": 1.25,
+      "image": "maps/points/labels/Kursk_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 69.4792,
+      "top": 10.3646,
+      "width": 7.6042,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 29.2708,
+      "top": 27.2917,
+      "width": 6.7188,
+      "height": 1.25,
+      "image": "maps/points/labels/Kursk_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 46.25,
+      "top": 25.1042,
+      "width": 8.9062,
+      "height": 1.3542,
+      "image": "maps/points/labels/Kursk_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 66.0417,
+      "top": 24.4271,
+      "width": 7.6563,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 32.7083,
+      "top": 40.4688,
+      "width": 7.5521,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 52.9167,
+      "top": 44.4271,
+      "width": 3.0729,
+      "height": 1.1979,
+      "image": "maps/points/labels/Kursk_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 66.1979,
+      "top": 47.1875,
+      "width": 6.875,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 34.6354,
+      "top": 62.7083,
+      "width": 3.5417,
+      "height": 1.4583,
+      "image": "maps/points/labels/Kursk_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 44.5312,
+      "top": 63.6458,
+      "width": 9.9479,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 65.2604,
+      "top": 64.4271,
+      "width": 9.4271,
+      "height": 1.4583,
+      "image": "maps/points/labels/Kursk_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 30.4688,
+      "top": 77.2917,
+      "width": 7.5521,
+      "height": 1.3542,
+      "image": "maps/points/labels/Kursk_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 45.625,
+      "top": 76.0938,
+      "width": 6.3542,
+      "height": 1.4062,
+      "image": "maps/points/labels/Kursk_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 63.0208,
+      "top": 75.625,
+      "width": 8.9583,
+      "height": 1.3021,
+      "image": "maps/points/labels/Kursk_43.png"
+    }
+  },
+  "Mortain": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 9.7917,
+      "top": 21.0417,
+      "width": 8.8021,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 20.7812,
+      "top": 24.0625,
+      "width": 9.1667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 47.3438,
+      "top": 24.8958,
+      "width": 3.8021,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 61.5104,
+      "top": 22.3438,
+      "width": 12.9688,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 78.5417,
+      "top": 24.4792,
+      "width": 15.9375,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 10.1042,
+      "top": 47.4479,
+      "width": 8.6458,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 23.8021,
+      "top": 43.75,
+      "width": 14.1667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 43.6458,
+      "top": 47.3438,
+      "width": 14.2708,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 65.5208,
+      "top": 43.3333,
+      "width": 9.8958,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 79.1667,
+      "top": 45.4688,
+      "width": 11.6667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 11.0938,
+      "top": 69.5312,
+      "width": 9.6875,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 23.9062,
+      "top": 61.25,
+      "width": 9.0625,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 37.7083,
+      "top": 71.0417,
+      "width": 12.0312,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 68.1771,
+      "top": 56.8229,
+      "width": 9.1146,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 80.8854,
+      "top": 61.9271,
+      "width": 8.9583,
+      "height": 1.1979,
+      "image": "maps/points/labels/Mortain_34.png"
+    }
+  },
+  "Omaha": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 11.7708,
+      "top": 25.5208,
+      "width": 8.9062,
+      "height": 1.25,
+      "image": "maps/points/labels/Omaha_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 25.625,
+      "top": 18.9062,
+      "width": 7.6042,
+      "height": 1.25,
+      "image": "maps/points/labels/Omaha_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 48.125,
+      "top": 22.0312,
+      "width": 8.3333,
+      "height": 1.3021,
+      "image": "maps/points/labels/Omaha_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 76.3542,
+      "top": 20.3646,
+      "width": 3.0729,
+      "height": 1.3021,
+      "image": "maps/points/labels/Omaha_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 81.4062,
+      "top": 26.6146,
+      "width": 5.9896,
+      "height": 1.4583,
+      "image": "maps/points/labels/Omaha_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 13.8021,
+      "top": 45.1042,
+      "width": 6.875,
+      "height": 1.3542,
+      "image": "maps/points/labels/Omaha_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 27.3958,
+      "top": 38.3333,
+      "width": 7.5,
+      "height": 1.3542,
+      "image": "maps/points/labels/Omaha_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 43.5938,
+      "top": 41.6146,
+      "width": 9.9479,
+      "height": 1.3542,
+      "image": "maps/points/labels/Omaha_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 76.7708,
+      "top": 40.6771,
+      "width": 2.8646,
+      "height": 1.25,
+      "image": "maps/points/labels/Omaha_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 83.2812,
+      "top": 39.7396,
+      "width": 5.5208,
+      "height": 1.4062,
+      "image": "maps/points/labels/Omaha_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 13.4896,
+      "top": 60.625,
+      "width": 4.8958,
+      "height": 1.25,
+      "image": "maps/points/labels/Omaha_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 23.125,
+      "top": 57.6042,
+      "width": 7.9687,
+      "height": 1.3542,
+      "image": "maps/points/labels/Omaha_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 46.25,
+      "top": 59.0104,
+      "width": 10.3646,
+      "height": 1.4583,
+      "image": "maps/points/labels/Omaha_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 72.2917,
+      "top": 58.8021,
+      "width": 3.125,
+      "height": 1.3542,
+      "image": "maps/points/labels/Omaha_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 83.4375,
+      "top": 58.4375,
+      "width": 5.8854,
+      "height": 1.3021,
+      "image": "maps/points/labels/Omaha_34.png"
+    }
+  },
+  "PHL": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 18.9062,
+      "top": 11.0417,
+      "width": 7.2917,
+      "height": 1.3021,
+      "image": "maps/points/labels/PHL_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 44.5833,
+      "top": 12.5,
+      "width": 10.7812,
+      "height": 1.4583,
+      "image": "maps/points/labels/PHL_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 61.5104,
+      "top": 12.0312,
+      "width": 10.0521,
+      "height": 1.4583,
+      "image": "maps/points/labels/PHL_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 24.1146,
+      "top": 26.7188,
+      "width": 8.75,
+      "height": 1.3021,
+      "image": "maps/points/labels/PHL_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 44.7917,
+      "top": 32.2396,
+      "width": 7.6563,
+      "height": 1.4062,
+      "image": "maps/points/labels/PHL_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 60.7292,
+      "top": 27.1875,
+      "width": 11.7188,
+      "height": 1.3021,
+      "image": "maps/points/labels/PHL_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 26.1458,
+      "top": 42.1875,
+      "width": 8.6458,
+      "height": 1.3021,
+      "image": "maps/points/labels/PHL_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 44.2188,
+      "top": 46.4583,
+      "width": 11.4583,
+      "height": 1.4062,
+      "image": "maps/points/labels/PHL_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 68.8542,
+      "top": 43.3854,
+      "width": 7.7083,
+      "height": 1.5104,
+      "image": "maps/points/labels/PHL_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 28.4375,
+      "top": 60.3646,
+      "width": 8.8542,
+      "height": 1.3542,
+      "image": "maps/points/labels/PHL_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 45.9375,
+      "top": 65.5208,
+      "width": 9.9479,
+      "height": 1.4062,
+      "image": "maps/points/labels/PHL_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 71.9271,
+      "top": 63.9583,
+      "width": 6.3542,
+      "height": 1.3542,
+      "image": "maps/points/labels/PHL_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 25.2083,
+      "top": 78.5417,
+      "width": 11.0938,
+      "height": 1.3542,
+      "image": "maps/points/labels/PHL_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 45.7292,
+      "top": 77.3958,
+      "width": 10.3125,
+      "height": 1.3542,
+      "image": "maps/points/labels/PHL_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 68.5417,
+      "top": 81.8229,
+      "width": 8.3854,
+      "height": 1.3021,
+      "image": "maps/points/labels/PHL_43.png"
+    }
+  },
+  "Remagen": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 25.4688,
+      "top": 9.6354,
+      "width": 9.0104,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 44.0104,
+      "top": 9.6875,
+      "width": 10.5208,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 66.8229,
+      "top": 9.7917,
+      "width": 8.1771,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 29.1146,
+      "top": 23.75,
+      "width": 2.8646,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 51.7708,
+      "top": 23.0208,
+      "width": 5.8854,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 64.5312,
+      "top": 23.75,
+      "width": 9.3229,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 26.1458,
+      "top": 37.7083,
+      "width": 9.375,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.4062,
+      "top": 41.875,
+      "width": 10.1562,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 64.1146,
+      "top": 51.6667,
+      "width": 10.7292,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 29.8438,
+      "top": 63.5417,
+      "width": 4.6875,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 46.3542,
+      "top": 63.5417,
+      "width": 6.6146,
+      "height": 1.3542,
+      "image": "maps/points/labels/Remagen_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 64.4792,
+      "top": 63.0208,
+      "width": 9.9479,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 26.7188,
+      "top": 83.5938,
+      "width": 5.4688,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 48.4375,
+      "top": 77.5521,
+      "width": 6.3021,
+      "height": 3.3333,
+      "image": "maps/points/labels/Remagen_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 65.5208,
+      "top": 78.2812,
+      "width": 6.3021,
+      "height": 1.1458,
+      "image": "maps/points/labels/Remagen_43.png"
+    }
+  },
+  "SMDMV2": {
+    "01": {
+      "row": 0,
+      "col": 1,
+      "left": 25.4688,
+      "top": 3.4896,
+      "width": 8.8542,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_01.png"
+    },
+    "02": {
+      "row": 0,
+      "col": 2,
+      "left": 44.9479,
+      "top": 4.9479,
+      "width": 8.8021,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_02.png"
+    },
+    "03": {
+      "row": 0,
+      "col": 3,
+      "left": 70.3646,
+      "top": 5.2604,
+      "width": 4.7396,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_03.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 25.5729,
+      "top": 23.2812,
+      "width": 9.3229,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 48.2812,
+      "top": 22.2917,
+      "width": 6.5625,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 63.9062,
+      "top": 23.1771,
+      "width": 7.6563,
+      "height": 0.8854,
+      "image": "maps/points/labels/SMDMV2_13.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 28.1771,
+      "top": 43.2292,
+      "width": 6.3542,
+      "height": 1.0938,
+      "image": "maps/points/labels/SMDMV2_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 47.5521,
+      "top": 44.375,
+      "width": 6.4583,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 65.4688,
+      "top": 44.2708,
+      "width": 6.8229,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_23.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 27.7604,
+      "top": 62.9167,
+      "width": 6.6146,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 46.3542,
+      "top": 66.0417,
+      "width": 6.1458,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 68.8542,
+      "top": 69.1146,
+      "width": 9.7396,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_33.png"
+    },
+    "41": {
+      "row": 4,
+      "col": 1,
+      "left": 29.7917,
+      "top": 79.0625,
+      "width": 5.9896,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_41.png"
+    },
+    "42": {
+      "row": 4,
+      "col": 2,
+      "left": 48.5417,
+      "top": 83.2812,
+      "width": 2.9167,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_42.png"
+    },
+    "43": {
+      "row": 4,
+      "col": 3,
+      "left": 67.4479,
+      "top": 83.8542,
+      "width": 5.3646,
+      "height": 1.1458,
+      "image": "maps/points/labels/SMDMV2_43.png"
+    }
+  },
+  "SME": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 10.8333,
+      "top": 24.8438,
+      "width": 7.7083,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 25.1042,
+      "top": 26.3021,
+      "width": 8.9062,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 47.2396,
+      "top": 22.1875,
+      "width": 4.4271,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 64.6354,
+      "top": 28.0208,
+      "width": 10.3125,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 80.1562,
+      "top": 30.8333,
+      "width": 10.1562,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 15.3646,
+      "top": 43.6979,
+      "width": 6.1458,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 28.125,
+      "top": 38.1771,
+      "width": 10.7812,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 48.6458,
+      "top": 41.5104,
+      "width": 8.6979,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 60.6771,
+      "top": 48.6979,
+      "width": 7.6563,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 83.5938,
+      "top": 46.5625,
+      "width": 5.4688,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 13.4375,
+      "top": 62.8125,
+      "width": 5.6771,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 26.8229,
+      "top": 66.8229,
+      "width": 11.1458,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 47.1875,
+      "top": 62.1875,
+      "width": 6.5625,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 57.9688,
+      "top": 60.4688,
+      "width": 9.8958,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 81.0417,
+      "top": 64.7917,
+      "width": 10.3125,
+      "height": 1.1458,
+      "image": "maps/points/labels/SME_34.png"
+    }
+  },
+  "Stalingrad": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 10.3125,
+      "top": 20.0521,
+      "width": 9.3229,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 26.9792,
+      "top": 20.0521,
+      "width": 6.5625,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_11.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 63.2812,
+      "top": 22.7604,
+      "width": 10.8333,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 80.9375,
+      "top": 26.6146,
+      "width": 7.7604,
+      "height": 1.0938,
+      "image": "maps/points/labels/Stalingrad_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 11.0938,
+      "top": 48.9062,
+      "width": 6.1979,
+      "height": 1.0938,
+      "image": "maps/points/labels/Stalingrad_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 26.9271,
+      "top": 43.9583,
+      "width": 6.7188,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.25,
+      "top": 43.3333,
+      "width": 7.6042,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 70.8854,
+      "top": 44.7396,
+      "width": 7.3438,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 81.7708,
+      "top": 43.8021,
+      "width": 7.3438,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 11.4583,
+      "top": 68.0729,
+      "width": 6.9792,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 26.6146,
+      "top": 63.9062,
+      "width": 6.6667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 46.7708,
+      "top": 63.8542,
+      "width": 6.6667,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 66.7188,
+      "top": 65.2083,
+      "width": 6.3021,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 82.0312,
+      "top": 65.7812,
+      "width": 6.1979,
+      "height": 1.1979,
+      "image": "maps/points/labels/Stalingrad_34.png"
+    }
+  },
+  "Smolensk": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 11.8229,
+      "top": 23.0208,
+      "width": 7.5521,
+      "height": 1.1979,
+      "image": "maps/points/labels/Smolensk_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 27.4479,
+      "top": 22.8125,
+      "width": 6.5104,
+      "height": 2.1354,
+      "image": "maps/points/labels/Smolensk_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 45.4688,
+      "top": 25.3125,
+      "width": 10.2083,
+      "height": 0.5729,
+      "image": "maps/points/labels/Smolensk_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 64.6875,
+      "top": 24.3229,
+      "width": 10.2604,
+      "height": 0.9896,
+      "image": "maps/points/labels/Smolensk_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 80.3646,
+      "top": 24.375,
+      "width": 8.5417,
+      "height": 1.1979,
+      "image": "maps/points/labels/Smolensk_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 13.0729,
+      "top": 41.875,
+      "width": 5.6771,
+      "height": 1.1458,
+      "image": "maps/points/labels/Smolensk_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 29.1146,
+      "top": 47.7604,
+      "width": 6.1979,
+      "height": 1.1979,
+      "image": "maps/points/labels/Smolensk_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 45.9375,
+      "top": 44.2708,
+      "width": 9.2708,
+      "height": 1.0417,
+      "image": "maps/points/labels/Smolensk_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 64.4792,
+      "top": 44.5312,
+      "width": 10.1042,
+      "height": 0.5729,
+      "image": "maps/points/labels/Smolensk_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 80.6771,
+      "top": 43.3854,
+      "width": 8.5938,
+      "height": 0.9896,
+      "image": "maps/points/labels/Smolensk_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 9.4792,
+      "top": 65.0,
+      "width": 9.9479,
+      "height": 0.6771,
+      "image": "maps/points/labels/Smolensk_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 27.5521,
+      "top": 62.6562,
+      "width": 3.8021,
+      "height": 1.1979,
+      "image": "maps/points/labels/Smolensk_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 46.5104,
+      "top": 63.6458,
+      "width": 7.3958,
+      "height": 0.7292,
+      "image": "maps/points/labels/Smolensk_32.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 81.875,
+      "top": 62.6562,
+      "width": 5.3125,
+      "height": 0.1042,
+      "image": "maps/points/labels/Smolensk_34.png"
+    }
+  },
+  "Tobruk": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 12.3958,
+      "top": 30.3646,
+      "width": 5.9375,
+      "height": 1.25,
+      "image": "maps/points/labels/Tobruk_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 27.0833,
+      "top": 21.8229,
+      "width": 5.7292,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 45.9375,
+      "top": 24.0625,
+      "width": 8.4375,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 63.8021,
+      "top": 23.9062,
+      "width": 11.6667,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 81.7188,
+      "top": 23.5938,
+      "width": 10.3646,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 11.5104,
+      "top": 42.7604,
+      "width": 7.8125,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 28.2813,
+      "top": 45.1562,
+      "width": 14.6354,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 46.1458,
+      "top": 50.0,
+      "width": 8.0208,
+      "height": 1.25,
+      "image": "maps/points/labels/Tobruk_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 63.3854,
+      "top": 41.5104,
+      "width": 13.2292,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 80.4167,
+      "top": 42.9167,
+      "width": 10.7812,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 9.4792,
+      "top": 66.8229,
+      "width": 11.0938,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 32.2396,
+      "top": 63.3333,
+      "width": 6.0417,
+      "height": 1.3021,
+      "image": "maps/points/labels/Tobruk_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 50.0,
+      "top": 67.2396,
+      "width": 8.0729,
+      "height": 0.2604,
+      "image": "maps/points/labels/Tobruk_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 66.9271,
+      "top": 64.6875,
+      "width": 6.0938,
+      "height": 1.25,
+      "image": "maps/points/labels/Tobruk_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 80.5729,
+      "top": 63.8021,
+      "width": 9.2708,
+      "height": 1.25,
+      "image": "maps/points/labels/Tobruk_34.png"
+    }
+  },
+  "Utah": {
+    "10": {
+      "row": 1,
+      "col": 0,
+      "left": 12.9688,
+      "top": 19.1667,
+      "width": 8.3854,
+      "height": 1.3542,
+      "image": "maps/points/labels/Utah_10.png"
+    },
+    "11": {
+      "row": 1,
+      "col": 1,
+      "left": 30.4167,
+      "top": 20.7812,
+      "width": 8.2292,
+      "height": 1.3021,
+      "image": "maps/points/labels/Utah_11.png"
+    },
+    "12": {
+      "row": 1,
+      "col": 2,
+      "left": 51.3021,
+      "top": 23.3333,
+      "width": 2.5,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_12.png"
+    },
+    "13": {
+      "row": 1,
+      "col": 3,
+      "left": 64.8958,
+      "top": 22.6042,
+      "width": 6.3542,
+      "height": 1.3021,
+      "image": "maps/points/labels/Utah_13.png"
+    },
+    "14": {
+      "row": 1,
+      "col": 4,
+      "left": 79.1667,
+      "top": 22.1875,
+      "width": 6.4062,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_14.png"
+    },
+    "20": {
+      "row": 2,
+      "col": 0,
+      "left": 12.1875,
+      "top": 43.3854,
+      "width": 8.5938,
+      "height": 1.3542,
+      "image": "maps/points/labels/Utah_20.png"
+    },
+    "21": {
+      "row": 2,
+      "col": 1,
+      "left": 30.5208,
+      "top": 45.3646,
+      "width": 10.0,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_21.png"
+    },
+    "22": {
+      "row": 2,
+      "col": 2,
+      "left": 52.3438,
+      "top": 41.3542,
+      "width": 6.3021,
+      "height": 1.3542,
+      "image": "maps/points/labels/Utah_22.png"
+    },
+    "23": {
+      "row": 2,
+      "col": 3,
+      "left": 66.4583,
+      "top": 44.375,
+      "width": 3.1771,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_23.png"
+    },
+    "24": {
+      "row": 2,
+      "col": 4,
+      "left": 78.125,
+      "top": 47.0833,
+      "width": 9.0625,
+      "height": 1.1979,
+      "image": "maps/points/labels/Utah_24.png"
+    },
+    "30": {
+      "row": 3,
+      "col": 0,
+      "left": 10.625,
+      "top": 71.7708,
+      "width": 12.9688,
+      "height": 1.3542,
+      "image": "maps/points/labels/Utah_30.png"
+    },
+    "31": {
+      "row": 3,
+      "col": 1,
+      "left": 27.7604,
+      "top": 65.2604,
+      "width": 9.1146,
+      "height": 1.3542,
+      "image": "maps/points/labels/Utah_31.png"
+    },
+    "32": {
+      "row": 3,
+      "col": 2,
+      "left": 48.9062,
+      "top": 69.5312,
+      "width": 2.5,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_32.png"
+    },
+    "33": {
+      "row": 3,
+      "col": 3,
+      "left": 73.1771,
+      "top": 67.5,
+      "width": 2.5,
+      "height": 1.3021,
+      "image": "maps/points/labels/Utah_33.png"
+    },
+    "34": {
+      "row": 3,
+      "col": 4,
+      "left": 80.5729,
+      "top": 67.7604,
+      "width": 5.7292,
+      "height": 1.25,
+      "image": "maps/points/labels/Utah_34.png"
+    }
+  }
+}

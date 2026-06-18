@@ -62,11 +62,13 @@ def js_to_json(js: str) -> str:
     return js
 
 
-def parse_points(block: str) -> dict:
+def parse_points(block: str) -> tuple[dict, dict]:
     raw = json.loads(js_to_json(block))
-    result = {}
+    flat = {}
+    grids = {}
     for map_id, grid in raw.items():
         strongpoints = []
+        grids[map_id] = grid
         for row_idx, row in enumerate(grid):
             if not row:
                 continue
@@ -85,8 +87,8 @@ def parse_points(block: str) -> dict:
                             "h": pct(h),
                         }
                     )
-        result[map_id] = strongpoints
-    return result
+        flat[map_id] = strongpoints
+    return flat, grids
 
 
 def extract_map_section(block: str, map_id: str) -> str:
@@ -171,7 +173,7 @@ def extract_bracketed(start: int, text: str) -> str:
 
 def main() -> None:
     text = SOURCE.read_text(encoding="utf-8")
-    points = parse_points(extract_block(text, "POINT_COORDS"))
+    points, point_grids = parse_points(extract_block(text, "POINT_COORDS"))
     defaults_block = extract_block(text, "DEFAULT_ELEMENTS")
     garrisons = parse_garrisons(defaults_block)
 
@@ -183,6 +185,7 @@ def main() -> None:
                 **meta,
                 "image": f"maps/no-grid/{meta['file']}",
                 "strongpoints": points.get(map_id, []),
+                "strongpointGrid": point_grids.get(map_id, []),
                 "offensiveGarrisons": garrisons.get(map_id, {"a": [], "b": []}),
             }
         )

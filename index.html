@@ -70,8 +70,8 @@
         <ul class="pin-list" id="pin-list"></ul>
       </div>
       <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
-        <h2>New pin</h2>
-        <p class="sidebar__hint">Click anywhere on the map to place a pin, then fill in the details.</p>
+        <h2 id="edit-panel-title">New pin</h2>
+        <p class="sidebar__hint" id="edit-panel-hint">Click anywhere on the map to place a pin, then fill in the details.</p>
         <form id="pin-form" class="pin-form">
           <label>
             Title
@@ -83,11 +83,11 @@
           </label>
           <label>
             Video URL
-            <input type="url" id="pin-video" required placeholder="YouTube embed or .mp4 path" />
+            <input type="text" id="pin-video" required placeholder="YouTube URL or videos/trick.mp4" />
           </label>
           <label>
             Preview thumbnail (optional)
-            <input type="url" id="pin-thumbnail" placeholder="Image URL for hover preview" />
+            <input type="text" id="pin-thumbnail" placeholder="Image URL for hover preview" />
           </label>
           <div class="pin-form__coords" id="pin-coords">No position selected</div>
           <div class="pin-form__actions">
@@ -135,6 +135,7 @@
       <div class="video-modal__header">
         <h2 id="modal-title"></h2>
         <p id="modal-description"></p>
+        <button class="btn btn--ghost video-modal__edit" id="btn-edit-modal" type="button">Edit trick</button>
       </div>
       <div class="video-modal__player" id="modal-player"></div>
     </div>

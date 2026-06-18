@@ -1,4 +1,3 @@
-const MIN_SCALE = 0.35;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 1.15;
 
@@ -25,7 +24,10 @@ export class MapViewer {
     this.viewport.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     window.addEventListener("pointermove", (e) => this.onPointerMove(e));
     window.addEventListener("pointerup", (e) => this.onPointerUp(e));
-    window.addEventListener("resize", () => this.clampTranslation());
+    window.addEventListener("resize", () => {
+      this.scale = this.clampScale(this.scale);
+      this.clampTranslation();
+    });
   }
 
   setEditMode(enabled) {
@@ -39,9 +41,7 @@ export class MapViewer {
 
     if (!imgW || !imgH) return;
 
-    const scaleX = rect.width / imgW;
-    const scaleY = rect.height / imgH;
-    this.scale = Math.min(scaleX, scaleY, 1);
+    this.scale = Math.min(this.getMinScale(), 1);
     this.translateX = (rect.width - imgW * this.scale) / 2;
     this.translateY = (rect.height - imgH * this.scale) / 2;
     this.applyTransform();
@@ -115,8 +115,18 @@ export class MapViewer {
     }
   }
 
+  getMinScale() {
+    const rect = this.viewport.getBoundingClientRect();
+    const imgW = this.image.naturalWidth || this.image.width;
+    const imgH = this.image.naturalHeight || this.image.height;
+
+    if (!imgW || !imgH || !rect.width || !rect.height) return 0.1;
+
+    return Math.min(rect.width / imgW, rect.height / imgH);
+  }
+
   clampScale(value) {
-    return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+    return Math.min(MAX_SCALE, Math.max(this.getMinScale(), value));
   }
 
   clampTranslation() {

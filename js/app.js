@@ -28,10 +28,18 @@ const els = {
   modalDescription: document.getElementById("modal-description"),
   modalPlayer: document.getElementById("modal-player"),
   editPanel: document.getElementById("edit-panel"),
+  editPanelTitle: document.getElementById("edit-panel-title"),
+  editPanelHint: document.getElementById("edit-panel-hint"),
   pinForm: document.getElementById("pin-form"),
   pinCoords: document.getElementById("pin-coords"),
   crosshair: document.getElementById("map-crosshair"),
   btnSavePin: document.getElementById("btn-save-pin"),
+  btnToggleEdit: document.getElementById("btn-toggle-edit"),
+  btnEditModal: document.getElementById("btn-edit-modal"),
+  pinTitle: document.getElementById("pin-title"),
+  pinDescription: document.getElementById("pin-description"),
+  pinVideo: document.getElementById("pin-video"),
+  pinThumbnail: document.getElementById("pin-thumbnail"),
   mapSelect: document.getElementById("map-select"),
   garrisonSide: document.getElementById("garrison-side"),
 };
@@ -44,9 +52,14 @@ let mapCatalog = [];
 let currentMapId = "SMDMV2";
 let currentMap = null;
 let editMode = false;
+let panelMode = null;
+let editingPinId = null;
+let modalPin = null;
 let pendingCoords = null;
 let highlightedPinId = null;
 let previewHideTimer = null;
+
+const PIN_HOVER_RADIUS_PX = 140;
 
 async function init() {
   const [spawnData, pinData] = await Promise.all([loadSpawnData(), loadPinData()]);
@@ -117,6 +130,8 @@ async function switchMap(mapId, { fit = false } = {}) {
   const map = mapCatalog.find((item) => item.id === mapId);
   if (!map) return;
 
+  closeEditPanel();
+
   currentMapId = mapId;
   currentMap = map;
   saveSelectedMapId(mapId);
@@ -170,6 +185,21 @@ function saveUserPins(mapId, userPins) {
   localStorage.setItem(storageKeyForMap(mapId), JSON.stringify(userPins));
 }
 
+function upsertUserPin(mapId, pin) {
+  const userPins = loadUserPins(mapId);
+  const index = userPins.findIndex((item) => item.id === pin.id);
+  const nextPin = { ...pin, userAdded: true };
+
+  if (index >= 0) {
+    userPins[index] = nextPin;
+  } else {
+    userPins.push(nextPin);
+  }
+
+  saveUserPins(mapId, userPins);
+  return nextPin;
+}
+
 function mergePins(basePins, userPins) {
   const byId = new Map(basePins.map((pin) => [pin.id, pin]));
   for (const pin of userPins) {
@@ -190,13 +220,17 @@ function bindUi() {
   document.getElementById("btn-zoom-out").addEventListener("click", () => mapViewer.zoomOut());
   document.getElementById("btn-reset-view").addEventListener("click", () => mapViewer.resetView());
   document.getElementById("btn-toggle-edit").addEventListener("click", toggleEditMode);
-  document.getElementById("btn-cancel-pin").addEventListener("click", () => setEditMode(false));
+  document.getElementById("btn-cancel-pin").addEventListener("click", () => closeEditPanel());
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+  els.btnEditModal.addEventListener("click", () => {
+    if (modalPin) startEditPin(modalPin);
+  });
   els.modal.addEventListener("close", clearModalPlayer);
   els.pinForm.addEventListener("submit", onSavePin);
 
   els.viewport.addEventListener("click", onViewportClick);
-  els.viewport.addEventListener("mousemove", onCrosshairMove);
+  els.viewport.addEventListener("mousemove", onViewportMouseMove);
+  els.viewport.addEventListener("mouseleave", onViewportMouseLeave);
 
   els.mapSelect.addEventListener("change", (event) => {
     switchMap(event.target.value, { fit: true });
@@ -263,9 +297,17 @@ function renderPins() {
     button.title = pin.title;
     button.setAttribute("aria-label", pin.title);
 
-    button.addEventListener("mouseenter", (event) => showPreview(pin, event));
+    button.addEventListener("mouseenter", (event) => {
+      highlightPin(pin.id);
+      showPreview(pin, event);
+    });
     button.addEventListener("mousemove", (event) => movePreview(event));
-    button.addEventListener("mouseleave", scheduleHidePreview);
+    button.addEventListener("mouseleave", (event) => {
+      scheduleHidePreview();
+      if (!editMode) {
+        updateProximityHighlight(event.clientX, event.clientY);
+      }
+    });
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       openModal(pin);
@@ -294,6 +336,9 @@ function positionPins() {
 function renderPinList() {
   els.pinList.innerHTML = "";
   for (const pin of pins) {
+    const row = document.createElement("li");
+    row.className = "pin-list__row";
+
     const item = document.createElement("button");
     item.type = "button";
     item.className = "pin-list__item";
@@ -303,23 +348,75 @@ function renderPinList() {
       <span class="pin-list__meta">${escapeHtml(pin.description || "No description")}</span>
     `;
 
-    item.addEventListener("mouseenter", () => highlightPin(pin.id));
-    item.addEventListener("mouseleave", () => highlightPin(null));
     item.addEventListener("click", () => {
       focusPin(pin);
       openModal(pin);
     });
 
-    els.pinList.appendChild(item);
+    row.addEventListener("mouseenter", () => highlightPin(pin.id));
+    row.addEventListener("mouseleave", () => highlightPin(null));
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "pin-list__edit btn btn--ghost";
+    editButton.title = "Edit trick";
+    editButton.textContent = "Edit";
+    editButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      startEditPin(pin);
+    });
+
+    row.appendChild(item);
+    row.appendChild(editButton);
+    els.pinList.appendChild(row);
   }
 }
 
 function highlightPin(pinId) {
+  const changed = highlightedPinId !== pinId;
   highlightedPinId = pinId;
   positionPins();
+
+  els.pinList.querySelectorAll(".pin-list__row").forEach((row) => {
+    const id = row.querySelector(".pin-list__item")?.dataset.id;
+    row.classList.toggle("is-active", id === pinId);
+  });
+
   els.pinList.querySelectorAll(".pin-list__item").forEach((item) => {
     item.classList.toggle("is-active", item.dataset.id === pinId);
   });
+
+  if (pinId && changed) {
+    const item = els.pinList.querySelector(`.pin-list__item[data-id="${pinId}"]`);
+    item?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+function findClosestPin(clientX, clientY) {
+  if (!mapViewer || pins.length === 0) return null;
+
+  const rect = els.viewport.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+
+  let closest = null;
+  let minDist = Infinity;
+
+  for (const pin of pins) {
+    const point = mapViewer.mapPercentToScreen(pin.x, pin.y);
+    const dist = Math.hypot(point.x - mx, point.y - my);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = pin;
+    }
+  }
+
+  return minDist <= PIN_HOVER_RADIUS_PX ? closest : null;
+}
+
+function updateProximityHighlight(clientX, clientY) {
+  const pin = findClosestPin(clientX, clientY);
+  highlightPin(pin?.id ?? null);
 }
 
 function focusPin(pin) {
@@ -394,6 +491,7 @@ function scheduleHidePreview() {
 
 function openModal(pin) {
   hidePreviewImmediately();
+  modalPin = pin;
   els.modalTitle.textContent = pin.title;
   els.modalDescription.textContent = pin.description || "";
   els.modalPlayer.innerHTML = "";
@@ -409,6 +507,7 @@ function closeModal() {
 
 function clearModalPlayer() {
   els.modalPlayer.innerHTML = "";
+  modalPin = null;
 }
 
 function hidePreviewImmediately() {
@@ -422,23 +521,89 @@ function updateZoomLabel() {
 }
 
 function toggleEditMode() {
-  setEditMode(!editMode);
+  if (panelMode === "add") {
+    closeEditPanel();
+    return;
+  }
+
+  startAddPin();
 }
 
-function setEditMode(enabled) {
-  editMode = enabled;
+function startAddPin() {
+  panelMode = "add";
+  editingPinId = null;
   pendingCoords = null;
-  mapViewer.setEditMode(enabled);
-  els.editPanel.classList.toggle("hidden", !enabled);
+  editMode = true;
+
+  mapViewer?.setEditMode(true);
+  els.editPanel.classList.remove("hidden");
   els.crosshair.classList.add("hidden");
   els.pinForm.reset();
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
+  els.btnSavePin.textContent = "Save pin";
+  els.editPanelTitle.textContent = "New pin";
+  els.editPanelHint.textContent =
+    "Click anywhere on the map to place a pin, then fill in the details.";
+  updateEditToggleButton();
+  highlightPin(null);
+}
 
-  const button = document.getElementById("btn-toggle-edit");
-  button.textContent = enabled ? "Done adding" : "Add pin";
-  button.classList.toggle("btn--primary", !enabled);
-  button.classList.toggle("btn--ghost", enabled);
+function startEditPin(pin) {
+  if (!pin) return;
+
+  closeModal();
+  panelMode = "edit";
+  editingPinId = pin.id;
+  pendingCoords = { x: pin.x, y: pin.y };
+  editMode = true;
+
+  mapViewer?.setEditMode(true);
+  els.editPanel.classList.remove("hidden");
+  els.pinTitle.value = pin.title;
+  els.pinDescription.value = pin.description || "";
+  els.pinVideo.value = pin.videoUrl || "";
+  els.pinThumbnail.value = pin.thumbnail || "";
+  els.pinCoords.textContent = `Position: ${roundCoord(pin.x)}%, ${roundCoord(pin.y)}%`;
+  els.btnSavePin.disabled = false;
+  els.btnSavePin.textContent = "Save changes";
+  els.editPanelTitle.textContent = "Edit pin";
+  els.editPanelHint.textContent = "Update the details below. Click the map to move the pin.";
+  updateEditToggleButton();
+  highlightPin(pin.id);
+  showCrosshairAtPercent(pin.x, pin.y);
+  focusPin(pin);
+}
+
+function closeEditPanel() {
+  panelMode = null;
+  editingPinId = null;
+  pendingCoords = null;
+  editMode = false;
+
+  mapViewer?.setEditMode(false);
+  els.editPanel.classList.add("hidden");
+  els.crosshair.classList.add("hidden");
+  els.pinForm.reset();
+  els.pinCoords.textContent = "No position selected";
+  els.btnSavePin.disabled = true;
+  els.btnSavePin.textContent = "Save pin";
+  updateEditToggleButton();
+  highlightPin(null);
+}
+
+function updateEditToggleButton() {
+  const isOpen = panelMode !== null;
+  els.btnToggleEdit.textContent = isOpen ? "Cancel" : "Add pin";
+  els.btnToggleEdit.classList.toggle("btn--primary", !isOpen);
+  els.btnToggleEdit.classList.toggle("btn--ghost", isOpen);
+}
+
+function showCrosshairAtPercent(xPercent, yPercent) {
+  const point = mapViewer.mapPercentToScreen(xPercent, yPercent);
+  els.crosshair.classList.remove("hidden");
+  els.crosshair.style.left = `${point.x}px`;
+  els.crosshair.style.top = `${point.y}px`;
 }
 
 function onViewportClick(event) {
@@ -462,37 +627,69 @@ function onViewportClick(event) {
   els.crosshair.style.top = `${event.clientY - rect.top}px`;
 }
 
-function onCrosshairMove(event) {
-  if (!editMode || !pendingCoords) return;
-  const rect = els.viewport.getBoundingClientRect();
-  els.crosshair.style.left = `${event.clientX - rect.left}px`;
-  els.crosshair.style.top = `${event.clientY - rect.top}px`;
+function onViewportMouseMove(event) {
+  if (editMode && pendingCoords) {
+    const rect = els.viewport.getBoundingClientRect();
+    els.crosshair.style.left = `${event.clientX - rect.left}px`;
+    els.crosshair.style.top = `${event.clientY - rect.top}px`;
+    return;
+  }
+
+  if (editMode || mapViewer?.isDragging || event.target.closest(".map-pin")) {
+    return;
+  }
+
+  updateProximityHighlight(event.clientX, event.clientY);
+}
+
+function onViewportMouseLeave() {
+  if (!editMode) {
+    highlightPin(null);
+  }
 }
 
 function onSavePin(event) {
   event.preventDefault();
   if (!pendingCoords) return;
 
-  const pin = {
-    id: `user-${Date.now()}`,
-    mapId: currentMapId,
-    title: document.getElementById("pin-title").value.trim(),
-    description: document.getElementById("pin-description").value.trim(),
-    videoUrl: document.getElementById("pin-video").value.trim(),
-    thumbnail: document.getElementById("pin-thumbnail").value.trim() || undefined,
+  const pinData = {
+    title: els.pinTitle.value.trim(),
+    description: els.pinDescription.value.trim(),
+    videoUrl: els.pinVideo.value.trim(),
+    thumbnail: els.pinThumbnail.value.trim() || undefined,
     x: pendingCoords.x,
     y: pendingCoords.y,
-    userAdded: true,
   };
 
-  const userPins = loadUserPins(currentMapId);
-  userPins.push(pin);
-  saveUserPins(currentMapId, userPins);
+  if (panelMode === "edit" && editingPinId) {
+    const existing = pins.find((item) => item.id === editingPinId);
+    if (!existing) return;
 
-  pins.push(pin);
+    const updated = upsertUserPin(currentMapId, {
+      ...existing,
+      ...pinData,
+      id: editingPinId,
+      mapId: currentMapId,
+    });
+
+    pins = mergePins(pinCatalog[currentMapId] || [], loadUserPins(currentMapId));
+    renderPins();
+    renderPinList();
+    closeEditPanel();
+    focusPin(updated);
+    return;
+  }
+
+  const pin = upsertUserPin(currentMapId, {
+    id: `user-${Date.now()}`,
+    mapId: currentMapId,
+    ...pinData,
+  });
+
+  pins = mergePins(pinCatalog[currentMapId] || [], loadUserPins(currentMapId));
   renderPins();
   renderPinList();
-  setEditMode(false);
+  closeEditPanel();
   focusPin(pin);
 }
 

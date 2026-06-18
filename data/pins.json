@@ -1,30 +1,34 @@
 {
   "defaultMapId": "SMDMV2",
   "pins": {
+    "Carentan": [
+      {
+        "id": "carentan-chicken-house",
+        "title": "Chicken house scaffold climb",
+        "description": "Either climb from the rubble pile or use the scaffold at the back of the chicken house when pushed back.",
+        "x": 55.0,
+        "y": 46.0,
+        "videoUrl": "videos/carentan-chicken-house.mp4"
+      }
+    ],
+    "Omaha": [
+      {
+        "id": "omaha-b10-deathclimb",
+        "title": "B10 east — Deathclimb",
+        "description": "Bush climb on the east side of B10. Use the foliage to get up the bluff without exposing yourself on the beach.",
+        "x": 17.5,
+        "y": 92.0,
+        "videoUrl": "videos/omaha-b10-deathclimb.mp4"
+      }
+    ],
     "SMDMV2": [
       {
-        "id": "smdm-bush-1",
-        "title": "Bush climb — orchard edge",
-        "description": "Use the hedge line to vault into the orchard without exposing yourself on the road.",
+        "id": "smdm-bushes-1",
+        "title": "SMDM hedgerow bush climb",
+        "description": "Use the dense bushes along the hedgerow to climb over without being seen from the road.",
         "x": 38.5,
         "y": 52.0,
-        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-      },
-      {
-        "id": "smdm-roof-1",
-        "title": "Roof access — farmhouse",
-        "description": "Climb the rubble pile on the south side to get onto the farmhouse roof for overwatch.",
-        "x": 61.2,
-        "y": 44.8,
-        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-      },
-      {
-        "id": "smdm-wall-1",
-        "title": "Wall boost — church approach",
-        "description": "Two-player boost or solo jump spot to clear the stone wall near the church.",
-        "x": 48.0,
-        "y": 35.5,
-        "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        "videoUrl": "videos/smdm-bushes.mp4"
       }
     ]
   }
