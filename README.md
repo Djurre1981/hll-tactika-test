@@ -3,6 +3,12 @@
 An interactive map guide for [Hell Let Loose](https://www.hellletloose.com/) trick spots — bush climbs, roof access, wall boosts, and more.
 
 Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
+## ToDo / Planned / Ideas
+
+- **Include MG spots** Title is self explainatory
+- **Tags for types of pins** To tag types like climb, mg spot etc
+- **Custom names for mini spots like 'Grandma's house'**
+- ** **
 
 ## Features
 
