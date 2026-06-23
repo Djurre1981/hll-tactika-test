@@ -1,6 +1,7 @@
 {
   "name": "hll-interactive-climb",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "wrangler pages dev . --compatibility-date=2024-01-01",
     "deploy": "wrangler pages deploy . --project-name=hll-climb-guide"

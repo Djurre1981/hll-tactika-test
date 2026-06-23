@@ -10,6 +10,8 @@ import {
 import {
   createVideoElement,
   isDirectVideo,
+  isMedalUrl,
+  isYoutubeUrl,
   toEmbedUrl,
   youtubeThumbnail,
 } from "./video-utils.js";
@@ -68,6 +70,12 @@ let previewHideTimer = null;
 let tagFilters = loadTagFilters();
 
 const PIN_HOVER_RADIUS_PX = 140;
+
+const VIDEO_SOURCE_PLACEHOLDERS = {
+  youtube: "https://www.youtube.com/watch?v=...",
+  medal: "https://medal.tv/clip/... or https://medal.tv/clips/...",
+  other: "Direct .mp4 URL or other embeddable link",
+};
 
 async function init() {
   const auth = await initAuth();
@@ -298,6 +306,13 @@ function bindUi() {
       setPinFormTag(button.dataset.tag);
     });
   });
+
+  document.querySelectorAll("#pin-video-options [data-video-source]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setPinFormVideoSource(button.dataset.videoSource);
+      els.pinVideo.setCustomValidity("");
+    });
+  });
 }
 
 function applyToggleStateToUi() {
@@ -362,6 +377,27 @@ function setPinFormTag(tagId) {
 function getPinFormTag() {
   const active = document.querySelector("#pin-tag-options [data-tag].is-active");
   return active?.dataset.tag || null;
+}
+
+function detectVideoSource(url) {
+  if (!url) return "youtube";
+  if (isMedalUrl(url)) return "medal";
+  if (isYoutubeUrl(url) || isDirectVideo(url)) return isYoutubeUrl(url) ? "youtube" : "other";
+  return "other";
+}
+
+function setPinFormVideoSource(source) {
+  document.querySelectorAll("#pin-video-options [data-video-source]").forEach((button) => {
+    const active = button.dataset.videoSource === source;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  els.pinVideo.placeholder = VIDEO_SOURCE_PLACEHOLDERS[source] || VIDEO_SOURCE_PLACEHOLDERS.other;
+}
+
+function getPinFormVideoSource() {
+  const active = document.querySelector("#pin-video-options [data-video-source].is-active");
+  return active?.dataset.videoSource || "youtube";
 }
 
 function renderPins() {
@@ -625,6 +661,7 @@ function startAddPin() {
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
   setPinFormTag(DEFAULT_PIN_TAG);
+  setPinFormVideoSource("youtube");
   els.editPanelTitle.textContent = "New pin";
   els.editPanelHint.textContent =
     "Click anywhere on the map to place a pin, then fill in the details.";
@@ -648,6 +685,7 @@ function startEditPin(pin) {
   els.pinVideo.value = pin.videoUrl || "";
   els.pinThumbnail.value = pin.thumbnail || "";
   setPinFormTag(pin.tag);
+  setPinFormVideoSource(detectVideoSource(pin.videoUrl));
   els.pinCoords.textContent = `Position: ${roundCoord(pin.x)}%, ${roundCoord(pin.y)}%`;
   els.btnSavePin.disabled = false;
   els.btnSavePin.textContent = "Save changes";
@@ -673,6 +711,7 @@ function closeEditPanel() {
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
   setPinFormTag(DEFAULT_PIN_TAG);
+  setPinFormVideoSource("youtube");
   updateEditToggleButton();
   highlightPin(null);
 }
@@ -740,10 +779,24 @@ function onSavePin(event) {
   const tag = getPinFormTag();
   if (!tag) return;
 
+  const videoUrl = els.pinVideo.value.trim();
+  const videoSource = getPinFormVideoSource();
+  if (videoSource === "medal" && !isMedalUrl(videoUrl)) {
+    els.pinVideo.setCustomValidity("Enter a Medal.tv clip URL (medal.tv/clip/... or medal.tv/clips/...)");
+    els.pinVideo.reportValidity();
+    return;
+  }
+  if (videoSource === "youtube" && videoUrl && !isYoutubeUrl(videoUrl)) {
+    els.pinVideo.setCustomValidity("Enter a YouTube URL");
+    els.pinVideo.reportValidity();
+    return;
+  }
+  els.pinVideo.setCustomValidity("");
+
   const pinData = {
     title: els.pinTitle.value.trim(),
     description: els.pinDescription.value.trim(),
-    videoUrl: els.pinVideo.value.trim(),
+    videoUrl,
     thumbnail: els.pinThumbnail.value.trim() || undefined,
     tag,
     x: pendingCoords.x,

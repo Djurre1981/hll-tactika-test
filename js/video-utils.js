@@ -2,13 +2,74 @@ export function isDirectVideo(url) {
   return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
 }
 
+function parseMediaUrl(url) {
+  if (!url) return null;
+  try {
+    return new URL(url);
+  } catch {
+    try {
+      const base = typeof window !== "undefined" ? window.location.href : "https://localhost/";
+      return new URL(url, base);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function getHostname(url) {
+  const parsed = parseMediaUrl(url);
+  return parsed?.hostname.replace(/^www\./, "") || "";
+}
+
+export function isMedalUrl(url) {
+  return getHostname(url) === "medal.tv";
+}
+
+export function isYoutubeUrl(url) {
+  const hostname = getHostname(url);
+  return hostname.includes("youtube.com") || hostname === "youtu.be";
+}
+
+function toMedalEmbedUrl(url, { autoplay = false, mute = false } = {}) {
+  const parsed = parseMediaUrl(url);
+  if (!parsed) return url;
+
+  const parts = parsed.pathname.split("/").filter(Boolean);
+
+  const clipIdx = parts.indexOf("clip");
+  if (clipIdx >= 0 && parts[clipIdx + 1]) {
+    const id = parts[clipIdx + 1];
+    const slug = parts[clipIdx + 2];
+    const path = slug ? `/clip/${id}/${slug}` : `/clip/${id}`;
+    const params = new URLSearchParams();
+    if (autoplay) params.set("autoplay", "1");
+    if (mute || autoplay) params.set("muted", "1");
+    if (autoplay) params.set("loop", "1");
+    const query = params.toString();
+    return `https://medal.tv${path}${query ? `?${query}` : ""}`;
+  }
+
+  const clipsIdx = parts.indexOf("clips");
+  if (clipsIdx >= 0 && parts[clipsIdx + 1]) {
+    const id = parts[clipsIdx + 1];
+    const params = new URLSearchParams();
+    if (autoplay) params.set("autoplay", "1");
+    if (mute || autoplay) params.set("muted", "1");
+    const query = params.toString();
+    return `https://medal.tv/clips/${id}${query ? `?${query}` : ""}`;
+  }
+
+  return url;
+}
+
 export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
   if (!url) return url;
 
   if (isDirectVideo(url)) return url;
 
   try {
-    const parsed = new URL(url, window.location.href);
+    const parsed = parseMediaUrl(url);
+    if (!parsed) return url;
 
     if (parsed.hostname.includes("youtube.com") || parsed.hostname.includes("youtu.be")) {
       let videoId = parsed.searchParams.get("v");
@@ -40,6 +101,10 @@ export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
         return `https://player.vimeo.com/video/${id}${query ? `?${query}` : ""}`;
       }
     }
+
+    if (isMedalUrl(url)) {
+      return toMedalEmbedUrl(url, { autoplay, mute });
+    }
   } catch {
     return url;
   }
@@ -62,7 +127,7 @@ export function createVideoElement(url, { autoplay = false, muted = false, contr
   const iframe = document.createElement("iframe");
   iframe.src = toEmbedUrl(url, { autoplay, mute: muted });
   iframe.allow =
-    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+    "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
   iframe.allowFullscreen = true;
   iframe.title = "Trick video";
   return iframe;
@@ -70,7 +135,8 @@ export function createVideoElement(url, { autoplay = false, muted = false, contr
 
 export function youtubeThumbnail(url) {
   try {
-    const parsed = new URL(url, window.location.href);
+    const parsed = parseMediaUrl(url);
+    if (!parsed) return null;
     let videoId = parsed.searchParams.get("v");
     if (!videoId && parsed.hostname.includes("youtu.be")) {
       videoId = parsed.pathname.replace("/", "");

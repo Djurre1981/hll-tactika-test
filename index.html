@@ -103,9 +103,23 @@
             Description
             <textarea id="pin-description" rows="3" placeholder="Short note about the trick"></textarea>
           </label>
+          <fieldset class="pin-form__video-source">
+            <legend>Video host</legend>
+            <div class="tag-filters pin-form__video-options" id="pin-video-options" role="radiogroup" aria-label="Video host">
+              <button type="button" class="tag-filter is-active" data-video-source="youtube" aria-pressed="true">
+                YouTube
+              </button>
+              <button type="button" class="tag-filter" data-video-source="medal" aria-pressed="false">
+                Medal.tv
+              </button>
+              <button type="button" class="tag-filter" data-video-source="other" aria-pressed="false">
+                Other URL
+              </button>
+            </div>
+          </fieldset>
           <label>
             Video URL
-            <input type="text" id="pin-video" required placeholder="YouTube URL or videos/trick.mp4" />
+            <input type="text" id="pin-video" required placeholder="https://www.youtube.com/watch?v=..." />
           </label>
           <label>
             Preview thumbnail (optional)

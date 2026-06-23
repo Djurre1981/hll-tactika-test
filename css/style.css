@@ -484,10 +484,21 @@ body {
   padding: 0;
 }
 
-.pin-form__tags legend {
+.pin-form__tags legend,
+.pin-form__video-source legend {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-bottom: 0.45rem;
+}
+
+.pin-form__video-source {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pin-form__video-options {
+  margin-top: 0.35rem;
 }
 
 .btn {
