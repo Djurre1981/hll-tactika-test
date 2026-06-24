@@ -9,7 +9,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
 if (-not (Test-Path ".dev.vars")) {
-  Write-Error "Missing .dev.vars — copy .dev.vars.example and fill in SESSION_SECRET + ALLOWED_STEAM_IDS"
+  Write-Error "Missing .dev.vars — copy .dev.vars.example and fill in SESSION_SECRET + ADMIN_STEAM_IDS / USER_STEAM_IDS"
 }
 
 Write-Host "Creating Pages project (if needed)..."

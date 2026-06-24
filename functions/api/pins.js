@@ -1,17 +1,86 @@
-import pinData from "../../data/pins.json";
-import { isAllowedSteamId } from "../lib/allowlist.js";
+import { requireAuth } from "../lib/auth-request.js";
+import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { errorResponse, json } from "../lib/response.js";
-import { verifySession } from "../lib/session.js";
+
+function buildPinFromBody(pin, createdBy) {
+  const next = {
+    id: pin.id,
+    title: String(pin.title || "").trim(),
+    description: String(pin.description || "").trim(),
+    tag: pin.tag || "climb",
+    x: Number(pin.x),
+    y: Number(pin.y),
+    videoUrl: String(pin.videoUrl || "").trim(),
+    createdBy,
+  };
+
+  if (!next.title) {
+    return { error: "Title is required" };
+  }
+  if (!Number.isFinite(next.x) || !Number.isFinite(next.y)) {
+    return { error: "Valid pin coordinates are required" };
+  }
+
+  const thumbnail = String(pin.thumbnail || "").trim();
+  if (thumbnail) {
+    next.thumbnail = thumbnail;
+  }
+
+  return { pin: next };
+}
 
 export async function onRequestGet(context) {
-  const session = await verifySession(context.request, context.env);
-  if (!session) {
-    return errorResponse("Sign in required", 401);
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth.error;
   }
 
-  if (!isAllowedSteamId(session.steamId, context.env)) {
-    return errorResponse("Not authorized for this circle", 403);
+  const data = await loadPinsData(context.env);
+  return json(data);
+}
+
+export async function onRequestPost(context) {
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth.error;
   }
 
-  return json(pinData);
+  let body;
+  try {
+    body = await context.request.json();
+  } catch {
+    return errorResponse("Invalid JSON body", 400);
+  }
+
+  const { mapId, pin } = body;
+  if (!mapId || !pin) {
+    return errorResponse("mapId and pin are required", 400);
+  }
+
+  const built = buildPinFromBody(pin, auth.session.steamId);
+  if (built.error) {
+    return errorResponse(built.error, 400);
+  }
+
+  const data = await loadPinsData(context.env);
+  if (!data.pins[mapId]) {
+    data.pins[mapId] = [];
+  }
+
+  const newPin = {
+    ...built.pin,
+    id: built.pin.id || `pin-${crypto.randomUUID()}`,
+    createdBy: auth.session.steamId,
+  };
+
+  data.pins[mapId].push(newPin);
+
+  try {
+    await savePinsData(context.env, data);
+  } catch (error) {
+    console.error(error);
+    return errorResponse("Pin storage is not configured", 503);
+  }
+
+  return json({ pin: newPin, mapId }, { status: 201 });
 }

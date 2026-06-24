@@ -22,6 +22,7 @@
       <div class="header__user hidden" id="header-user">
         <img id="user-avatar" class="header__avatar hidden" alt="" width="28" height="28" />
         <span id="user-name" class="header__user-name"></span>
+        <button id="btn-admin-panel" class="btn btn--ghost hidden" type="button">Manage users</button>
         <button id="btn-logout" class="btn btn--ghost" type="button">Sign out</button>
       </div>
       <button id="btn-reset-view" class="btn btn--ghost" type="button" title="Reset zoom and pan">Reset view</button>
@@ -145,6 +146,7 @@
           <div class="pin-form__coords" id="pin-coords">No position selected</div>
           <div class="pin-form__actions">
             <button type="submit" class="btn btn--primary" disabled id="btn-save-pin">Save pin</button>
+            <button type="button" class="btn btn--ghost btn--danger hidden" id="btn-delete-pin">Delete</button>
             <button type="button" class="btn btn--ghost" id="btn-cancel-pin">Cancel</button>
           </div>
         </form>
@@ -182,6 +184,40 @@
     </section>
   </main>
   </div>
+
+  <dialog class="admin-panel" id="admin-panel">
+    <div class="admin-panel__inner">
+      <button class="admin-panel__close" id="btn-close-admin-panel" type="button" aria-label="Close">&times;</button>
+      <header class="admin-panel__header">
+        <h2>Manage users</h2>
+        <p>Add or remove circle members. Administrators cannot be removed from this panel.</p>
+      </header>
+
+      <form id="admin-add-user-form" class="admin-panel__add-form">
+        <label>
+          Steam ID64
+          <input type="text" id="admin-steam-id" required placeholder="76561198…" inputmode="numeric" pattern="7656119[0-9]{10}" />
+        </label>
+        <button type="submit" class="btn btn--primary" id="btn-admin-add-user">Add user</button>
+      </form>
+
+      <p class="admin-panel__status" id="admin-panel-status" aria-live="polite"></p>
+
+      <div class="admin-panel__table-wrap">
+        <table class="admin-panel__table">
+          <thead>
+            <tr>
+              <th scope="col">Username</th>
+              <th scope="col">Steam ID</th>
+              <th scope="col">Role</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
 
   <dialog class="video-modal" id="video-modal">
     <div class="video-modal__inner">

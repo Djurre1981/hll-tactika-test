@@ -9,7 +9,7 @@ export async function onRequestGet(context) {
     return errorResponse("Sign in required", 401);
   }
 
-  if (!isAllowedSteamId(session.steamId, context.env)) {
+  if (!(await isAllowedSteamId(session.steamId, context.env))) {
     return errorResponse("Not authorized for this circle", 403);
   }
 

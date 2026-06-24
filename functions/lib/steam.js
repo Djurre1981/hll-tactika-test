@@ -52,12 +52,42 @@ export async function verifySteamCallback(request) {
   return match[1];
 }
 
-export async function fetchSteamProfile(steamId, env) {
-  const apiKey = env.STEAM_API_KEY;
-  if (!apiKey) {
-    return { steamId, name: null, avatar: null };
+function readXmlCdata(xml, tag) {
+  const cdataMatch = xml.match(new RegExp(`<${tag}><!\\[CDATA\\[(.*?)\\]\\]></${tag}>`));
+  if (cdataMatch?.[1]) {
+    return cdataMatch[1];
   }
 
+  const textMatch = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
+  return textMatch?.[1] || null;
+}
+
+async function fetchSteamProfileFromXml(steamId) {
+  try {
+    const response = await fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`, {
+      headers: { Accept: "text/xml,application/xml" },
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const xml = await response.text();
+    const name = readXmlCdata(xml, "steamID");
+    if (!name) {
+      return null;
+    }
+
+    return {
+      steamId,
+      name,
+      avatar: readXmlCdata(xml, "avatarFull"),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSteamProfileFromApi(steamId, apiKey) {
   const url = new URL("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/");
   url.searchParams.set("key", apiKey);
   url.searchParams.set("steamids", steamId);
@@ -65,16 +95,36 @@ export async function fetchSteamProfile(steamId, env) {
   try {
     const response = await fetch(url.toString());
     if (!response.ok) {
-      return { steamId, name: null, avatar: null };
+      return null;
     }
     const data = await response.json();
     const player = data?.response?.players?.[0];
+    if (!player?.personaname) {
+      return null;
+    }
+
     return {
       steamId,
-      name: player?.personaname || null,
-      avatar: player?.avatarfull || null,
+      name: player.personaname,
+      avatar: player.avatarfull || null,
     };
   } catch {
-    return { steamId, name: null, avatar: null };
+    return null;
   }
+}
+
+export async function fetchSteamProfile(steamId, env) {
+  if (env.STEAM_API_KEY) {
+    const apiProfile = await fetchSteamProfileFromApi(steamId, env.STEAM_API_KEY);
+    if (apiProfile?.name) {
+      return apiProfile;
+    }
+  }
+
+  const xmlProfile = await fetchSteamProfileFromXml(steamId);
+  if (xmlProfile?.name) {
+    return xmlProfile;
+  }
+
+  return { steamId, name: null, avatar: null };
 }

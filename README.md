@@ -12,7 +12,8 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 ## Features
 
-- **Steam sign-in** for circle members (allowlist of Steam IDs)
+- **Steam sign-in** for circle members (administrator and user Steam ID lists)
+- **Role-based permissions**: users manage their own tricks; administrators manage all tricks
 - **Protected trick data** served only to authenticated, approved users
 - **All 20 HLL tacmaps** with a map selector in the sidebar
 - **Pan & zoom** on high-resolution tactical maps (1920×1920)
@@ -20,7 +21,7 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 - **Pins** mark trick locations with title and description
 - **Hover** a pin to preview the trick video
 - **Click** a pin to play the full embedded video (YouTube, Vimeo, or local `.mp4`)
-- **Add pins** directly on the map; custom pins are saved per map in your browser
+- **Add pins** directly on the map; tricks are saved on the server (Cloudflare KV in production, in-memory during local dev without KV)
 
 ## Quick start
 
@@ -31,7 +32,8 @@ Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Page
 1. Install dependencies: `npm install`
 2. Copy `.dev.vars.example` → `.dev.vars` and set:
    - `SESSION_SECRET` — long random string
-   - `ALLOWED_STEAM_IDS` — comma-separated Steam ID64 values for circle members
+   - `ADMIN_STEAM_IDS` — comma-separated Steam ID64 values for administrators
+   - `USER_STEAM_IDS` — comma-separated Steam ID64 values for regular users
    - `STEAM_API_KEY` (optional) — [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
 3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
 4. Deploy: `npm run deploy` (or connect the GitHub repo in Cloudflare Pages dashboard)
@@ -52,7 +54,7 @@ Open [http://localhost:8080](http://localhost:8080) only for map asset testing.
 
 Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; they are returned from `/api/pins` after Steam auth.
 
-Use **Add pin** in the UI for personal pins (stored in `localStorage`).
+Use **Add pin** in the UI to create tricks. Seed pins in `data/pins.json` (with `createdBy: null`) are editable only by administrators.
 
 ```json
 {

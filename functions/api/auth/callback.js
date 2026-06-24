@@ -10,7 +10,7 @@ export async function onRequestGet(context) {
     const steamId = await verifySteamCallback(request);
     const profile = await fetchSteamProfile(steamId, env);
 
-    if (!isAllowedSteamId(steamId, env)) {
+    if (!(await isAllowedSteamId(steamId, env))) {
       const origin = getOrigin(request);
       return redirect(`${origin}/?auth=forbidden&steamId=${steamId}`);
     }

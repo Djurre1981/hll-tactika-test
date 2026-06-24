@@ -24,7 +24,7 @@ function getAuthErrorFromUrl() {
     const idHint = steamId
       ? ` Your Steam ID64 is ${steamId} — send this to an admin to be added.`
       : "";
-    return `Your Steam account is not on the circle allowlist yet.${idHint}`;
+    return `Your Steam account is not on the member list yet.${idHint}`;
   }
   if (auth === "error") {
     return "Steam sign-in failed. Please try again.";
@@ -133,7 +133,7 @@ export async function loadProtectedPins() {
     showGate({
       title: "Access not granted",
       message:
-        "You signed in with Steam, but your account is not on the circle allowlist yet. Ask an admin to add your Steam ID.",
+        "You signed in with Steam, but your account is not on the member list yet. Ask an admin to add your Steam ID to the users list.",
       showLogin: false,
     });
     throw new Error("forbidden");

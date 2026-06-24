@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev . --compatibility-date=2024-01-01",
-    "deploy": "wrangler pages deploy . --project-name=hll-climb-guide"
+    "deploy": "wrangler pages deploy"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

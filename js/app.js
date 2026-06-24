@@ -1,6 +1,8 @@
 import { MapViewer } from "./map-viewer.js";
 import { MapOverlays } from "./map-overlays.js";
-import { initAuth, loadProtectedPins } from "./auth.js";
+import { initAdminPanel } from "./admin-panel.js";
+import { initAuth, getCurrentUser, loadProtectedPins } from "./auth.js";
+import { createPin, deletePin, fetchPinsCatalog, updatePin } from "./pin-api.js";
 import { resolveMedalClip } from "./medal.js";
 import {
   DEFAULT_PIN_TAG,
@@ -16,7 +18,6 @@ import {
   youtubeThumbnail,
 } from "./video-utils.js";
 
-const STORAGE_KEY_PREFIX = "hll-climb-pins";
 const MAP_STORAGE_KEY = "hll-climb-selected-map";
 const TOGGLE_STORAGE_KEY = "hll-climb-overlay-toggles";
 const TAG_FILTER_STORAGE_KEY = "hll-climb-tag-filters";
@@ -44,6 +45,7 @@ const els = {
   pinCoords: document.getElementById("pin-coords"),
   crosshair: document.getElementById("map-crosshair"),
   btnSavePin: document.getElementById("btn-save-pin"),
+  btnDeletePin: document.getElementById("btn-delete-pin"),
   btnToggleEdit: document.getElementById("btn-toggle-edit"),
   btnEditModal: document.getElementById("btn-edit-modal"),
   pinTitle: document.getElementById("pin-title"),
@@ -89,6 +91,7 @@ async function init() {
   populateMapSelect();
   applyTagFiltersToUi();
   bindUi();
+  initAdminPanel();
   await switchMap(currentMapId, { fit: true });
 }
 
@@ -203,7 +206,7 @@ async function switchMap(mapId, { fit = false } = {}) {
   }
 
   mapOverlays.setMapData(map);
-  pins = mergePins(pinCatalog[mapId] || [], loadUserPins(mapId));
+  pins = (pinCatalog[mapId] || []).map(normalizePin);
   renderPins();
   renderPinList();
 
@@ -215,43 +218,19 @@ async function switchMap(mapId, { fit = false } = {}) {
   }
 }
 
-function storageKeyForMap(mapId) {
-  return `${STORAGE_KEY_PREFIX}-${mapId}`;
+function canModifyPin(pin) {
+  const user = getCurrentUser();
+  if (!user || !pin) return false;
+  if (user.role === "admin") return true;
+  return pin.createdBy === user.steamId;
 }
 
-function loadUserPins(mapId) {
-  try {
-    return JSON.parse(localStorage.getItem(storageKeyForMap(mapId)) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveUserPins(mapId, userPins) {
-  localStorage.setItem(storageKeyForMap(mapId), JSON.stringify(userPins));
-}
-
-function upsertUserPin(mapId, pin) {
-  const userPins = loadUserPins(mapId);
-  const index = userPins.findIndex((item) => item.id === pin.id);
-  const nextPin = { ...pin, userAdded: true };
-
-  if (index >= 0) {
-    userPins[index] = nextPin;
-  } else {
-    userPins.push(nextPin);
-  }
-
-  saveUserPins(mapId, userPins);
-  return nextPin;
-}
-
-function mergePins(basePins, userPins) {
-  const byId = new Map(basePins.map((pin) => [pin.id, normalizePin(pin)]));
-  for (const pin of userPins) {
-    byId.set(pin.id, normalizePin(pin));
-  }
-  return [...byId.values()];
+async function reloadPinsForMap(mapId = currentMapId) {
+  const data = await fetchPinsCatalog();
+  pinCatalog = data.pins || {};
+  pins = (pinCatalog[mapId] || []).map(normalizePin);
+  renderPins();
+  renderPinList();
 }
 
 function waitForImage(image) {
@@ -267,6 +246,7 @@ function bindUi() {
   document.getElementById("btn-reset-view").addEventListener("click", () => mapViewer.resetView());
   document.getElementById("btn-toggle-edit").addEventListener("click", toggleEditMode);
   document.getElementById("btn-cancel-pin").addEventListener("click", () => closeEditPanel());
+  els.btnDeletePin?.addEventListener("click", onDeletePin);
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
   els.btnEditModal.addEventListener("click", () => {
     if (modalPin) startEditPin(modalPin);
@@ -484,7 +464,9 @@ function renderPinList() {
     });
 
     row.appendChild(item);
-    row.appendChild(editButton);
+    if (canModifyPin(pin)) {
+      row.appendChild(editButton);
+    }
     els.pinList.appendChild(row);
   }
 }
@@ -639,6 +621,7 @@ function openModal(pin) {
   modalPin = pin;
   els.modalTitle.textContent = pin.title;
   els.modalDescription.textContent = pin.description || "";
+  els.btnEditModal.classList.toggle("hidden", !canModifyPin(pin));
   els.modalPlayer.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.modal.showModal();
   loadModalPlayer(pin);
@@ -707,6 +690,7 @@ function startAddPin() {
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
+  els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
   setPinFormVideoSource("youtube");
   els.editPanelTitle.textContent = "New pin";
@@ -717,7 +701,7 @@ function startAddPin() {
 }
 
 function startEditPin(pin) {
-  if (!pin) return;
+  if (!pin || !canModifyPin(pin)) return;
 
   closeModal();
   panelMode = "edit";
@@ -736,6 +720,7 @@ function startEditPin(pin) {
   els.pinCoords.textContent = `Position: ${roundCoord(pin.x)}%, ${roundCoord(pin.y)}%`;
   els.btnSavePin.disabled = false;
   els.btnSavePin.textContent = "Save changes";
+  els.btnDeletePin?.classList.remove("hidden");
   els.editPanelTitle.textContent = "Edit pin";
   els.editPanelHint.textContent = "Update the details below. Click the map to move the pin.";
   updateEditToggleButton();
@@ -757,6 +742,7 @@ function closeEditPanel() {
   els.pinCoords.textContent = "No position selected";
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
+  els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
   setPinFormVideoSource("youtube");
   updateEditToggleButton();
@@ -850,36 +836,61 @@ function onSavePin(event) {
     y: pendingCoords.y,
   };
 
-  if (panelMode === "edit" && editingPinId) {
-    const existing = pins.find((item) => item.id === editingPinId);
-    if (!existing) return;
+  void savePin(pinData);
+}
 
-    const updated = upsertUserPin(currentMapId, {
-      ...existing,
-      ...pinData,
-      id: editingPinId,
-      mapId: currentMapId,
-    });
+async function savePin(pinData) {
+  els.btnSavePin.disabled = true;
 
-    pins = mergePins(pinCatalog[currentMapId] || [], loadUserPins(currentMapId));
-    renderPins();
-    renderPinList();
+  try {
+    if (panelMode === "edit" && editingPinId) {
+      const existing = pins.find((item) => item.id === editingPinId);
+      if (!existing || !canModifyPin(existing)) return;
+
+      await updatePin(currentMapId, editingPinId, pinData);
+      await reloadPinsForMap(currentMapId);
+      const updated = pins.find((item) => item.id === editingPinId);
+      closeEditPanel();
+      if (updated) focusPin(updated);
+      return;
+    }
+
+    const created = await createPin(currentMapId, pinData);
+    await reloadPinsForMap(currentMapId);
     closeEditPanel();
-    focusPin(updated);
+    const pin = pins.find((item) => item.id === created.id);
+    if (pin) focusPin(pin);
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Could not save trick");
+    els.btnSavePin.disabled = false;
+  }
+}
+
+async function onDeletePin() {
+  if (panelMode !== "edit" || !editingPinId) return;
+
+  const existing = pins.find((item) => item.id === editingPinId);
+  if (!existing || !canModifyPin(existing)) return;
+
+  if (!window.confirm(`Delete "${existing.title}"? This cannot be undone.`)) {
     return;
   }
 
-  const pin = upsertUserPin(currentMapId, {
-    id: `user-${Date.now()}`,
-    mapId: currentMapId,
-    ...pinData,
-  });
+  els.btnDeletePin && (els.btnDeletePin.disabled = true);
 
-  pins = mergePins(pinCatalog[currentMapId] || [], loadUserPins(currentMapId));
-  renderPins();
-  renderPinList();
-  closeEditPanel();
-  focusPin(pin);
+  try {
+    await deletePin(currentMapId, editingPinId);
+    await reloadPinsForMap(currentMapId);
+    closeEditPanel();
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Could not delete trick");
+  } finally {
+    if (els.btnDeletePin) {
+      els.btnDeletePin.disabled = false;
+    }
+  }
 }
 
 function roundCoord(value) {
