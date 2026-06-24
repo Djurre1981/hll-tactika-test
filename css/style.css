@@ -690,8 +690,8 @@ body {
 
 .map-pin {
   --pin-scale-selected: 5.8;
-  --pin-scale-default: calc(var(--pin-scale-selected) * 0.75);
-  --pin-scale-hover: 4.6;
+  --pin-scale-default: calc(var(--pin-scale-selected) * 0.375);
+  --pin-scale-hover: 2.3;
   position: absolute;
   width: 28px;
   height: 28px;
