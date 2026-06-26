@@ -1,10 +1,14 @@
 import { loadUsersData, saveUsersData } from "./users-store.js";
 
+function normalizeSteamId(steamId) {
+  return String(steamId).trim();
+}
+
 function parseSteamIds(raw) {
   return (raw || "")
     .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+    .map((id) => normalizeSteamId(id))
+    .filter((id) => /^\d+$/.test(id));
 }
 
 export function getEnvOwnerSteamIds(env) {
@@ -37,19 +41,27 @@ function isEnvAdmin(steamId, env) {
   return getEnvAdminSteamIds(env).includes(String(steamId));
 }
 
-async function isRevoked(steamId, env) {
-  const data = await loadUsersData(env);
-  return (data.revoked || []).includes(String(steamId));
+function isRevokedId(revoked, steamId) {
+  const id = normalizeSteamId(steamId);
+  return (revoked || []).some((entry) => normalizeSteamId(entry) === id);
 }
 
 export async function getUserRole(steamId, env) {
-  const id = String(steamId);
+  const id = normalizeSteamId(steamId);
 
   if (isEnvOwner(id, env)) {
     return "owner";
   }
 
-  if (await isRevoked(id, env)) {
+  const data = await loadUsersData(env);
+  const member = data.users.find((user) => normalizeSteamId(user.steamId) === id);
+
+  // KV-stored owners keep access even if OWNER_STEAM_IDS is missing or they were revoked by mistake.
+  if (member?.role === "owner") {
+    return "owner";
+  }
+
+  if (isRevokedId(data.revoked, id)) {
     return null;
   }
 
@@ -57,11 +69,6 @@ export async function getUserRole(steamId, env) {
     return "admin";
   }
 
-  const data = await loadUsersData(env);
-  const member = data.users.find((user) => user.steamId === id);
-  if (member?.role === "owner") {
-    return "owner";
-  }
   if (member?.role === "admin") {
     return "admin";
   }
@@ -206,11 +213,11 @@ export async function removeManagedUser(env, steamId, actorSteamId, actorRole) {
 
   let changed = false;
 
-  if (isEnvAdmin(id, env)) {
+  if (isEnvAdmin(id, env) && !isEnvOwner(id, env)) {
     if (!data.revoked) {
       data.revoked = [];
     }
-    if (!data.revoked.includes(id)) {
+    if (!isRevokedId(data.revoked, id)) {
       data.revoked.push(id);
       changed = true;
     }
@@ -271,8 +278,8 @@ export async function updateManagedUserRole(env, actorSteamId, targetSteamId, ne
     } else {
       data.users.push({ steamId: targetId, role: "admin" });
     }
-  } else if (envAdmin) {
-    if (!data.revoked.includes(targetId)) {
+  } else if (envAdmin && !isEnvOwner(targetId, env)) {
+    if (!isRevokedId(data.revoked, targetId)) {
       data.revoked.push(targetId);
     }
     if (inKv) {

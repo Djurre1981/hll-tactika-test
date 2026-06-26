@@ -27,8 +27,7 @@ export async function loadUsersData(env) {
     }
 
     const initial = seedFromEnv(env);
-    await env.PINS_KV.put(KV_KEY, JSON.stringify(initial));
-    return initial;
+    return migrateEnvUsers(env, initial);
   }
 
   if (!memoryStore) {
@@ -46,6 +45,21 @@ async function migrateEnvUsers(env, data) {
   if (!Array.isArray(data.revoked)) {
     data.revoked = [];
     changed = true;
+  }
+
+  const ownerIds = new Set(envOwners);
+  for (const user of data.users) {
+    if (user.role === "owner") {
+      ownerIds.add(user.steamId);
+    }
+  }
+
+  if (ownerIds.size > 0) {
+    const before = data.revoked.length;
+    data.revoked = data.revoked.filter((steamId) => !ownerIds.has(steamId));
+    if (data.revoked.length !== before) {
+      changed = true;
+    }
   }
 
   for (const steamId of envOwners) {
