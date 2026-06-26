@@ -18,3 +18,7 @@ export function normalizePinTag(pin) {
   if (isValidPinTag(pin.tag)) return pin.tag;
   return DEFAULT_PIN_TAG;
 }
+
+export function isDirectionalPinTag(tagId) {
+  return tagId === "mg-spot";
+}

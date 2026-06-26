@@ -27,6 +27,19 @@ function buildPinFromBody(pin, createdBy) {
     next.thumbnail = thumbnail;
   }
 
+  if (next.tag === "mg-spot") {
+    const dirX = Number(pin.dirX);
+    const dirY = Number(pin.dirY);
+    if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) {
+      return { error: "MG spot direction is required" };
+    }
+    if (dirX === next.x && dirY === next.y) {
+      return { error: "MG spot direction must differ from the base" };
+    }
+    next.dirX = dirX;
+    next.dirY = dirY;
+  }
+
   return { pin: next };
 }
 

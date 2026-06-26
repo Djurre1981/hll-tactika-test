@@ -32,6 +32,24 @@ function applyPinUpdates(existing, pin) {
       delete updated.thumbnail;
     }
   }
+  if (pin.dirX !== undefined) {
+    updated.dirX = Number(pin.dirX);
+  }
+  if (pin.dirY !== undefined) {
+    updated.dirY = Number(pin.dirY);
+  }
+
+  if (updated.tag === "mg-spot") {
+    if (!Number.isFinite(updated.dirX) || !Number.isFinite(updated.dirY)) {
+      return { error: "MG spot direction is required" };
+    }
+    if (updated.dirX === updated.x && updated.dirY === updated.y) {
+      return { error: "MG spot direction must differ from the base" };
+    }
+  } else {
+    delete updated.dirX;
+    delete updated.dirY;
+  }
 
   if (!updated.title) {
     return { error: "Title is required" };

@@ -802,6 +802,74 @@ body {
   transform: scale(var(--pin-scale-selected));
 }
 
+.map-mg-spots-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+}
+
+.map-mg-spots-layer--draft {
+  z-index: 6;
+}
+
+.map-mg-spot {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+}
+
+.map-mg-spot--draft {
+  pointer-events: none;
+}
+
+.mg-spot-stem {
+  stroke: var(--pin-mg-spot);
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 3px rgba(15, 18, 16, 0.85));
+}
+
+.mg-spot-stem--preview {
+  stroke-dasharray: 0.8 0.55;
+  opacity: 0.75;
+}
+
+.mg-spot-base {
+  fill: var(--pin-mg-spot);
+  filter: drop-shadow(0 0 3px rgba(15, 18, 16, 0.85));
+}
+
+.mg-spot-head {
+  fill: var(--pin-mg-spot);
+  filter: drop-shadow(0 0 3px rgba(15, 18, 16, 0.85));
+}
+
+.mg-spot-head--preview {
+  opacity: 0.75;
+}
+
+.map-mg-spot.is-highlighted .mg-spot-stem {
+  stroke-width: 0.38 !important;
+  filter: drop-shadow(0 0 5px var(--pin-mg-spot-glow));
+}
+
+.map-mg-spot.is-highlighted .mg-spot-base {
+  filter: drop-shadow(0 0 8px var(--pin-mg-spot-glow));
+}
+
+.map-mg-spot.is-highlighted .mg-spot-head {
+  filter: drop-shadow(0 0 8px var(--pin-mg-spot-glow));
+}
+
+.map-mg-spot:hover:not(.is-highlighted) .mg-spot-stem,
+.map-mg-spot:hover:not(.is-highlighted) .mg-spot-base,
+.map-mg-spot:hover:not(.is-highlighted) .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-mg-spot-glow));
+}
+
 .map-crosshair {
   position: absolute;
   width: 40px;
