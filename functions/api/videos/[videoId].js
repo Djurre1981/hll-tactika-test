@@ -1,5 +1,6 @@
-import { isAppVideoId, r2ObjectKey } from "../../lib/app-videos.js";
+import { isAppVideoId } from "../../lib/app-media.js";
 import { requireAuth } from "../../lib/auth-request.js";
+import { getR2VideoObject } from "../../lib/r2-media.js";
 import { errorResponse } from "../../lib/response.js";
 
 export async function onRequestGet(context) {
@@ -13,11 +14,7 @@ export async function onRequestGet(context) {
     return errorResponse("Invalid video id", 400);
   }
 
-  if (!context.env.VIDEOS_R2) {
-    return errorResponse("Video storage is not configured", 503);
-  }
-
-  const object = await context.env.VIDEOS_R2.get(r2ObjectKey(videoId));
+  const object = await getR2VideoObject(context.env, videoId);
   if (!object) {
     return errorResponse("Video not found", 404);
   }

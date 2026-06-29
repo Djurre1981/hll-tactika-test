@@ -504,16 +504,34 @@ body {
 }
 
 .pin-form__tags legend,
-.pin-form__video-source legend {
+.pin-form__video-source legend,
+.pin-form__preview-source legend {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-bottom: 0.45rem;
 }
 
-.pin-form__video-source {
+.pin-form__video-source,
+.pin-form__preview-source {
   border: none;
   margin: 0;
   padding: 0;
+}
+
+.pin-form__file input[type="file"] {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.pin-form__or {
+  margin: 0.35rem 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  text-transform: lowercase;
 }
 
 .pin-form__video-help {

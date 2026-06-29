@@ -1,4 +1,8 @@
 import { requireAuth } from "../lib/auth-request.js";
+import {
+  isSupportedHostedVideoUrl,
+  isSupportedThumbnailUrl,
+} from "../lib/media-urls.js";
 import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { errorResponse, json } from "../lib/response.js";
@@ -21,9 +25,18 @@ function buildPinFromBody(pin, createdBy) {
   if (!Number.isFinite(next.x) || !Number.isFinite(next.y)) {
     return { error: "Valid pin coordinates are required" };
   }
+  if (!next.videoUrl) {
+    return { error: "Video is required" };
+  }
+  if (!isSupportedHostedVideoUrl(next.videoUrl)) {
+    return { error: "Unsupported video URL" };
+  }
 
   const thumbnail = String(pin.thumbnail || "").trim();
   if (thumbnail) {
+    if (!isSupportedThumbnailUrl(thumbnail)) {
+      return { error: "Unsupported preview image URL" };
+    }
     next.thumbnail = thumbnail;
   }
 

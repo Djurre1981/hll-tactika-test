@@ -4,36 +4,16 @@ An interactive map guide for [Hell Let Loose](https://www.hellletloose.com/) tri
 
 Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
 
-## Branch: `feature/r2-video-migration`
+## Cloudflare media hosting
 
-**Status:** work in progress — not merged to `main` yet.
+Trick **videos** and **preview images** can be uploaded when adding a pin. Files are stored in **Cloudflare R2** and served only to signed-in circle members:
 
-This branch replaces expiring Discord attachment URLs (~24h CDN links) with **permanent app-hosted videos** on **Cloudflare R2**. Trick clips are served at `/api/videos/{discordMessageId}` to signed-in circle members (same Steam session as pins).
+- `POST /api/uploads/video` → `GET /api/videos/{id}`
+- `POST /api/uploads/image` → `GET /api/images/{id}`
 
-### What is included
+Supported uploads: **MP4, WebM, MOV, OGG** (video) and **JPEG, PNG, WebP, GIF** (preview). If no preview is provided, the first frame of the video is captured automatically.
 
-- R2 bucket binding (`VIDEOS_R2`) in `wrangler.toml`
-- Authenticated video API (`functions/api/videos/`)
-- Pin support for `sourceDiscordMessageId` and `/api/videos/…` URLs
-- One-time migration pipeline in [`scripts/video-migration/`](scripts/video-migration/README.md): export Discord channel → download MP4s → upload to R2 → rewrite production KV pin URLs
-
-### Cloudflare (done locally)
-
-- R2 bucket `hll-climb-videos` created
-- R2 S3 API credentials configured in `scripts/video-migration/.env` (gitignored)
-
-### Blocked: Discord bot access
-
-The migration **export step reads `#climbing-guide` message history** via a Discord bot. That requires someone with permission on the **Circle Discord server** to:
-
-1. Invite the bot (or grant an existing bot **View Channel** + **Read Message History** on `#climbing-guide`)
-2. Provide `DISCORD_BOT_TOKEN` and `DISCORD_CHANNEL_ID` in `scripts/video-migration/.env`
-
-A bot application **HLL Climb Video Migration** can be created in the [Discord Developer Portal](https://discord.com/developers/applications); without server/channel access, the pipeline cannot run step 1 (`npm run migrate:videos:export`).
-
-Until migration runs, production pins keep using Discord CDN links. After deploy + migration, new pins should use `/api/videos/…` URLs — not raw Discord attachments.
-
-See [`scripts/video-migration/README.md`](scripts/video-migration/README.md) for full setup and commands.
+External links (YouTube, Medal.tv, Vimeo, etc.) still work. A one-time **Discord → R2 migration** for legacy `#climbing-guide` clips is documented in [`scripts/video-migration/README.md`](scripts/video-migration/README.md) (requires Discord bot access on the Circle server).
 
 ## ToDo / Planned / Ideas
 
@@ -52,7 +32,8 @@ See [`scripts/video-migration/README.md`](scripts/video-migration/README.md) for
 - **Toggle overlays**: grid and strongpoints
 - **Pins** mark trick locations with title and description
 - **Hover** a pin to preview the trick video
-- **Click** a pin to play the full embedded video (YouTube, Vimeo, or local `.mp4`)
+- **Click** a pin to play the full embedded video (YouTube, Vimeo, Medal.tv, or Cloudflare-hosted uploads)
+- **Upload videos and preview images** to Cloudflare R2 when adding a pin (or paste external links)
 - **Add pins** directly on the map; tricks are saved on the server (Cloudflare KV in production, in-memory during local dev without KV)
 
 ## Quick start

@@ -1,4 +1,8 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import {
+  isSupportedHostedVideoUrl,
+  isSupportedThumbnailUrl,
+} from "../../lib/media-urls.js";
 import { canModifyPin } from "../../lib/pin-permissions.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -64,6 +68,15 @@ function applyPinUpdates(existing, pin) {
   }
   if (!Number.isFinite(updated.x) || !Number.isFinite(updated.y)) {
     return { error: "Valid pin coordinates are required" };
+  }
+  if (!updated.videoUrl) {
+    return { error: "Video is required" };
+  }
+  if (!isSupportedHostedVideoUrl(updated.videoUrl)) {
+    return { error: "Unsupported video URL" };
+  }
+  if (updated.thumbnail && !isSupportedThumbnailUrl(updated.thumbnail)) {
+    return { error: "Unsupported preview image URL" };
   }
 
   return { pin: updated };

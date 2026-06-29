@@ -3,7 +3,13 @@ import { MapOverlays } from "./map-overlays.js";
 import { initAdminPanel } from "./admin-panel.js";
 import { initAuth, getCurrentUser, loadProtectedPins } from "./auth.js";
 import { createPin, deletePin, fetchPinsCatalog, updatePin } from "./pin-api.js";
+import { uploadPreviewImage, uploadVideo } from "./media-api.js";
 import { resolveMedalClip } from "./medal.js";
+import {
+  canExtractVideoFrame,
+  fileFromVideoFrame,
+  getVideoFrameObjectUrl,
+} from "./video-frame.js";
 import {
   DEFAULT_PIN_TAG,
   getPinTag,
@@ -12,6 +18,10 @@ import {
   PIN_TAGS,
 } from "./pin-tags.js";
 import { hasPinDirection, renderDraftMgSpot, renderMgSpotGroup } from "./mg-spot.js";
+import {
+  getUnsupportedThumbnailUrlMessage,
+  isSupportedThumbnailUrl,
+} from "./image-utils.js";
 import {
   createVideoElement,
   isMedalUrl,
@@ -59,7 +69,9 @@ const els = {
   pinTitle: document.getElementById("pin-title"),
   pinDescription: document.getElementById("pin-description"),
   pinVideo: document.getElementById("pin-video"),
+  pinVideoFile: document.getElementById("pin-video-file"),
   pinThumbnail: document.getElementById("pin-thumbnail"),
+  pinThumbnailFile: document.getElementById("pin-thumbnail-file"),
   mapSelect: document.getElementById("map-select"),
 };
 
@@ -648,12 +660,24 @@ function focusPin(pin) {
 
 async function getPinPlayback(pin) {
   let playbackUrl = normalizeVideoUrl(pin.videoUrl);
-  let thumbnail = pin.thumbnail || youtubeThumbnail(playbackUrl);
+  let thumbnail = pin.thumbnail?.trim() || null;
 
   if (isMedalUrl(pin.videoUrl)) {
     const medal = await resolveMedalClip(pin.videoUrl);
     playbackUrl = medal.contentUrl;
     thumbnail = thumbnail || medal.thumbnailUrl;
+  }
+
+  if (!thumbnail) {
+    thumbnail = youtubeThumbnail(playbackUrl) || youtubeThumbnail(pin.videoUrl);
+  }
+
+  if (!thumbnail && canExtractVideoFrame(playbackUrl)) {
+    try {
+      thumbnail = await getVideoFrameObjectUrl(playbackUrl);
+    } catch (error) {
+      console.warn("Could not extract video preview frame", error);
+    }
   }
 
   return { playbackUrl, thumbnail };
@@ -848,7 +872,9 @@ function startEditPin(pin) {
   els.pinTitle.value = pin.title;
   els.pinDescription.value = pin.description || "";
   els.pinVideo.value = pin.videoUrl || "";
+  els.pinVideoFile.value = "";
   els.pinThumbnail.value = pin.thumbnail || "";
+  els.pinThumbnailFile.value = "";
   setPinFormTag(pin.tag);
   els.btnSavePin.disabled = !isPlacementComplete();
   els.btnSavePin.textContent = "Save changes";
@@ -995,34 +1021,89 @@ function onSavePin(event) {
   const tag = getPinFormTag();
   if (!tag) return;
 
-  const videoUrl = normalizeVideoUrl(els.pinVideo.value);
-  if (!isSupportedVideoUrl(videoUrl)) {
+  void submitPin(tag);
+}
+
+async function submitPin(tag) {
+  const videoFile = els.pinVideoFile?.files?.[0] || null;
+  const thumbnailFile = els.pinThumbnailFile?.files?.[0] || null;
+  let videoUrl = normalizeVideoUrl(els.pinVideo.value);
+  let thumbnail = els.pinThumbnail.value.trim();
+
+  els.pinVideo.setCustomValidity("");
+  els.pinThumbnail.setCustomValidity("");
+
+  if (!videoFile && !videoUrl) {
+    els.pinVideo.setCustomValidity("Upload a video or paste a supported link.");
+    els.pinVideo.reportValidity();
+    return;
+  }
+
+  if (!videoFile && !isSupportedVideoUrl(videoUrl)) {
     els.pinVideo.setCustomValidity(getUnsupportedVideoUrlMessage());
     els.pinVideo.reportValidity();
     return;
   }
-  els.pinVideo.setCustomValidity("");
 
-  const pinData = {
-    title: els.pinTitle.value.trim(),
-    description: els.pinDescription.value.trim(),
-    videoUrl,
-    thumbnail: els.pinThumbnail.value.trim() || undefined,
-    tag,
-    x: pendingCoords.x,
-    y: pendingCoords.y,
-  };
-
-  if (isDirectionalPinTag(tag)) {
-    pinData.dirX = pendingDirection.x;
-    pinData.dirY = pendingDirection.y;
+  if (thumbnail && !thumbnailFile && !isSupportedThumbnailUrl(thumbnail)) {
+    els.pinThumbnail.setCustomValidity(getUnsupportedThumbnailUrlMessage());
+    els.pinThumbnail.reportValidity();
+    return;
   }
 
-  void savePin(pinData);
+  const originalLabel = els.btnSavePin.textContent;
+  els.btnSavePin.disabled = true;
+
+  try {
+    if (videoFile) {
+      els.btnSavePin.textContent = "Uploading video…";
+      const uploaded = await uploadVideo(videoFile);
+      videoUrl = uploaded.url;
+    }
+
+    if (thumbnailFile) {
+      els.btnSavePin.textContent = "Uploading preview…";
+      const uploaded = await uploadPreviewImage(thumbnailFile);
+      thumbnail = uploaded.url;
+    } else if (!thumbnail) {
+      const frameSource =
+        videoFile || (canExtractVideoFrame(videoUrl) ? videoUrl : null);
+      if (frameSource) {
+        els.btnSavePin.textContent = "Creating preview…";
+        const previewFile = await fileFromVideoFrame(frameSource);
+        const uploaded = await uploadPreviewImage(previewFile);
+        thumbnail = uploaded.url;
+      }
+    }
+
+    const pinData = {
+      title: els.pinTitle.value.trim(),
+      description: els.pinDescription.value.trim(),
+      videoUrl,
+      thumbnail: thumbnail || undefined,
+      tag,
+      x: pendingCoords.x,
+      y: pendingCoords.y,
+    };
+
+    if (isDirectionalPinTag(tag)) {
+      pinData.dirX = pendingDirection.x;
+      pinData.dirY = pendingDirection.y;
+    }
+
+    await savePin(pinData);
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Could not save trick");
+    els.btnSavePin.disabled = !isPlacementComplete();
+    els.btnSavePin.textContent = originalLabel;
+  }
 }
 
 async function savePin(pinData) {
-  els.btnSavePin.disabled = true;
+  const savingLabel =
+    panelMode === "edit" && editingPinId ? "Saving changes…" : "Saving pin…";
+  els.btnSavePin.textContent = savingLabel;
 
   try {
     if (panelMode === "edit" && editingPinId) {

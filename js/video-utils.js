@@ -74,14 +74,17 @@ export function isSupportedVideoUrl(url) {
 function isAppVideoPath(url) {
   try {
     const path = url.startsWith("/") ? url.split("?")[0] : new URL(url).pathname;
-    return /^\/api\/videos\/\d{17,20}$/.test(path);
+    return (
+      /^\/api\/videos\/\d{17,20}$/.test(path) ||
+      /^\/api\/videos\/[0-9a-f-]{36}$/i.test(path)
+    );
   } catch {
     return false;
   }
 }
 
 export function getUnsupportedVideoUrlMessage() {
-  return "Use a YouTube, Medal.tv, hosted app video (/api/videos/…), Discord attachment, Vimeo, or direct .mp4 link.";
+  return "Upload a video file, or use YouTube, Medal.tv, hosted app video (/api/videos/…), Discord, Vimeo, or a direct MP4/WebM/MOV/OGG link.";
 }
 
 export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {

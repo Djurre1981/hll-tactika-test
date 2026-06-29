@@ -107,23 +107,47 @@
             <textarea id="pin-description" rows="3" placeholder="Short note about the trick"></textarea>
           </label>
           <fieldset class="pin-form__video-source">
-            <legend>Video URL</legend>
+            <legend>Video</legend>
             <p class="pin-form__video-help">
-              Paste a link from <strong>YouTube</strong>, <strong>Medal.tv</strong>,
-              <strong>hosted app video</strong> (<code>/api/videos/…</code> after R2 migration),
-              <strong>Discord</strong> (cdn.discordapp.com attachments — expire ~24h),
-              <strong>Vimeo</strong>,
-              or a direct <strong>.mp4</strong> URL. The type is detected automatically.
+              Upload a clip to Cloudflare, or paste a link from
+              <strong>YouTube</strong>, <strong>Medal.tv</strong>,
+              <strong>Discord</strong>, <strong>Vimeo</strong>, or a direct
+              <strong>MP4/WebM/MOV/OGG</strong> URL.
             </p>
+            <label class="pin-form__file">
+              Upload video
+              <input
+                type="file"
+                id="pin-video-file"
+                accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.ogg"
+              />
+            </label>
+            <p class="pin-form__or" aria-hidden="true">or</p>
+            <label>
+              Link
+              <input type="text" id="pin-video" placeholder="https://… or leave empty when uploading" />
+            </label>
           </fieldset>
-          <label>
-            Link
-            <input type="text" id="pin-video" required placeholder="https://..." />
-          </label>
-          <label>
-            Preview thumbnail (optional)
-            <input type="text" id="pin-thumbnail" placeholder="Image URL for hover preview" />
-          </label>
+          <fieldset class="pin-form__preview-source">
+            <legend>Preview image (optional)</legend>
+            <p class="pin-form__video-help">
+              Shown on map hover. Leave empty to use the first frame of the video,
+              or upload / paste a custom JPEG, PNG, WebP, or GIF.
+            </p>
+            <label class="pin-form__file">
+              Upload image
+              <input
+                type="file"
+                id="pin-thumbnail-file"
+                accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+              />
+            </label>
+            <p class="pin-form__or" aria-hidden="true">or</p>
+            <label>
+              Link
+              <input type="text" id="pin-thumbnail" placeholder="Image URL for hover preview" />
+            </label>
+          </fieldset>
           <fieldset class="pin-form__tags">
             <legend>Tag</legend>
             <div class="tag-filters pin-form__tag-options" id="pin-tag-options" role="radiogroup" aria-label="Pin tag">
