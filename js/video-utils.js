@@ -1,4 +1,7 @@
 export function isDirectVideo(url) {
+  if (isAppVideoPath(url)) {
+    return true;
+  }
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 }
 
@@ -62,13 +65,23 @@ export function isSupportedVideoUrl(url) {
     isYoutubeUrl(normalized) ||
     isMedalUrl(normalized) ||
     isDiscordMediaUrl(normalized) ||
+    isAppVideoPath(normalized) ||
     isPlayableDirectUrl(normalized) ||
     isVimeoUrl(normalized)
   );
 }
 
+function isAppVideoPath(url) {
+  try {
+    const path = url.startsWith("/") ? url.split("?")[0] : new URL(url).pathname;
+    return /^\/api\/videos\/\d{17,20}$/.test(path);
+  } catch {
+    return false;
+  }
+}
+
 export function getUnsupportedVideoUrlMessage() {
-  return "Use a YouTube, Medal.tv, Discord attachment, Vimeo, or direct .mp4 link.";
+  return "Use a YouTube, Medal.tv, hosted app video (/api/videos/…), Discord attachment, Vimeo, or direct .mp4 link.";
 }
 
 export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {

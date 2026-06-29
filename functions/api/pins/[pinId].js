@@ -38,6 +38,14 @@ function applyPinUpdates(existing, pin) {
   if (pin.dirY !== undefined) {
     updated.dirY = Number(pin.dirY);
   }
+  if (pin.sourceDiscordMessageId !== undefined) {
+    const sourceDiscordMessageId = String(pin.sourceDiscordMessageId || "").trim();
+    if (sourceDiscordMessageId) {
+      updated.sourceDiscordMessageId = sourceDiscordMessageId;
+    } else {
+      delete updated.sourceDiscordMessageId;
+    }
+  }
 
   if (updated.tag === "mg-spot") {
     if (!Number.isFinite(updated.dirX) || !Number.isFinite(updated.dirY)) {

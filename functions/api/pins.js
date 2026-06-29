@@ -40,6 +40,11 @@ function buildPinFromBody(pin, createdBy) {
     next.dirY = dirY;
   }
 
+  const sourceDiscordMessageId = String(pin.sourceDiscordMessageId || "").trim();
+  if (sourceDiscordMessageId) {
+    next.sourceDiscordMessageId = sourceDiscordMessageId;
+  }
+
   return { pin: next };
 }
 
