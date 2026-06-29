@@ -798,6 +798,9 @@ async function loadModalPlayer(pin) {
 
 function closeModal() {
   els.modal.close();
+  if (document.activeElement?.classList?.contains("map-mg-spot")) {
+    document.activeElement.blur();
+  }
 }
 
 function clearModalPlayer() {

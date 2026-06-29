@@ -707,7 +707,6 @@ body {
 .map-pin {
   --pin-scale-selected: 5.8;
   --pin-scale-default: calc(var(--pin-scale-selected) * 0.375);
-  --pin-scale-hover: 2.3;
   position: absolute;
   width: 28px;
   height: 28px;
@@ -731,9 +730,10 @@ body {
   line-height: 1;
   text-align: center;
   color: var(--pin-color, var(--pin-climb));
-  filter: drop-shadow(0 0 14px var(--pin-glow, var(--pin-climb-glow)))
-          drop-shadow(0 0 0 3px rgba(15, 18, 16, 0.85));
-  transition: filter 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
+  -webkit-text-stroke: 1px #000;
+  filter: drop-shadow(0 0 14px var(--pin-glow, var(--pin-climb-glow)));
+  transition: -webkit-text-stroke 0.35s cubic-bezier(0.34, 1.45, 0.64, 1),
+              filter 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
 }
 
 .map-pin--mg-spot {
@@ -751,26 +751,18 @@ body {
   z-index: 10;
 }
 
-.map-pin:hover:not(.is-highlighted) {
-  transform: scale(var(--pin-scale-hover));
-}
-
 .map-pin:hover:not(.is-highlighted) .map-pin__icon {
-  filter: drop-shadow(0 0 22px var(--pin-glow, var(--pin-climb-glow)))
-          drop-shadow(0 0 0 3px rgba(15, 18, 16, 0.85));
-}
-
-.map-pin.is-highlighted {
-  transform: scale(var(--pin-scale-selected));
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 22px var(--pin-glow, var(--pin-climb-glow)));
 }
 
 .map-pin.is-highlighted .map-pin__icon {
-  filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)))
-          drop-shadow(0 0 0 4px rgba(15, 18, 16, 0.9));
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
 }
 
 .map-pin.is-highlighted:hover {
-  transform: scale(var(--pin-scale-selected));
+  transform: scale(var(--pin-scale-default));
 }
 
 .map-mg-spots-layer {
@@ -781,6 +773,7 @@ body {
   pointer-events: none;
   overflow: visible;
   z-index: 5;
+  outline: none;
 }
 
 .map-mg-spots-layer--draft {
@@ -790,6 +783,12 @@ body {
 .map-mg-spot {
   pointer-events: visiblePainted;
   cursor: pointer;
+  outline: none;
+}
+
+.map-mg-spot:focus,
+.map-mg-spot:focus-visible {
+  outline: none;
 }
 
 .map-mg-spot--draft {
@@ -814,7 +813,7 @@ body {
 .mg-spot-head {
   fill: #e10600;
   stroke: #000;
-  stroke-width: 0.20;
+  stroke-width: 0.15;
   stroke-linejoin: miter;
   paint-order: stroke fill;
 }
@@ -823,18 +822,10 @@ body {
   opacity: 0.8;
 }
 
-.map-mg-spot.is-highlighted .mg-spot-stem {
-  stroke-width: 0.38 !important;
-}
-
-.map-mg-spot.is-highlighted .mg-spot-head {
-  filter: drop-shadow(0 0 6px rgba(225, 6, 0, 0.55));
-}
-
-.map-mg-spot:hover:not(.is-highlighted) .mg-spot-stem,
-.map-mg-spot:hover:not(.is-highlighted) .mg-spot-base,
-.map-mg-spot:hover:not(.is-highlighted) .mg-spot-head {
-  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
+.map-mg-spot.is-highlighted .mg-spot-head,
+.map-mg-spot:hover .mg-spot-head {
+  stroke-width: 0.20;
+  filter: drop-shadow(0 0 6px rgba(225, 6, 0, 0.5));
 }
 
 .map-crosshair {
@@ -863,6 +854,11 @@ body {
     transform: scale(1.06);
     opacity: 0.88;
   }
+}
+
+@keyframes dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .map-crosshair::before,
@@ -1139,6 +1135,10 @@ body {
   background: var(--bg-elevated);
   color: var(--text);
   box-shadow: var(--shadow);
+}
+
+.video-modal[open] {
+  animation: dialog-fade-in 0.12s ease;
 }
 
 .video-modal::backdrop {

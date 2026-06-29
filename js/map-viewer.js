@@ -86,7 +86,7 @@ export class MapViewer {
 
   onPointerDown(event) {
     if (event.button !== 0) return;
-    if (event.target.closest(".map-pin")) return;
+    if (event.target.closest(".map-pin, .map-mg-spot")) return;
 
     this.isDragging = true;
     this.viewport.setPointerCapture(event.pointerId);
