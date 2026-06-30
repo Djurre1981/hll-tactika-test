@@ -23,8 +23,9 @@ import {
 } from "./video-utils.js";
 
 const MAP_STORAGE_KEY = "hll-climb-selected-map";
-const TOGGLE_STORAGE_KEY = "hll-climb-overlay-toggles";
+const TOGGLE_STORAGE_KEY = "hll-climb-overlay-tchoggles";
 const TAG_FILTER_STORAGE_KEY = "hll-climb-tag-filters";
+const FACTION_FILTER_STORAGE_KEY = "hll-climb-faction-filters";
 
 const els = {
   viewport: document.getElementById("map-viewport"),
@@ -34,7 +35,7 @@ const els = {
   draftPin: document.getElementById("map-draft-pin"),
   draftArrow: document.getElementById("map-draft-arrow"),
   pinList: document.getElementById("pin-list"),
-  pinCount: document.getElementById("pin-count"),
+  pinSearch: document.getElementById("pin-search"),
   zoomLabel: document.getElementById("zoom-label"),
   previewTooltip: document.getElementById("preview-tooltip"),
   previewMedia: document.getElementById("preview-media"),
@@ -60,6 +61,7 @@ const els = {
   pinDescription: document.getElementById("pin-description"),
   pinVideo: document.getElementById("pin-video"),
   pinThumbnail: document.getElementById("pin-thumbnail"),
+  pinPositionCode: document.getElementById("pin-position-code"),
   mapSelect: document.getElementById("map-select"),
 };
 
@@ -79,6 +81,8 @@ let pendingDirection = null;
 let highlightedPinId = null;
 let previewHideTimer = null;
 let tagFilters = loadTagFilters();
+let currentFaction = loadCurrentFaction();
+let searchQuery = "";
 
 const PIN_HOVER_RADIUS_PX = 42;
 const MG_SPOT_HOVER_RADIUS_PX = 42;
@@ -94,6 +98,7 @@ async function init() {
 
   populateMapSelect();
   applyTagFiltersToUi();
+  applyFactionFiltersToUi();
   bindUi();
   initAdminPanel();
   await switchMap(currentMapId, { fit: true });
@@ -161,7 +166,15 @@ function isPinTagVisible(tagId) {
 }
 
 function getFilteredPins() {
-  return pins.filter((pin) => isPinTagVisible(pin.tag));
+  let visible = pins.filter((pin) => isPinTagVisible(pin.tag));
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    visible = visible.filter((pin) => pin.title.toLowerCase().includes(q));
+  }
+  return visible.sort((a, b) => {
+    const sortY = (pin) => (pin.tag === "mg-spot" && hasPinDirection(pin) ? pin.dirY : pin.y);
+    return sortY(a) - sortY(b);
+  });
 }
 
 function getMapPins() {
@@ -192,6 +205,9 @@ async function switchMap(mapId, { fit = false } = {}) {
   if (!map) return;
 
   closeEditPanel();
+
+  searchQuery = "";
+  els.pinSearch.value = "";
 
   currentMapId = mapId;
   currentMap = map;
@@ -265,6 +281,24 @@ function bindUi() {
   document.getElementById("btn-reset-view").addEventListener("click", () => mapViewer.resetView());
   document.getElementById("btn-toggle-edit").addEventListener("click", toggleEditMode);
   document.getElementById("btn-cancel-pin").addEventListener("click", () => closeEditPanel());
+
+  // User dropdown toggle
+  const userTrigger = document.getElementById("header-user-trigger");
+  const userMenu = document.getElementById("header-user-menu");
+  if (userTrigger && userMenu) {
+    userTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = !userMenu.classList.contains("hidden");
+      userMenu.classList.toggle("hidden", isOpen);
+      userTrigger.setAttribute("aria-expanded", String(!isOpen));
+    });
+    document.addEventListener("click", (event) => {
+      if (!userTrigger.contains(event.target) && !userMenu.contains(event.target)) {
+        userMenu.classList.add("hidden");
+        userTrigger.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
   els.btnDeletePin?.addEventListener("click", onDeletePin);
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
   els.btnEditModal.addEventListener("click", () => {
@@ -280,6 +314,12 @@ function bindUi() {
 
   els.mapSelect.addEventListener("change", (event) => {
     switchMap(event.target.value, { fit: true });
+  });
+
+  els.pinSearch.addEventListener("input", (event) => {
+    searchQuery = event.target.value;
+    renderPins();
+    renderPinList();
   });
 
   document.getElementById("toggle-grid").addEventListener("change", (event) => {
@@ -301,6 +341,16 @@ function bindUi() {
     });
   });
 
+  document.querySelectorAll("#sidebar-faction-bar [data-faction], #edit-faction-bar [data-faction]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const faction = button.dataset.faction;
+      if (faction === currentFaction) return;
+      currentFaction = faction;
+      saveCurrentFaction();
+      applyFactionFiltersToUi();
+    });
+  });
+
   document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
     button.addEventListener("click", () => {
       const nextTag = button.dataset.tag;
@@ -308,7 +358,7 @@ function bindUi() {
         pendingDirection = null;
       }
       setPinFormTag(nextTag);
-      if (panelMode !== null) {
+      if (panelMode !== null && els.editPanelHint) {
         els.editPanelHint.textContent = getPlacementHint();
       }
       updatePlacementUi();
@@ -345,27 +395,49 @@ function onTagFiltersChanged() {
   renderPinList();
 }
 
+function loadCurrentFaction() {
+  try {
+    const saved = localStorage.getItem(FACTION_FILTER_STORAGE_KEY);
+    if (saved && ["axis", "neutral", "allies"].includes(saved)) return saved;
+  } catch {
+    // fall through
+  }
+  return "neutral";
+}
+
+function saveCurrentFaction() {
+  localStorage.setItem(FACTION_FILTER_STORAGE_KEY, currentFaction);
+}
+
+function applyFactionFiltersToUi() {
+  document.querySelectorAll("#sidebar-faction-bar, #edit-faction-bar").forEach((bar) => {
+    if (!bar) return;
+    bar.dataset.currentFaction = currentFaction;
+    bar.querySelectorAll("[data-faction]").forEach((button) => {
+      const active = button.dataset.faction === currentFaction;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  });
+}
+
 function updatePinCount() {
   const filtered = getFilteredPins();
   const mapName = currentMap?.name || "this map";
   const total = pins.length;
+  let text;
 
   if (total === 0) {
-    els.pinCount.textContent = `No tricks on ${mapName}`;
-    return;
+    text = `No tricks on ${mapName}`;
+  } else if (filtered.length === 0) {
+    text = `No tricks visible on ${mapName} — enable a tag`;
+  } else if (filtered.length === total) {
+    text = `${filtered.length} spot${filtered.length === 1 ? "" : "s"} on ${mapName}`;
+  } else {
+    text = `${filtered.length} of ${total} spots on ${mapName}`;
   }
 
-  if (filtered.length === 0) {
-    els.pinCount.textContent = `No tricks visible on ${mapName} — enable a tag`;
-    return;
-  }
-
-  if (filtered.length === total) {
-    els.pinCount.textContent = `${filtered.length} trick${filtered.length === 1 ? "" : "s"} on ${mapName}`;
-    return;
-  }
-
-  els.pinCount.textContent = `${filtered.length} of ${total} tricks on ${mapName}`;
+  els.pinSearch.placeholder = text;
 }
 
 function setPinFormTag(tagId) {
@@ -398,6 +470,7 @@ function getPlacementHint() {
 }
 
 function updatePlacementUi() {
+  updatePositionCode();
   if (!pendingCoords) {
     els.pinCoords.textContent = "No position selected";
     els.btnSavePin.disabled = true;
@@ -424,6 +497,19 @@ function updatePlacementUi() {
   els.btnSavePin.disabled = false;
 }
 
+function ensureDraftPinIcon(tagId) {
+  const existingIcon = els.draftPin.querySelector(".map-pin__icon");
+  if (existingIcon) existingIcon.remove();
+  const icon = document.createElement("i");
+  icon.className = "fa-solid map-pin__icon";
+  if (tagId === "mg-spot") {
+    icon.classList.add("fa-play");
+  } else {
+    icon.classList.add("fa-map-pin");
+  }
+  els.draftPin.appendChild(icon);
+}
+
 function updateDraftMarker(previewTip = null) {
   if (panelMode === null) {
     els.draftPin?.classList.add("hidden");
@@ -446,8 +532,20 @@ function updateDraftMarker(previewTip = null) {
   }
 
   if (!pendingCoords) {
-    els.draftPin?.classList.add("hidden");
-    renderDraftMgSpot(els.draftArrow, null, null);
+    // Show a live preview pin at the cursor position for climb placements
+    if (previewTip) {
+      renderDraftMgSpot(els.draftArrow, null, null);
+      const tagId = getPinFormTag() || DEFAULT_PIN_TAG;
+      const tag = getPinTag(tagId);
+      els.draftPin.className = `map-pin map-pin--draft ${tag?.className || ""}`;
+      els.draftPin.style.left = `${previewTip.x}%`;
+      els.draftPin.style.top = `${previewTip.y}%`;
+      ensureDraftPinIcon(tagId);
+      els.draftPin.classList.remove("hidden");
+    } else {
+      els.draftPin?.classList.add("hidden");
+      renderDraftMgSpot(els.draftArrow, null, null);
+    }
     return;
   }
 
@@ -457,6 +555,7 @@ function updateDraftMarker(previewTip = null) {
   els.draftPin.className = `map-pin map-pin--draft ${tag?.className || ""}`;
   els.draftPin.style.left = `${pendingCoords.x}%`;
   els.draftPin.style.top = `${pendingCoords.y}%`;
+  ensureDraftPinIcon(tagId);
   els.draftPin.classList.remove("hidden");
 }
 
@@ -489,7 +588,11 @@ function attachPinInteractions(element, pin) {
   });
   element.addEventListener("click", (event) => {
     event.stopPropagation();
-    openModal(pin);
+    if (editMode) {
+      startEditPin(pin);
+    } else {
+      openModal(pin);
+    }
   });
 }
 
@@ -581,7 +684,6 @@ function renderPinList() {
         <span class="pin-list__title">${escapeHtml(pin.title)}</span>
         <span class="pin-list__tag pin-list__tag--${pin.tag}">${escapeHtml(tag?.label || pin.tag)}</span>
       </span>
-      <span class="pin-list__meta">${escapeHtml(pin.description || "No description")}</span>
       ${uploader ? `<span class="pin-list__uploader">Added by ${escapeHtml(uploader)}</span>` : ""}
     `;
 
@@ -675,9 +777,17 @@ function focusPin(pin) {
   const imgW = els.image.naturalWidth;
   const imgH = els.image.naturalHeight;
 
-  mapViewer.scale = Math.min(2.2, mapViewer.clampScale(1.8));
-  mapViewer.translateX = rect.width / 2 - (pin.x / 100) * imgW * mapViewer.scale;
-  mapViewer.translateY = rect.height / 2 - (pin.y / 100) * imgH * mapViewer.scale;
+  // For MG spots with direction, focus on the arrowhead (dirX/dirY) instead of the tail
+  let focusX = pin.x;
+  let focusY = pin.y;
+  if (pin.tag === "mg-spot" && hasPinDirection(pin)) {
+    focusX = pin.dirX;
+    focusY = pin.dirY;
+  }
+
+  mapViewer.scale = Math.min(2.2, mapViewer.clampScale(1.0));
+  mapViewer.translateX = rect.width / 2 - (focusX / 100) * imgW * mapViewer.scale;
+  mapViewer.translateY = rect.height / 2 - (focusY / 100) * imgH * mapViewer.scale;
   mapViewer.clampTranslation();
   mapViewer.applyTransform();
   highlightPin(pin.id);
@@ -831,7 +941,7 @@ function updateZoomLabel() {
 }
 
 function toggleEditMode() {
-  if (panelMode === "add") {
+  if (panelMode !== null) {
     closeEditPanel();
     return;
   }
@@ -850,6 +960,7 @@ function startAddPin() {
   pendingDirection = null;
   editMode = true;
 
+  hidePreviewImmediately();
   setSidebarDefaultVisible(false);
   mapViewer?.setEditMode(true);
   els.editPanel.classList.remove("hidden");
@@ -862,8 +973,8 @@ function startAddPin() {
   els.btnSavePin.textContent = "Save pin";
   els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
-  els.editPanelTitle.textContent = "New pin";
-  els.editPanelHint.textContent = getPlacementHint();
+  els.editPanelTitle.textContent = "EDITOR MODE";
+  if (els.editPanelHint) els.editPanelHint.textContent = "";
   updateEditToggleButton();
   highlightPin(null);
   updateDraftMarker();
@@ -873,6 +984,7 @@ function startAddPin() {
 function startEditPin(pin) {
   if (!pin || !canModifyPin(pin)) return;
 
+  hidePreviewImmediately();
   closeModal();
   panelMode = "edit";
   editingPinId = pin.id;
@@ -883,6 +995,7 @@ function startEditPin(pin) {
       : null;
   editMode = true;
 
+  setSidebarDefaultVisible(false);
   mapViewer?.setEditMode(true);
   els.editPanel.classList.remove("hidden");
   els.pinTitle.value = pin.title;
@@ -893,11 +1006,8 @@ function startEditPin(pin) {
   els.btnSavePin.disabled = !isPlacementComplete();
   els.btnSavePin.textContent = "Save changes";
   els.btnDeletePin?.classList.remove("hidden");
-  els.editPanelTitle.textContent = "Edit pin";
-  els.editPanelHint.textContent =
-    pin.tag === "mg-spot"
-      ? getPlacementHint()
-      : "Update the details below. Click the map to move the pin.";
+  els.editPanelTitle.textContent = "EDITOR MODE";
+  if (els.editPanelHint) els.editPanelHint.textContent = "";
   updateEditToggleButton();
   highlightPin(pin.id);
   hidePlacementCrosshair();
@@ -932,7 +1042,17 @@ function closeEditPanel() {
 
 function updateEditToggleButton() {
   const isOpen = panelMode !== null;
-  els.btnToggleEdit.textContent = isOpen ? "Cancel" : "Add pin";
+  if (isOpen) {
+    els.btnToggleEdit.textContent = "Cancel Edit";
+    els.btnToggleEdit.style.background = "transparent";
+    els.btnToggleEdit.style.borderColor = "var(--border)";
+    els.btnToggleEdit.style.color = "#e8ebe6";
+  } else {
+    els.btnToggleEdit.textContent = "Editor Mode";
+    els.btnToggleEdit.style.background = "";
+    els.btnToggleEdit.style.borderColor = "";
+    els.btnToggleEdit.style.color = "";
+  }
   els.btnToggleEdit.classList.toggle("btn--primary", !isOpen);
   els.btnToggleEdit.classList.toggle("btn--ghost", isOpen);
 }
@@ -995,9 +1115,14 @@ function shouldShowPlacementCrosshair() {
 function onViewportMouseMove(event) {
   if (shouldShowPlacementCrosshair()) {
     showPlacementCrosshairAtScreen(event.clientX, event.clientY);
-    if (isMgSpotPlacement() && pendingDirection && !pendingCoords) {
-      const coords = mapViewer.screenToMapPercent(event.clientX, event.clientY);
-      if (coords.x >= 0 && coords.y >= 0 && coords.x <= 100 && coords.y <= 100) {
+    const coords = mapViewer.screenToMapPercent(event.clientX, event.clientY);
+    if (coords.x >= 0 && coords.y >= 0 && coords.x <= 100 && coords.y <= 100) {
+      if (isMgSpotPlacement() && pendingDirection && !pendingCoords) {
+        updateDraftMarker({
+          x: roundCoord(coords.x),
+          y: roundCoord(coords.y),
+        });
+      } else if (!isMgSpotPlacement() && !pendingCoords) {
         updateDraftMarker({
           x: roundCoord(coords.x),
           y: roundCoord(coords.y),
@@ -1049,7 +1174,7 @@ function onSavePin(event) {
   if (!tag) return;
 
   const videoUrl = normalizeVideoUrl(els.pinVideo.value);
-  if (!isSupportedVideoUrl(videoUrl)) {
+  if (videoUrl && !isSupportedVideoUrl(videoUrl)) {
     els.pinVideo.setCustomValidity(getUnsupportedVideoUrlMessage());
     els.pinVideo.reportValidity();
     return;
@@ -1059,7 +1184,7 @@ function onSavePin(event) {
   const pinData = {
     title: els.pinTitle.value.trim(),
     description: els.pinDescription.value.trim(),
-    videoUrl,
+    videoUrl: videoUrl || undefined,
     thumbnail: els.pinThumbnail.value.trim() || undefined,
     tag,
     x: pendingCoords.x,
@@ -1125,6 +1250,28 @@ async function onDeletePin() {
     if (els.btnDeletePin) {
       els.btnDeletePin.disabled = false;
     }
+  }
+}
+
+function generatePositionCode(x, y) {
+  const letterIndex = Math.min(Math.floor(x / 10), 25);
+  const letter = String.fromCharCode(65 + letterIndex);
+  const row = Math.min(Math.floor(y / 10), 9) + 1;
+  const random = String(Math.floor(Math.random() * 100)).padStart(2, "0");
+  return `#${letter}${row}-${random}`;
+}
+
+function updatePositionCode() {
+  if (!pendingCoords && !pendingDirection) {
+    els.pinPositionCode.value = "";
+  } else if (isMgSpotPlacement() && pendingDirection) {
+    if (!pendingCoords) {
+      // First click (arrowhead) — generate new code
+      els.pinPositionCode.value = generatePositionCode(pendingDirection.x, pendingDirection.y);
+    }
+    // Second click (tail) or edit mode — leave existing value unchanged
+  } else if (pendingCoords) {
+    els.pinPositionCode.value = generatePositionCode(pendingCoords.x, pendingCoords.y);
   }
 }
 

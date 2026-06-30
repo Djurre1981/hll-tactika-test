@@ -48,6 +48,7 @@ function showGate({ title, message, showLogin = true }) {
   els.gate.classList.remove("hidden");
   els.appRoot.classList.add("hidden");
   els.headerUser.classList.add("hidden");
+  document.getElementById("btn-toggle-edit")?.classList.add("hidden");
 }
 
 function showApp(user) {
@@ -56,6 +57,7 @@ function showApp(user) {
   els.gate.classList.add("hidden");
   els.appRoot.classList.remove("hidden");
   els.headerUser.classList.remove("hidden");
+  document.getElementById("btn-toggle-edit")?.classList.remove("hidden");
 
   const label = user.name || `Steam user ${user.steamId}`;
   els.userName.textContent = label;
