@@ -27,6 +27,9 @@ function buildPinFromBody(pin, createdBy) {
     next.thumbnail = thumbnail;
   }
 
+  next.faction = pin.faction || "neutral";
+  next.requires = pin.requires || {};
+
   if (next.tag === "mg-spot") {
     const dirX = Number(pin.dirX);
     const dirY = Number(pin.dirY);

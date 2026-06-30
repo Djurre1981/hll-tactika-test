@@ -89,6 +89,7 @@ let redoHistory = [];
 const MAX_POSITION_HISTORY = 10;
 let tagFilters = loadTagFilters();
 let currentFaction = loadCurrentFaction();
+let pendingFaction = "neutral";
 let searchQuery = "";
 
 const PIN_HOVER_RADIUS_PX = 42;
@@ -174,6 +175,13 @@ function isPinTagVisible(tagId) {
 
 function getFilteredPins() {
   let visible = pins.filter((pin) => isPinTagVisible(pin.tag));
+  // Filter by faction: neutral shows all, axis/allies only show that faction + neutral
+  if (currentFaction !== "neutral") {
+    visible = visible.filter((pin) => {
+      const pf = pin.faction || "neutral";
+      return pf === "neutral" || pf === currentFaction;
+    });
+  }
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     visible = visible.filter((pin) => pin.title.toLowerCase().includes(q));
@@ -372,13 +380,27 @@ function bindUi() {
     });
   });
 
-  document.querySelectorAll("#sidebar-faction-bar [data-faction], #edit-faction-bar [data-faction]").forEach((button) => {
+  // Sidebar faction bar — controls the global faction filter
+  document.querySelectorAll("#sidebar-faction-bar [data-faction]").forEach((button) => {
     button.addEventListener("click", () => {
       const faction = button.dataset.faction;
       if (faction === currentFaction) return;
       currentFaction = faction;
       saveCurrentFaction();
       applyFactionFiltersToUi();
+      renderPins();
+      renderPinList();
+    });
+  });
+  // Editor faction bar — controls the faction assigned to the pin being edited
+  document.querySelectorAll("#edit-faction-bar [data-faction]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const faction = button.dataset.faction;
+      if (faction === pendingFaction || panelMode === null) return;
+      pendingFaction = faction;
+      applyEditorFactionToUi();
+      updateFactionRequires(faction);
+      updateDraftMarker();
     });
   });
 
@@ -399,14 +421,6 @@ function bindUi() {
 
   // Requires checkbox toggling
   initRequiresCheckboxes();
-
-  // Listen for faction changes in the editor to update the requires faction checkbox
-  document.querySelectorAll("#edit-faction-bar [data-faction]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const faction = button.dataset.faction;
-      updateFactionRequires(faction);
-    });
-  });
 }
 
 // === Requires section ===
@@ -460,7 +474,7 @@ function getRequiresData() {
     const requiresKey = label.dataset.requires;
     if (checkbox && checkbox.checked) {
       if (requiresKey === "faction-specific") {
-        requires["faction-specific"] = currentFaction;
+        requires["faction-specific"] = pendingFaction;
       } else {
         requires[requiresKey] = true;
       }
@@ -539,14 +553,26 @@ function saveCurrentFaction() {
 }
 
 function applyFactionFiltersToUi() {
-  document.querySelectorAll("#sidebar-faction-bar, #edit-faction-bar").forEach((bar) => {
-    if (!bar) return;
-    bar.dataset.currentFaction = currentFaction;
-    bar.querySelectorAll("[data-faction]").forEach((button) => {
+  // Only apply the global filter to the sidebar faction bar
+  const sidebarBar = document.querySelector("#sidebar-faction-bar");
+  if (sidebarBar) {
+    sidebarBar.dataset.currentFaction = currentFaction;
+    sidebarBar.querySelectorAll("[data-faction]").forEach((button) => {
       const active = button.dataset.faction === currentFaction;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
+  }
+}
+
+function applyEditorFactionToUi() {
+  const editorBar = document.querySelector("#edit-faction-bar");
+  if (!editorBar) return;
+  editorBar.dataset.currentFaction = pendingFaction;
+  editorBar.querySelectorAll("[data-faction]").forEach((button) => {
+    const active = button.dataset.faction === pendingFaction;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
   });
 }
 
@@ -649,10 +675,11 @@ function updateDraftMarker(previewTip = null) {
   if (isMgSpotPlacement()) {
     els.draftPin?.classList.add("hidden");
     if (pendingCoords && pendingDirection) {
-      renderDraftMgSpot(els.draftArrow, pendingCoords, pendingDirection);
+      renderDraftMgSpot(els.draftArrow, pendingCoords, pendingDirection, { faction: pendingFaction });
     } else if (pendingDirection) {
       renderDraftMgSpot(els.draftArrow, previewTip || pendingCoords, pendingDirection, {
         preview: Boolean(previewTip && !pendingCoords),
+        faction: pendingFaction,
       });
     } else {
       renderDraftMgSpot(els.draftArrow, null, null);
@@ -717,6 +744,15 @@ function attachPinInteractions(element, pin) {
   });
 }
 
+function getPinStylingClasses(pin) {
+  const classes = [];
+  // No media (no thumbnail AND no videoUrl) — climb pins turn white
+  if (!pin.thumbnail && !pin.videoUrl) {
+    classes.push("pin--no-media");
+  }
+  return classes;
+}
+
 function renderPins() {
   els.pinsLayer.innerHTML = "";
 
@@ -728,9 +764,10 @@ function renderPins() {
     }
 
     const tag = getPinTag(pin.tag);
+    const extraClasses = getPinStylingClasses(pin);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `map-pin ${tag?.className || ""}`;
+    button.className = `map-pin ${tag?.className || ""} ${extraClasses.join(" ")}`;
     button.dataset.id = pin.id;
     button.title = pin.title;
     button.setAttribute("aria-label", pin.title);
@@ -758,6 +795,12 @@ function renderPins() {
       const group = renderMgSpotGroup(pin, {
         highlighted: pin.id === highlightedPinId,
       });
+      // Apply faction and media styling classes
+      const pf = pin.faction || "neutral";
+      group.classList.add(`mg-spot--${pf}`);
+      if (!pin.thumbnail && !pin.videoUrl) {
+        group.classList.add("mg-spot--no-media");
+      }
       group.setAttribute("role", "button");
       group.setAttribute("tabindex", "0");
       group.setAttribute("aria-label", pin.title);
@@ -1094,8 +1137,10 @@ function startAddPin() {
   els.btnSavePin.disabled = true;
   els.btnSavePin.textContent = "Save pin";
   els.btnDeletePin?.classList.add("hidden");
+  pendingFaction = currentFaction;
   setPinFormTag(DEFAULT_PIN_TAG);
-  updateFactionRequires(currentFaction);
+  applyEditorFactionToUi();
+  updateFactionRequires(pendingFaction);
   resetRequires();
   els.editPanelTitle.textContent = "EDITOR MODE";
   if (els.editPanelHint) els.editPanelHint.textContent = "";
@@ -1127,8 +1172,10 @@ function startEditPin(pin, { focus = true } = {}) {
   els.pinDescription.value = pin.description || "";
   els.pinVideo.value = pin.videoUrl || "";
   els.pinThumbnail.value = pin.thumbnail || "";
+  pendingFaction = pin.faction || "neutral";
   setPinFormTag(pin.tag);
-  updateFactionRequires(currentFaction);
+  applyEditorFactionToUi();
+  updateFactionRequires(pendingFaction);
   setRequiresData(pin.requires);
   els.btnSavePin.disabled = !isPlacementComplete();
   els.btnSavePin.textContent = "Save changes";
@@ -1375,6 +1422,8 @@ function onSavePin(event) {
     pinData.dirX = pendingDirection.x;
     pinData.dirY = pendingDirection.y;
   }
+
+  pinData.faction = pendingFaction;
 
   // Include requires data
   const requires = getRequiresData();

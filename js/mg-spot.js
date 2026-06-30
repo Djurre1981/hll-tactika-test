@@ -15,7 +15,7 @@ export function hasPinDirection(pin) {
   );
 }
 
-export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true } = {}) {
+export function buildMgSpotSvgContent(baseX, baseY, tipX, tipY, { stem = true, headColor = "#ff0000" } = {}) {
   const fragment = document.createDocumentFragment();
 
   const barGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -97,7 +97,7 @@ export function clearSvgElement(svg) {
   svg.replaceChildren();
 }
 
-export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = false } = {}) {
+export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = false, faction = "neutral" } = {}) {
   if (!svg) return;
 
   if (!base && !tip && !headOnly) {
@@ -109,7 +109,7 @@ export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = 
 
   if (headOnly && tip) {
     const headGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    headGroup.setAttribute("class", "map-mg-spot map-mg-spot--draft");
+    headGroup.setAttribute("class", `map-mg-spot map-mg-spot--draft mg-spot--${faction}`);
 
     const head = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     head.setAttribute("class", "mg-spot-head");
@@ -134,7 +134,7 @@ export function renderDraftMgSpot(svg, base, tip, { preview = false, headOnly = 
     }
 
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.setAttribute("class", "map-mg-spot map-mg-spot--draft");
+    group.setAttribute("class", `map-mg-spot map-mg-spot--draft mg-spot--${faction}`);
     group.appendChild(parts.fragment);
     newContent = group;
   }

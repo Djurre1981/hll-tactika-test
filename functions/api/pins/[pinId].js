@@ -32,6 +32,12 @@ function applyPinUpdates(existing, pin) {
       delete updated.thumbnail;
     }
   }
+  if (pin.faction !== undefined) {
+    updated.faction = pin.faction;
+  }
+  if (pin.requires !== undefined) {
+    updated.requires = pin.requires;
+  }
   if (pin.dirX !== undefined) {
     updated.dirX = Number(pin.dirX);
   }

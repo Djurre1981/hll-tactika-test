@@ -10,6 +10,16 @@
   --danger: #c45a5a;
   --pin-mg-spot: #ff0000;
   --pin-mg-spot-glow: rgba(255, 0, 0, 0.55);
+  --pin-axis: #e10600;
+  --pin-axis-glow: rgba(225, 6, 0, 0.55);
+  --pin-allies: #0051ff;
+  --pin-allies-glow: rgba(70, 130, 212, 0.55);
+  --pin-neutral: #17191c;
+  --pin-neutral-glow: rgba(232, 235, 230, 0.55);
+  --pin-no-media: #e8ebe6;
+  --pin-no-media-glow: rgba(232, 235, 230, 0.55);
+  --pin-mg-no-media: #ffd900;
+  --pin-mg-no-media-glow: rgba(230, 194, 0, 0.55);
   --pin-climb: #39ff14;
   --pin-climb-glow: rgba(57, 255, 20, 0.55);
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
@@ -1162,6 +1172,12 @@ body {
   --pin-glow: var(--pin-climb-glow);
 }
 
+/* Climb pin without media — turns white to indicate missing image/video */
+.map-pin.pin--no-media {
+  --pin-color: var(--pin-no-media);
+  --pin-glow: var(--pin-no-media-glow);
+}
+
 .map-pin:hover,
 .map-pin.is-highlighted {
   z-index: 10;
@@ -1211,6 +1227,32 @@ body {
   pointer-events: none;
 }
 
+/* MG spot faction coloring */
+.map-mg-spot.mg-spot--axis {
+  --mg-spot-head-fill: var(--pin-axis);
+}
+.map-mg-spot.mg-spot--axis .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-axis-glow));
+}
+.map-mg-spot.mg-spot--allies {
+  --mg-spot-head-fill: var(--pin-allies);
+}
+.map-mg-spot.mg-spot--allies .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-allies-glow));
+}
+.map-mg-spot.mg-spot--neutral {
+  --mg-spot-head-fill: var(--pin-neutral);
+}
+.map-mg-spot.mg-spot--neutral .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-neutral-glow));
+}
+.map-mg-spot.mg-spot--no-media {
+  --mg-spot-head-fill: var(--pin-mg-no-media);
+}
+.map-mg-spot.mg-spot--no-media .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-mg-no-media-glow));
+}
+
 /* Draft MG spot — always show the arrowhead with highlight (like is-highlighted) */
 .map-mg-spot--draft .mg-spot-head {
   stroke-width: 0.20;
@@ -1233,7 +1275,7 @@ body {
 }
 
 .mg-spot-head {
-  fill: #ff0000;
+  fill: var(--mg-spot-head-fill, #ff0000);
   stroke: #000;
   stroke-width: 0.15;
   stroke-linejoin: miter;
