@@ -63,6 +63,10 @@ const els = {
   pinThumbnail: document.getElementById("pin-thumbnail"),
   pinPositionCode: document.getElementById("pin-position-code"),
   mapSelect: document.getElementById("map-select"),
+  requiresOptions: document.getElementById("pin-requires-options"),
+  requiresFactionCheckbox: document.querySelector(".requires-checkbox--faction"),
+  requiresFactionLabel: document.getElementById("requires-faction-label"),
+  requiresFactionIcon: document.getElementById("requires-faction-icon"),
 };
 
 let mapViewer;
@@ -391,6 +395,104 @@ function bindUi() {
       updatePlacementUi();
       updateDraftMarker();
     });
+  });
+
+  // Requires checkbox toggling
+  initRequiresCheckboxes();
+
+  // Listen for faction changes in the editor to update the requires faction checkbox
+  document.querySelectorAll("#edit-faction-bar [data-faction]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const faction = button.dataset.faction;
+      updateFactionRequires(faction);
+    });
+  });
+}
+
+// === Requires section ===
+
+const REQUIRES_FACTION_CONFIG = {
+  axis: { label: "Belgian Gate", icon: "fa-archway" },
+  allies: { label: "Tank Hedgehog", icon: "fa-maximize" },
+};
+
+function initRequiresCheckboxes() {
+  if (!els.requiresOptions) return;
+  els.requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
+    const checkbox = label.querySelector('input[type="checkbox"]');
+    if (!checkbox) return;
+    checkbox.addEventListener("change", () => {
+      label.classList.toggle("is-checked", checkbox.checked);
+    });
+    // Clicking the label toggles the hidden checkbox
+    // Prevent default label behaviour (native toggle), use manual toggle instead
+    label.addEventListener("click", (event) => {
+      event.preventDefault();
+      checkbox.checked = !checkbox.checked;
+      checkbox.dispatchEvent(new Event("change"));
+    });
+  });
+}
+
+function updateFactionRequires(faction) {
+  if (!els.requiresFactionCheckbox) return;
+  if (faction === "neutral") {
+    els.requiresFactionCheckbox.classList.add("hidden");
+    return;
+  }
+  const config = REQUIRES_FACTION_CONFIG[faction];
+  if (config) {
+    els.requiresFactionLabel.textContent = config.label;
+    if (els.requiresFactionIcon) {
+      els.requiresFactionIcon.className = `fa-solid ${config.icon}`;
+    }
+    els.requiresFactionCheckbox.classList.remove("hidden");
+  } else {
+    els.requiresFactionCheckbox.classList.add("hidden");
+  }
+}
+
+function getRequiresData() {
+  const requires = {};
+  if (!els.requiresOptions) return {};
+  els.requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
+    const checkbox = label.querySelector('input[type="checkbox"]');
+    const requiresKey = label.dataset.requires;
+    if (checkbox && checkbox.checked) {
+      if (requiresKey === "faction-specific") {
+        requires["faction-specific"] = currentFaction;
+      } else {
+        requires[requiresKey] = true;
+      }
+    }
+  });
+  return requires;
+}
+
+function setRequiresData(requires) {
+  if (!els.requiresOptions) return;
+  els.requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
+    const checkbox = label.querySelector('input[type="checkbox"]');
+    const requiresKey = label.dataset.requires;
+    if (!checkbox) return;
+    let isChecked = false;
+    if (requiresKey === "faction-specific") {
+      isChecked = Boolean(requires && requires["faction-specific"]);
+    } else {
+      isChecked = Boolean(requires && requires[requiresKey]);
+    }
+    checkbox.checked = isChecked;
+    label.classList.toggle("is-checked", isChecked);
+  });
+}
+
+function resetRequires() {
+  if (!els.requiresOptions) return;
+  els.requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
+    const checkbox = label.querySelector('input[type="checkbox"]');
+    if (!checkbox) return;
+    checkbox.checked = false;
+    label.classList.remove("is-checked");
   });
 }
 
@@ -993,6 +1095,8 @@ function startAddPin() {
   els.btnSavePin.textContent = "Save pin";
   els.btnDeletePin?.classList.add("hidden");
   setPinFormTag(DEFAULT_PIN_TAG);
+  updateFactionRequires(currentFaction);
+  resetRequires();
   els.editPanelTitle.textContent = "EDITOR MODE";
   if (els.editPanelHint) els.editPanelHint.textContent = "";
   updateEditToggleButton();
@@ -1024,6 +1128,8 @@ function startEditPin(pin, { focus = true } = {}) {
   els.pinVideo.value = pin.videoUrl || "";
   els.pinThumbnail.value = pin.thumbnail || "";
   setPinFormTag(pin.tag);
+  updateFactionRequires(currentFaction);
+  setRequiresData(pin.requires);
   els.btnSavePin.disabled = !isPlacementComplete();
   els.btnSavePin.textContent = "Save changes";
   els.btnDeletePin?.classList.remove("hidden");
@@ -1268,6 +1374,14 @@ function onSavePin(event) {
   if (isDirectionalPinTag(tag)) {
     pinData.dirX = pendingDirection.x;
     pinData.dirY = pendingDirection.y;
+  }
+
+  // Include requires data
+  const requires = getRequiresData();
+  if (Object.keys(requires).length > 0) {
+    pinData.requires = requires;
+  } else {
+    pinData.requires = {};
   }
 
   void savePin(pinData);

@@ -97,7 +97,7 @@
         <form id="pin-form" class="pin-form">
           <label>
             Title
-            <input type="text" id="pin-title" required placeholder="e.g. Bush climb — South Farm" />
+            <input type="text" id="pin-title" required placeholder="e.g. Chapel Roof" maxlength="14" />
           </label>
           <div class="sidebar__section pin-form__section-faction">
             <legend>Faction</legend>
@@ -116,9 +116,34 @@
               </button>
             </div>
           </div>
+          <fieldset class="pin-form__requires">
+            <legend>Requires</legend>
+            <div class="pin-form__requires-options" id="pin-requires-options">
+              <label class="requires-checkbox" data-requires="truck">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-truck" aria-hidden="true"></i>
+                <span>Transport<br>Truck</span>
+              </label>
+              <label class="requires-checkbox" data-requires="repair-station">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
+                <span>Repair<br>Station</span>
+              </label>
+              <label class="requires-checkbox" data-requires="barricade">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-road-barrier" aria-hidden="true"></i>
+                <span>Build<br>Barricade</span>
+              </label>
+              <label class="requires-checkbox requires-checkbox--faction hidden" data-requires="faction-specific">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i id="requires-faction-icon" class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <span id="requires-faction-label">Tank Hedgehog</span>
+              </label>
+            </div>
+          </fieldset>
           <label>
             Description
-            <textarea id="pin-description" rows="3" placeholder="Short note about the trick"></textarea>
+            <textarea id="pin-description" rows="4" placeholder="Short note about the trick"></textarea>
           </label>
           <label>
             Image Link
