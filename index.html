@@ -283,12 +283,26 @@
     <div class="video-modal__inner">
       <button class="video-modal__close" id="btn-close-modal" type="button" aria-label="Close">&times;</button>
       <div class="video-modal__header">
-        <h2 id="modal-title"></h2>
+        <div class="video-modal__header-row">
+          <h2>
+            <span class="video-modal__faction-icon hidden" id="modal-faction-icon">
+              <span class="faction-text" id="modal-faction-text"></span>
+              <span class="faction-sep" id="modal-faction-sep"></span>
+            </span>
+            <span class="video-modal__tag" id="modal-tag"></span>
+            <span class="video-modal__title-sep" id="modal-title-sep"></span>
+            <span id="modal-title"></span>
+          </h2>
+          <button class="btn btn--ghost video-modal__edit" id="btn-edit-modal" type="button">Edit trick</button>
+        </div>
+        <p id="modal-position-code" class="video-modal__position-code"></p>
+        <div class="video-modal__requires hidden" id="modal-requires"></div>
         <p id="modal-description"></p>
-        <p id="modal-uploader" class="video-modal__uploader hidden"></p>
-        <button class="btn btn--ghost video-modal__edit" id="btn-edit-modal" type="button">Edit trick</button>
       </div>
-      <div class="video-modal__player" id="modal-player"></div>
+      <div class="video-modal__player-wrap">
+        <div class="video-modal__player" id="modal-player"></div>
+      </div>
+      <p id="modal-uploader" class="video-modal__uploader hidden"></p>
     </div>
   </dialog>
 

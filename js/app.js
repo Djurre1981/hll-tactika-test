@@ -46,6 +46,9 @@ const els = {
   modalDescription: document.getElementById("modal-description"),
   modalUploader: document.getElementById("modal-uploader"),
   modalPlayer: document.getElementById("modal-player"),
+  modalFactionIcon: document.getElementById("modal-faction-icon"),
+  modalPositionCode: document.getElementById("modal-position-code"),
+  modalRequires: document.getElementById("modal-requires"),
   editPanel: document.getElementById("edit-panel"),
   sidebarDefault: document.getElementById("sidebar-default"),
   editPanelTitle: document.getElementById("edit-panel-title"),
@@ -1046,6 +1049,45 @@ function openModal(pin) {
   modalPin = pin;
   els.modalTitle.textContent = pin.title;
   els.modalDescription.textContent = pin.description || "";
+
+  // Faction icon + label before title
+  const faction = pin.faction || "neutral";
+  if (els.modalFactionIcon) {
+    const FACTION_CONFIG = {
+      axis: { icon: "fa-solid fa-person-rifle", label: "Axis" },
+      allies: { icon: "fa-solid fa-person-rifle", label: "Allies" },
+      neutral: { icon: "fa-solid fa-skull-crossbones", label: "Neutral" },
+    };
+    const config = FACTION_CONFIG[faction] || FACTION_CONFIG.neutral;
+    els.modalFactionIcon.className = `video-modal__faction-icon faction--${faction} ${config.icon}`;
+    const textEl = document.getElementById("modal-faction-text");
+    const sepEl = document.getElementById("modal-faction-sep");
+    if (textEl) textEl.textContent = config.label;
+  if (sepEl) sepEl.textContent = " - ";
+  els.modalFactionIcon.classList.remove("hidden");
+  }
+
+  // Spot type tag (Climb/MG Spot)
+  const tagEl = document.getElementById("modal-tag");
+  const titleSepEl = document.getElementById("modal-title-sep");
+  const tagLabel = pin.tag === "mg-spot" ? "MG SPOT" : "CLIMB";
+  if (tagEl) {
+    tagEl.textContent = tagLabel;
+    tagEl.className = `video-modal__tag video-modal__tag--${pin.tag}`;
+  }
+  if (titleSepEl) {
+    titleSepEl.textContent = " - ";
+  }
+
+  // Position code
+  if (els.modalPositionCode) {
+    const posX = pin.tag === "mg-spot" && pin.dirX != null ? pin.dirX : pin.x;
+    const posY = pin.tag === "mg-spot" && pin.dirY != null ? pin.dirY : pin.y;
+    els.modalPositionCode.textContent = generatePositionCode(posX, posY);
+    els.modalPositionCode.classList.remove("hidden");
+  }
+
+  // Uploader
   const uploader = getPinUploaderLabel(pin);
   if (uploader && els.modalUploader) {
     els.modalUploader.textContent = `Added by ${uploader}`;
@@ -1054,10 +1096,50 @@ function openModal(pin) {
     els.modalUploader.textContent = "";
     els.modalUploader.classList.add("hidden");
   }
+
+  // Edit button
   els.btnEditModal.classList.toggle("hidden", !canModifyPin(pin));
+
+  // Requires icons overlay on video
+  renderModalRequires(pin);
+
   els.modalPlayer.innerHTML = '<p class="preview-loading">Loading clip…</p>';
   els.modal.showModal();
   loadModalPlayer(pin);
+}
+
+const REQUIRES_ICON_CONFIG = {
+  truck: { icon: "fa-solid fa-truck", label: "Transport Truck" },
+  "repair-station": { icon: "fa-solid fa-screwdriver-wrench", label: "Repair Station" },
+  barricade: { icon: "fa-solid fa-road-barrier", label: "Build Barricade" },
+  "faction-specific": { icon: "fa-solid fa-triangle-exclamation", label: "Belgian Gate / Tank Hedgehog" },
+};
+
+function renderModalRequires(pin) {
+  if (!els.modalRequires) return;
+  const requires = pin.requires;
+  if (!requires || Object.keys(requires).length === 0) {
+    els.modalRequires.classList.add("hidden");
+    els.modalRequires.innerHTML = "";
+    return;
+  }
+
+  els.modalRequires.innerHTML = "";
+  els.modalRequires.classList.remove("hidden");
+
+  for (const [key, value] of Object.entries(requires)) {
+    if (!value) continue;
+    const config = REQUIRES_ICON_CONFIG[key];
+    if (!config) continue;
+    const item = document.createElement("span");
+    item.className = `video-modal__requires-item is-requires--${key}`;
+    item.innerHTML = `<i class="${config.icon}" aria-hidden="true"></i> ${escapeHtml(config.label)}`;
+    els.modalRequires.appendChild(item);
+  }
+
+  if (els.modalRequires.children.length === 0) {
+    els.modalRequires.classList.add("hidden");
+  }
 }
 
 async function loadModalPlayer(pin) {
