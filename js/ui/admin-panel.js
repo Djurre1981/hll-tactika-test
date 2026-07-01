@@ -3,8 +3,8 @@ import {
   fetchManagedUsers,
   removeManagedUser,
   updateManagedUserRole,
-} from "./admin-api.js";
-import { getCurrentUser } from "./auth.js";
+} from "../api/admin.js";
+import { getCurrentUser } from "../api/auth.js";
 
 const els = {
   panel: document.getElementById("admin-panel"),

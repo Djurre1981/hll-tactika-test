@@ -1,4 +1,4 @@
-import { isMedalUrl } from "./video-utils.js";
+import { isMedalUrl } from "./video.js";
 
 const cache = new Map();
 

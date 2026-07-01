@@ -1,4 +1,4 @@
-let currentUser = null;
+import { fetchCurrentUser, logout, getCurrentUser, setCurrentUser } from "../api/auth.js";
 
 function getAuthEls() {
   return {
@@ -53,7 +53,7 @@ function showGate({ title, message, showLogin = true }) {
 
 function showApp(user) {
   const els = getAuthEls();
-  currentUser = user;
+  setCurrentUser(user);
   els.gate.classList.add("hidden");
   els.appRoot.classList.remove("hidden");
   els.headerUser.classList.remove("hidden");
@@ -70,38 +70,24 @@ function showApp(user) {
   }
 }
 
-export function getCurrentUser() {
-  return currentUser;
-}
-
 export async function initAuth() {
   const els = getAuthEls();
   const authError = getAuthErrorFromUrl();
   clearAuthQuery();
 
   els.btnLogout?.addEventListener("click", async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    await logout();
     window.location.reload();
   });
 
   try {
-    const response = await fetch("/api/auth/me", { credentials: "same-origin" });
-    if (!response.ok) {
+    const user = await fetchCurrentUser();
+    if (!user) {
       showGate({
         title: "Circle members only",
         message:
           authError ||
           "Sign in with Steam to access trick locations and videos. Only approved circle members can view the guide.",
-        showLogin: true,
-      });
-      return { ok: false, reason: "unauthenticated" };
-    }
-
-    const user = await response.json();
-    if (!user.authenticated) {
-      showGate({
-        title: "Circle members only",
-        message: authError || "Sign in with Steam to continue.",
         showLogin: true,
       });
       return { ok: false, reason: "unauthenticated" };
