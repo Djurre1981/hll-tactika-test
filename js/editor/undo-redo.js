@@ -3,7 +3,7 @@ import { updatePlacementUi } from "./placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "./draft-renderer.js";
 import { updatePinElementPosition } from "../helpers/proximity.js";
 import { persistPinPosition } from "../helpers/pin-persist.js";
-import { showEditorToast } from "../ui/editor-toast.js";
+import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 
 const MAX_POSITION_HISTORY = 10;
 
@@ -53,6 +53,12 @@ function applyPinMoveSnapshot(snapshot) {
   }
 
   updatePinElementPosition(pin.id);
+  if (pin.tag === "mg-spot" && pin.dirX != null && pin.dirY != null) {
+    const group = document.querySelector(`.map-mg-spot[data-id="${pin.id}"]`);
+    if (group) {
+      refreshMgSpotGroup(group, pin);
+    }
+  }
   void persistPinPosition(pin).catch((error) => {
     console.error(error);
     alert(error.message || "Could not save pin position");
@@ -75,26 +81,16 @@ export function initUndoRedoKeyboard() {
     if (isUndo) {
       event.preventDefault();
       event.stopPropagation();
-      if (canUsePositionUndo() && popPositionSnapshot()) {
-        const coordsEl = document.getElementById("pin-coords");
-        if (coordsEl && state.editMode) {
-          coordsEl.textContent = "Undo: reverted to previous position";
-        } else if (state.panelMode === "browse") {
-          showEditorToast("Undo: reverted position");
-        }
+      if (canUsePositionUndo()) {
+        popPositionSnapshot();
       }
       return;
     }
     if (event.ctrlKey && (event.key === "y" || event.key === "Y" || event.code === "KeyY")) {
       event.preventDefault();
       event.stopPropagation();
-      if (canUsePositionUndo() && popRedoSnapshot()) {
-        const coordsEl = document.getElementById("pin-coords");
-        if (coordsEl && state.editMode) {
-          coordsEl.textContent = "Redo: reapplied position";
-        } else if (state.panelMode === "browse") {
-          showEditorToast("Redo: reapplied position");
-        }
+      if (canUsePositionUndo()) {
+        popRedoSnapshot();
       }
     }
   }, { capture: true });
