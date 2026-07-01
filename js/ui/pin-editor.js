@@ -118,91 +118,100 @@ function syncViewportModeClasses() {
   state.mapViewer?.setEditorMode(isInEditorMode());
 }
 
-export function enterEditorMode() {
-  state.panelMode = "browse";
+function resetPinFormUi() {
+  getPinForm().reset();
+  getPinCoords().textContent = "No position selected";
+  getBtnSavePin().disabled = true;
+  getBtnSavePin().textContent = "Save pin";
+  setPinFormTag(DEFAULT_PIN_TAG);
+}
+
+function transitionEditorMode({
+  panelMode,
+  resetPositionHistory = false,
+  hidePreview = false,
+  resetMapEditMode = false,
+  resetPinForm = false,
+  headerButtonAnimate = false,
+  headerButtonsBeforeHighlight = false,
+}) {
+  state.panelMode = panelMode;
   state.editingPinId = null;
   state.pendingCoords = null;
   state.pendingDirection = null;
   state.mgCollapseHint = false;
   state.editMode = false;
-  state.positionHistory = [];
   state.pinDragSession = null;
+  if (resetPositionHistory) {
+    state.positionHistory = [];
+  }
 
-  hidePreviewImmediately();
+  if (hidePreview) {
+    hidePreviewImmediately();
+  }
+
   setSidebarDefaultVisible(true);
+
+  if (resetMapEditMode) {
+    state.mapViewer?.setEditMode(false);
+  }
+
   getEditPanel().classList.add("hidden");
   hidePlacementCrosshair();
-  highlightPin(null);
-  updateDraftMarker();
-  renderPins();
-  renderPinList();
-  updateSidebarSectionsVisibility();
-  updateEditorHeaderButtons({ animate: true });
+
+  if (resetPinForm) {
+    resetPinFormUi();
+  }
+
+  const refreshMapAndList = () => {
+    highlightPin(null);
+    updateDraftMarker();
+    renderPins();
+    renderPinList();
+    updateSidebarSectionsVisibility();
+  };
+
+  if (headerButtonsBeforeHighlight) {
+    updateEditorHeaderButtons({ animate: headerButtonAnimate });
+    refreshMapAndList();
+  } else {
+    refreshMapAndList();
+    updateEditorHeaderButtons({ animate: headerButtonAnimate });
+  }
+
   syncViewportModeClasses();
   syncViewportFormClasses();
   hideFormContextMenu();
+}
+
+export function enterEditorMode() {
+  transitionEditorMode({
+    panelMode: "browse",
+    resetPositionHistory: true,
+    hidePreview: true,
+    headerButtonAnimate: true,
+  });
 }
 
 export function backToEditorBrowse() {
   if (!isInEditorMode()) return;
 
-  state.panelMode = "browse";
-  state.editingPinId = null;
-  state.pendingCoords = null;
-  state.pendingDirection = null;
-  state.mgCollapseHint = false;
-  state.editMode = false;
-  state.positionHistory = [];
-  state.pinDragSession = null;
-
-  hidePreviewImmediately();
-  setSidebarDefaultVisible(true);
-  state.mapViewer?.setEditMode(false);
-  getEditPanel().classList.add("hidden");
-  hidePlacementCrosshair();
-  getPinForm().reset();
-  getPinCoords().textContent = "No position selected";
-  getBtnSavePin().disabled = true;
-  getBtnSavePin().textContent = "Save pin";
-  setPinFormTag(DEFAULT_PIN_TAG);
-  highlightPin(null);
-  updateDraftMarker();
-  renderPins();
-  renderPinList();
-  updateSidebarSectionsVisibility();
-  updateEditorHeaderButtons();
-  syncViewportModeClasses();
-  syncViewportFormClasses();
-  hideFormContextMenu();
+  transitionEditorMode({
+    panelMode: "browse",
+    resetPositionHistory: true,
+    hidePreview: true,
+    resetMapEditMode: true,
+    resetPinForm: true,
+  });
 }
 
 export function exitEditorMode() {
-  state.panelMode = null;
-  state.editingPinId = null;
-  state.pendingCoords = null;
-  state.pendingDirection = null;
-  state.mgCollapseHint = false;
-  state.editMode = false;
-  state.pinDragSession = null;
-
-  setSidebarDefaultVisible(true);
-  state.mapViewer?.setEditMode(false);
-  getEditPanel().classList.add("hidden");
-  hidePlacementCrosshair();
-  getPinForm().reset();
-  getPinCoords().textContent = "No position selected";
-  getBtnSavePin().disabled = true;
-  getBtnSavePin().textContent = "Save pin";
-  setPinFormTag(DEFAULT_PIN_TAG);
-  updateEditorHeaderButtons();
-  highlightPin(null);
-  updateDraftMarker();
-  renderPins();
-  renderPinList();
-  updateSidebarSectionsVisibility();
-  syncViewportModeClasses();
-  syncViewportFormClasses();
-  hideFormContextMenu();
+  transitionEditorMode({
+    panelMode: null,
+    resetMapEditMode: true,
+    resetPinForm: true,
+    headerButtonsBeforeHighlight: true,
+  });
 }
 
 /** @deprecated Use exitEditorMode — kept for map-switch and legacy callers */

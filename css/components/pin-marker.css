@@ -19,6 +19,7 @@
 
 .map-pin--draft.is-draggable.map-pin--dragging {
   pointer-events: none;
+  cursor: grabbing;
 }
 
 .map-pin--draft .map-pin__icon {
@@ -122,6 +123,12 @@
 .map-pin--dragging {
   pointer-events: none;
   z-index: 50;
+  cursor: grabbing;
+}
+
+.map-pin--dragging .map-pin__icon,
+.map-pin--dragging .map-pin__icon::after {
+  cursor: grabbing;
 }
 
 .map-pin--dragging .map-pin__icon {

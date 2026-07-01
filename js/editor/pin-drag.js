@@ -75,7 +75,7 @@ function hasExceededDragThreshold(dx, dy) {
   return Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX;
 }
 
-function beginMapDrag(element, label, anchor, clientX, clientY) {
+function createGrabDragState(anchor, clientX, clientY) {
   const { width: imgW, height: imgH } = getImageSize();
   const anchorPx = {
     x: (anchor.x / 100) * imgW,
@@ -83,19 +83,83 @@ function beginMapDrag(element, label, anchor, clientX, clientY) {
   };
   const pointerPx = screenToMapPx(clientX, clientY);
 
-  element.classList.add("map-pin--dragging");
-  if (label) {
-    label.classList.add("map-pin__label--dragging");
-  }
-
   return {
     grabOffsetX: anchorPx.x - pointerPx.x,
     grabOffsetY: anchorPx.y - pointerPx.y,
     imgW,
     imgH,
-    lastPx: anchorPx.x,
-    lastPy: anchorPx.y,
+    anchorPx,
   };
+}
+
+function runPointerDragSession(event, { captureElement, onDragStart, onDragMove, onDragEnd, onTap, onTeardown }) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const viewport = getViewport();
+  const startClient = { x: event.clientX, y: event.clientY };
+  let dragging = false;
+  let dragState = null;
+  const activePointerId = event.pointerId;
+
+  const onPointerMove = (moveEvent) => {
+    if (moveEvent.pointerId !== activePointerId) return;
+
+    const dx = moveEvent.clientX - startClient.x;
+    const dy = moveEvent.clientY - startClient.y;
+    if (!dragging && !hasExceededDragThreshold(dx, dy)) return;
+
+    if (!dragging) {
+      dragging = true;
+      dragState = onDragStart({ startClient, viewport, activePointerId });
+      captureElement.setPointerCapture(activePointerId);
+      viewport?.classList.add("is-pin-dragging");
+    }
+
+    onDragMove(moveEvent.clientX, moveEvent.clientY, dragState);
+  };
+
+  const finishDrag = async (upEvent) => {
+    if (upEvent.pointerId !== activePointerId) return;
+
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", finishDrag);
+    window.removeEventListener("pointercancel", finishDrag);
+
+    state.pinDragSession = null;
+    viewport?.classList.remove("is-pin-dragging");
+    onTeardown?.();
+
+    try {
+      captureElement.releasePointerCapture(activePointerId);
+    } catch {
+      /* pointer may already be released */
+    }
+
+    if (!dragging) {
+      onTap?.();
+      return;
+    }
+
+    await onDragEnd(dragState);
+  };
+
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", finishDrag);
+  window.addEventListener("pointercancel", finishDrag);
+}
+
+function beginMapDrag(element, label, anchor, clientX, clientY) {
+  element.classList.add("map-pin--dragging");
+  if (label) {
+    label.classList.add("map-pin__label--dragging");
+  }
+
+  const dragState = createGrabDragState(anchor, clientX, clientY);
+  dragState.lastPx = dragState.anchorPx.x;
+  dragState.lastPy = dragState.anchorPx.y;
+  delete dragState.anchorPx;
+  return dragState;
 }
 
 function moveMapDrag(element, pin, label, clientX, clientY, dragState) {
@@ -189,93 +253,53 @@ export function attachClimbPinDrag(button, pin) {
 }
 
 function startClimbPinDrag(event, pin, element) {
-  event.preventDefault();
-  event.stopPropagation();
   if (state.pinSaveInFlight) return;
 
   const pinRef = state.pins.find((item) => item.id === pin.id);
   if (!pinRef) return;
 
-  const viewport = getViewport();
   const label = getPinLabel(pin.id);
-  const startClient = { x: event.clientX, y: event.clientY };
-  let dragging = false;
-  let snapshotPushed = false;
-  let activePointerId = event.pointerId;
   let beforeDrag = null;
-  let dragState = null;
 
-  const onPointerMove = (moveEvent) => {
-    if (moveEvent.pointerId !== activePointerId) return;
-
-    const dx = moveEvent.clientX - startClient.x;
-    const dy = moveEvent.clientY - startClient.y;
-    if (!dragging && !hasExceededDragThreshold(dx, dy)) return;
-
-    if (!dragging) {
-      dragging = true;
+  runPointerDragSession(event, {
+    captureElement: element,
+    onDragStart({ startClient }) {
       beforeDrag = { x: pinRef.x, y: pinRef.y, dirX: pinRef.dirX, dirY: pinRef.dirY };
-      if (!snapshotPushed) {
-        pushPinMoveSnapshot(pinRef);
-        snapshotPushed = true;
-      }
-      dragState = beginMapDrag(element, label, pinRef, startClient.x, startClient.y);
+      pushPinMoveSnapshot(pinRef);
       state.pinDragSession = { pinId: pinRef.id, type: "climb" };
-      viewport?.classList.add("is-pin-dragging");
-      element.setPointerCapture(activePointerId);
-    }
-
-    moveMapDrag(element, pinRef, label, moveEvent.clientX, moveEvent.clientY, dragState);
-  };
-
-  const finishDrag = async (upEvent) => {
-    if (upEvent.pointerId !== activePointerId) return;
-
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", finishDrag);
-    window.removeEventListener("pointercancel", finishDrag);
-
-    state.pinDragSession = null;
-    viewport?.classList.remove("is-pin-dragging");
-
-    try {
-      element.releasePointerCapture(activePointerId);
-    } catch {
-      /* pointer may already be released */
-    }
-
-    if (!dragging) {
+      return beginMapDrag(element, label, pinRef, startClient.x, startClient.y);
+    },
+    onDragMove(clientX, clientY, dragState) {
+      moveMapDrag(element, pinRef, label, clientX, clientY, dragState);
+    },
+    onTap() {
       if (state.panelMode === "browse") {
         highlightPin(pinRef.id);
       }
-      return;
-    }
+    },
+    async onDragEnd(dragState) {
+      const coords = endMapDrag(element, label, dragState);
+      pinRef.x = coords.x;
+      pinRef.y = coords.y;
+      updatePinElementPosition(pinRef.id);
 
-    const coords = endMapDrag(element, label, dragState);
-    pinRef.x = coords.x;
-    pinRef.y = coords.y;
-    updatePinElementPosition(pinRef.id);
-
-    try {
-      await persistPinPosition(pinRef);
-    } catch (error) {
-      console.error(error);
-      if (beforeDrag) {
-        pinRef.x = beforeDrag.x;
-        pinRef.y = beforeDrag.y;
-        if (beforeDrag.dirX != null) {
-          pinRef.dirX = beforeDrag.dirX;
-          pinRef.dirY = beforeDrag.dirY;
+      try {
+        await persistPinPosition(pinRef);
+      } catch (error) {
+        console.error(error);
+        if (beforeDrag) {
+          pinRef.x = beforeDrag.x;
+          pinRef.y = beforeDrag.y;
+          if (beforeDrag.dirX != null) {
+            pinRef.dirX = beforeDrag.dirX;
+            pinRef.dirY = beforeDrag.dirY;
+          }
+          updatePinElementPosition(pinRef.id);
         }
-        updatePinElementPosition(pinRef.id);
+        alert(error.message || "Could not save pin position");
       }
-      alert(error.message || "Could not save pin position");
-    }
-  };
-
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", finishDrag);
-  window.addEventListener("pointercancel", finishDrag);
+    },
+  });
 }
 
 // MG spot drag: same in-map, no-reparent pattern as climb pins, but the
@@ -284,22 +308,12 @@ function startClimbPinDrag(event, pin, element) {
 // bar only moves x/y (head stays put). The dotted stem is never a handle - it
 // is simply redrawn to follow whichever end moved via refreshMgSpotGroup().
 function beginMgHandleDrag(anchor, clientX, clientY) {
-  const { width: imgW, height: imgH } = getImageSize();
-  const anchorPx = {
-    x: (anchor.x / 100) * imgW,
-    y: (anchor.y / 100) * imgH,
-  };
-  const pointerPx = screenToMapPx(clientX, clientY);
-
-  return {
-    grabOffsetX: anchorPx.x - pointerPx.x,
-    grabOffsetY: anchorPx.y - pointerPx.y,
-    imgW,
-    imgH,
-    lastX: anchor.x,
-    lastY: anchor.y,
-    hadSeparationIssue: false,
-  };
+  const dragState = createGrabDragState(anchor, clientX, clientY);
+  delete dragState.anchorPx;
+  dragState.lastX = anchor.x;
+  dragState.lastY = anchor.y;
+  dragState.hadSeparationIssue = false;
+  return dragState;
 }
 
 function beginMgSpotDrag(pinRef, handle, clientX, clientY) {
@@ -352,187 +366,108 @@ export function attachMgSpotDrag(group, pin) {
 }
 
 function startMgSpotDrag(event, pin, group, handle) {
-  event.preventDefault();
-  event.stopPropagation();
   if (state.pinSaveInFlight) return;
 
   const pinRef = state.pins.find((item) => item.id === pin.id);
   if (!pinRef) return;
 
-  const viewport = getViewport();
   const label = getPinLabel(pin.id);
   const handleEl = event.currentTarget;
-  const startClient = { x: event.clientX, y: event.clientY };
-  let dragging = false;
-  let snapshotPushed = false;
-  const activePointerId = event.pointerId;
   let beforeDrag = null;
-  let dragState = null;
 
-  const onPointerMove = (moveEvent) => {
-    if (moveEvent.pointerId !== activePointerId) return;
-
-    const dx = moveEvent.clientX - startClient.x;
-    const dy = moveEvent.clientY - startClient.y;
-    if (!dragging && !hasExceededDragThreshold(dx, dy)) return;
-
-    if (!dragging) {
-      dragging = true;
+  runPointerDragSession(event, {
+    captureElement: handleEl,
+    onDragStart({ startClient }) {
       beforeDrag = { x: pinRef.x, y: pinRef.y, dirX: pinRef.dirX, dirY: pinRef.dirY };
-      if (!snapshotPushed) {
-        pushPinMoveSnapshot(pinRef);
-        snapshotPushed = true;
-      }
-      dragState = beginMgSpotDrag(pinRef, handle, startClient.x, startClient.y);
+      pushPinMoveSnapshot(pinRef);
       state.pinDragSession = { pinId: pinRef.id, type: "mg-spot", handle };
       group.classList.add("map-mg-spot--dragging");
       group.parentNode?.appendChild(group);
-      viewport?.classList.add("is-pin-dragging");
-      handleEl.setPointerCapture(activePointerId);
-    }
+      return beginMgSpotDrag(pinRef, handle, startClient.x, startClient.y);
+    },
+    onDragMove(clientX, clientY, dragState) {
+      const coords = moveMgSpotDrag(
+        clientX,
+        clientY,
+        dragState,
+        handle === "head" ? { x: pinRef.x, y: pinRef.y } : { x: pinRef.dirX, y: pinRef.dirY }
+      );
 
-    const coords = moveMgSpotDrag(
-      moveEvent.clientX,
-      moveEvent.clientY,
-      dragState,
-      handle === "head" ? { x: pinRef.x, y: pinRef.y } : { x: pinRef.dirX, y: pinRef.dirY }
-    );
-
-    if (handle === "head") {
-      refreshMgSpotGroup(group, { x: pinRef.x, y: pinRef.y, dirX: coords.x, dirY: coords.y });
-      applyMgHeadLabel(pinRef, label, coords.x, coords.y);
-    } else {
-      refreshMgSpotGroup(group, { x: coords.x, y: coords.y, dirX: pinRef.dirX, dirY: pinRef.dirY });
-    }
-  };
-
-  const finishDrag = async (upEvent) => {
-    if (upEvent.pointerId !== activePointerId) return;
-
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", finishDrag);
-    window.removeEventListener("pointercancel", finishDrag);
-
-    state.pinDragSession = null;
-    viewport?.classList.remove("is-pin-dragging");
-    group.classList.remove("map-mg-spot--dragging");
-
-    try {
-      handleEl.releasePointerCapture(activePointerId);
-    } catch {
-      /* pointer may already be released */
-    }
-
-    if (!dragging) {
+      if (handle === "head") {
+        refreshMgSpotGroup(group, { x: pinRef.x, y: pinRef.y, dirX: coords.x, dirY: coords.y });
+        applyMgHeadLabel(pinRef, label, coords.x, coords.y);
+      } else {
+        refreshMgSpotGroup(group, { x: coords.x, y: coords.y, dirX: pinRef.dirX, dirY: pinRef.dirY });
+      }
+    },
+    onTap() {
       if (state.panelMode === "browse") {
         highlightPin(pinRef.id);
       }
-      return;
-    }
-
-    if (handle === "head") {
-      pinRef.dirX = dragState.lastX;
-      pinRef.dirY = dragState.lastY;
-    } else {
-      pinRef.x = dragState.lastX;
-      pinRef.y = dragState.lastY;
-    }
-
-    refreshMgSpotGroup(group, pinRef);
-    updatePinElementPosition(pinRef.id);
-
-    if (dragState.hadSeparationIssue) {
-      showEditorToast("Head and bar were too close — position adjusted");
-    }
-
-    try {
-      await persistPinPosition(pinRef);
-    } catch (error) {
-      console.error(error);
-      if (beforeDrag) {
-        pinRef.x = beforeDrag.x;
-        pinRef.y = beforeDrag.y;
-        pinRef.dirX = beforeDrag.dirX;
-        pinRef.dirY = beforeDrag.dirY;
-        refreshMgSpotGroup(group, pinRef);
-        updatePinElementPosition(pinRef.id);
+    },
+    onTeardown() {
+      group.classList.remove("map-mg-spot--dragging");
+    },
+    async onDragEnd(dragState) {
+      if (handle === "head") {
+        pinRef.dirX = dragState.lastX;
+        pinRef.dirY = dragState.lastY;
+      } else {
+        pinRef.x = dragState.lastX;
+        pinRef.y = dragState.lastY;
       }
-      alert(error.message || "Could not save pin position");
-    }
-  };
 
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", finishDrag);
-  window.addEventListener("pointercancel", finishDrag);
+      refreshMgSpotGroup(group, pinRef);
+      updatePinElementPosition(pinRef.id);
+
+      if (dragState.hadSeparationIssue) {
+        showEditorToast("Head and bar were too close — position adjusted");
+      }
+
+      try {
+        await persistPinPosition(pinRef);
+      } catch (error) {
+        console.error(error);
+        if (beforeDrag) {
+          pinRef.x = beforeDrag.x;
+          pinRef.y = beforeDrag.y;
+          pinRef.dirX = beforeDrag.dirX;
+          pinRef.dirY = beforeDrag.dirY;
+          refreshMgSpotGroup(group, pinRef);
+          updatePinElementPosition(pinRef.id);
+        }
+        alert(error.message || "Could not save pin position");
+      }
+    },
+  });
 }
 
 function startDraftClimbDrag(event, element) {
-  event.preventDefault();
-  event.stopPropagation();
   if (state.pinSaveInFlight) return;
 
   const coords = state.pendingCoords;
   if (!coords) return;
 
-  const viewport = getViewport();
-  const startClient = { x: event.clientX, y: event.clientY };
-  let dragging = false;
-  let snapshotPushed = false;
-  let activePointerId = event.pointerId;
-  let dragState = null;
-
-  const onPointerMove = (moveEvent) => {
-    if (moveEvent.pointerId !== activePointerId) return;
-
-    const dx = moveEvent.clientX - startClient.x;
-    const dy = moveEvent.clientY - startClient.y;
-    if (!dragging && !hasExceededDragThreshold(dx, dy)) return;
-
-    if (!dragging) {
-      dragging = true;
-      if (!snapshotPushed) {
-        pushPositionSnapshot();
-        snapshotPushed = true;
-      }
-      dragState = beginMapDrag(element, null, coords, startClient.x, startClient.y);
+  runPointerDragSession(event, {
+    captureElement: element,
+    onDragStart({ startClient }) {
+      pushPositionSnapshot();
       state.pinDragSession = { type: "draft-climb" };
-      viewport?.classList.add("is-pin-dragging");
-      element.setPointerCapture(activePointerId);
-    }
-
-    moveMapDrag(element, { tag: "climb", x: coords.x, y: coords.y }, null, moveEvent.clientX, moveEvent.clientY, dragState);
-  };
-
-  const finishDrag = (upEvent) => {
-    if (upEvent.pointerId !== activePointerId) return;
-
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", finishDrag);
-    window.removeEventListener("pointercancel", finishDrag);
-
-    state.pinDragSession = null;
-    viewport?.classList.remove("is-pin-dragging");
-
-    try {
-      element.releasePointerCapture(activePointerId);
-    } catch {
-      /* pointer may already be released */
-    }
-
-    if (!dragging) return;
-
-    const nextCoords = endMapDrag(element, null, dragState);
-    finishDraftPlacement(() => {
-      state.pendingCoords = {
-        x: roundCoord(nextCoords.x),
-        y: roundCoord(nextCoords.y),
-      };
-    });
-  };
-
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", finishDrag);
-  window.addEventListener("pointercancel", finishDrag);
+      return beginMapDrag(element, null, coords, startClient.x, startClient.y);
+    },
+    onDragMove(clientX, clientY, dragState) {
+      moveMapDrag(element, { tag: "climb", x: coords.x, y: coords.y }, null, clientX, clientY, dragState);
+    },
+    onDragEnd(dragState) {
+      const nextCoords = endMapDrag(element, null, dragState);
+      finishDraftPlacement(() => {
+        state.pendingCoords = {
+          x: roundCoord(nextCoords.x),
+          y: roundCoord(nextCoords.y),
+        };
+      });
+    },
+  });
 }
 
 function beginDraftMgSpotDrag(handle, clientX, clientY) {
@@ -541,109 +476,69 @@ function beginDraftMgSpotDrag(handle, clientX, clientY) {
 }
 
 function startDraftMgSpotDrag(event, group, handle, handleEl) {
-  event.preventDefault();
-  event.stopPropagation();
   if (state.pinSaveInFlight) return;
-
   if (!state.pendingCoords || !state.pendingDirection) return;
 
-  const viewport = getViewport();
-  const startClient = { x: event.clientX, y: event.clientY };
-  let dragging = false;
-  let snapshotPushed = false;
-  const activePointerId = event.pointerId;
-  let dragState = null;
-
-  const onPointerMove = (moveEvent) => {
-    if (moveEvent.pointerId !== activePointerId) return;
-
-    const dx = moveEvent.clientX - startClient.x;
-    const dy = moveEvent.clientY - startClient.y;
-    if (!dragging && !hasExceededDragThreshold(dx, dy)) return;
-
-    if (!dragging) {
-      dragging = true;
-      if (!snapshotPushed) {
-        pushPositionSnapshot();
-        snapshotPushed = true;
-      }
-      dragState = beginDraftMgSpotDrag(handle, startClient.x, startClient.y);
+  runPointerDragSession(event, {
+    captureElement: handleEl,
+    onDragStart({ startClient }) {
+      pushPositionSnapshot();
       state.pinDragSession = { type: "draft-mg-spot", handle };
       group.classList.add("map-mg-spot--dragging");
       group.parentNode?.appendChild(group);
-      viewport?.classList.add("is-pin-dragging");
-      handleEl.setPointerCapture(activePointerId);
-    }
-
-    const coords = moveMgSpotDrag(
-      moveEvent.clientX,
-      moveEvent.clientY,
-      dragState,
-      handle === "head"
-        ? { x: state.pendingCoords.x, y: state.pendingCoords.y }
-        : { x: state.pendingDirection.x, y: state.pendingDirection.y }
-    );
-
-    if (handle === "head") {
-      refreshMgSpotGroup(group, {
-        x: state.pendingCoords.x,
-        y: state.pendingCoords.y,
-        dirX: coords.x,
-        dirY: coords.y,
-      });
-      syncDraftMgCollapseHint(state.pendingCoords.x, state.pendingCoords.y, coords.x, coords.y);
-    } else {
-      refreshMgSpotGroup(group, {
-        x: coords.x,
-        y: coords.y,
-        dirX: state.pendingDirection.x,
-        dirY: state.pendingDirection.y,
-      });
-      syncDraftMgCollapseHint(coords.x, coords.y, state.pendingDirection.x, state.pendingDirection.y);
-    }
-  };
-
-  const finishDrag = (upEvent) => {
-    if (upEvent.pointerId !== activePointerId) return;
-
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", finishDrag);
-    window.removeEventListener("pointercancel", finishDrag);
-
-    state.pinDragSession = null;
-    viewport?.classList.remove("is-pin-dragging");
-    group.classList.remove("map-mg-spot--dragging");
-
-    try {
-      handleEl.releasePointerCapture(activePointerId);
-    } catch {
-      /* pointer may already be released */
-    }
-
-    if (!dragging) return;
-
-    finishDraftPlacement(() => {
-      if (handle === "head") {
-        state.pendingDirection = {
-          x: roundCoord(dragState.lastX),
-          y: roundCoord(dragState.lastY),
-        };
-      } else {
-        state.pendingCoords = {
-          x: roundCoord(dragState.lastX),
-          y: roundCoord(dragState.lastY),
-        };
-      }
-      syncDraftMgCollapseHint(
-        state.pendingCoords.x,
-        state.pendingCoords.y,
-        state.pendingDirection.x,
-        state.pendingDirection.y
+      return beginDraftMgSpotDrag(handle, startClient.x, startClient.y);
+    },
+    onDragMove(clientX, clientY, dragState) {
+      const coords = moveMgSpotDrag(
+        clientX,
+        clientY,
+        dragState,
+        handle === "head"
+          ? { x: state.pendingCoords.x, y: state.pendingCoords.y }
+          : { x: state.pendingDirection.x, y: state.pendingDirection.y }
       );
-    });
-  };
 
-  window.addEventListener("pointermove", onPointerMove);
-  window.addEventListener("pointerup", finishDrag);
-  window.addEventListener("pointercancel", finishDrag);
+      if (handle === "head") {
+        refreshMgSpotGroup(group, {
+          x: state.pendingCoords.x,
+          y: state.pendingCoords.y,
+          dirX: coords.x,
+          dirY: coords.y,
+        });
+        syncDraftMgCollapseHint(state.pendingCoords.x, state.pendingCoords.y, coords.x, coords.y);
+      } else {
+        refreshMgSpotGroup(group, {
+          x: coords.x,
+          y: coords.y,
+          dirX: state.pendingDirection.x,
+          dirY: state.pendingDirection.y,
+        });
+        syncDraftMgCollapseHint(coords.x, coords.y, state.pendingDirection.x, state.pendingDirection.y);
+      }
+    },
+    onTeardown() {
+      group.classList.remove("map-mg-spot--dragging");
+    },
+    onDragEnd(dragState) {
+      finishDraftPlacement(() => {
+        if (handle === "head") {
+          state.pendingDirection = {
+            x: roundCoord(dragState.lastX),
+            y: roundCoord(dragState.lastY),
+          };
+        } else {
+          state.pendingCoords = {
+            x: roundCoord(dragState.lastX),
+            y: roundCoord(dragState.lastY),
+          };
+        }
+        syncDraftMgCollapseHint(
+          state.pendingCoords.x,
+          state.pendingCoords.y,
+          state.pendingDirection.x,
+          state.pendingDirection.y
+        );
+      });
+    },
+  });
 }
