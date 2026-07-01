@@ -1,0 +1,238 @@
+.sidebar__hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.sidebar__search {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121612;
+  color: var(--text);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.sidebar__search:focus {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.sidebar__search::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.sidebar__select-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sidebar__select-label--compact {
+  margin-top: 0.75rem;
+}
+
+.sidebar__select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121612;
+  color: var(--text);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+}
+
+.sidebar__select:focus {
+  outline: 2px solid var(--accent-dim);
+  outline-offset: 1px;
+}
+
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sidebar__map-toggles {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.toggle-row input {
+  accent-color: var(--accent);
+}
+
+.pin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pin-list__row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: stretch;
+}
+
+.pin-list__item {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: inherit;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.pin-list__edit {
+  flex-shrink: 0;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.pin-list__item:hover,
+.pin-list__item.is-active {
+  border-color: var(--accent-dim);
+  transform: translateX(2px);
+}
+
+.pin-list__item.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-panel));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.pin-list__row.is-active .pin-list__edit {
+  border-color: var(--accent);
+}
+
+.pin-list__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pin-list__tag {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.pin-list__tag--mg-spot {
+  color: #ffb4a8;
+  background: rgba(255, 0, 0, 0.18);
+  border-color: rgba(255, 0, 0, 0.45);
+}
+
+.pin-list__tag--climb {
+  color: #a8e8b8;
+  background: rgba(61, 173, 92, 0.18);
+  border-color: rgba(61, 173, 92, 0.45);
+}
+
+.pin-list__title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pin-list__title-text {
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pin-list__tag--faction-axis {
+  color: #e84040 !important;
+  background: rgba(232, 64, 64, 0.18) !important;
+  border-color: rgba(232, 64, 64, 0.45) !important;
+}
+
+.pin-list__tag--faction-allies {
+  color: #4682d4 !important;
+  background: rgba(70, 130, 212, 0.18) !important;
+  border-color: rgba(70, 130, 212, 0.45) !important;
+}
+
+.pin-list__tag--faction-neutral {
+  color: #d0d4d0 !important;
+  background: rgba(208, 212, 208, 0.12) !important;
+  border-color: rgba(208, 212, 208, 0.35) !important;
+}
+
+.pin-list__sub-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.pin-list__position-code {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.pin-list__requires {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.pin-list__requires-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.45rem;
+  line-height: 1;
+}
+
+.pin-list__requires-item i {
+  font-size: 0.45rem;
+  color: var(--text);
+  line-height: 1;
+}

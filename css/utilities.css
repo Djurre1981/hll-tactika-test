@@ -1,0 +1,7 @@
+.hidden {
+  display: none !important;
+}
+
+#app-root.hidden {
+  display: none;
+}

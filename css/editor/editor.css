@@ -1,0 +1,51 @@
+.map-crosshair {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 3px solid #f0d998;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 20;
+  box-shadow:
+    0 0 0 6px rgba(196, 163, 90, 0.22),
+    0 0 18px rgba(196, 163, 90, 0.55);
+  animation: crosshair-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes crosshair-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 0.88;
+  }
+}
+
+.map-crosshair::before,
+.map-crosshair::after {
+  content: "";
+  position: absolute;
+  background: #f0d998;
+  box-shadow: 0 0 8px rgba(240, 217, 152, 0.65);
+}
+
+.map-crosshair::before {
+  left: 50%;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  margin-left: -1.5px;
+}
+
+.map-crosshair::after {
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  margin-top: -1.5px;
+}

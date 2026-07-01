@@ -1,0 +1,112 @@
+.map-mg-spots-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 5;
+  outline: none;
+}
+
+.map-mg-spots-layer--draft {
+  z-index: 6;
+}
+
+.map-mg-spot {
+  pointer-events: visiblePainted;
+  cursor: pointer;
+  outline: none;
+}
+
+.map-mg-spot:focus,
+.map-mg-spot:focus-visible {
+  outline: none;
+}
+
+.map-mg-spot--draft {
+  pointer-events: none;
+}
+
+.map-mg-spot.mg-spot--axis {
+  --mg-spot-head-fill: var(--pin-axis);
+}
+
+.map-mg-spot.mg-spot--axis .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-axis-glow));
+}
+
+.map-mg-spot.mg-spot--allies {
+  --mg-spot-head-fill: var(--pin-allies);
+}
+
+.map-mg-spot.mg-spot--allies .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-allies-glow));
+}
+
+.map-mg-spot.mg-spot--neutral {
+  --mg-spot-head-fill: var(--pin-neutral);
+}
+
+.map-mg-spot.mg-spot--neutral .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-neutral-glow));
+}
+
+.map-mg-spot.mg-spot--no-media {
+  --mg-spot-head-fill: var(--pin-mg-no-media);
+}
+
+.map-mg-spot.mg-spot--no-media .mg-spot-head {
+  filter: drop-shadow(0 0 6px var(--pin-mg-no-media-glow));
+}
+
+.map-mg-spot--draft .mg-spot-head {
+  stroke-width: 0.20;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
+}
+
+.mg-spot-stem {
+  stroke: #000;
+  stroke-linecap: round;
+  stroke-dasharray: 0 0.35;
+  fill: none;
+}
+
+.mg-spot-stem--preview {
+  opacity: 0.6;
+}
+
+.mg-spot-base {
+  fill: #000;
+}
+
+.mg-spot-head {
+  fill: var(--mg-spot-head-fill, #ff0000);
+  stroke: #000;
+  stroke-width: 0.15;
+  stroke-linejoin: miter;
+  paint-order: stroke fill;
+}
+
+.mg-spot-head--preview {
+  opacity: 0.8;
+}
+
+.map-mg-spot:not(.map-mg-spot--draft) .mg-spot-stem,
+.map-mg-spot:not(.map-mg-spot--draft) .mg-spot-base {
+  opacity: 0.5;
+}
+
+.map-mg-spot:not(.map-mg-spot--draft).is-highlighted .mg-spot-stem,
+.map-mg-spot:not(.map-mg-spot--draft).is-highlighted .mg-spot-base {
+  opacity: 1;
+}
+
+.map-mg-spot .mg-spot-head {
+  opacity: 1;
+}
+
+.map-mg-spot.is-highlighted .mg-spot-head {
+  stroke-width: 0.20;
+  filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.5));
+}
