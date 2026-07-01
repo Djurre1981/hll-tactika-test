@@ -1,18 +1,21 @@
 import { state } from "../state.js";
+import { deriveLegacyMediaFields, getPinMediaItems } from "../helpers/pin-media.js";
 import { updatePin } from "../api/pins.js";
 import { roundCoord } from "./position-code.js";
 import { updatePinElementPosition } from "./proximity.js";
 import { renderPinList } from "../ui/sidebar.js";
 
 function buildPinPayload(pin) {
+  const mediaFields = deriveLegacyMediaFields(getPinMediaItems(pin));
   const payload = {
     title: pin.title,
     description: pin.description || "",
     tag: pin.tag,
     x: pin.x,
     y: pin.y,
-    videoUrl: pin.videoUrl || "",
-    thumbnail: pin.thumbnail || "",
+    videoUrl: mediaFields.videoUrl,
+    thumbnail: mediaFields.thumbnail || "",
+    mediaItems: mediaFields.mediaItems,
     faction: pin.faction || "neutral",
     requires: pin.requires || {},
   };

@@ -8,10 +8,11 @@ import { showPreview, movePreview, scheduleHidePreview } from "./pin-preview.js"
 import { openModal } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
 import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
+import { pinHasMedia } from "../helpers/pin-media.js";
 
 export function getPinStylingClasses(pin) {
   const classes = [];
-  if (!pin.thumbnail && !pin.videoUrl) {
+  if (!pinHasMedia(pin)) {
     classes.push("pin--no-media");
   }
   return classes;
@@ -69,7 +70,7 @@ export function renderPins() {
       });
       const pf = pin.faction || "neutral";
       group.classList.add(`mg-spot--${pf}`);
-      if (!pin.thumbnail && !pin.videoUrl) {
+      if (!pinHasMedia(pin)) {
         group.classList.add("mg-spot--no-media");
       }
       group.setAttribute("role", "button");

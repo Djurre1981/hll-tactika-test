@@ -9,6 +9,8 @@ import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, isPlacementComplete, updatePlacementUi, syncViewportFormClasses } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
 import { updateFactionRequires, setRequiresData, resetRequires } from "../editor/form-handler.js";
+import { resetPinMediaForm, setPinMediaFormItems } from "../editor/media-form.js";
+import { getPinMediaItems } from "../helpers/pin-media.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { hideFormContextMenu } from "./form-context-menu.js";
@@ -72,14 +74,6 @@ function getPinDescription() {
   return document.getElementById("pin-description");
 }
 
-function getPinVideo() {
-  return document.getElementById("pin-video");
-}
-
-function getPinThumbnail() {
-  return document.getElementById("pin-thumbnail");
-}
-
 function getDraftPin() {
   return document.getElementById("map-draft-pin");
 }
@@ -124,6 +118,7 @@ function resetPinFormUi() {
   getBtnSavePin().disabled = true;
   getBtnSavePin().textContent = "Save pin";
   setPinFormTag(DEFAULT_PIN_TAG);
+  resetPinMediaForm();
 }
 
 function transitionEditorMode({
@@ -244,6 +239,7 @@ function resetAddForm() {
   applyEditorFactionToUi();
   updateFactionRequires(state.pendingFaction);
   resetRequires();
+  resetPinMediaForm();
   const editPanelHint = getEditPanelHint();
   if (editPanelHint) editPanelHint.textContent = "";
 }
@@ -300,8 +296,7 @@ export function startEditPin(pin, { focus = false } = {}) {
   getEditPanel().classList.remove("hidden");
   getPinTitle().value = pin.title;
   getPinDescription().value = pin.description || "";
-  getPinVideo().value = pin.videoUrl || "";
-  getPinThumbnail().value = pin.thumbnail || "";
+  setPinMediaFormItems(getPinMediaItems(pin));
   state.pendingFaction = pin.faction || "neutral";
   setPinFormTag(pin.tag);
   applyEditorFactionToUi();

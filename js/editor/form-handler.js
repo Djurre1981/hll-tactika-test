@@ -1,8 +1,9 @@
 import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
-import { normalizeVideoUrl, isSupportedVideoUrl, getUnsupportedVideoUrlMessage } from "../utils/video.js";
+import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag } from "./placement-mode.js";
+import { validatePinMediaForm } from "./media-form.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Belgian Gate", icon: "fa-archway" },
@@ -19,14 +20,6 @@ function getPinTitle() {
 
 function getPinDescription() {
   return document.getElementById("pin-description");
-}
-
-function getPinVideo() {
-  return document.getElementById("pin-video");
-}
-
-function getPinThumbnail() {
-  return document.getElementById("pin-thumbnail");
 }
 
 function getBtnSavePin() {
@@ -131,20 +124,16 @@ export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToE
   const tag = getPinFormTag();
   if (!tag) return;
 
-  const pinVideo = getPinVideo();
-  const videoUrl = normalizeVideoUrl(pinVideo.value);
-  if (videoUrl && !isSupportedVideoUrl(videoUrl)) {
-    pinVideo.setCustomValidity(getUnsupportedVideoUrlMessage());
-    pinVideo.reportValidity();
-    return;
-  }
-  pinVideo.setCustomValidity("");
+  const mediaValidation = validatePinMediaForm();
+  if (!mediaValidation.valid) return;
+  const mediaFields = deriveLegacyMediaFields(mediaValidation.items);
 
   const pinData = {
     title: getPinTitle().value.trim(),
     description: getPinDescription().value.trim(),
-    videoUrl: videoUrl || undefined,
-    thumbnail: getPinThumbnail().value.trim() || undefined,
+    videoUrl: mediaFields.videoUrl,
+    thumbnail: mediaFields.thumbnail || "",
+    mediaItems: mediaFields.mediaItems,
     tag,
     x: state.pendingCoords.x,
     y: state.pendingCoords.y,

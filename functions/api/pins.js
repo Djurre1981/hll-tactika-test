@@ -30,6 +30,15 @@ function buildPinFromBody(pin, createdBy) {
   next.faction = pin.faction || "neutral";
   next.requires = pin.requires || {};
 
+  if (Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0) {
+    next.mediaItems = pin.mediaItems
+      .map((item) => ({
+        kind: item?.kind === "image" ? "image" : "video",
+        url: String(item?.url || "").trim(),
+      }))
+      .filter((item) => item.url);
+  }
+
   if (next.tag === "mg-spot") {
     const dirX = Number(pin.dirX);
     const dirY = Number(pin.dirY);

@@ -7,20 +7,34 @@ import {
   youtubeThumbnail,
 } from "../utils/video.js";
 import { resolveMedalClip } from "../utils/medal.js";
-import { REQUIRES_ICON_CONFIG } from "./pin-modal.js";
+import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
+import { getPinMediaItems } from "../helpers/pin-media.js";
 
-export async function getPinPlayback(pin) {
-  let playbackUrl = normalizeVideoUrl(pin.videoUrl);
-  let thumbnail = pin.thumbnail || youtubeThumbnail(playbackUrl);
+export async function getMediaPlayback(mediaItem) {
+  if (!mediaItem) {
+    return { playbackUrl: null, thumbnail: null, isImage: false };
+  }
 
-  if (isMedalUrl(pin.videoUrl)) {
-    const medal = await resolveMedalClip(pin.videoUrl);
+  if (mediaItem.kind === "image") {
+    return { playbackUrl: mediaItem.url, thumbnail: mediaItem.url, isImage: true };
+  }
+
+  let playbackUrl = normalizeVideoUrl(mediaItem.url);
+  let thumbnail = youtubeThumbnail(playbackUrl);
+
+  if (isMedalUrl(mediaItem.url)) {
+    const medal = await resolveMedalClip(mediaItem.url);
     playbackUrl = medal.contentUrl;
     thumbnail = thumbnail || medal.thumbnailUrl;
   }
 
-  return { playbackUrl, thumbnail };
+  return { playbackUrl, thumbnail, isImage: false, sourceUrl: mediaItem.url };
+}
+
+export async function getPinPlayback(pin, mediaIndex = 0) {
+  const mediaItem = getPinMediaItems(pin)[mediaIndex];
+  return getMediaPlayback(mediaItem);
 }
 
 function getPreviewTooltip() {
@@ -60,7 +74,7 @@ function renderPreviewRequires(pin) {
 
   for (const [key, value] of Object.entries(requires)) {
     if (!value) continue;
-    const config = REQUIRES_ICON_CONFIG[key];
+    const config = getRequiresDisplayConfig(key, value, pin.faction || "neutral");
     if (!config) continue;
     const item = document.createElement("span");
     item.className = `preview-tooltip__requires-item is-requires--${key}`;
@@ -71,7 +85,7 @@ function renderPreviewRequires(pin) {
 }
 
 export function showPreview(pin, event) {
-  if (state.panelMode !== null) return;
+  if (!state.previewEnabled || state.panelMode !== null) return;
 
   clearTimeout(state.previewHideTimer);
 
@@ -102,6 +116,14 @@ export function showPreview(pin, event) {
 
   renderPreviewRequires(pin);
 
+  const firstMedia = getPinMediaItems(pin)[0];
+  if (!firstMedia) {
+    getPreviewMedia().innerHTML = "";
+    getPreviewTooltip().classList.remove("hidden");
+    movePreview(event);
+    return;
+  }
+
   getPreviewMedia().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   getPreviewTooltip().classList.remove("hidden");
   movePreview(event);
@@ -112,12 +134,12 @@ export function showPreview(pin, event) {
 
 export async function loadPreviewMedia(pin, previewPinId) {
   try {
-    const { playbackUrl, thumbnail } = await getPinPlayback(pin);
+    const { playbackUrl, thumbnail, isImage } = await getPinPlayback(pin);
     if (state.highlightedPinId !== previewPinId) return;
 
     const previewMedia = getPreviewMedia();
     previewMedia.innerHTML = "";
-    if (thumbnail) {
+    if (isImage || thumbnail) {
       const img = document.createElement("img");
       img.src = thumbnail;
       img.alt = `${pin.title} preview`;

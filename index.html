@@ -78,11 +78,15 @@
         <div class="sidebar__map-toggles">
           <label class="toggle-row">
             <input type="checkbox" id="toggle-grid" />
-            <span>Toggle Grid</span>
+            <span>Grid</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" id="toggle-strongpoints" checked />
             <span>Strongpoints</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" id="toggle-preview" checked />
+            <span>Tooltip Preview</span>
           </label>
         </div>
       </div>
@@ -170,19 +174,21 @@
             Description
             <textarea id="pin-description" rows="6" placeholder="Short note about the trick"></textarea>
           </label>
-          <label>
-            Image Link
-            <input type="text" id="pin-thumbnail" placeholder="Image URL for hover preview" />
-          </label>
-          <label>
-            Video Link
-            <input type="text" id="pin-video" placeholder="https://..." />
+          <fieldset class="pin-form__media">
+            <legend>Images &amp; Videos</legend>
+            <div class="pin-media-list" id="pin-media-list"></div>
+            <button type="button" class="btn btn--ghost pin-form__add-media" id="btn-add-media">
+              Add link
+            </button>
             <p class="pin-form__video-help">
-              Paste a link from <strong>YouTube</strong>, <strong>Medal.tv</strong>,
-              <strong>Discord</strong> (cdn.discordapp.com attachments), <strong>Vimeo</strong>,
-              or a direct <strong>.mp4</strong> URL. The type is detected automatically.
+              Paste any supported link — the type is detected automatically. The first entry
+              is used for hover preview. Videos:
+              <strong>YouTube</strong>, <strong>Medal.tv</strong>,
+              <strong>Discord</strong>, <strong>Vimeo</strong>, or <strong>.mp4</strong>.
+              Images: direct links ending in <strong>.jpg</strong>, <strong>.png</strong>,
+              <strong>.webp</strong>, etc.
             </p>
-          </label>
+          </fieldset>
           <fieldset class="pin-form__tags">
             <legend>Type of Spot</legend>
             <div class="tag-filters pin-form__tag-options" id="pin-tag-options" role="radiogroup" aria-label="Pin tag">
@@ -345,8 +351,33 @@
         <div class="video-modal__requires hidden" id="modal-requires"></div>
         <p id="modal-description"></p>
       </div>
-      <div class="video-modal__player-wrap">
+      <div class="video-modal__player-wrap" id="modal-player-wrap">
+        <button
+          type="button"
+          class="video-modal__nav video-modal__nav--prev hidden"
+          id="modal-media-prev"
+          aria-label="Previous media"
+        >
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
         <div class="video-modal__player" id="modal-player"></div>
+        <button
+          type="button"
+          class="video-modal__fullscreen hidden"
+          id="modal-media-fullscreen"
+          aria-label="Enter fullscreen"
+        >
+          <i class="fa-solid fa-expand video-modal__fullscreen-icon" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="video-modal__nav video-modal__nav--next hidden"
+          id="modal-media-next"
+          aria-label="Next media"
+        >
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+        <span class="video-modal__media-counter hidden" id="modal-media-counter"></span>
       </div>
       <p id="modal-uploader" class="video-modal__uploader hidden"></p>
     </div>

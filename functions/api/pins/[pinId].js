@@ -38,6 +38,19 @@ function applyPinUpdates(existing, pin) {
   if (pin.requires !== undefined) {
     updated.requires = pin.requires;
   }
+  if (Array.isArray(pin.mediaItems)) {
+    const mediaItems = pin.mediaItems
+      .map((item) => ({
+        kind: item?.kind === "image" ? "image" : "video",
+        url: String(item?.url || "").trim(),
+      }))
+      .filter((item) => item.url);
+    if (mediaItems.length > 0) {
+      updated.mediaItems = mediaItems;
+    } else {
+      delete updated.mediaItems;
+    }
+  }
   if (pin.dirX !== undefined) {
     updated.dirX = Number(pin.dirX);
   }

@@ -8,6 +8,7 @@ export const state = {
   panelMode: null,
   editingPinId: null,
   modalPin: null,
+  modalMediaIndex: 0,
   pendingCoords: null,
   pendingDirection: null,
   highlightedPinId: null,
@@ -23,6 +24,7 @@ export const state = {
   mgCollapseHint: false,
   mapViewer: null,
   mapOverlays: null,
+  previewEnabled: true,
 };
 
 export const MAP_STORAGE_KEY = "hll-climb-selected-map";

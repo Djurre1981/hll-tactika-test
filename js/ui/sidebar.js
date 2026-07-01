@@ -5,7 +5,7 @@ import { escapeHtml } from "../helpers/sanitizer.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { canModifyPin } from "../helpers/permissions.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
-import { openModal, REQUIRES_ICON_CONFIG } from "./pin-modal.js";
+import { openModal, getRequiresDisplayConfig } from "./pin-modal.js";
 
 function isEditorBrowseMode() {
   return state.panelMode === "browse";
@@ -32,7 +32,7 @@ export function renderPinList() {
     if (pin.requires) {
       for (const [key, value] of Object.entries(pin.requires)) {
         if (!value) continue;
-        const config = REQUIRES_ICON_CONFIG[key];
+        const config = getRequiresDisplayConfig(key, value, pin.faction || "neutral");
         if (!config) continue;
         requiresHtml += `<span class="pin-list__requires-item is-requires--${key}" title="${escapeHtml(config.label)}"><i class="${config.icon}" aria-hidden="true"></i></span>`;
       }

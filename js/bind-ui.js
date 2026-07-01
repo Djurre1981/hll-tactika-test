@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { canModifyPin } from "./helpers/permissions.js";
 import { persistToggles } from "./ui/toggles.js";
+import { hidePreviewImmediately } from "./ui/pin-preview.js";
 import {
   toggleEditMode,
   exitEditorMode,
@@ -14,6 +15,7 @@ import {
   initRequiresCheckboxes,
   updateFactionRequires,
 } from "./editor/form-handler.js";
+import { initPinMediaForm } from "./editor/media-form.js";
 import {
   onPinContextMenuAction,
   hidePinContextMenu,
@@ -23,7 +25,7 @@ import {
   onFormContextMenuAction,
   hideFormContextMenu,
 } from "./ui/form-context-menu.js";
-import { closeModal, clearModalPlayer } from "./ui/pin-modal.js";
+import { closeModal, clearModalPlayer, initModalMediaNav } from "./ui/pin-modal.js";
 import {
   setPinFormTag,
   getPlacementHint,
@@ -181,6 +183,13 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
     persistToggles();
   });
 
+  const togglePreview = document.getElementById("toggle-preview");
+  togglePreview?.addEventListener("change", () => {
+    state.previewEnabled = togglePreview.checked;
+    if (!togglePreview.checked) hidePreviewImmediately();
+    persistToggles();
+  });
+
   document.querySelectorAll("#tag-filters [data-tag]").forEach((button) => {
     button.addEventListener("click", () => {
       const tagId = button.dataset.tag;
@@ -231,5 +240,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   });
 
   initRequiresCheckboxes();
+  initPinMediaForm();
+  initModalMediaNav();
   initDraftPinDrag();
 }

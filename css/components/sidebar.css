@@ -77,20 +77,21 @@
 .sidebar__map-toggles {
   display: flex;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 1.05rem;
   margin-top: 0.65rem;
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.25rem;
   font-size: 0.82rem;
   color: var(--text);
   cursor: pointer;
 }
 
 .toggle-row input {
+  margin: 0;
   accent-color: var(--accent);
 }
 
