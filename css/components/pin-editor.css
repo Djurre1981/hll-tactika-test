@@ -43,7 +43,7 @@
 .pin-form textarea {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #121612;
   color: var(--text);
   padding: 0.5rem 0.6rem;
@@ -66,7 +66,7 @@
   font-size: 0.78rem;
   color: var(--accent);
   padding: 0.45rem 0.55rem;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(196, 163, 90, 0.08);
   border: 1px dashed var(--accent-dim);
 }
@@ -148,7 +148,7 @@
 .pin-media-row__url {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #121612;
   color: var(--text);
   padding: 0.45rem 0.55rem;
@@ -159,7 +159,7 @@
   width: 2rem;
   height: 2rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--text-muted);
   font-size: 1.1rem;
@@ -218,7 +218,7 @@
 .pin-form__video-row input {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #121612;
   color: var(--text);
   padding: 0.5rem 0.6rem;
@@ -266,7 +266,7 @@
   min-height: 2.6rem;
   padding: 0.32rem 0.2rem;
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 4px;
   background: transparent;
   color: var(--text-muted);
   font-family: inherit;

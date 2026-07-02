@@ -23,7 +23,8 @@
   --pin-climb: #39ff14;
   --pin-climb-glow: rgba(57, 255, 20, 0.55);
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  --radius: 10px;
+  --radius: 7px;
+  --radius-pill: 10px;
   --font-display: "Barlow Condensed", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
 }
@@ -51,7 +52,7 @@ body {
 
 .btn {
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 0.45rem 0.85rem;
   font: inherit;
   font-size: 0.82rem;

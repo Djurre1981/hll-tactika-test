@@ -17,7 +17,7 @@
   width: 100%;
   margin-bottom: 0.75rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #121612;
   color: var(--text);
   padding: 0.5rem 0.6rem;
@@ -56,7 +56,7 @@
 .sidebar__select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #121612;
   color: var(--text);
   padding: 0.5rem 0.6rem;
@@ -188,7 +188,7 @@
   text-transform: lowercase;
   letter-spacing: 0.02em;
   padding: 0.12rem 0.4rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
 }
 
@@ -267,7 +267,7 @@
   width: 0.9rem;
   height: 0.9rem;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 1px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-size: 0.45rem;

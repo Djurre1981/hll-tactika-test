@@ -9,7 +9,7 @@
   width: min(420px, 100%);
   padding: 2rem 1.75rem;
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) + 4px);
+  border-radius: calc(var(--radius) + 3px);
   background: var(--bg-panel);
   box-shadow: var(--shadow);
   text-align: center;

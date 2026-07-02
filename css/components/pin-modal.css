@@ -9,7 +9,7 @@
   max-height: calc(100vh - 2rem);
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: calc(14px * var(--modal-scale));
+  border-radius: calc(10px * var(--modal-scale));
   background: var(--bg-elevated);
   color: var(--text);
   box-shadow: var(--shadow);
@@ -37,7 +37,7 @@
   width: calc(2rem * var(--modal-scale));
   height: calc(2rem * var(--modal-scale));
   border: none;
-  border-radius: calc(8px * var(--modal-scale));
+  border-radius: calc(6px * var(--modal-scale));
   background: transparent;
   color: var(--text-muted);
   font-size: calc(1.5rem * var(--modal-scale));
@@ -173,7 +173,7 @@
   width: calc(2.4rem * var(--modal-scale));
   height: calc(2.4rem * var(--modal-scale));
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   cursor: pointer;
@@ -200,7 +200,7 @@
   bottom: calc(0.65rem * var(--modal-scale));
   z-index: 2;
   padding: calc(0.15rem * var(--modal-scale)) calc(0.45rem * var(--modal-scale));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
   font-size: calc(0.72rem * var(--modal-scale));
@@ -215,7 +215,7 @@
   width: calc(2.4rem * var(--modal-scale));
   height: calc(2.4rem * var(--modal-scale));
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   cursor: pointer;
@@ -277,7 +277,7 @@
   gap: calc(0.3rem * var(--modal-scale));
   padding: calc(0.2rem * var(--modal-scale)) calc(0.4rem * var(--modal-scale));
   border: 1px solid var(--border);
-  border-radius: calc(4px * var(--modal-scale));
+  border-radius: calc(3px * var(--modal-scale));
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-size: calc(0.72rem * var(--modal-scale));
@@ -292,7 +292,7 @@
 .video-modal__player {
   aspect-ratio: 16 / 9;
   background: #000;
-  border-radius: calc(10px * var(--modal-scale));
+  border-radius: calc(7px * var(--modal-scale));
   overflow: hidden;
 }
 
