@@ -91,6 +91,23 @@
   flex-shrink: 0;
 }
 
+.map-viewport.is-booting .map-stage {
+  visibility: visible;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.map-viewport.is-booting .map-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
 .map-viewport {
   position: relative;
   width: 100%;

@@ -1,13 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="welcome-boot">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hell Let Loose — Interactive Climb Guide</title>
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("hll_authed") !== "1") return;
+        document.documentElement.classList.remove("welcome-boot");
+        document.documentElement.classList.add("app-boot");
+        var mapImage = localStorage.getItem("hll-climb-selected-map-image");
+        if (!mapImage) {
+          var mapId = localStorage.getItem("hll-climb-selected-map") || "SMDMV2";
+          mapImage = "maps/no-grid/" + mapId + "_NoGrid.webp";
+        }
+        var preload = document.createElement("link");
+        preload.rel = "preload";
+        preload.as = "image";
+        preload.href = mapImage;
+        document.head.appendChild(preload);
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="modulepreload" href="js/app.js" />
+  <style>
+    html.welcome-boot #app-header,
+    html.welcome-boot #app-root { display: none !important; }
+    html.app-boot #welcome-page { display: none !important; }
+    html.app-boot #app-root.hidden { display: block !important; }
+  </style>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/utilities.css" />
+  <link rel="stylesheet" href="css/fonts/texta.css" />
   <link rel="stylesheet" href="css/components/auth-gate.css" />
+  <link rel="stylesheet" href="css/components/welcome-page.css" />
   <link rel="stylesheet" href="css/components/map-viewer.css" />
   <link rel="stylesheet" href="css/components/map-overlays.css" />
   <link rel="stylesheet" href="css/components/sidebar.css" />
@@ -26,7 +54,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-  <header class="header">
+  <header class="header" id="app-header">
     <div class="header__brand">
       <span class="header__tag">HLL</span>
       <div>
@@ -40,7 +68,7 @@
         <button id="btn-add-pin" class="btn btn--primary header__add-pin hidden" type="button">Add Pin</button>
         <button id="btn-cancel-edit" class="btn btn--ghost hidden" type="button">Finish Edit</button>
       </div>
-      <span class="header__sep-v"></span>
+      <span class="header__sep-v hidden" id="header-toolbar-sep"></span>
       <button id="btn-admin-panel" class="btn btn--ghost hidden" type="button">Admin Panel</button>
       <div class="header__user hidden" id="header-user">
         <button type="button" class="header__user-trigger" id="header-user-trigger" aria-haspopup="true" aria-expanded="false">
@@ -54,19 +82,58 @@
     </div>
   </header>
 
-  <div class="auth-gate hidden" id="auth-gate">
-    <div class="auth-gate__card">
-      <span class="header__tag auth-gate__logo">HLL</span>
-      <h2 id="auth-gate-title">Circle members only</h2>
-      <p id="auth-gate-message" class="auth-gate__message">
-        Sign in with Steam to access trick locations and videos.
-      </p>
-      <a href="/api/auth/steam" class="btn btn--steam" id="btn-steam-login">
-        <span class="btn--steam__icon" aria-hidden="true"></span>
-        Sign in with Steam
-      </a>
+  <div class="welcome-page" id="welcome-page">
+    <video
+      id="welcome-scrub-video"
+      class="welcome-page__video"
+      data-src="assets/welcome/welcome.mp4"
+      muted
+      playsinline
+      disablePictureInPicture
+      disableRemotePlayback
+    ></video>
+    <div class="welcome-page__gradient" aria-hidden="true"></div>
+    <nav class="welcome-page__nav" aria-label="Welcome">
+      <button type="button" class="welcome-page__nav-link" id="btn-welcome-sign-in">Sign in</button>
+      <span class="welcome-page__nav-sep" aria-hidden="true"></span>
+      <a
+        class="welcome-page__nav-link"
+        href="https://discord.gg/kDaK9wpr8y"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Join us</a>
+    </nav>
+    <div class="welcome-page__brand">
+      <p class="welcome-page__intro" id="welcome-intro" aria-live="polite"></p>
+      <div class="welcome-page__logo-wrap">
+        <img
+          class="welcome-page__logo"
+          src="assets/logos/tactika-full-logo.svg"
+          alt="Tactika"
+          width="840"
+          height="472"
+        />
+      </div>
     </div>
   </div>
+
+  <dialog class="auth-gate" id="auth-gate">
+    <div class="auth-gate__card">
+      <button type="button" class="auth-gate__close" id="btn-auth-close" aria-label="Close">&times;</button>
+      <h2 id="auth-gate-title">CIRCLE COMP LOGIN</h2>
+      <p id="auth-gate-message" class="auth-gate__message">
+        Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.
+      </p>
+      <a href="/api/auth/steam" class="btn btn--steam" id="btn-steam-login">
+        <span class="btn--steam__icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 2.64.85 5.08 2.29 7.07L.1 24l5.08-1.33A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12S18.63 0 12 0zm6.49 7.38l-1.81 5.25-5.31-.09-4.12 3.81-.64-3.88 4.43-3.52 6-3.07z"/>
+          </svg>
+        </span>
+        <span class="btn--steam__label">Sign in with Steam</span>
+      </a>
+    </div>
+  </dialog>
 
   <div id="app-root" class="hidden">
   <main class="layout">
@@ -239,7 +306,7 @@
         </div>
       </div>
 
-      <div class="map-viewport" id="map-viewport">
+      <div class="map-viewport is-booting" id="map-viewport">
         <div class="map-stage" id="map-stage">
           <img
             id="map-image"
@@ -248,6 +315,19 @@
             alt="Hell Let Loose tactical map"
             draggable="false"
           />
+          <script>
+            (function () {
+              try {
+                if (localStorage.getItem("hll_authed") !== "1") return;
+                var mapImage = localStorage.getItem("hll-climb-selected-map-image");
+                if (!mapImage) {
+                  var mapId = localStorage.getItem("hll-climb-selected-map") || "SMDMV2";
+                  mapImage = "maps/no-grid/" + mapId + "_NoGrid.webp";
+                }
+                document.getElementById("map-image").src = mapImage;
+              } catch (_) {}
+            })();
+          </script>
           <div class="map-pins" id="map-pins"></div>
           <div class="map-pins-draft" id="map-pins-draft" aria-hidden="true">
             <svg
@@ -383,6 +463,6 @@
     </div>
   </dialog>
 
-  <script src="js/app.js?t=1" type="module"></script>
+  <script src="js/app.js" type="module"></script>
 </body>
 </html>

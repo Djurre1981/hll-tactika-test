@@ -28,6 +28,7 @@ export const state = {
 };
 
 export const MAP_STORAGE_KEY = "hll-climb-selected-map";
+export const MAP_IMAGE_STORAGE_KEY = "hll-climb-selected-map-image";
 export const TOGGLE_STORAGE_KEY = "hll-climb-overlay-tchoggles";
 export const TAG_FILTER_STORAGE_KEY = "hll-climb-tag-filters";
 export const FACTION_FILTER_STORAGE_KEY = "hll-climb-faction-filters";
@@ -37,8 +38,18 @@ export function loadSelectedMapId(fallbackId) {
   return stored || fallbackId || "SMDMV2";
 }
 
-export function saveSelectedMapId(mapId) {
+export function loadSelectedMapImage(fallbackId) {
+  const stored = localStorage.getItem(MAP_IMAGE_STORAGE_KEY);
+  if (stored) return stored;
+  const mapId = loadSelectedMapId(fallbackId);
+  return `maps/no-grid/${mapId}_NoGrid.webp`;
+}
+
+export function saveSelectedMapId(mapId, mapImage) {
   localStorage.setItem(MAP_STORAGE_KEY, mapId);
+  if (mapImage) {
+    localStorage.setItem(MAP_IMAGE_STORAGE_KEY, mapImage);
+  }
 }
 
 export function loadToggleState() {
