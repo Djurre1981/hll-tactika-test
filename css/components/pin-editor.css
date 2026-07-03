@@ -18,6 +18,17 @@
 
 .edit-panel__back {
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.25s var(--ease-smooth), border-color 0.25s var(--ease-smooth);
+}
+
+.edit-panel__back:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
 
 .pin-form textarea#pin-description {

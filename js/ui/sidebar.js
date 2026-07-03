@@ -19,10 +19,13 @@ export function renderPinList() {
     const row = document.createElement("li");
     row.className = "pin-list__row";
 
-    const item = document.createElement("button");
-    item.type = "button";
+    const item = document.createElement("div");
     item.className = "pin-list__item";
-    item.dataset.id = pin.id;
+
+    const body = document.createElement("button");
+    body.type = "button";
+    body.className = "pin-list__body";
+    body.dataset.id = pin.id;
 
     const faction = pin.faction || "neutral";
 
@@ -38,20 +41,20 @@ export function renderPinList() {
       }
     }
 
-    item.innerHTML = `
-      <span class="pin-list__title-row">
-        <span class="pin-list__title">
-          <span class="pin-list__title-text">${escapeHtml(pin.title)}</span>
-        </span>
-        <span class="pin-list__tag pin-list__tag--${pin.tag}${pin.tag === "mg-spot" ? ` pin-list__tag--faction-${faction}` : ""}">${escapeHtml(tag?.label || pin.tag)}</span>
+    const tagLabel = tag?.shortLabel || (tag?.label || pin.tag).slice(0, 2).toUpperCase();
+
+    body.innerHTML = `
+      <span class="pin-list__tag pin-list__tag--${pin.tag}${pin.tag === "mg-spot" ? ` pin-list__tag--faction-${faction}` : ""}">${escapeHtml(tagLabel)}</span>
+      <span class="pin-list__title">
+        <span class="pin-list__title-text">${escapeHtml(pin.title)}</span>
       </span>
-      <span class="pin-list__sub-row">
+      <span class="pin-list__meta">
         <span class="pin-list__position-code">${posCode}</span>
         ${requiresHtml ? `<span class="pin-list__requires">${requiresHtml}</span>` : ""}
       </span>
     `;
 
-    item.addEventListener("click", () => {
+    body.addEventListener("click", () => {
       focusPin(pin);
     });
 
@@ -72,21 +75,24 @@ export function renderPinList() {
         event.stopPropagation();
         document.dispatchEvent(new CustomEvent("pin-list-edit", { detail: { pinId: pin.id } }));
       });
+      item.appendChild(body);
       row.appendChild(item);
       row.appendChild(editButton);
     } else if (!isEditorBrowseMode()) {
       const viewButton = document.createElement("button");
       viewButton.type = "button";
-      viewButton.className = "pin-list__action pin-list__view btn btn--ghost";
+      viewButton.className = "pin-list__view";
       viewButton.title = "View trick";
-      viewButton.textContent = "View";
+      viewButton.innerHTML = '<svg class="pin-list__view-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.25 2.25 8.75 6l-4.5 3.75" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       viewButton.addEventListener("click", (event) => {
         event.stopPropagation();
         openModal(pin);
       });
+      item.appendChild(body);
+      item.appendChild(viewButton);
       row.appendChild(item);
-      row.appendChild(viewButton);
     } else {
+      item.appendChild(body);
       row.appendChild(item);
     }
 

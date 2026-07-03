@@ -25,8 +25,8 @@
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
   --radius: 7px;
   --radius-pill: 10px;
-  --font-display: "Barlow Condensed", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-display: "Texta Alt", system-ui, sans-serif;
+  --font-body: "Texta Alt", system-ui, sans-serif;
 }
 
 *,
@@ -43,9 +43,8 @@ body {
 
 body {
   font-family: var(--font-body);
-  background:
-    radial-gradient(ellipse at top, #1a221c 0%, var(--bg) 55%),
-    var(--bg);
+  font-weight: 300;
+  background: var(--bg);
   color: var(--text);
   overflow: hidden;
 }
@@ -85,10 +84,6 @@ body {
 .btn--ghost:hover {
   border-color: var(--accent-dim);
   color: var(--accent);
-}
-
-#btn-toggle-edit.btn--ghost:hover {
-  color: var(--text);
 }
 
 .btn--icon {

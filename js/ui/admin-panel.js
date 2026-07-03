@@ -41,6 +41,12 @@ export function initAdminPanel() {
 
   els.openButton?.classList.remove("hidden");
   els.openButton?.addEventListener("click", openPanel);
+
+  const avatarWrap = els.openButton?.closest(".user-cluster__avatar-wrap");
+  avatarWrap?.addEventListener("mouseleave", () => {
+    avatarWrap.classList.remove("is-menu-dismissed");
+  });
+
   els.closeButton?.addEventListener("click", closePanel);
   els.panel?.addEventListener("click", (event) => {
     if (event.target === els.panel) {
@@ -50,7 +56,14 @@ export function initAdminPanel() {
   els.form?.addEventListener("submit", onAddUser);
 }
 
+function dismissUserMenu() {
+  const wrap = els.openButton?.closest(".user-cluster__avatar-wrap");
+  wrap?.classList.add("is-menu-dismissed");
+  document.activeElement?.blur();
+}
+
 function openPanel() {
+  dismissUserMenu();
   els.panel?.showModal();
   setStatus("");
   void loadUsers();

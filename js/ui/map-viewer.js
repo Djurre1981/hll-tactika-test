@@ -18,7 +18,14 @@ export class MapViewer {
     this.onTransform = null;
 
     this.bindEvents();
-    this.fitToView();
+  }
+
+  /** Re-fit after chrome animations / late layout so centering matches sidebar. */
+  scheduleLayoutFit() {
+    const fit = () => this.fitToView();
+    requestAnimationFrame(() => requestAnimationFrame(fit));
+    const sidebar = document.getElementById("sidebar");
+    sidebar?.addEventListener("animationend", fit, { once: true });
   }
 
   bindEvents() {
@@ -40,6 +47,32 @@ export class MapViewer {
     this.viewport.classList.toggle("is-editor-mode", enabled);
   }
 
+  getVisibleBounds() {
+    const rect = this.viewport.getBoundingClientRect();
+    const sidebar = document.getElementById("sidebar");
+    let visibleLeft = 0;
+
+    if (sidebar) {
+      const sidebarRect = sidebar.getBoundingClientRect();
+      if (sidebarRect.right > rect.left && sidebarRect.left < rect.right) {
+        visibleLeft = Math.max(0, sidebarRect.right - rect.left);
+      }
+    }
+
+    const visibleWidth = rect.width - visibleLeft;
+
+    return {
+      left: visibleLeft,
+      width: visibleWidth,
+      height: rect.height,
+      centerX: visibleLeft + visibleWidth / 2,
+    };
+  }
+
+  getVisibleCenterX() {
+    return this.getVisibleBounds().centerX;
+  }
+
   fitToView() {
     const rect = this.viewport.getBoundingClientRect();
     const imgW = this.image.naturalWidth || this.image.width;
@@ -48,8 +81,9 @@ export class MapViewer {
     if (!imgW || !imgH) return;
 
     this.scale = Math.min(this.getMinScale(), 1);
-    this.translateX = (rect.width - imgW * this.scale) / 2;
+    this.translateX = this.getVisibleCenterX() - (imgW * this.scale) / 2;
     this.translateY = (rect.height - imgH * this.scale) / 2;
+    this.clampTranslation();
     this.applyTransform();
   }
 
@@ -75,12 +109,12 @@ export class MapViewer {
 
   zoomIn() {
     const rect = this.viewport.getBoundingClientRect();
-    this.zoomBy(ZOOM_STEP, rect.width / 2, rect.height / 2);
+    this.zoomBy(ZOOM_STEP, this.getVisibleCenterX(), rect.height / 2);
   }
 
   zoomOut() {
     const rect = this.viewport.getBoundingClientRect();
-    this.zoomBy(1 / ZOOM_STEP, rect.width / 2, rect.height / 2);
+    this.zoomBy(1 / ZOOM_STEP, this.getVisibleCenterX(), rect.height / 2);
   }
 
   onWheel(event) {
@@ -123,13 +157,13 @@ export class MapViewer {
   }
 
   getMinScale() {
-    const rect = this.viewport.getBoundingClientRect();
+    const bounds = this.getVisibleBounds();
     const imgW = this.image.naturalWidth || this.image.width;
     const imgH = this.image.naturalHeight || this.image.height;
 
-    if (!imgW || !imgH || !rect.width || !rect.height) return 0.1;
+    if (!imgW || !imgH || !bounds.width || !bounds.height) return 0.1;
 
-    return Math.min(rect.width / imgW, rect.height / imgH);
+    return Math.min(bounds.width / imgW, bounds.height / imgH);
   }
 
   clampScale(value) {
@@ -144,7 +178,7 @@ export class MapViewer {
     const contentH = imgH * this.scale;
 
     if (contentW <= rect.width) {
-      this.translateX = (rect.width - contentW) / 2;
+      this.translateX = this.getVisibleCenterX() - contentW / 2;
     } else {
       const minX = rect.width - contentW;
       this.translateX = Math.min(0, Math.max(minX, this.translateX));

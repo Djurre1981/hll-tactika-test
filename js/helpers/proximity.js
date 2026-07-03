@@ -26,16 +26,17 @@ export function highlightPin(pinId) {
 
   const pinList = getPinList();
   pinList.querySelectorAll(".pin-list__row").forEach((row) => {
-    const id = row.querySelector(".pin-list__item")?.dataset.id;
+    const id = row.querySelector(".pin-list__body")?.dataset.id;
     row.classList.toggle("is-active", id === pinId);
   });
 
   pinList.querySelectorAll(".pin-list__item").forEach((item) => {
-    item.classList.toggle("is-active", item.dataset.id === pinId);
+    const id = item.querySelector(".pin-list__body")?.dataset.id;
+    item.classList.toggle("is-active", id === pinId);
   });
 
   if (pinId && changed) {
-    const item = pinList.querySelector(`.pin-list__item[data-id="${pinId}"]`);
+    const item = pinList.querySelector(`.pin-list__body[data-id="${pinId}"]`);
     item?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }

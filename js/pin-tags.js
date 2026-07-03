@@ -1,6 +1,6 @@
 export const PIN_TAGS = [
-  { id: "mg-spot", label: "mg spot", className: "map-pin--mg-spot" },
-  { id: "climb", label: "climb", className: "map-pin--climb" },
+  { id: "mg-spot", label: "mg spot", shortLabel: "MG", className: "map-pin--mg-spot" },
+  { id: "climb", label: "climb", shortLabel: "CL", className: "map-pin--climb" },
 ];
 
 export const DEFAULT_PIN_TAG = "mg-spot";

@@ -37,8 +37,18 @@ export async function getPinPlayback(pin, mediaIndex = 0) {
   return getMediaPlayback(mediaItem);
 }
 
+const TOOLTIP_TRANSITION_MS = 320;
+
 function getPreviewTooltip() {
   return document.getElementById("preview-tooltip");
+}
+
+function showPreviewTooltip() {
+  getPreviewTooltip()?.classList.add("is-visible");
+}
+
+function hidePreviewTooltip() {
+  getPreviewTooltip()?.classList.remove("is-visible");
 }
 
 function getPreviewMedia() {
@@ -119,13 +129,13 @@ export function showPreview(pin, event) {
   const firstMedia = getPinMediaItems(pin)[0];
   if (!firstMedia) {
     getPreviewMedia().innerHTML = "";
-    getPreviewTooltip().classList.remove("hidden");
+    showPreviewTooltip();
     movePreview(event);
     return;
   }
 
   getPreviewMedia().innerHTML = '<p class="preview-loading">Loading clip…</p>';
-  getPreviewTooltip().classList.remove("hidden");
+  showPreviewTooltip();
   movePreview(event);
 
   const previewPinId = pin.id;
@@ -187,13 +197,17 @@ export function movePreview(event) {
 export function scheduleHidePreview() {
   clearTimeout(state.previewHideTimer);
   state.previewHideTimer = setTimeout(() => {
-    getPreviewTooltip().classList.add("hidden");
-    getPreviewMedia().innerHTML = "";
+    hidePreviewTooltip();
+    state.previewHideTimer = setTimeout(() => {
+      if (!getPreviewTooltip()?.classList.contains("is-visible")) {
+        getPreviewMedia().innerHTML = "";
+      }
+    }, TOOLTIP_TRANSITION_MS);
   }, 120);
 }
 
 export function hidePreviewImmediately() {
   clearTimeout(state.previewHideTimer);
-  getPreviewTooltip().classList.add("hidden");
+  hidePreviewTooltip();
   getPreviewMedia().innerHTML = "";
 }

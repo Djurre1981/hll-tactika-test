@@ -25,7 +25,7 @@
   </script>
   <link rel="modulepreload" href="js/app.js" />
   <style>
-    html.welcome-boot #app-header,
+    html.welcome-boot #app-chrome,
     html.welcome-boot #app-root { display: none !important; }
     html.app-boot #welcome-page { display: none !important; }
     html.app-boot #app-root.hidden { display: block !important; }
@@ -34,8 +34,11 @@
   <link rel="stylesheet" href="css/layout.css" />
   <link rel="stylesheet" href="css/utilities.css" />
   <link rel="stylesheet" href="css/fonts/texta.css" />
+  <link rel="stylesheet" href="css/components/glass.css" />
   <link rel="stylesheet" href="css/components/auth-gate.css" />
   <link rel="stylesheet" href="css/components/welcome-page.css" />
+  <link rel="stylesheet" href="css/components/mode-switch.css" />
+  <link rel="stylesheet" href="css/components/user-menu.css" />
   <link rel="stylesheet" href="css/components/map-viewer.css" />
   <link rel="stylesheet" href="css/components/map-overlays.css" />
   <link rel="stylesheet" href="css/components/sidebar.css" />
@@ -48,40 +51,9 @@
   <link rel="stylesheet" href="css/components/mg-spot-arrows.css" />
   <link rel="stylesheet" href="css/components/admin-panel.css" />
   <link rel="stylesheet" href="css/editor/editor.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
-  <header class="header" id="app-header">
-    <div class="header__brand">
-      <span class="header__tag">HLL</span>
-      <div>
-        <h1>Interactive Climb Guide</h1>
-        <p class="header__subtitle"><em>Made by The Circle... For The Circle!</em></p>
-      </div>
-    </div>
-    <div class="header__actions">
-      <div class="header__editor-group" id="header-editor-group">
-        <button id="btn-toggle-edit" class="btn btn--primary hidden" type="button">Editor Mode</button>
-        <button id="btn-add-pin" class="btn btn--primary header__add-pin hidden" type="button">Add Pin</button>
-        <button id="btn-cancel-edit" class="btn btn--ghost hidden" type="button">Finish Edit</button>
-      </div>
-      <span class="header__sep-v hidden" id="header-toolbar-sep"></span>
-      <button id="btn-admin-panel" class="btn btn--ghost hidden" type="button">Admin Panel</button>
-      <div class="header__user hidden" id="header-user">
-        <button type="button" class="header__user-trigger" id="header-user-trigger" aria-haspopup="true" aria-expanded="false">
-          <img id="user-avatar" class="header__avatar hidden" alt="" width="28" height="28" />
-          <span id="user-name" class="header__user-name"></span>
-        </button>
-        <div class="header__user-menu hidden" id="header-user-menu">
-          <button id="btn-logout" class="btn btn--ghost header__user-menu-item" type="button">Sign out</button>
-        </div>
-      </div>
-    </div>
-  </header>
-
   <div class="welcome-page" id="welcome-page">
     <video
       id="welcome-scrub-video"
@@ -111,7 +83,7 @@
           src="assets/logos/tactika-full-logo.svg"
           alt="Tactika"
           width="840"
-          height="472"
+          height="186"
         />
       </div>
     </div>
@@ -136,50 +108,97 @@
   </dialog>
 
   <div id="app-root" class="hidden">
+  <div class="app-chrome hidden" id="app-chrome">
+    <div class="mode-switch glass-panel hidden" id="mode-switch" role="tablist" aria-label="Application mode">
+      <button type="button" class="mode-switch__tab" role="tab" data-mode="viewer" aria-selected="true">Viewer</button>
+      <button type="button" class="mode-switch__tab" role="tab" data-mode="editor" aria-selected="false">Editor</button>
+      <span class="mode-switch__thumb" aria-hidden="true"></span>
+    </div>
+    <div class="user-cluster hidden" id="user-cluster">
+      <div class="user-cluster__avatar-wrap">
+        <div class="user-cluster__menu" role="menu">
+          <button id="btn-admin-panel" class="user-cluster__admin hidden" type="button" role="menuitem">Admin Panel</button>
+          <button id="btn-logout" class="user-cluster__signout" type="button" role="menuitem">Sign out</button>
+        </div>
+        <button type="button" class="user-cluster__avatar-btn" id="header-user-trigger" aria-label="Account">
+          <img id="user-avatar" class="user-cluster__avatar hidden" alt="" width="40" height="40" />
+        </button>
+      </div>
+      <span id="user-name" class="user-cluster__name"></span>
+    </div>
+  </div>
   <main class="layout">
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar glass-panel" id="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__logo">
+          <img src="assets/logos/tactika-full-logo.svg" alt="Tactika" width="246" height="62" />
+        </div>
+      </div>
+      <div class="sidebar__divider" role="presentation"></div>
+      <div class="sidebar__body">
       <div id="sidebar-default">
       <div class="sidebar__section" id="sidebar-map-section">
         <h2>Map</h2>
-        <select id="map-select" class="sidebar__select"></select>
+        <select id="map-select" class="sidebar__select glass-select"></select>
         <div class="sidebar__map-toggles">
-          <label class="toggle-row">
+          <label class="toggle-pill" title="Grid">
             <input type="checkbox" id="toggle-grid" />
             <span>Grid</span>
           </label>
-          <label class="toggle-row">
+          <label class="toggle-pill" title="Strongpoints">
             <input type="checkbox" id="toggle-strongpoints" checked />
-            <span>Strongpoints</span>
+            <span>Points</span>
           </label>
-          <label class="toggle-row">
+          <label class="toggle-pill" title="Tooltip Preview">
             <input type="checkbox" id="toggle-preview" checked />
-            <span>Tooltip Preview</span>
+            <span>Tooltip</span>
           </label>
+          <div class="map-color-control" id="map-color-control">
+            <label class="toggle-pill" title="Background Color">
+              <input type="checkbox" id="toggle-color" checked />
+              <span>Color</span>
+            </label>
+            <div class="map-color-control__picker">
+              <button
+                type="button"
+                class="toggle-pill map-color-control__hue-btn"
+                id="btn-bg-hue"
+                title="Pick hue"
+                aria-label="Pick background hue"
+                aria-expanded="false"
+                aria-controls="color-hue-popover"
+              >
+                <span class="map-color-control__swatch" aria-hidden="true"></span>
+              </button>
+              <div class="map-color-picker hidden" id="color-hue-popover" role="dialog" aria-label="Background hue">
+                <div class="map-color-picker__row">
+                  <input type="range" id="color-hue-slider" class="map-color-picker__hue" min="0" max="360" value="28" />
+                  <button
+                    type="button"
+                    class="map-color-picker__random"
+                    id="btn-bg-hue-random"
+                    title="Random color on map change"
+                    aria-label="Random color on map change"
+                    aria-pressed="true"
+                  >
+                    <span class="map-color-picker__wheel" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="sidebar__section" id="sidebar-faction-section">
-        <h2>Faction</h2>
-        <div class="tag-filters" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
-          <button type="button" class="tag-filter tag-filter--axis is-active" data-faction="axis" aria-pressed="false" title="Axis">
-            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
-            <span>Axis</span>
-          </button>
-          <button type="button" class="tag-filter tag-filter--neutral is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
-            <i class="fa-solid fa-skull-crossbones" aria-hidden="true"></i>
-            <span>Neutral</span>
-          </button>
-          <button type="button" class="tag-filter tag-filter--allies is-active" data-faction="allies" aria-pressed="false" title="Allies">
-            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
-            <span>Allies</span>
-          </button>
-        </div>
+      <div class="sidebar__section sidebar__section--edit-tools hidden" id="sidebar-edit-tools">
+        <h2>Edit Tools</h2>
+        <button id="btn-add-pin" class="glass-pill-btn" type="button">Add Pin</button>
       </div>
 
       <div class="sidebar__section" id="sidebar-spots-section">
-        <h2>SPOTS ON THIS MAP</h2>
+        <h2>Spots on this map</h2>
         <p class="sidebar__pin-count" id="pin-count" aria-live="polite"></p>
-        <input type="text" class="sidebar__search" id="pin-search" placeholder="Search by name, code (#A3-12), tag..." />
+        <input type="text" class="sidebar__search glass-input" id="pin-search" placeholder="Search by name, code (#A3-12), tag..." />
         <ul class="pin-list" id="pin-list"></ul>
       </div>
       </div>
@@ -280,31 +299,44 @@
           </div>
         </form>
       </div>
+      </div>
     </aside>
 
     <section class="map-shell">
-      <div class="map-toolbar">
+      <div class="map-toolbar glass-panel">
         <div class="map-toolbar__zoom-row">
-          <button id="btn-reset-view" class="btn btn--icon" type="button" title="Reset zoom and pan">
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          <button id="zoom-label" class="map-toolbar__zoom-label" type="button" title="Reset zoom and pan">100%</button>
+          <button id="btn-zoom-in" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom in">+</button>
+          <button id="btn-zoom-out" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom out">−</button>
+        </div>
+        <span class="map-toolbar__sep"></span>
+        <div class="tag-filters" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
+          <button type="button" class="tag-filter tag-filter--axis glass-btn is-active" data-faction="axis" aria-pressed="false" title="Axis">
+            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
+            <span>Axis</span>
           </button>
-          <span class="map-toolbar__sep-v"></span>
-          <button id="btn-zoom-out" class="btn btn--icon" type="button" title="Zoom out">−</button>
-          <button id="btn-zoom-in" class="btn btn--icon" type="button" title="Zoom in">+</button>
-          <span class="map-toolbar__zoom" id="zoom-label">100%</span>
+          <button type="button" class="tag-filter tag-filter--neutral glass-btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
+            <i class="fa-solid fa-skull-crossbones" aria-hidden="true"></i>
+            <span>Neutral</span>
+          </button>
+          <button type="button" class="tag-filter tag-filter--allies glass-btn is-active" data-faction="allies" aria-pressed="false" title="Allies">
+            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
+            <span>Allies</span>
+          </button>
         </div>
         <span class="map-toolbar__sep"></span>
         <div class="tag-filters tag-filters--two" id="tag-filters" role="group" aria-label="Filter by tag">
-          <button type="button" class="tag-filter tag-filter--mg-spot is-active" data-tag="mg-spot" aria-pressed="true">
+          <button type="button" class="tag-filter tag-filter--mg-spot glass-btn is-active" data-tag="mg-spot" aria-pressed="true" title="MG Spot">
             <i class="fa-solid fa-play tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
             <span>MG Spot</span>
           </button>
-          <button type="button" class="tag-filter tag-filter--climb is-active" data-tag="climb" aria-pressed="true">
+          <button type="button" class="tag-filter tag-filter--climb glass-btn is-active" data-tag="climb" aria-pressed="true" title="Climb">
             <i class="fa-solid fa-map-pin tag-swatch tag-swatch--climb" aria-hidden="true"></i>
             <span>Climb</span>
           </button>
         </div>
       </div>
+      <button id="btn-reset-view" class="hidden" type="button" aria-hidden="true" tabindex="-1"></button>
 
       <div class="map-viewport is-booting" id="map-viewport">
         <div class="map-stage" id="map-stage">
@@ -358,7 +390,7 @@
         </button>
       </div>
 
-      <div class="preview-tooltip hidden" id="preview-tooltip" role="tooltip">
+      <div class="preview-tooltip" id="preview-tooltip" role="tooltip">
         <div class="preview-tooltip__media" id="preview-media"></div>
         <div class="preview-tooltip__body">
           <div class="preview-tooltip__title-row">
@@ -366,7 +398,7 @@
               <span class="preview-tooltip__faction-text" id="preview-faction-text"></span>
               <span class="preview-tooltip__title-sep"> - </span>
             </span>
-            <strong id="preview-title" class="preview-tooltip__title"></strong>
+            <span id="preview-title" class="preview-tooltip__title"></span>
           </div>
           <div class="preview-tooltip__sub-row">
             <span class="preview-tooltip__position-code" id="preview-position-code"></span>

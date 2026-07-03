@@ -32,14 +32,15 @@ let typewriterController = null;
 function getAuthEls() {
   return {
     welcomePage: document.getElementById("welcome-page"),
-    appHeader: document.getElementById("app-header"),
+    appChrome: document.getElementById("app-chrome"),
+    modeSwitch: document.getElementById("mode-switch"),
     gate: document.getElementById("auth-gate"),
     gateTitle: document.getElementById("auth-gate-title"),
     gateMessage: document.getElementById("auth-gate-message"),
     btnSteamLogin: document.getElementById("btn-steam-login"),
     btnWelcomeSignIn: document.getElementById("btn-welcome-sign-in"),
     btnAuthClose: document.getElementById("btn-auth-close"),
-    headerUser: document.getElementById("header-user"),
+    userCluster: document.getElementById("user-cluster"),
     userAvatar: document.getElementById("user-avatar"),
     userName: document.getElementById("user-name"),
     btnLogout: document.getElementById("btn-logout"),
@@ -130,11 +131,10 @@ function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) 
   document.documentElement.classList.remove("app-boot");
   document.documentElement.classList.add("welcome-boot");
   els.welcomePage?.classList.remove("is-hidden");
-  els.appHeader?.classList.add("hidden");
+  els.appChrome?.classList.add("hidden");
   els.appRoot?.classList.add("hidden");
-  els.headerUser?.classList.add("hidden");
-  document.getElementById("btn-toggle-edit")?.classList.add("hidden");
-  document.getElementById("header-toolbar-sep")?.classList.add("hidden");
+  els.userCluster?.classList.add("hidden");
+  els.modeSwitch?.classList.add("hidden");
 
   scrubController = els.scrubVideo?.__welcomeScrub ?? null;
   if (els.scrubVideo && !scrubController) {
@@ -159,7 +159,6 @@ function hideWelcome() {
   document.documentElement.classList.remove("welcome-boot");
   document.documentElement.classList.add("app-boot");
   els.welcomePage?.classList.add("is-hidden");
-  els.appHeader?.classList.remove("hidden");
   destroyWelcomeScrub();
   destroyTypewriter();
   closeAuthDialog();
@@ -171,7 +170,9 @@ function showApp(user) {
   setStoredAuthSession(true);
   hideWelcome();
   els.appRoot?.classList.remove("hidden");
-  els.headerUser?.classList.remove("hidden");
+  els.appChrome?.classList.remove("hidden");
+  els.userCluster?.classList.remove("hidden");
+  els.modeSwitch?.classList.remove("hidden");
 
   const label = user.name || `Steam user ${user.steamId}`;
   if (els.userName) els.userName.textContent = label;

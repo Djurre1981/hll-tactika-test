@@ -224,6 +224,7 @@ export function openModal(pin) {
   setModalMediaFullscreenVisible(false);
 
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
+  getModal().classList.remove("is-closing");
   getModal().showModal();
   loadModalPlayer(pin, state.modalMediaIndex);
 }
@@ -322,6 +323,12 @@ export function showNextModalMedia() {
 }
 
 export function initModalMediaNav() {
+  const modal = getModal();
+  modal?.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeModal();
+  });
+
   getModalMediaPrev()?.addEventListener("click", showPreviousModalMedia);
   getModalMediaNext()?.addEventListener("click", showNextModalMedia);
   getModalMediaFullscreen()?.addEventListener("click", () => {
@@ -342,11 +349,32 @@ export function initModalMediaNav() {
   });
 }
 
-export function closeModal() {
-  getModal().close();
+const MODAL_CLOSE_MS = 320;
+
+function finishModalClose() {
+  const modal = getModal();
+  modal.classList.remove("is-closing");
+  modal.close();
   if (document.activeElement?.classList?.contains("map-mg-spot")) {
     document.activeElement.blur();
   }
+}
+
+export function closeModal() {
+  const modal = getModal();
+  if (!modal?.open || modal.classList.contains("is-closing")) return;
+
+  modal.classList.add("is-closing");
+  const timer = setTimeout(finishModalClose, MODAL_CLOSE_MS);
+  modal.addEventListener(
+    "animationend",
+    (event) => {
+      if (event.target !== modal) return;
+      clearTimeout(timer);
+      finishModalClose();
+    },
+    { once: true },
+  );
 }
 
 export function clearModalPlayer() {

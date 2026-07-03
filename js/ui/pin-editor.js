@@ -25,8 +25,9 @@ function getSidebarDefault() {
 
 function updateSidebarSectionsVisibility() {
   const inEditor = isInEditorMode();
+  const formOpen = isFormOpen();
   document.getElementById("sidebar-map-section")?.classList.toggle("hidden", inEditor);
-  document.getElementById("sidebar-faction-section")?.classList.toggle("hidden", inEditor);
+  document.getElementById("sidebar-edit-tools")?.classList.toggle("hidden", !inEditor || formOpen);
   getSidebarDefault()?.classList.toggle("is-editor-mode", inEditor);
 }
 
@@ -50,20 +51,12 @@ function getBtnSavePin() {
   return document.getElementById("btn-save-pin");
 }
 
-function getBtnToggleEdit() {
-  return document.getElementById("btn-toggle-edit");
-}
-
 function getBtnAddPin() {
   return document.getElementById("btn-add-pin");
 }
 
-function getBtnCancelEdit() {
-  return document.getElementById("btn-cancel-edit");
-}
-
-function getHeaderEditorGroup() {
-  return document.getElementById("header-editor-group");
+function getModeSwitch() {
+  return document.getElementById("mode-switch");
 }
 
 function getPinTitle() {
@@ -324,15 +317,14 @@ export function startEditPin(pin, { focus = false } = {}) {
 export function updateEditorHeaderButtons({ animate = false } = {}) {
   const inEditor = isInEditorMode();
   const formOpen = isFormOpen();
-  const group = getHeaderEditorGroup();
-  const btnToggleEdit = getBtnToggleEdit();
+  const modeSwitch = getModeSwitch();
   const btnAddPin = getBtnAddPin();
-  const btnCancelEdit = getBtnCancelEdit();
 
-  btnToggleEdit?.classList.toggle("hidden", inEditor);
-  btnAddPin?.classList.toggle("hidden", !inEditor || formOpen);
-  btnCancelEdit?.classList.toggle("hidden", !inEditor);
-  group?.classList.toggle("is-active", inEditor);
+  modeSwitch?.classList.toggle("is-editor", inEditor);
+  modeSwitch?.querySelector('[data-mode="viewer"]')?.setAttribute("aria-selected", String(!inEditor));
+  modeSwitch?.querySelector('[data-mode="editor"]')?.setAttribute("aria-selected", String(inEditor));
+
+  document.getElementById("sidebar-edit-tools")?.classList.toggle("hidden", !inEditor || formOpen);
 
   if (inEditor && animate && btnAddPin) {
     btnAddPin.classList.remove("is-animating");

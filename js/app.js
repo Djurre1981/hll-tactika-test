@@ -1,5 +1,6 @@
 import { initAuth, loadProtectedPins } from "./ui/auth-gate.js";
-import { state, loadSelectedMapId, saveSelectedMapId } from "./state.js";
+import { applyMapBgFade, initMapColorControl, restoreMapBgFadeSettings } from "./ui/map-bg-fade.js";
+import { state, loadSelectedMapId, saveSelectedMapId, loadToggleState } from "./state.js";
 import { loadTagFilters, loadCurrentFaction } from "./ui/filter-bar.js";
 
 function waitForImage(image) {
@@ -13,14 +14,21 @@ function resolveImageSrc(imagePath) {
   return new URL(imagePath, window.location.href).href;
 }
 
-function revealHeaderToolbar() {
-  document.getElementById("btn-toggle-edit")?.classList.remove("hidden");
-  document.getElementById("header-toolbar-sep")?.classList.remove("hidden");
+function revealAppChrome() {
+  document.getElementById("mode-switch")?.classList.remove("hidden");
+  document.getElementById("app-chrome")?.classList.remove("hidden");
 }
 
 async function init() {
   state.tagFilters = loadTagFilters();
   state.currentFaction = loadCurrentFaction();
+
+  const savedToggles = loadToggleState();
+  restoreMapBgFadeSettings({
+    enabled: savedToggles.bgColor ?? true,
+    hue: savedToggles.bgHue ?? null,
+    random: savedToggles.bgRandom ?? savedToggles.bgHue == null,
+  });
 
   const mapsModulePromise = import("./api/maps.js");
   const mapModulesPromise = Promise.all([
@@ -49,7 +57,7 @@ async function init() {
   const pinDataPromise = loadProtectedPins();
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
-  revealHeaderToolbar();
+  revealAppChrome();
 
   const [
     [
@@ -72,6 +80,8 @@ async function init() {
   async function switchMap(mapId, { fit = false } = {}) {
     const map = state.mapCatalog.find((item) => item.id === mapId);
     if (!map) return;
+
+    applyMapBgFade();
 
     exitEditorMode();
 
@@ -118,6 +128,7 @@ async function init() {
 
     if (fit) {
       state.mapViewer.fitToView();
+      state.mapViewer.scheduleLayoutFit();
     } else {
       state.mapViewer.clampTranslation();
       state.mapViewer.applyTransform();

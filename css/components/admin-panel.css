@@ -2,16 +2,19 @@
   width: min(760px, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  background: var(--glass-bg);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .admin-panel::backdrop {
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .admin-panel__inner {
