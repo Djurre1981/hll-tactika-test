@@ -506,11 +506,25 @@
   color: rgba(255, 255, 255, 0.78);
 }
 
-.pin-list__tag--mg-spot,
-.pin-list__tag--climb {
+.pin-list__tag--mg-spot.pin-list__tag--faction-axis {
+  border-color: rgba(232, 64, 64, 0.35);
+  color: rgba(255, 180, 168, 0.9);
+}
+
+.pin-list__tag--mg-spot.pin-list__tag--faction-allies {
+  border-color: rgba(70, 129, 212, 0.448);
+  color: rgba(168, 200, 232, 0.9);
+}
+
+.pin-list__tag--mg-spot.pin-list__tag--faction-neutral {
   color: rgba(255, 255, 255, 0.78);
   background: transparent;
   border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pin-list__tag--climb {
+  border-color: rgba(196, 232, 168, 0.35);
+  color: rgba(196, 232, 168, 0.662);
 }
 
 .pin-list__title {
@@ -530,21 +544,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pin-list__tag--faction-axis {
-  border-color: rgba(232, 64, 64, 0.35);
-  color: rgba(255, 180, 168, 0.9);
-}
-
-.pin-list__tag--faction-allies {
-  border-color: rgba(70, 130, 212, 0.35);
-  color: rgba(168, 200, 232, 0.9);
-}
-
-.pin-list__tag--faction-neutral {
-  border-color: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.78);
 }
 
 .pin-list__meta {

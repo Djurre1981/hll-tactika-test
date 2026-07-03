@@ -77,10 +77,19 @@ function applyFadeVars(shell, rgb, peak, mid) {
   shell.style.setProperty("--map-fade-mid", String(mid));
 }
 
+function hueForColor(hue) {
+  return ((hue % 360) + 360) % 360;
+}
+
+function clampSliderHue(hue) {
+  return Math.min(360, Math.max(0, Number(hue) || 0));
+}
+
 function applyHueToShell(shell, hue) {
-  const [r, g, b] = hslToRgb(hue, fadeTone.s, fadeTone.l);
+  const colorHue = hueForColor(hue);
+  const [r, g, b] = hslToRgb(colorHue, fadeTone.s, fadeTone.l);
   applyFadeVars(shell, `${r}, ${g}, ${b}`, fadeTone.peak, fadeTone.mid);
-  currentHue = hue;
+  currentHue = clampSliderHue(hue);
 }
 
 function syncFadeClass(shell) {
@@ -129,8 +138,8 @@ export function setMapBgHueRandom(random) {
     return;
   }
 
-  customHue = ((currentHue % 360) + 360) % 360;
-  applyHueToShell(shell, customHue);
+  customHue = hueForColor(currentHue);
+  applyHueToShell(shell, currentHue);
   syncFadeClass(shell);
 }
 
@@ -138,10 +147,10 @@ export function applyMapBgHue(hue) {
   const shell = getMapShell();
   if (!shell) return;
 
-  const normalizedHue = ((hue % 360) + 360) % 360;
+  const sliderHue = clampSliderHue(hue);
   hueRandom = false;
-  customHue = normalizedHue;
-  applyHueToShell(shell, normalizedHue);
+  customHue = hueForColor(sliderHue);
+  applyHueToShell(shell, sliderHue);
   syncFadeClass(shell);
 }
 
@@ -186,8 +195,14 @@ export function initMapColorControl({ persistToggles, persistBgHue, persistBgRan
 
   if (!toggle || !hueBtn || !control || !popover || !slider || !randomBtn) return;
 
+  const syncSwatchVisual = () => {
+    if (swatch) {
+      swatch.style.background = `hsl(${hueForColor(currentHue)}, ${fadeTone.s * 100}%, ${fadeTone.l * 100}%)`;
+    }
+  };
+
   const syncSwatch = () => {
-    if (swatch) swatch.style.background = `hsl(${getMapBgHue()}, ${fadeTone.s * 100}%, ${fadeTone.l * 100}%)`;
+    syncSwatchVisual();
     slider.value = String(getMapBgHue());
   };
 
@@ -222,8 +237,8 @@ export function initMapColorControl({ persistToggles, persistBgHue, persistBgRan
   slider.addEventListener("input", () => {
     const hue = Number(slider.value);
     applyMapBgHue(hue);
-    persistBgHue?.(hue);
-    syncSwatch();
+    persistBgHue?.(hueForColor(hue));
+    syncSwatchVisual();
     syncRandomBtn();
   });
 
