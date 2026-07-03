@@ -25,6 +25,7 @@ export const state = {
   mapViewer: null,
   mapOverlays: null,
   previewEnabled: true,
+  mapLabelsVisible: true,
 };
 
 export const MAP_STORAGE_KEY = "hll-climb-selected-map";

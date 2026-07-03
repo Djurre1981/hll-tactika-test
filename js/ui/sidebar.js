@@ -5,7 +5,7 @@ import { escapeHtml } from "../helpers/sanitizer.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { canModifyPin } from "../helpers/permissions.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
-import { openModal, getRequiresDisplayConfig } from "./pin-modal.js";
+import { openModal, armModalDismissGuard, getRequiresDisplayConfig } from "./pin-modal.js";
 
 function isEditorBrowseMode() {
   return state.panelMode === "browse";
@@ -54,8 +54,15 @@ export function renderPinList() {
       </span>
     `;
 
+    body.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      armModalDismissGuard();
+    });
     body.addEventListener("click", () => {
       focusPin(pin);
+      if (!isEditorBrowseMode()) {
+        openModal(pin);
+      }
     });
 
     row.addEventListener("mouseenter", () => {
@@ -84,6 +91,10 @@ export function renderPinList() {
       viewButton.className = "pin-list__view";
       viewButton.title = "View trick";
       viewButton.innerHTML = '<svg class="pin-list__view-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.25 2.25 8.75 6l-4.5 3.75" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      viewButton.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+        armModalDismissGuard();
+      });
       viewButton.addEventListener("click", (event) => {
         event.stopPropagation();
         openModal(pin);

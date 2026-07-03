@@ -1,6 +1,21 @@
 import { state, loadToggleState, saveToggleState } from "../state.js";
 import { restoreMapBgFadeSettings } from "./map-bg-fade.js";
 
+export function setMapLabelsVisible(show) {
+  state.mapLabelsVisible = show;
+  const btn = document.getElementById("btn-toggle-map-labels");
+  const viewport = document.getElementById("map-viewport");
+  btn?.classList.toggle("is-active", show);
+  btn?.setAttribute("aria-pressed", String(show));
+  if (btn) btn.title = show ? "Hide map labels" : "Show map labels";
+  viewport?.classList.toggle("is-labels-hidden", !show);
+}
+
+export function applyMapLabelsToUi() {
+  const saved = loadToggleState();
+  setMapLabelsVisible(saved.mapLabels ?? true);
+}
+
 export function applyToggleStateToUi() {
   const saved = loadToggleState();
   const gridEl = document.getElementById("toggle-grid");
@@ -12,6 +27,7 @@ export function applyToggleStateToUi() {
   if (previewEl) previewEl.checked = saved.preview ?? true;
   if (colorEl) colorEl.checked = saved.bgColor ?? true;
   state.previewEnabled = previewEl ? previewEl.checked : saved.preview ?? true;
+  applyMapLabelsToUi();
   restoreMapBgFadeSettings({
     enabled: saved.bgColor ?? true,
     hue: saved.bgHue ?? null,
@@ -37,6 +53,7 @@ export function persistToggles() {
     strongpoints: spEl ? spEl.checked : true,
     preview: previewEl ? previewEl.checked : true,
     bgColor: colorEl ? colorEl.checked : true,
+    mapLabels: state.mapLabelsVisible,
     bgHue: saved.bgHue ?? null,
     bgRandom: saved.bgRandom ?? true,
   });

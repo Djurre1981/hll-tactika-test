@@ -38,3 +38,17 @@ export function getOppositeDirection(dir) {
 export function getNeutralDirection(dir) {
   return (dir === "top" || dir === "bottom") ? "bottom" : "right";
 }
+
+export const FACTION_DISPLAY = {
+  axis: { logo: "assets/logos/axis.svg", label: "Axis" },
+  allies: { logo: "assets/logos/allies.svg", label: "Allies" },
+  neutral: { logo: "assets/logos/neutral.svg", label: "Neutral" },
+};
+
+export function getFactionDisplay(faction) {
+  return FACTION_DISPLAY[faction] || FACTION_DISPLAY.neutral;
+}
+
+export function getPinTagLabel(tag) {
+  return tag === "mg-spot" ? "MG" : "CL";
+}

@@ -56,56 +56,60 @@
 }
 
 .preview-tooltip__body {
-  padding: 0.6rem 0.72rem 0.68rem;
+  padding: 0.32rem 0.72rem 0.38rem;
 }
 
 .preview-tooltip__title-row {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  flex-wrap: wrap;
   min-width: 0;
+  font-family: var(--font-body);
+  font-size: 1.12rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.preview-tooltip__faction-icon {
+.preview-tooltip__heading-sep {
+  color: rgba(255, 255, 255, 0.42);
+  font-weight: 400;
+}
+
+.preview-tooltip__faction {
   flex-shrink: 0;
-  font-size: 0.62rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
+  gap: 0.34rem;
 }
 
-.preview-tooltip__faction-icon .preview-tooltip__faction-text {
-  font-family: var(--font-body);
-  font-size: 0.62rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-
-.preview-tooltip__faction-icon .preview-tooltip__title-sep {
-  font-family: var(--font-body);
-  font-size: 0.58rem;
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.32);
-  margin-left: 0.05rem;
-}
-
-.preview-tooltip__faction-icon.faction--axis,
-.preview-tooltip__faction-icon.faction--allies,
-.preview-tooltip__faction-icon.faction--neutral {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.preview-tooltip__title {
+.preview-tooltip__faction-logo {
   display: block;
-  font-family: var(--font-body);
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  width: 0.98rem;
+  height: 0.98rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  opacity: 0.88;
+}
+
+.preview-tooltip__faction.faction--axis .preview-tooltip__faction-logo {
+  filter: brightness(0) saturate(95%) invert(22%) sepia(75%) saturate(950%) hue-rotate(330deg) brightness(1.02);
+}
+
+.preview-tooltip__faction.faction--allies .preview-tooltip__faction-logo {
+  filter: brightness(0) saturate(95%) invert(38%) sepia(42%) saturate(720%) hue-rotate(182deg) brightness(1.02);
+}
+
+.preview-tooltip__faction.faction--neutral .preview-tooltip__faction-logo {
+  filter: brightness(0) invert(0.82);
+}
+
+.preview-tooltip__tag {
+  flex-shrink: 0;
+}
+
+#preview-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -118,15 +122,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-top: 0.22rem;
+  margin-top: 1px;
 }
 
 .preview-tooltip__position-code {
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 400;
   font-family: var(--font-body);
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
   flex-shrink: 0;
 }
 

@@ -26,8 +26,13 @@
   <link rel="modulepreload" href="js/app.js" />
   <style>
     html.welcome-boot #app-chrome,
-    html.welcome-boot #app-root { display: none !important; }
-    html.app-boot #welcome-page { display: none !important; }
+    html.welcome-boot #app-root,
+    html.welcome-boot #bye-page { display: none !important; }
+    html.bye-boot #app-chrome,
+    html.bye-boot #app-root,
+    html.bye-boot #welcome-page { display: none !important; }
+    html.app-boot #welcome-page,
+    html.app-boot #bye-page { display: none !important; }
     html.app-boot #app-root.hidden { display: block !important; }
   </style>
   <link rel="stylesheet" href="css/base.css" />
@@ -37,6 +42,7 @@
   <link rel="stylesheet" href="css/components/glass.css" />
   <link rel="stylesheet" href="css/components/auth-gate.css" />
   <link rel="stylesheet" href="css/components/welcome-page.css" />
+  <link rel="stylesheet" href="css/components/bye-page.css" />
   <link rel="stylesheet" href="css/components/mode-switch.css" />
   <link rel="stylesheet" href="css/components/user-menu.css" />
   <link rel="stylesheet" href="css/components/map-viewer.css" />
@@ -86,6 +92,47 @@
           height="186"
         />
       </div>
+    </div>
+  </div>
+
+  <div class="bye-page is-hidden" id="bye-page">
+    <video
+      id="bye-scrub-video"
+      class="bye-page__video"
+      data-src="assets/welcome/bye.mp4"
+      muted
+      playsinline
+      disablePictureInPicture
+      disableRemotePlayback
+    ></video>
+    <div class="bye-page__gradient" aria-hidden="true"></div>
+    <div class="bye-page__brand">
+      <div class="bye-page__logo-wrap">
+        <img
+          class="bye-page__logo"
+          src="assets/logos/tactika-full-logo.svg"
+          alt="Tactika"
+          width="840"
+          height="186"
+        />
+      </div>
+    </div>
+    <div class="bye-page__footer">
+      <div class="bye-page__actions" id="bye-actions" hidden>
+        <a
+          class="bye-page__action"
+          href="https://discord.gg/kDaK9wpr8y"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Join us</a>
+        <button type="button" class="bye-page__action" id="btn-bye-give-up">Give up</button>
+      </div>
+      <p
+        class="bye-page__intro"
+        id="bye-intro"
+        aria-live="polite"
+        data-typewriter-text="Your credentials are non-compliant. But you've seen the room we kept locked from everyone. That either makes you an asset or a liability. The choice is binary..."
+      ></p>
     </div>
   </div>
 
@@ -303,37 +350,52 @@
     </aside>
 
     <section class="map-shell">
-      <div class="map-toolbar glass-panel">
+      <div class="map-toolbar-shell" id="map-toolbar-shell">
+        <button
+          type="button"
+          class="map-toolbar__toggle"
+          id="btn-map-toolbar-toggle"
+          aria-label="Hide toolbar"
+          aria-expanded="true"
+          title="Hide toolbar"
+        ></button>
+        <div class="map-toolbar glass-panel" id="map-toolbar">
         <div class="map-toolbar__zoom-row">
           <button id="zoom-label" class="map-toolbar__zoom-label" type="button" title="Reset zoom and pan">100%</button>
           <button id="btn-zoom-in" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom in">+</button>
           <button id="btn-zoom-out" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom out">−</button>
         </div>
         <span class="map-toolbar__sep"></span>
-        <div class="tag-filters" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
-          <button type="button" class="tag-filter tag-filter--axis glass-btn is-active" data-faction="axis" aria-pressed="false" title="Axis">
-            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
+        <div class="faction-slider" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
+          <span class="faction-slider__thumb" aria-hidden="true"></span>
+          <button type="button" class="faction-slider__btn" data-faction="axis" aria-pressed="false" title="Axis">
+            <img class="faction-slider__icon" src="assets/logos/axis.svg" alt="" width="15" height="15" />
             <span>Axis</span>
           </button>
-          <button type="button" class="tag-filter tag-filter--neutral glass-btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
-            <i class="fa-solid fa-skull-crossbones" aria-hidden="true"></i>
+          <button type="button" class="faction-slider__btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
+            <img class="faction-slider__icon" src="assets/logos/neutral.svg" alt="" width="15" height="15" />
             <span>Neutral</span>
           </button>
-          <button type="button" class="tag-filter tag-filter--allies glass-btn is-active" data-faction="allies" aria-pressed="false" title="Allies">
-            <i class="fa-solid fa-person-rifle" aria-hidden="true"></i>
+          <button type="button" class="faction-slider__btn" data-faction="allies" aria-pressed="false" title="Allies">
+            <img class="faction-slider__icon" src="assets/logos/allies.svg" alt="" width="15" height="15" />
             <span>Allies</span>
           </button>
         </div>
         <span class="map-toolbar__sep"></span>
         <div class="tag-filters tag-filters--two" id="tag-filters" role="group" aria-label="Filter by tag">
           <button type="button" class="tag-filter tag-filter--mg-spot glass-btn is-active" data-tag="mg-spot" aria-pressed="true" title="MG Spot">
-            <i class="fa-solid fa-play tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
+            <i class="fa-solid fa-person-rifle tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
             <span>MG Spot</span>
           </button>
           <button type="button" class="tag-filter tag-filter--climb glass-btn is-active" data-tag="climb" aria-pressed="true" title="Climb">
             <i class="fa-solid fa-map-pin tag-swatch tag-swatch--climb" aria-hidden="true"></i>
             <span>Climb</span>
           </button>
+          <button type="button" class="tag-filter tag-filter--labels glass-btn is-active" id="btn-toggle-map-labels" aria-pressed="true" title="Hide map labels">
+            <span class="tag-filter__letter" aria-hidden="true">T</span>
+            <span>Labels</span>
+          </button>
+        </div>
         </div>
       </div>
       <button id="btn-reset-view" class="hidden" type="button" aria-hidden="true" tabindex="-1"></button>
@@ -394,11 +456,14 @@
         <div class="preview-tooltip__media" id="preview-media"></div>
         <div class="preview-tooltip__body">
           <div class="preview-tooltip__title-row">
-            <span class="preview-tooltip__faction-icon hidden" id="preview-faction-icon">
-              <span class="preview-tooltip__faction-text" id="preview-faction-text"></span>
-              <span class="preview-tooltip__title-sep"> - </span>
+            <span class="preview-tooltip__faction hidden" id="preview-faction-part">
+              <img class="preview-tooltip__faction-logo" id="preview-faction-logo" src="" alt="" width="13" height="13" />
+              <span id="preview-faction-text"></span>
             </span>
-            <span id="preview-title" class="preview-tooltip__title"></span>
+            <span class="preview-tooltip__heading-sep" id="preview-faction-sep"> - </span>
+            <span class="preview-tooltip__tag" id="preview-tag"></span>
+            <span class="preview-tooltip__heading-sep" id="preview-title-sep"> - </span>
+            <span id="preview-title"></span>
           </div>
           <div class="preview-tooltip__sub-row">
             <span class="preview-tooltip__position-code" id="preview-position-code"></span>
@@ -444,22 +509,23 @@
     </div>
   </dialog>
 
-  <dialog class="video-modal" id="video-modal">
+  <dialog class="video-modal" id="video-modal" closedby="none">
     <div class="video-modal__inner">
       <button class="video-modal__close" id="btn-close-modal" type="button" aria-label="Close">&times;</button>
       <div class="video-modal__header">
         <div class="video-modal__header-row">
-          <h2>
-            <span class="video-modal__faction-icon hidden" id="modal-faction-icon">
-              <span class="faction-text" id="modal-faction-text"></span>
-              <span class="faction-sep" id="modal-faction-sep"></span>
+          <h2 class="video-modal__heading">
+            <span class="video-modal__faction hidden" id="modal-faction-part">
+              <img class="video-modal__faction-logo" id="modal-faction-logo" src="" alt="" width="15" height="15" />
+              <span id="modal-faction-text"></span>
             </span>
+            <span class="video-modal__heading-sep" id="modal-faction-sep">-</span>
             <span class="video-modal__tag" id="modal-tag"></span>
-            <span class="video-modal__title-sep" id="modal-title-sep"></span>
+            <span class="video-modal__heading-sep" id="modal-title-sep">-</span>
             <span id="modal-title"></span>
           </h2>
         </div>
-        <p id="modal-position-code" class="video-modal__position-code"></p>
+        <p class="video-modal__position-code">Position Code: <span id="modal-position-code"></span></p>
         <div class="video-modal__requires hidden" id="modal-requires"></div>
         <p id="modal-description"></p>
       </div>

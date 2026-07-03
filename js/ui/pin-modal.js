@@ -3,6 +3,7 @@ import { getPinPlayback } from "./pin-preview.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
+import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { createVideoElement } from "../utils/video.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 
@@ -49,8 +50,8 @@ function getModalPlayerWrap() {
   return document.getElementById("modal-player-wrap");
 }
 
-function getModalFactionIcon() {
-  return document.getElementById("modal-faction-icon");
+function getModalFactionPart() {
+  return document.getElementById("modal-faction-part");
 }
 
 function getModalPositionCode() {
@@ -174,25 +175,23 @@ export function openModal(pin) {
   getModalDescription().textContent = pin.description || "";
 
   const faction = pin.faction || "neutral";
-  const modalFactionIcon = getModalFactionIcon();
-  if (modalFactionIcon) {
-    const FACTION_CONFIG = {
-      axis: { icon: "fa-solid fa-person-rifle", label: "Axis" },
-      allies: { icon: "fa-solid fa-person-rifle", label: "Allies" },
-      neutral: { icon: "fa-solid fa-skull-crossbones", label: "Neutral" },
-    };
-    const config = FACTION_CONFIG[faction] || FACTION_CONFIG.neutral;
-    modalFactionIcon.className = `video-modal__faction-icon faction--${faction} ${config.icon}`;
+  const factionConfig = getFactionDisplay(faction);
+  const modalFactionPart = getModalFactionPart();
+  if (modalFactionPart) {
+    modalFactionPart.className = `video-modal__faction faction--${faction}`;
+    const logoEl = document.getElementById("modal-faction-logo");
     const textEl = document.getElementById("modal-faction-text");
-    const sepEl = document.getElementById("modal-faction-sep");
-    if (textEl) textEl.textContent = config.label;
-    if (sepEl) sepEl.textContent = " - ";
-    modalFactionIcon.classList.remove("hidden");
+    if (logoEl) {
+      logoEl.src = factionConfig.logo;
+      logoEl.alt = factionConfig.label;
+    }
+    if (textEl) textEl.textContent = factionConfig.label;
+    modalFactionPart.classList.remove("hidden");
   }
 
   const tagEl = document.getElementById("modal-tag");
   const titleSepEl = document.getElementById("modal-title-sep");
-  const tagLabel = pin.tag === "mg-spot" ? "MG SPOT" : "CLIMB";
+  const tagLabel = getPinTagLabel(pin.tag);
   if (tagEl) {
     tagEl.textContent = tagLabel;
     tagEl.className = `video-modal__tag video-modal__tag--${pin.tag}`;
@@ -224,9 +223,13 @@ export function openModal(pin) {
   setModalMediaFullscreenVisible(false);
 
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
-  getModal().classList.remove("is-closing");
-  getModal().showModal();
+  const modal = getModal();
+  modal.classList.remove("is-closing");
+  armModalDismissGuard();
   loadModalPlayer(pin, state.modalMediaIndex);
+  if (!modal.open) {
+    modal.showModal();
+  }
 }
 
 function renderModalRequires(pin) {
@@ -329,6 +332,19 @@ export function initModalMediaNav() {
     closeModal();
   });
 
+  modal?.addEventListener("beforetoggle", (event) => {
+    if (event.newState !== "closed") return;
+    if (isModalDismissGuarded() && state.modalPin) {
+      event.preventDefault();
+    }
+  });
+
+  modal?.addEventListener("click", (event) => {
+    if (event.target !== modal || event.button !== 0) return;
+    if (isModalDismissGuarded()) return;
+    closeModal();
+  });
+
   getModalMediaPrev()?.addEventListener("click", showPreviousModalMedia);
   getModalMediaNext()?.addEventListener("click", showNextModalMedia);
   getModalMediaFullscreen()?.addEventListener("click", () => {
@@ -349,6 +365,21 @@ export function initModalMediaNav() {
   });
 }
 
+const MODAL_DISMISS_GUARD_MS = 300;
+let modalDismissGuardUntil = 0;
+
+export function armModalDismissGuard() {
+  modalDismissGuardUntil = Date.now() + MODAL_DISMISS_GUARD_MS;
+}
+
+function isModalDismissGuarded() {
+  return Date.now() < modalDismissGuardUntil;
+}
+
+function clearModalDismissGuard() {
+  modalDismissGuardUntil = 0;
+}
+
 const MODAL_CLOSE_MS = 320;
 
 function finishModalClose() {
@@ -364,6 +395,7 @@ export function closeModal() {
   const modal = getModal();
   if (!modal?.open || modal.classList.contains("is-closing")) return;
 
+  clearModalDismissGuard();
   modal.classList.add("is-closing");
   const timer = setTimeout(finishModalClose, MODAL_CLOSE_MS);
   modal.addEventListener(
@@ -375,6 +407,21 @@ export function closeModal() {
     },
     { once: true },
   );
+}
+
+export function handleModalCloseEvent() {
+  const modal = getModal();
+  if (isModalDismissGuarded() && state.modalPin) {
+    modal.classList.add("is-instant");
+    if (!modal.open) {
+      modal.showModal();
+    }
+    requestAnimationFrame(() => {
+      modal.classList.remove("is-instant");
+    });
+    return;
+  }
+  clearModalPlayer();
 }
 
 export function clearModalPlayer() {

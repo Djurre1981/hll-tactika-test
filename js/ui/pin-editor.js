@@ -132,6 +132,7 @@ function transitionEditorMode({
   state.pinDragSession = null;
   if (resetPositionHistory) {
     state.positionHistory = [];
+    state.redoHistory = [];
   }
 
   if (hidePreview) {
@@ -175,18 +176,17 @@ function transitionEditorMode({
 export function enterEditorMode() {
   transitionEditorMode({
     panelMode: "browse",
-    resetPositionHistory: true,
     hidePreview: true,
     headerButtonAnimate: true,
   });
 }
 
-export function backToEditorBrowse() {
+export function backToEditorBrowse({ preserveHistory = true } = {}) {
   if (!isInEditorMode()) return;
 
   transitionEditorMode({
     panelMode: "browse",
-    resetPositionHistory: true,
+    resetPositionHistory: !preserveHistory,
     hidePreview: true,
     resetMapEditMode: true,
     resetPinForm: true,
@@ -214,6 +214,7 @@ export function setSidebarDefaultVisible(visible) {
 
 function resetAddForm() {
   state.positionHistory = [];
+  state.redoHistory = [];
   state.editingPinId = null;
   state.pendingCoords = null;
   state.pendingDirection = null;
@@ -272,7 +273,6 @@ export function startEditPin(pin, { focus = false } = {}) {
     enterEditorMode();
   }
 
-  state.positionHistory = [];
   hidePreviewImmediately();
   closeModal();
   state.panelMode = "edit";

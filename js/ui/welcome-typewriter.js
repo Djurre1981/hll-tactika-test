@@ -3,7 +3,7 @@ const INTRO_TEXT =
   "The project is developed by The Circle community and kept strictly exclusive to our competitive team. " +
   "If you want to reach out to us or become a member, please join us on discord.";
 
-export function initWelcomeTypewriter(el, { speed = 16, startDelay = 400 } = {}) {
+export function initWelcomeTypewriter(el, { speed = 16, startDelay = 400, onComplete } = {}) {
   if (!el) return { destroy() {} };
 
   const fullText = el.dataset.typewriterText || INTRO_TEXT;
@@ -20,6 +20,7 @@ export function initWelcomeTypewriter(el, { speed = 16, startDelay = 400 } = {})
       el.classList.remove("is-typing");
       el.classList.add("is-done");
       timer = null;
+      if (!destroyed && index >= fullText.length) onComplete?.();
       return;
     }
     el.textContent += fullText[index];

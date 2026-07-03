@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
+import { pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
 import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag } from "./placement-mode.js";
@@ -165,15 +166,21 @@ export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: b
       const existing = state.pins.find((item) => item.id === state.editingPinId);
       if (!existing || !canModifyFn(existing)) return;
 
-      await updatePin(state.currentMapId, state.editingPinId, pinData);
-      await reloadPinsForMap(state.currentMapId);
-      backToEditorBrowseFn();
+      pushPinUpdateSnapshot(existing);
+      try {
+        await updatePin(state.currentMapId, state.editingPinId, pinData);
+        await reloadPinsForMap(state.currentMapId);
+        backToEditorBrowseFn({ preserveHistory: true });
+      } catch (error) {
+        state.positionHistory.pop();
+        throw error;
+      }
       return;
     }
 
     await createPin(state.currentMapId, pinData);
     await reloadPinsForMap(state.currentMapId);
-    backToEditorBrowseFn();
+    backToEditorBrowseFn({ preserveHistory: true });
   } catch (error) {
     console.error(error);
     alert(error.message || "Could not save trick");
@@ -187,18 +194,16 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   const existing = state.pins.find((item) => item.id === state.editingPinId);
   if (!existing || !canModifyFn(existing)) return;
 
-  if (!window.confirm(`Delete "${existing.title}"? This cannot be undone.`)) {
-    return;
-  }
-
   const btnDeletePin = getBtnDeletePin();
   btnDeletePin && (btnDeletePin.disabled = true);
 
   try {
+    pushPinDeleteSnapshot(existing);
     await deletePin(state.currentMapId, state.editingPinId);
     await reloadPinsForMap(state.currentMapId);
-    backToEditorBrowseFn();
+    backToEditorBrowseFn({ preserveHistory: true });
   } catch (error) {
+    state.positionHistory.pop();
     console.error(error);
     alert(error.message || "Could not delete trick");
   } finally {

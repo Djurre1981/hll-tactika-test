@@ -140,6 +140,10 @@
   z-index: 50;
 }
 
+.map-viewport.is-labels-hidden .map-pin__label {
+  display: none;
+}
+
 .map-pin__label {
   position: absolute;
   z-index: 6;

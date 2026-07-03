@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { canModifyPin } from "./helpers/permissions.js";
-import { persistToggles, persistBgHue, persistBgRandom } from "./ui/toggles.js";
+import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
 import { hidePreviewImmediately } from "./ui/pin-preview.js";
 import {
   toggleEditMode,
@@ -25,7 +25,7 @@ import {
   onFormContextMenuAction,
   hideFormContextMenu,
 } from "./ui/form-context-menu.js";
-import { closeModal, clearModalPlayer, initModalMediaNav } from "./ui/pin-modal.js";
+import { closeModal, handleModalCloseEvent, initModalMediaNav } from "./ui/pin-modal.js";
 import {
   setPinFormTag,
   getPlacementHint,
@@ -82,6 +82,15 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
     document.getElementById("form-context-menu"),
   ]);
 
+  const toolbarShell = document.getElementById("map-toolbar-shell");
+  const toolbarToggle = document.getElementById("btn-map-toolbar-toggle");
+  toolbarToggle?.addEventListener("click", () => {
+    const collapsed = toolbarShell.classList.toggle("is-collapsed");
+    toolbarToggle.setAttribute("aria-expanded", String(!collapsed));
+    toolbarToggle.setAttribute("aria-label", collapsed ? "Show toolbar" : "Hide toolbar");
+    toolbarToggle.title = collapsed ? "Show toolbar" : "Hide toolbar";
+  });
+
   document.getElementById("btn-zoom-in").addEventListener("click", () => state.mapViewer?.zoomIn());
   document.getElementById("btn-zoom-out").addEventListener("click", () => state.mapViewer?.zoomOut());
   document.getElementById("zoom-label").addEventListener("click", () => state.mapViewer?.resetView());
@@ -137,7 +146,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   document.getElementById("btn-close-modal").addEventListener("click", closeModal);
 
   const modal = document.getElementById("video-modal");
-  modal?.addEventListener("close", clearModalPlayer);
+  modal?.addEventListener("close", handleModalCloseEvent);
 
   const pinForm = document.getElementById("pin-form");
   pinForm?.addEventListener("submit", (event) => {
@@ -183,6 +192,11 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   });
 
   initMapColorControl({ persistToggles, persistBgHue, persistBgRandom });
+
+  document.getElementById("btn-toggle-map-labels")?.addEventListener("click", () => {
+    setMapLabelsVisible(!state.mapLabelsVisible);
+    persistToggles();
+  });
 
   document.querySelectorAll("#tag-filters [data-tag]").forEach((button) => {
     button.addEventListener("click", () => {

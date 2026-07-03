@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { deletePin as apiDeletePin } from "../api/pins.js";
+import { pushPinDeleteSnapshot } from "../editor/undo-redo.js";
 import { hideFormContextMenu } from "./form-context-menu.js";
 
 function getPinContextMenu() {
@@ -32,12 +33,13 @@ export function onPinContextMenuAction(event, { canModifyFn, reloadPinsForMapFn,
     if (canModifyFn(pin)) startEditPinFn(pin);
   } else if (action === "delete") {
     if (!canModifyFn(pin)) return;
-    if (!window.confirm('Delete "' + pin.title + '"? This cannot be undone.')) return;
+    pushPinDeleteSnapshot(pin);
     (async function () {
       try {
         await apiDeletePin(state.currentMapId, pin.id);
         await reloadPinsForMapFn(state.currentMapId);
       } catch (error) {
+        state.positionHistory.pop();
         console.error(error);
         alert(error.message || "Could not delete trick");
       }

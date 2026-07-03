@@ -5,7 +5,7 @@ import { hasPinDirection, renderMgSpotGroup } from "./mg-spot-arrows.js";
 import { positionPins, highlightPin } from "../helpers/proximity.js";
 import { updatePinCount } from "./sidebar.js";
 import { showPreview, movePreview, scheduleHidePreview } from "./pin-preview.js";
-import { openModal } from "./pin-modal.js";
+import { openModal, armModalDismissGuard } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
 import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
 import { pinHasMedia } from "../helpers/pin-media.js";
@@ -98,6 +98,10 @@ export function renderPins() {
 }
 
 export function attachPinInteractions(element, pin) {
+  element.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || state.panelMode !== null) return;
+    armModalDismissGuard();
+  });
   element.addEventListener("mouseenter", (event) => {
     if (state.panelMode !== null) return;
     highlightPin(pin.id);
@@ -109,6 +113,7 @@ export function attachPinInteractions(element, pin) {
   });
   element.addEventListener("mouseleave", () => {
     if (state.panelMode !== null) return;
+    if (state.modalPin?.id === pin.id && document.getElementById("video-modal")?.open) return;
     scheduleHidePreview();
     highlightPin(null);
   });

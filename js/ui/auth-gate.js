@@ -28,10 +28,20 @@ function setStoredAuthSession(active) {
 
 let scrubController = null;
 let typewriterController = null;
+let byeScrubController = null;
+let byeTypewriterController = null;
+let byeActionsRevealTimer = null;
+let byeUiBound = false;
+
+const BYE_TYPEWRITER_SPEED = 22;
+const BYE_ACTIONS_REVEAL_DELAY_MS = 700;
 
 function getAuthEls() {
   return {
     welcomePage: document.getElementById("welcome-page"),
+    byePage: document.getElementById("bye-page"),
+    byeActions: document.getElementById("bye-actions"),
+    btnByeGiveUp: document.getElementById("btn-bye-give-up"),
     appChrome: document.getElementById("app-chrome"),
     modeSwitch: document.getElementById("mode-switch"),
     gate: document.getElementById("auth-gate"),
@@ -46,6 +56,7 @@ function getAuthEls() {
     btnLogout: document.getElementById("btn-logout"),
     appRoot: document.getElementById("app-root"),
     scrubVideo: document.getElementById("welcome-scrub-video"),
+    byeScrubVideo: document.getElementById("bye-scrub-video"),
   };
 }
 
@@ -59,10 +70,16 @@ function getAuthErrorFromUrl() {
     const idHint = steamId
       ? ` Your Steam ID64 is ${steamId} — send this to an admin to be added.`
       : "";
-    return `Your Steam account is not on the member list yet.${idHint}`;
+    return {
+      type: "forbidden",
+      message: `Your Steam account is not on the member list yet.${idHint}`,
+    };
   }
   if (auth === "error") {
-    return "Steam sign-in failed. Please try again.";
+    return {
+      type: "error",
+      message: "Steam sign-in failed. Please try again.",
+    };
   }
   return null;
 }
@@ -127,8 +144,9 @@ function startTypewriter() {
 
 function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) {
   const els = getAuthEls();
+  hideBye();
   setStoredAuthSession(false);
-  document.documentElement.classList.remove("app-boot");
+  document.documentElement.classList.remove("app-boot", "bye-boot");
   document.documentElement.classList.add("welcome-boot");
   els.welcomePage?.classList.remove("is-hidden");
   els.appChrome?.classList.add("hidden");
@@ -143,9 +161,7 @@ function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) 
     });
   }
 
-  if (!typewriterController) {
-    startTypewriter();
-  }
+  startTypewriter();
 
   if (openDialog) {
     openAuthDialog(dialogContent);
@@ -164,10 +180,89 @@ function hideWelcome() {
   closeAuthDialog();
 }
 
+function destroyByeScrub() {
+  byeScrubController?.destroy();
+  byeScrubController = null;
+}
+
+function destroyByeTypewriter() {
+  byeTypewriterController?.destroy();
+  byeTypewriterController = null;
+}
+
+function clearByeActionsRevealTimer() {
+  if (!byeActionsRevealTimer) return;
+  window.clearTimeout(byeActionsRevealTimer);
+  byeActionsRevealTimer = null;
+}
+
+function resetByeActions() {
+  const els = getAuthEls();
+  clearByeActionsRevealTimer();
+  if (!els.byeActions) return;
+  els.byeActions.hidden = true;
+  els.byeActions.classList.remove("is-visible");
+}
+
+function revealByeActions() {
+  const els = getAuthEls();
+  if (!els.byeActions) return;
+  clearByeActionsRevealTimer();
+  byeActionsRevealTimer = window.setTimeout(() => {
+    byeActionsRevealTimer = null;
+    els.byeActions.hidden = false;
+    els.byeActions.classList.add("is-visible");
+  }, BYE_ACTIONS_REVEAL_DELAY_MS);
+}
+
+function startByeTypewriter() {
+  destroyByeTypewriter();
+  resetByeActions();
+  byeTypewriterController = initWelcomeTypewriter(document.getElementById("bye-intro"), {
+    speed: BYE_TYPEWRITER_SPEED,
+    onComplete: revealByeActions,
+  });
+}
+
+function showBye() {
+  const els = getAuthEls();
+  setStoredAuthSession(false);
+  document.documentElement.classList.remove("app-boot", "welcome-boot");
+  document.documentElement.classList.add("bye-boot");
+  els.welcomePage?.classList.add("is-hidden");
+  destroyWelcomeScrub();
+  destroyTypewriter();
+  els.byePage?.classList.remove("is-hidden");
+  els.appChrome?.classList.add("hidden");
+  els.appRoot?.classList.add("hidden");
+  els.userCluster?.classList.add("hidden");
+  els.modeSwitch?.classList.add("hidden");
+  closeAuthDialog();
+
+  byeScrubController = els.byeScrubVideo?.__welcomeScrub ?? null;
+  if (els.byeScrubVideo && !byeScrubController) {
+    void import(WELCOME_SCRUB_MODULE).then(({ initWelcomeScrub }) => {
+      byeScrubController = initWelcomeScrub(els.byeScrubVideo);
+    });
+  }
+
+  startByeTypewriter();
+}
+
+function hideBye() {
+  const els = getAuthEls();
+  document.documentElement.classList.remove("bye-boot");
+  els.byePage?.classList.add("is-hidden");
+  destroyByeScrub();
+  destroyByeTypewriter();
+  resetByeActions();
+}
+
 function showApp(user) {
   const els = getAuthEls();
   setCurrentUser(user);
   setStoredAuthSession(true);
+  hideBye();
   hideWelcome();
   els.appRoot?.classList.remove("hidden");
   els.appChrome?.classList.remove("hidden");
@@ -209,6 +304,15 @@ function bindSteamButtonMirror(btn) {
   btn.addEventListener("mouseleave", clearMirror);
 }
 
+function bindByeUi() {
+  if (byeUiBound) return;
+  byeUiBound = true;
+
+  getAuthEls().btnByeGiveUp?.addEventListener("click", () => {
+    showWelcome({ openDialog: false });
+  });
+}
+
 function bindWelcomeUi() {
   const els = getAuthEls();
 
@@ -236,10 +340,16 @@ function bindWelcomeUi() {
 
 export async function initAuth() {
   const els = getAuthEls();
-  const authError = getAuthErrorFromUrl();
+  const authResult = getAuthErrorFromUrl();
   clearAuthQuery();
 
   bindWelcomeUi();
+  bindByeUi();
+
+  if (authResult?.type === "forbidden") {
+    showBye();
+    return { ok: false, reason: "forbidden" };
+  }
 
   if (!hasStoredAuthSession()) {
     showWelcome({ openDialog: false });
@@ -255,13 +365,16 @@ export async function initAuth() {
     const user = await fetchCurrentUser();
     if (!user) {
       setStoredAuthSession(false);
-      if (!document.documentElement.classList.contains("welcome-boot")) {
+      if (
+        !document.documentElement.classList.contains("welcome-boot") &&
+        !document.documentElement.classList.contains("bye-boot")
+      ) {
         showWelcome({ openDialog: false });
       }
-      if (authError) {
+      if (authResult?.type === "error") {
         openAuthDialog({
           ...DEFAULT_AUTH,
-          message: authError,
+          message: authResult.message,
         });
       }
       return { ok: false, reason: "unauthenticated" };

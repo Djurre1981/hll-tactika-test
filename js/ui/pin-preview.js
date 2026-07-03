@@ -9,6 +9,7 @@ import {
 import { resolveMedalClip } from "../utils/medal.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
+import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 
 export async function getMediaPlayback(mediaItem) {
@@ -63,8 +64,8 @@ function getPreviewPositionCode() {
   return document.getElementById("preview-position-code");
 }
 
-function getPreviewFactionIcon() {
-  return document.getElementById("preview-faction-icon");
+function getPreviewFactionPart() {
+  return document.getElementById("preview-faction-part");
 }
 
 function getPreviewFactionText() {
@@ -100,20 +101,28 @@ export function showPreview(pin, event) {
   clearTimeout(state.previewHideTimer);
 
   const faction = pin.faction || "neutral";
-  const FACTION_CONFIG = {
-    axis: { icon: "fa-solid fa-person-rifle", label: "Axis" },
-    allies: { icon: "fa-solid fa-person-rifle", label: "Allies" },
-    neutral: { icon: "fa-solid fa-skull-crossbones", label: "Neutral" },
-  };
-  const config = FACTION_CONFIG[faction] || FACTION_CONFIG.neutral;
+  const factionConfig = getFactionDisplay(faction);
 
-  const previewFactionIcon = getPreviewFactionIcon();
-  if (previewFactionIcon) {
-    previewFactionIcon.className = `preview-tooltip__faction-icon faction--${faction} ${config.icon}`;
+  const previewFactionPart = getPreviewFactionPart();
+  if (previewFactionPart) {
+    previewFactionPart.className = `preview-tooltip__faction faction--${faction}`;
+    const logoEl = document.getElementById("preview-faction-logo");
     const previewFactionText = getPreviewFactionText();
-    if (previewFactionText) previewFactionText.textContent = config.label;
-    previewFactionIcon.classList.remove("hidden");
+    if (logoEl) {
+      logoEl.src = factionConfig.logo;
+      logoEl.alt = factionConfig.label;
+    }
+    if (previewFactionText) previewFactionText.textContent = factionConfig.label;
+    previewFactionPart.classList.remove("hidden");
   }
+
+  const tagEl = document.getElementById("preview-tag");
+  const tagLabel = getPinTagLabel(pin.tag);
+  if (tagEl) {
+    tagEl.textContent = tagLabel;
+    tagEl.className = `preview-tooltip__tag preview-tooltip__tag--${pin.tag}`;
+  }
+
   getPreviewTitle().textContent = pin.title;
 
   const previewPositionCode = getPreviewPositionCode();

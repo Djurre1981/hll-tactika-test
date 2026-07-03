@@ -1,54 +1,13 @@
 .map-toolbar .tag-filter {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-muted);
   font-family: inherit;
   cursor: pointer;
   transition:
-    border-color 0.25s var(--ease-smooth),
-    background 0.25s var(--ease-smooth),
     color 0.25s var(--ease-smooth),
     transform 0.2s var(--ease-smooth);
-}
-
-.map-toolbar .tag-filter:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--text);
-}
-
-.map-toolbar .tag-filter.is-active.tag-filter--mg-spot {
-  color: #ffb4a8;
-  border-color: rgba(255, 0, 0, 0.45);
-  background: rgba(255, 0, 0, 0.18);
-}
-
-.map-toolbar .tag-filter.is-active.tag-filter--climb {
-  color: #a8e8b8;
-  border-color: rgba(61, 173, 92, 0.45);
-  background: rgba(61, 173, 92, 0.18);
-}
-
-.map-toolbar #sidebar-faction-bar .tag-filter--axis.is-active {
-  border-color: rgba(232, 64, 64, 0.45);
-  background: rgba(232, 64, 64, 0.18);
-  color: #e84040;
-}
-
-.map-toolbar #sidebar-faction-bar .tag-filter--neutral.is-active {
-  color: #d0d4d0;
-  border-color: rgba(208, 212, 208, 0.35);
-  background: rgba(208, 212, 208, 0.12);
-}
-
-.map-toolbar #sidebar-faction-bar .tag-filter--allies.is-active {
-  border-color: rgba(70, 130, 212, 0.45);
-  background: rgba(70, 130, 212, 0.18);
-  color: #4682d4;
 }
 
 .tag-filters {
@@ -99,17 +58,6 @@
   color: #a8e8b8;
   border-color: rgba(61, 173, 92, 0.45);
   background: rgba(61, 173, 92, 0.18);
-}
-
-#sidebar-faction-bar .tag-filter {
-  min-height: 2.8rem;
-  flex-direction: row;
-  gap: 0.35rem;
-  padding: 0.35rem;
-}
-
-#sidebar-faction-bar .tag-filter span {
-  text-transform: capitalize;
 }
 
 .tag-filter--axis {
