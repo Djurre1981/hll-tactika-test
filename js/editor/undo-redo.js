@@ -107,6 +107,11 @@ function pushSnapshot(snapshot) {
   trimHistoryStack(state.positionHistory);
 }
 
+export function clearEditHistory() {
+  state.positionHistory = [];
+  state.redoHistory = [];
+}
+
 function applyPinMoveSnapshot(snapshot) {
   const pin = state.pins.find((item) => item.id === snapshot.pinId);
   if (!pin) return false;
@@ -271,6 +276,10 @@ export function pushPinUpdateSnapshot(pin) {
   pushSnapshot(copyPinUpdateSnapshot(pin));
 }
 
+export function pushPinCreateSnapshot(pinId, mapId = state.currentMapId) {
+  pushSnapshot(copyPinRemoveSnapshot(pinId, mapId));
+}
+
 export function popPositionSnapshot() {
   if (state.positionHistory.length === 0) return false;
 
@@ -299,6 +308,17 @@ export function popPositionSnapshot() {
       trimHistoryStack(state.redoHistory);
     }
     void applyPinUpdateSnapshot(snap);
+    return true;
+  }
+
+  if (snap.mode === "pin-remove") {
+    const pin = state.pins.find((item) => item.id === snap.pinId)
+      || state.pinCatalog[snap.mapId]?.find((item) => item.id === snap.pinId);
+    if (pin) {
+      state.redoHistory.push(copyPinRestoreSnapshot(pin, snap.mapId));
+      trimHistoryStack(state.redoHistory);
+    }
+    void applyPinRemoveSnapshot(snap);
     return true;
   }
 
@@ -339,6 +359,13 @@ export function popRedoSnapshot() {
       trimHistoryStack(state.positionHistory);
     }
     void applyPinUpdateSnapshot(snap);
+    return true;
+  }
+
+  if (snap.mode === "pin-restore") {
+    state.positionHistory.push(copyPinRemoveSnapshot(snap.pin.id, snap.mapId));
+    trimHistoryStack(state.positionHistory);
+    void applyPinRestoreSnapshot(snap);
     return true;
   }
 

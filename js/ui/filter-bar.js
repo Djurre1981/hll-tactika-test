@@ -62,7 +62,7 @@ export function applyEditorFactionToUi() {
   const editorBar = document.querySelector("#edit-faction-bar");
   if (!editorBar) return;
   editorBar.dataset.currentFaction = state.pendingFaction;
-  editorBar.querySelectorAll("[data-faction]").forEach((button) => {
+  editorBar.querySelectorAll(".edit-faction-bar__btn, [data-faction]").forEach((button) => {
     const active = button.dataset.faction === state.pendingFaction;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));

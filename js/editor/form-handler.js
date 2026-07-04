@@ -1,15 +1,27 @@
 import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
-import { pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
+import { pushPinCreateSnapshot, pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
 import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
-import { isPlacementComplete, canSavePlacement, getPinFormTag } from "./placement-mode.js";
+import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement } from "./placement-mode.js";
 import { validatePinMediaForm } from "./media-form.js";
+import { renderPins } from "../ui/pin-marker.js";
+import { renderPinList } from "../ui/sidebar.js";
+import { highlightPin } from "../helpers/proximity.js";
 
 const REQUIRES_FACTION_CONFIG = {
-  axis: { label: "Belgian Gate", icon: "fa-archway" },
-  allies: { label: "Tank Hedgehog", icon: "fa-maximize" },
+  axis: { label: "Gate", icon: "fa-archway" },
+  allies: { label: "Hedgehog", icon: "fa-maximize" },
 };
+
+const AUTO_SAVE_DELAY_MS = 450;
+let autoSaveTimer = null;
+let autoSaveDeps = null;
+let editUndoSnapshotPushed = false;
+
+export function resetEditUndoSnapshot() {
+  editUndoSnapshotPushed = false;
+}
 
 function getRequiresOptions() {
   return document.getElementById("pin-requires-options");
@@ -21,10 +33,6 @@ function getPinTitle() {
 
 function getPinDescription() {
   return document.getElementById("pin-description");
-}
-
-function getBtnSavePin() {
-  return document.getElementById("btn-save-pin");
 }
 
 function getBtnDeletePin() {
@@ -39,6 +47,7 @@ export function initRequiresCheckboxes() {
     if (!checkbox) return;
     checkbox.addEventListener("change", () => {
       label.classList.toggle("is-checked", checkbox.checked);
+      scheduleAutoSave();
     });
     label.addEventListener("click", (event) => {
       event.preventDefault();
@@ -46,6 +55,30 @@ export function initRequiresCheckboxes() {
       checkbox.dispatchEvent(new Event("change"));
     });
   });
+}
+
+export function initAutoSave(deps) {
+  autoSaveDeps = deps;
+
+  getPinTitle()?.addEventListener("input", scheduleAutoSave);
+  getPinDescription()?.addEventListener("input", scheduleAutoSave);
+
+  document.getElementById("pin-media-list")?.addEventListener("input", (event) => {
+    if (event.target.matches(".pin-media-row__url")) {
+      scheduleAutoSave();
+    }
+  });
+
+  document.addEventListener("pin-form-changed", scheduleAutoSave);
+}
+
+export function scheduleAutoSave() {
+  if (state.panelMode !== "add" && state.panelMode !== "edit") return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    if (!autoSaveDeps) return;
+    onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
+  }, AUTO_SAVE_DELAY_MS);
 }
 
 export function updateFactionRequires(faction) {
@@ -114,13 +147,12 @@ export function resetRequires() {
   });
 }
 
-export function triggerFormSave({ reloadPinsForMap, backToEditorBrowse, canModifyFn }) {
-  onSavePin({ preventDefault() {} }, { reloadPinsForMap, backToEditorBrowse, canModifyFn });
-}
-
-export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {
+export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave = false }) {
   event.preventDefault();
   if (!canSavePlacement()) return;
+
+  const title = getPinTitle()?.value.trim();
+  if (!title) return;
 
   const tag = getPinFormTag();
   if (!tag) return;
@@ -130,7 +162,7 @@ export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToE
   const mediaFields = deriveLegacyMediaFields(mediaValidation.items);
 
   const pinData = {
-    title: getPinTitle().value.trim(),
+    title,
     description: getPinDescription().value.trim(),
     videoUrl: mediaFields.videoUrl,
     thumbnail: mediaFields.thumbnail || "",
@@ -148,44 +180,96 @@ export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToE
   pinData.faction = state.pendingFaction;
 
   const requires = getRequiresData();
-  if (Object.keys(requires).length > 0) {
-    pinData.requires = requires;
-  } else {
-    pinData.requires = {};
-  }
+  pinData.requires = Object.keys(requires).length > 0 ? requires : {};
 
-  void savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn });
+  void savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave });
 }
 
-export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {
-  const btnSavePin = getBtnSavePin();
-  btnSavePin.disabled = true;
+export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave = false }) {
+  if (state.pinSaveInFlight) return;
+
+  state.pinSaveInFlight = true;
 
   try {
     if (state.panelMode === "edit" && state.editingPinId) {
       const existing = state.pins.find((item) => item.id === state.editingPinId);
       if (!existing || !canModifyFn(existing)) return;
 
-      pushPinUpdateSnapshot(existing);
-      try {
-        await updatePin(state.currentMapId, state.editingPinId, pinData);
-        await reloadPinsForMap(state.currentMapId);
+      if (!editUndoSnapshotPushed) {
+        pushPinUpdateSnapshot(existing);
+        editUndoSnapshotPushed = true;
+      }
+
+      await updatePin(state.currentMapId, state.editingPinId, pinData);
+      await reloadPinsForMap(state.currentMapId);
+
+      if (autoSave) {
+        renderPins();
+        renderPinList();
+        highlightPin(state.editingPinId);
+      } else {
         backToEditorBrowseFn({ preserveHistory: true });
-      } catch (error) {
-        state.positionHistory.pop();
-        throw error;
       }
       return;
     }
 
-    await createPin(state.currentMapId, pinData);
-    await reloadPinsForMap(state.currentMapId);
-    backToEditorBrowseFn({ preserveHistory: true });
+    if (state.panelMode === "add") {
+      const created = await createPin(state.currentMapId, pinData);
+      await reloadPinsForMap(state.currentMapId);
+      pushPinCreateSnapshot(created.id);
+      editUndoSnapshotPushed = true;
+      state.editingPinId = created.id;
+      state.panelMode = "edit";
+      syncViewportFormClasses();
+
+      if (autoSave) {
+        renderPins();
+        renderPinList();
+        highlightPin(created.id);
+      } else {
+        backToEditorBrowseFn({ preserveHistory: true });
+      }
+    }
   } catch (error) {
     console.error(error);
-    alert(error.message || "Could not save trick");
-    btnSavePin.disabled = false;
+    if (!autoSave) {
+      alert(error.message || "Could not save trick");
+    }
+  } finally {
+    state.pinSaveInFlight = false;
   }
+}
+
+export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn }) {
+  if (!state.addPinSession) return;
+
+  if (state.editingPinId) {
+    const existing = state.pins.find((item) => item.id === state.editingPinId);
+    if (existing && canModifyFn(existing)) {
+      try {
+        await deletePin(state.currentMapId, state.editingPinId);
+        await reloadPinsForMap(state.currentMapId);
+        const last = state.positionHistory[state.positionHistory.length - 1];
+        if (last?.mode === "pin-remove" && last.pinId === state.editingPinId) {
+          state.positionHistory.pop();
+        }
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "Could not delete trick");
+        return;
+      }
+    }
+    state.editingPinId = null;
+  }
+
+  resetEditUndoSnapshot();
+  state.panelMode = "add";
+  state.editMode = true;
+  clearDraftPlacement();
+  syncViewportFormClasses();
+  renderPins();
+  renderPinList();
+  highlightPin(null);
 }
 
 export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn }) {

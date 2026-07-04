@@ -123,6 +123,7 @@ export function attachPinInteractions(element, pin) {
     openModal(pin);
   });
   element.addEventListener("contextmenu", (event) => {
+    if (state.panelMode === null) return;
     if (state.panelMode === "add" || state.panelMode === "edit") {
       event.preventDefault();
       event.stopPropagation();

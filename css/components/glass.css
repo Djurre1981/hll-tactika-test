@@ -15,8 +15,41 @@
 }
 
 .glass-panel {
+  position: relative;
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
+  background: transparent;
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--glass-bg);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  pointer-events: none;
+}
+
+.sidebar.glass-panel > *,
+.map-toolbar.glass-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar.glass-panel,
+.map-toolbar.glass-panel {
+  --glass-bg: rgba(24, 24, 26, 0.58);
+}
+
+.glass-surface {
+  border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   box-shadow:
     var(--glass-shadow),

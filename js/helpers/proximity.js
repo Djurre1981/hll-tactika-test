@@ -1,15 +1,7 @@
 import { state } from "../state.js";
 import { getFilteredPins } from "../ui/filter-bar.js";
-import { hasPinDirection } from "../ui/mg-spot-arrows.js";
+import { getMgArrowheadFocusCoords } from "../ui/mg-spot-arrows.js";
 import { getMgLabelDirection, getOppositeDirection, getNeutralDirection } from "./constants.js";
-
-function getViewport() {
-  return document.getElementById("map-viewport");
-}
-
-function getImage() {
-  return document.getElementById("map-image");
-}
 
 function getPinsLayer() {
   return document.getElementById("map-pins");
@@ -41,27 +33,42 @@ export function highlightPin(pinId) {
   }
 }
 
-export function focusPin(pin, { zoomPercent = 65 } = {}) {
-  const viewport = getViewport();
-  const rect = viewport.getBoundingClientRect();
-  const image = getImage();
-  const imgW = image.naturalWidth;
-  const imgH = image.naturalHeight;
-  const mapViewer = state.mapViewer;
+export function focusPin(pin, { zoomPercent = 75 } = {}) {
+  if (!state.mapViewer) return;
+  const coords =
+    pin.tag === "mg-spot" ? getMgArrowheadFocusCoords(pin) : { x: pin.x, y: pin.y };
+  state.mapViewer.focusAtMapPercent(coords.x, coords.y, { zoomPercent });
+  highlightPin(pin.id);
+}
 
-  let focusX = pin.x;
-  let focusY = pin.y;
-  if (pin.tag === "mg-spot" && hasPinDirection(pin)) {
-    focusX = pin.dirX;
-    focusY = pin.dirY;
+export function focusPendingPlacement({ zoomPercent = 75 } = {}) {
+  if (!state.mapViewer) return;
+  if (state.panelMode !== "add" && state.panelMode !== "edit") return;
+
+  const { pendingCoords, pendingDirection, pendingTag, pendingFaction, editingPinId } = state;
+  if (!pendingCoords && !pendingDirection) return;
+
+  const tag = pendingTag || "climb";
+  if (tag !== "mg-spot") {
+    if (!pendingCoords) return;
+    state.mapViewer.focusAtMapPercent(pendingCoords.x, pendingCoords.y, { zoomPercent });
+    highlightPin(editingPinId);
+    return;
   }
 
-  mapViewer.scale = mapViewer.clampScale(zoomPercent / 100);
-  mapViewer.translateX = rect.width / 2 - (focusX / 100) * imgW * mapViewer.scale;
-  mapViewer.translateY = rect.height / 2 - (focusY / 100) * imgH * mapViewer.scale;
-  mapViewer.clampTranslation();
-  mapViewer.applyTransform();
-  highlightPin(pin.id);
+  if (!pendingDirection) return;
+
+  const pin = {
+    tag: "mg-spot",
+    x: pendingCoords?.x ?? pendingDirection.x,
+    y: pendingCoords?.y ?? pendingDirection.y,
+    dirX: pendingDirection.x,
+    dirY: pendingDirection.y,
+    faction: pendingFaction,
+  };
+  const coords = getMgArrowheadFocusCoords(pin);
+  state.mapViewer.focusAtMapPercent(coords.x, coords.y, { zoomPercent });
+  highlightPin(editingPinId);
 }
 
 function syncPinHighlightClasses() {

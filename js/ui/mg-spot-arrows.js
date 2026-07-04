@@ -15,6 +15,15 @@ export function hasPinDirection(pin) {
   );
 }
 
+/** Map-% coords of the visible arrowhead tip (for centering / focus). */
+export function getMgArrowheadFocusCoords(pin) {
+  if (!pin || pin.dirX == null || pin.dirY == null) {
+    return { x: pin?.x ?? 0, y: pin?.y ?? 0 };
+  }
+  const { sharpX, sharpY } = computeMgSpotGeometry(pin.x, pin.y, pin.dirX, pin.dirY);
+  return { x: sharpX, y: sharpY };
+}
+
 // Shared geometry for the stem line + arrowhead triangle, reused by both
 // initial SVG construction and refreshMgSpotGroup() (which redraws the same
 // shapes in place while dragging, without recreating any DOM nodes).

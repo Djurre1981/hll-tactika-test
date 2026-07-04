@@ -9,35 +9,100 @@ function getMediaList() {
   return document.getElementById("pin-media-list");
 }
 
-function getAddMediaButton() {
-  return document.getElementById("btn-add-media");
+function notifyFormChanged() {
+  document.dispatchEvent(new CustomEvent("pin-form-changed"));
 }
 
-function createMediaRow({ url = "" } = {}) {
+function createMediaRow({ url = "", isFirst = false } = {}) {
   const row = document.createElement("div");
   row.className = "pin-media-row";
+  const actionClass = isFirst ? "pin-media-row__add" : "pin-media-row__remove";
+  const actionLabel = isFirst ? "Add link" : "Remove media";
+  const actionContent = isFirst ? "+" : "&times;";
   row.innerHTML = `
     <input
       type="text"
-      class="pin-media-row__url"
+      class="pin-media-row__url glass-input"
       placeholder="https://..."
       value="${escapeHtml(url)}"
     />
-    <button type="button" class="pin-media-row__remove" aria-label="Remove media">&times;</button>
+    <button type="button" class="pin-media-row__action ${actionClass}" aria-label="${actionLabel}">${actionContent}</button>
   `;
 
-  row.querySelector(".pin-media-row__remove").addEventListener("click", () => {
-    row.remove();
-    ensureAtLeastOneRow();
-  });
+  const actionBtn = row.querySelector(".pin-media-row__action");
+  if (isFirst) {
+    actionBtn.addEventListener("click", () => {
+      getMediaList()?.appendChild(createMediaRow());
+      notifyFormChanged();
+    });
+  } else {
+    actionBtn.addEventListener("click", () => {
+      row.remove();
+      syncFirstRowAction();
+      notifyFormChanged();
+    });
+  }
 
   return row;
 }
 
-function ensureAtLeastOneRow() {
+function syncFirstRowAction() {
   const list = getMediaList();
-  if (!list || list.children.length > 0) return;
-  list.appendChild(createMediaRow());
+  if (!list) return;
+  const rows = list.querySelectorAll(".pin-media-row");
+  if (rows.length === 0) {
+    list.appendChild(createMediaRow({ isFirst: true }));
+    return;
+  }
+  rows.forEach((row, index) => {
+    const btn = row.querySelector(".pin-media-row__action");
+    if (!btn) return;
+    const shouldBeFirst = index === 0;
+    const isAdd = btn.classList.contains("pin-media-row__add");
+    if (shouldBeFirst === isAdd) return;
+
+    const url = row.querySelector(".pin-media-row__url")?.value || "";
+    const replacement = createMediaRow({ url, isFirst: shouldBeFirst });
+    row.replaceWith(replacement);
+  });
+}
+
+export function initPinMediaForm() {
+  /* First row + button handles add; no separate control. */
+}
+
+export function resetPinMediaForm() {
+  const list = getMediaList();
+  if (!list) return;
+  list.innerHTML = "";
+  list.appendChild(createMediaRow({ isFirst: true }));
+}
+
+export function setPinMediaFormItems(items) {
+  const list = getMediaList();
+  if (!list) return;
+  list.innerHTML = "";
+  const normalized = Array.isArray(items) ? items.filter((item) => item?.url) : [];
+  if (normalized.length === 0) {
+    list.appendChild(createMediaRow({ isFirst: true }));
+    return;
+  }
+  normalized.forEach((item, index) => {
+    list.appendChild(createMediaRow({ url: item.url, isFirst: index === 0 }));
+  });
+}
+
+export function getPinMediaFormItems() {
+  const list = getMediaList();
+  if (!list) return [];
+
+  const items = [];
+  list.querySelectorAll(".pin-media-row").forEach((row) => {
+    const parsed = parseMediaRow(row);
+    if (!parsed || parsed.invalidInput) return;
+    items.push({ kind: parsed.kind, url: parsed.url });
+  });
+  return items;
 }
 
 function parseMediaRow(row) {
@@ -54,46 +119,6 @@ function parseMediaRow(row) {
 
   input.setCustomValidity("");
   return { kind, url };
-}
-
-export function initPinMediaForm() {
-  getAddMediaButton()?.addEventListener("click", () => {
-    getMediaList()?.appendChild(createMediaRow());
-  });
-}
-
-export function resetPinMediaForm() {
-  const list = getMediaList();
-  if (!list) return;
-  list.innerHTML = "";
-  list.appendChild(createMediaRow());
-}
-
-export function setPinMediaFormItems(items) {
-  const list = getMediaList();
-  if (!list) return;
-  list.innerHTML = "";
-  const normalized = Array.isArray(items) ? items.filter((item) => item?.url) : [];
-  if (normalized.length === 0) {
-    list.appendChild(createMediaRow());
-    return;
-  }
-  for (const item of normalized) {
-    list.appendChild(createMediaRow({ url: item.url }));
-  }
-}
-
-export function getPinMediaFormItems() {
-  const list = getMediaList();
-  if (!list) return [];
-
-  const items = [];
-  list.querySelectorAll(".pin-media-row").forEach((row) => {
-    const parsed = parseMediaRow(row);
-    if (!parsed || parsed.invalidInput) return;
-    items.push({ kind: parsed.kind, url: parsed.url });
-  });
-  return items;
 }
 
 export function validatePinMediaForm() {

@@ -54,15 +54,8 @@ export function renderPinList() {
       </span>
     `;
 
-    body.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      armModalDismissGuard();
-    });
     body.addEventListener("click", () => {
       focusPin(pin);
-      if (!isEditorBrowseMode()) {
-        openModal(pin);
-      }
     });
 
     row.addEventListener("mouseenter", () => {
@@ -74,7 +67,7 @@ export function renderPinList() {
     if (isEditorBrowseMode() && canModifyPin(pin)) {
       const editButton = document.createElement("button");
       editButton.type = "button";
-      editButton.className = "pin-list__action pin-list__edit btn btn--ghost";
+      editButton.className = "pin-list__action pin-list__edit";
       editButton.title = "Edit trick";
       editButton.textContent = "Edit";
       editButton.dataset.pinId = pin.id;

@@ -1,7 +1,9 @@
 import { initAuth, loadProtectedPins } from "./ui/auth-gate.js";
 import { applyMapBgFade, initMapColorControl, restoreMapBgFadeSettings } from "./ui/map-bg-fade.js";
 import { state, loadSelectedMapId, saveSelectedMapId, loadToggleState } from "./state.js";
+import { setMapPickerValue } from "./ui/map-picker.js";
 import { loadTagFilters, loadCurrentFaction } from "./ui/filter-bar.js";
+import { initPortraitPanelDefaults } from "./ui/chrome-panels.js";
 
 function waitForImage(image) {
   if (image.complete && image.naturalWidth) return Promise.resolve();
@@ -16,7 +18,7 @@ function resolveImageSrc(imagePath) {
 
 function revealAppChrome() {
   document.getElementById("mode-switch")?.classList.remove("hidden");
-  document.getElementById("app-chrome")?.classList.remove("hidden");
+  document.getElementById("user-cluster")?.classList.remove("hidden");
 }
 
 async function init() {
@@ -58,6 +60,7 @@ async function init() {
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
   revealAppChrome();
+  initPortraitPanelDefaults();
 
   const [
     [
@@ -93,8 +96,7 @@ async function init() {
     state.currentMap = map;
     saveSelectedMapId(mapId, map.image);
 
-    const mapSelect = document.getElementById("map-select");
-    if (mapSelect) mapSelect.value = mapId;
+    setMapPickerValue(mapId);
 
     const image = document.getElementById("map-image");
     const nextSrc = resolveImageSrc(map.image);

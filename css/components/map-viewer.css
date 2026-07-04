@@ -5,13 +5,15 @@
   --toggle-w: 0.42rem;
   --shell-gap: 0.35rem;
   position: fixed;
-  top: 50%;
+  top: 0;
+  bottom: 0;
   right: 1.5rem;
+  height: fit-content;
+  margin-block: auto;
   z-index: var(--z-panel);
   display: flex;
   align-items: center;
   gap: var(--shell-gap);
-  transform: translateY(-50%);
   transition: gap 0.4s var(--ease-smooth);
   animation: panel-enter-right 0.6s var(--ease-smooth) 0.1s both;
 }
@@ -61,10 +63,16 @@
 }
 
 .map-toolbar-shell.is-collapsed .map-toolbar {
-  transform: translateX(calc(100% + var(--shell-gap) + var(--toggle-w)));
   opacity: 0;
   pointer-events: none;
   margin-right: calc(-1 * (var(--toolbar-w) + var(--shell-gap)));
+}
+
+@media (orientation: portrait) {
+  .map-toolbar-shell .map-toolbar__toggle {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .map-toolbar {
@@ -77,24 +85,20 @@
   width: var(--toolbar-w);
   padding: var(--toolbar-pad);
   border-radius: var(--glass-radius-pill);
-  transform: translateX(0);
   opacity: 1;
   margin-right: 0;
   transition:
-    transform 0.4s var(--ease-smooth),
     opacity 0.35s var(--ease-smooth),
     margin-right 0.4s var(--ease-smooth);
 }
 
 @keyframes panel-enter-right {
   from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(12px);
+    margin-right: -12px;
   }
 
   to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
+    margin-right: 0;
   }
 }
 

@@ -42,7 +42,7 @@ function getAuthEls() {
     byePage: document.getElementById("bye-page"),
     byeActions: document.getElementById("bye-actions"),
     btnByeGiveUp: document.getElementById("btn-bye-give-up"),
-    appChrome: document.getElementById("app-chrome"),
+    appRoot: document.getElementById("app-root"),
     modeSwitch: document.getElementById("mode-switch"),
     gate: document.getElementById("auth-gate"),
     gateTitle: document.getElementById("auth-gate-title"),
@@ -54,7 +54,6 @@ function getAuthEls() {
     userAvatar: document.getElementById("user-avatar"),
     userName: document.getElementById("user-name"),
     btnLogout: document.getElementById("btn-logout"),
-    appRoot: document.getElementById("app-root"),
     scrubVideo: document.getElementById("welcome-scrub-video"),
     byeScrubVideo: document.getElementById("bye-scrub-video"),
   };
@@ -149,7 +148,6 @@ function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) 
   document.documentElement.classList.remove("app-boot", "bye-boot");
   document.documentElement.classList.add("welcome-boot");
   els.welcomePage?.classList.remove("is-hidden");
-  els.appChrome?.classList.add("hidden");
   els.appRoot?.classList.add("hidden");
   els.userCluster?.classList.add("hidden");
   els.modeSwitch?.classList.add("hidden");
@@ -233,7 +231,6 @@ function showBye() {
   destroyWelcomeScrub();
   destroyTypewriter();
   els.byePage?.classList.remove("is-hidden");
-  els.appChrome?.classList.add("hidden");
   els.appRoot?.classList.add("hidden");
   els.userCluster?.classList.add("hidden");
   els.modeSwitch?.classList.add("hidden");
@@ -265,7 +262,6 @@ function showApp(user) {
   hideBye();
   hideWelcome();
   els.appRoot?.classList.remove("hidden");
-  els.appChrome?.classList.remove("hidden");
   els.userCluster?.classList.remove("hidden");
   els.modeSwitch?.classList.remove("hidden");
 

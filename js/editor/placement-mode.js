@@ -5,16 +5,11 @@ import { MG_COLLAPSE_HINT, mgHandlesCollapsed } from "../helpers/mg-placement.js
 import { hidePlacementCrosshair } from "./draft-renderer.js";
 
 export function setPinFormTag(tagId) {
-  document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
-    const active = button.dataset.tag === tagId;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
+  state.pendingTag = tagId;
 }
 
 export function getPinFormTag() {
-  const active = document.querySelector("#pin-tag-options [data-tag].is-active");
-  return active?.dataset.tag || null;
+  return state.pendingTag || DEFAULT_PIN_TAG;
 }
 
 export function isMgSpotPlacement() {
@@ -36,6 +31,11 @@ export function syncViewportFormClasses() {
   const placing = state.panelMode === "add" && !isPlacementComplete();
   viewport.classList.toggle("is-placing-pin", placing);
   viewport.classList.toggle("is-editing-pin", state.panelMode === "edit");
+
+  const coordsEl = document.getElementById("pin-coords");
+  const inPinForm = state.panelMode === "add" || state.panelMode === "edit";
+  const hasPlacement = Boolean(state.pendingCoords || state.pendingDirection);
+  coordsEl?.classList.toggle("is-clickable", inPinForm && hasPlacement);
 }
 
 export function getPlacementHint() {
@@ -49,55 +49,58 @@ export function getPlacementHint() {
 export function updatePlacementUi() {
   updatePositionCode();
   const coordsEl = document.getElementById("pin-coords");
-  const saveBtn = document.getElementById("btn-save-pin");
   if (!state.pendingCoords) {
     coordsEl.textContent = "No position selected";
-    saveBtn.disabled = true;
     syncViewportFormClasses();
+    notifyPinFormChanged();
     return;
   }
 
   if (isMgSpotPlacement()) {
     if (!state.pendingDirection) {
-      saveBtn.disabled = true;
       coordsEl.textContent = "No position selected";
       syncViewportFormClasses();
+      notifyPinFormChanged();
       return;
     }
     if (!state.pendingCoords) {
       coordsEl.textContent = `Arrowhead: ${state.pendingDirection.x}%, ${state.pendingDirection.y}% — click again for the bar`;
-      saveBtn.disabled = true;
       syncViewportFormClasses();
+      notifyPinFormChanged();
       return;
     }
     if (state.mgCollapseHint) {
       coordsEl.textContent = MG_COLLAPSE_HINT;
-      saveBtn.disabled = true;
       syncViewportFormClasses();
+      notifyPinFormChanged();
       return;
     }
     coordsEl.textContent = `Arrowhead: ${state.pendingDirection.x}%, ${state.pendingDirection.y}% · Bar: ${state.pendingCoords.x}%, ${state.pendingCoords.y}%`;
-    saveBtn.disabled = false;
     syncViewportFormClasses();
+    notifyPinFormChanged();
     return;
   }
 
   coordsEl.textContent = `Position: ${state.pendingCoords.x}%, ${state.pendingCoords.y}%`;
-  saveBtn.disabled = false;
   syncViewportFormClasses();
+  notifyPinFormChanged();
+}
+
+function notifyPinFormChanged() {
+  document.dispatchEvent(new CustomEvent("pin-form-changed"));
 }
 
 function updatePositionCode() {
   const pinPositionCode = document.getElementById("pin-position-code");
+  if (!pinPositionCode) return;
   const { pendingCoords, pendingDirection } = state;
   if (!pendingCoords && !pendingDirection) {
-    pinPositionCode.value = "";
+    pinPositionCode.textContent = "";
   } else if (isMgSpotPlacement() && pendingDirection) {
-    if (!pendingCoords) {
-      pinPositionCode.value = generatePositionCode(pendingDirection.x, pendingDirection.y);
-    }
+    const point = pendingCoords || pendingDirection;
+    pinPositionCode.textContent = generatePositionCode(point.x, point.y);
   } else if (pendingCoords) {
-    pinPositionCode.value = generatePositionCode(pendingCoords.x, pendingCoords.y);
+    pinPositionCode.textContent = generatePositionCode(pendingCoords.x, pendingCoords.y);
   }
 }
 
@@ -141,20 +144,20 @@ export function onViewportClick(event) {
   updateDraftMarker();
 }
 
-export function cancelMgSpotHeadPlacement() {
+export function clearDraftPlacement() {
   state.pendingDirection = null;
   state.pendingCoords = null;
+  state.mgCollapseHint = false;
   updatePlacementUi();
+  hidePlacementCrosshair();
   updateDraftMarker();
 }
 
-export function onViewportContextMenu(event) {
-  if (state.editMode && isMgSpotPlacement() && state.pendingDirection && !state.pendingCoords) {
-    event.preventDefault();
-    cancelMgSpotHeadPlacement();
-    return;
-  }
+export function cancelMgSpotHeadPlacement() {
+  clearDraftPlacement();
+}
 
+export function onViewportContextMenu(event) {
   if (state.panelMode !== "add" && state.panelMode !== "edit") {
     return;
   }
@@ -164,9 +167,6 @@ export function onViewportContextMenu(event) {
   ) {
     return;
   }
-
-  event.preventDefault();
-  showFormContextMenu(event.clientX, event.clientY);
 }
 
 export function shouldShowPlacementCrosshair() {
@@ -215,4 +215,3 @@ export function onViewportMouseLeave() {
 import { pushPositionSnapshot } from "./undo-redo.js";
 import { showPlacementCrosshairAtScreen, updateDraftMarker } from "./draft-renderer.js";
 import { highlightPin } from "../helpers/proximity.js";
-import { showFormContextMenu } from "../ui/form-context-menu.js";

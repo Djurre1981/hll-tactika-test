@@ -6,30 +6,28 @@ import {
   toggleEditMode,
   exitEditorMode,
   backToEditorBrowse,
+  tryBackToEditorBrowse,
   openAddPinForm,
   startEditPin,
 } from "./ui/pin-editor.js";
 import {
   onSavePin,
-  triggerFormSave,
+  onDeletePin,
+  onDeleteAddPinPlacement,
   initRequiresCheckboxes,
+  initAutoSave,
   updateFactionRequires,
+  scheduleAutoSave,
 } from "./editor/form-handler.js";
 import { initPinMediaForm } from "./editor/media-form.js";
 import {
   onPinContextMenuAction,
   hidePinContextMenu,
   onContextMenuKeyDown,
+  handleEditorPlacementContextMenu,
 } from "./ui/pin-context-menu.js";
-import {
-  onFormContextMenuAction,
-  hideFormContextMenu,
-} from "./ui/form-context-menu.js";
 import { closeModal, handleModalCloseEvent, initModalMediaNav } from "./ui/pin-modal.js";
 import {
-  setPinFormTag,
-  getPlacementHint,
-  updatePlacementUi,
   onViewportClick,
   onViewportContextMenu,
   onViewportMouseMove,
@@ -47,10 +45,10 @@ import {
   saveCurrentFaction,
   getFilteredPins,
 } from "./ui/filter-bar.js";
-import { highlightPin } from "./helpers/proximity.js";
-import { isDirectionalPinTag } from "./pin-tags.js";
+import { highlightPin, focusPendingPlacement } from "./helpers/proximity.js";
 import { initDraftPinDrag } from "./editor/pin-drag.js";
 import { initMapColorControl } from "./ui/map-bg-fade.js";
+import { setShellCollapsed } from "./ui/chrome-panels.js";
 
 function suppressNativeContextMenu(elements) {
   for (const element of elements) {
@@ -77,18 +75,30 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   suppressNativeContextMenu([
     document.getElementById("map-viewport"),
     document.getElementById("sidebar"),
-    document.getElementById("app-chrome"),
+    document.getElementById("mode-switch"),
+    document.getElementById("user-cluster"),
     document.getElementById("pin-context-menu"),
-    document.getElementById("form-context-menu"),
   ]);
 
   const toolbarShell = document.getElementById("map-toolbar-shell");
   const toolbarToggle = document.getElementById("btn-map-toolbar-toggle");
   toolbarToggle?.addEventListener("click", () => {
-    const collapsed = toolbarShell.classList.toggle("is-collapsed");
-    toolbarToggle.setAttribute("aria-expanded", String(!collapsed));
-    toolbarToggle.setAttribute("aria-label", collapsed ? "Show toolbar" : "Hide toolbar");
-    toolbarToggle.title = collapsed ? "Show toolbar" : "Hide toolbar";
+    const collapsed = !toolbarShell.classList.contains("is-collapsed");
+    setShellCollapsed(toolbarShell, toolbarToggle, collapsed, {
+      show: "Show toolbar",
+      hide: "Hide toolbar",
+    });
+  });
+
+  const sidebarShell = document.getElementById("sidebar-shell");
+  const sidebarToggle = document.getElementById("btn-sidebar-toggle");
+  sidebarToggle?.addEventListener("click", () => {
+    const collapsed = !sidebarShell.classList.contains("is-collapsed");
+    setShellCollapsed(sidebarShell, sidebarToggle, collapsed, {
+      show: "Show sidebar",
+      hide: "Hide sidebar",
+    });
+    state.mapViewer?.followSidebarLayout();
   });
 
   document.getElementById("btn-zoom-in").addEventListener("click", () => state.mapViewer?.zoomIn());
@@ -104,8 +114,9 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
     if (state.panelMode === null) toggleEditMode();
   });
 
-  document.getElementById("btn-add-pin").addEventListener("click", () => openAddPinForm());
-  document.getElementById("btn-edit-panel-back").addEventListener("click", () => backToEditorBrowse());
+  document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));
+  document.getElementById("btn-add-climb")?.addEventListener("click", () => openAddPinForm("climb"));
+  document.getElementById("btn-edit-panel-back").addEventListener("click", () => tryBackToEditorBrowse());
 
   document.addEventListener("pin-list-edit", (event) => {
     const pin = state.pins.find((item) => item.id === event.detail?.pinId);
@@ -118,27 +129,27 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
       canModifyFn: canModifyPin,
       reloadPinsForMapFn: reloadPinsForMap,
       startEditPinFn: startEditPin,
+      deleteEditPinFn: () => onDeletePin({
+        reloadPinsForMap,
+        backToEditorBrowse,
+        canModifyFn: canModifyPin,
+      }),
+      deleteAddPinPlacementFn: () => onDeleteAddPinPlacement({
+        reloadPinsForMap,
+        canModifyFn: canModifyPin,
+      }),
     });
   });
 
-  const formContextMenu = document.getElementById("form-context-menu");
-  const formSaveDeps = {
+  const autoSaveDeps = {
     reloadPinsForMap,
     backToEditorBrowse,
     canModifyFn: canModifyPin,
   };
-  formContextMenu?.addEventListener("click", (event) => {
-    onFormContextMenuAction(event, {
-      triggerFormSaveFn: () => triggerFormSave(formSaveDeps),
-    });
-  });
 
   document.addEventListener("click", (event) => {
     if (pinContextMenu && !pinContextMenu.contains(event.target)) {
       hidePinContextMenu();
-    }
-    if (formContextMenu && !formContextMenu.contains(event.target)) {
-      hideFormContextMenu();
     }
   });
   document.addEventListener("keydown", onContextMenuKeyDown);
@@ -150,16 +161,21 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   const pinForm = document.getElementById("pin-form");
   pinForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
     onSavePin(event, {
       reloadPinsForMap,
       backToEditorBrowse,
       canModifyFn: canModifyPin,
+      autoSave: true,
     });
   });
 
   const viewport = document.getElementById("map-viewport");
   viewport.addEventListener("click", onViewportClick);
-  viewport.addEventListener("contextmenu", onViewportContextMenu);
+  viewport.addEventListener("contextmenu", (event) => {
+    if (handleEditorPlacementContextMenu(event)) return;
+    onViewportContextMenu(event);
+  });
   viewport.addEventListener("mousemove", onViewportMouseMove);
   viewport.addEventListener("mouseleave", onViewportMouseLeave);
 
@@ -228,26 +244,16 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
       applyEditorFactionToUi();
       updateFactionRequires(faction);
       updateDraftMarker();
+      scheduleAutoSave();
     });
   });
 
-  document.querySelectorAll("#pin-tag-options [data-tag]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const nextTag = button.dataset.tag;
-      if (!isDirectionalPinTag(nextTag)) {
-        state.pendingDirection = null;
-      }
-      setPinFormTag(nextTag);
-      const editPanelHint = document.getElementById("edit-panel-hint");
-      if ((state.panelMode === "add" || state.panelMode === "edit") && editPanelHint) {
-        editPanelHint.textContent = getPlacementHint();
-      }
-      updatePlacementUi();
-      updateDraftMarker();
-    });
+  document.getElementById("pin-coords")?.addEventListener("click", () => {
+    focusPendingPlacement();
   });
 
   initRequiresCheckboxes();
+  initAutoSave(autoSaveDeps);
   initPinMediaForm();
   initModalMediaNav();
   initDraftPinDrag();
