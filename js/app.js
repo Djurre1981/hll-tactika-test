@@ -130,13 +130,20 @@ async function init() {
 
     if (fit) {
       state.mapViewer.fitToView();
-      state.mapViewer.scheduleLayoutFit();
     } else {
       state.mapViewer.clampTranslation();
       state.mapViewer.applyTransform();
     }
+  }
 
-    document.getElementById("map-viewport")?.classList.remove("is-booting");
+  function revealMapViewport() {
+    const viewport = document.getElementById("map-viewport");
+    if (!viewport?.classList.contains("is-booting")) return;
+
+    requestAnimationFrame(() => {
+      state.mapViewer?.fitToView();
+      viewport.classList.remove("is-booting");
+    });
   }
 
   state.mapCatalog = spawnData.maps || [];
@@ -150,6 +157,7 @@ async function init() {
   try {
     pinData = await pinDataPromise;
   } catch {
+    revealMapViewport();
     return;
   }
 
@@ -163,6 +171,8 @@ async function init() {
     renderPins();
     renderPinList();
   }
+
+  revealMapViewport();
 
   const [
     _adminPanelModule,
