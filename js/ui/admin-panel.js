@@ -18,12 +18,15 @@ const els = {
   headerNote: document.querySelector(".admin-panel__header p"),
 };
 
-const ROLE_ORDER = { owner: 0, admin: 1, user: 2 };
+const ROLE_ORDER = { owner: 0, admin: 1, assist: 2, editor: 3, viewer: 4 };
 const ROLE_LABELS = {
   owner: "Owner",
-  admin: "Administrator",
-  user: "User",
+  admin: "Comp Admin",
+  assist: "Comp Assist",
+  editor: "Comp Advisor",
+  viewer: "Comp Member",
 };
+const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
 
 let users = [];
 let currentUser = null;
@@ -104,7 +107,7 @@ function renderRoleCell(user) {
     select.className = "admin-panel__role-select";
     select.setAttribute("aria-label", `Role for ${user.name || user.steamId}`);
 
-    for (const role of ["user", "admin"]) {
+    for (const role of ASSIGNABLE_ROLES) {
       const option = document.createElement("option");
       option.value = role;
       option.textContent = ROLE_LABELS[role];

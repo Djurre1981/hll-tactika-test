@@ -1,5 +1,5 @@
 import { requireAdmin, requireOwner } from "../../../lib/auth-request.js";
-import { removeManagedUser, updateManagedUserRole } from "../../../lib/roles.js";
+import { ASSIGNABLE_ROLES, removeManagedUser, updateManagedUserRole } from "../../../lib/roles.js";
 import { fetchSteamProfile } from "../../../lib/steam.js";
 import { isValidSteamId64 } from "../../../lib/users-store.js";
 import { errorResponse, json } from "../../../lib/response.js";
@@ -48,8 +48,8 @@ export async function onRequestPatch(context) {
   }
 
   const role = String(body.role || "").trim();
-  if (role !== "user" && role !== "admin") {
-    return errorResponse("Role must be user or admin", 400);
+  if (!ASSIGNABLE_ROLES.includes(role)) {
+    return errorResponse("Role must be viewer, editor, assist, or admin", 400);
   }
 
   const result = await updateManagedUserRole(

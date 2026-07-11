@@ -267,6 +267,11 @@ function showApp(user) {
 
   const label = user.name || `Steam user ${user.steamId}`;
   if (els.userName) els.userName.textContent = label;
+  if (user.role === "viewer") {
+    els.modeSwitch?.classList.add("hidden");
+  } else {
+    els.modeSwitch?.classList.remove("hidden");
+  }
   if (user.avatar) {
     if (els.userAvatar) {
       els.userAvatar.src = user.avatar;

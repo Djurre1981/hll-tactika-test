@@ -1,5 +1,7 @@
 import { loadUsersData, saveUsersData } from "./users-store.js";
 
+export const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
+
 function normalizeSteamId(steamId) {
   return String(steamId).trim();
 }
@@ -26,12 +28,36 @@ export function getEnvAdminSteamIds(env) {
 /** @deprecated Use getEnvAdminSteamIds */
 export const getAdminSteamIds = getEnvAdminSteamIds;
 
-export function getEnvUserSteamIds(env) {
+export function getEnvAssistSteamIds(env) {
+  return parseSteamIds(env.ASSIST_STEAM_IDS);
+}
+
+export function getEnvEditorSteamIds(env) {
+  return parseSteamIds(env.EDITOR_STEAM_IDS);
+}
+
+export function getEnvViewerSteamIds(env) {
+  const viewers = parseSteamIds(env.VIEWER_STEAM_IDS);
+  if (viewers.length > 0) {
+    return viewers;
+  }
   return parseSteamIds(env.USER_STEAM_IDS);
 }
 
-/** @deprecated Use getEnvUserSteamIds */
-export const getUserSteamIds = getEnvUserSteamIds;
+/** @deprecated Use getEnvViewerSteamIds */
+export function getEnvUserSteamIds(env) {
+  return getEnvViewerSteamIds(env);
+}
+
+/** @deprecated Use getEnvViewerSteamIds */
+export const getUserSteamIds = getEnvViewerSteamIds;
+
+function normalizeStoredRole(role) {
+  if (role === "user") {
+    return "viewer";
+  }
+  return role;
+}
 
 function isEnvOwner(steamId, env) {
   return getEnvOwnerSteamIds(env).includes(String(steamId));
@@ -41,9 +67,81 @@ function isEnvAdmin(steamId, env) {
   return getEnvAdminSteamIds(env).includes(String(steamId));
 }
 
+function isEnvAssist(steamId, env) {
+  return getEnvAssistSteamIds(env).includes(String(steamId));
+}
+
+function isEnvEditor(steamId, env) {
+  return getEnvEditorSteamIds(env).includes(String(steamId));
+}
+
+function isEnvViewer(steamId, env) {
+  return getEnvViewerSteamIds(env).includes(String(steamId));
+}
+
 function isRevokedId(revoked, steamId) {
   const id = normalizeSteamId(steamId);
   return (revoked || []).some((entry) => normalizeSteamId(entry) === id);
+}
+
+function memberListEntry(steamId, role, actorIsOwner) {
+  if (role === "owner") {
+    return { steamId, role, removable: false, roleEditable: false };
+  }
+  if (role === "admin") {
+    return {
+      steamId,
+      role,
+      removable: actorIsOwner,
+      roleEditable: actorIsOwner,
+    };
+  }
+  return {
+    steamId,
+    role,
+    removable: true,
+    roleEditable: actorIsOwner,
+  };
+}
+
+function syncRevokedForRole(data, targetId, env, newRole) {
+  if (isEnvAdmin(targetId, env) && !isEnvOwner(targetId, env) && newRole !== "admin") {
+    if (!isRevokedId(data.revoked, targetId)) {
+      data.revoked.push(targetId);
+    }
+  }
+  if (isEnvAssist(targetId, env) && newRole !== "assist") {
+    if (!isRevokedId(data.revoked, targetId)) {
+      data.revoked.push(targetId);
+    }
+  }
+  if (isEnvEditor(targetId, env) && newRole !== "editor") {
+    if (!isRevokedId(data.revoked, targetId)) {
+      data.revoked.push(targetId);
+    }
+  }
+  if (isEnvViewer(targetId, env) && newRole !== "viewer") {
+    if (!isRevokedId(data.revoked, targetId)) {
+      data.revoked.push(targetId);
+    }
+  }
+}
+
+function revokeEnvGrants(data, targetId, env) {
+  if (!data.revoked) {
+    data.revoked = [];
+  }
+
+  if (
+    (isEnvAdmin(targetId, env) && !isEnvOwner(targetId, env)) ||
+    isEnvAssist(targetId, env) ||
+    isEnvEditor(targetId, env) ||
+    isEnvViewer(targetId, env)
+  ) {
+    if (!isRevokedId(data.revoked, targetId)) {
+      data.revoked.push(targetId);
+    }
+  }
 }
 
 export async function getUserRole(steamId, env) {
@@ -56,7 +154,6 @@ export async function getUserRole(steamId, env) {
   const data = await loadUsersData(env);
   const member = data.users.find((user) => normalizeSteamId(user.steamId) === id);
 
-  // KV-stored owners keep access even if OWNER_STEAM_IDS is missing or they were revoked by mistake.
   if (member?.role === "owner") {
     return "owner";
   }
@@ -72,8 +169,29 @@ export async function getUserRole(steamId, env) {
   if (member?.role === "admin") {
     return "admin";
   }
+
+  if (isEnvAssist(id, env)) {
+    return "assist";
+  }
+
+  if (member?.role === "assist") {
+    return "assist";
+  }
+
+  if (isEnvEditor(id, env)) {
+    return "editor";
+  }
+
+  if (member?.role === "editor") {
+    return "editor";
+  }
+
+  if (isEnvViewer(id, env)) {
+    return "viewer";
+  }
+
   if (member) {
-    return "user";
+    return normalizeStoredRole(member.role);
   }
 
   return null;
@@ -104,7 +222,7 @@ export async function listAllMembers(env, actorRole) {
   const actorIsOwner = actorRole === "owner";
 
   for (const steamId of getEnvOwnerSteamIds(env)) {
-    members.push({ steamId, role: "owner", removable: false, roleEditable: false });
+    members.push(memberListEntry(steamId, "owner", actorIsOwner));
     seen.add(steamId);
   }
 
@@ -112,12 +230,31 @@ export async function listAllMembers(env, actorRole) {
     if (seen.has(steamId) || revoked.has(steamId)) {
       continue;
     }
-    members.push({
-      steamId,
-      role: "admin",
-      removable: actorIsOwner,
-      roleEditable: actorIsOwner,
-    });
+    members.push(memberListEntry(steamId, "admin", actorIsOwner));
+    seen.add(steamId);
+  }
+
+  for (const steamId of getEnvAssistSteamIds(env)) {
+    if (seen.has(steamId) || revoked.has(steamId)) {
+      continue;
+    }
+    members.push(memberListEntry(steamId, "assist", actorIsOwner));
+    seen.add(steamId);
+  }
+
+  for (const steamId of getEnvEditorSteamIds(env)) {
+    if (seen.has(steamId) || revoked.has(steamId)) {
+      continue;
+    }
+    members.push(memberListEntry(steamId, "editor", actorIsOwner));
+    seen.add(steamId);
+  }
+
+  for (const steamId of getEnvViewerSteamIds(env)) {
+    if (seen.has(steamId) || revoked.has(steamId)) {
+      continue;
+    }
+    members.push(memberListEntry(steamId, "viewer", actorIsOwner));
     seen.add(steamId);
   }
 
@@ -126,28 +263,22 @@ export async function listAllMembers(env, actorRole) {
       continue;
     }
 
-    const role =
-      user.role === "owner" ? "owner" : user.role === "admin" ? "admin" : "user";
-
-    if (role === "owner") {
-      members.push({
-        steamId: user.steamId,
-        role: "owner",
-        removable: false,
-        roleEditable: false,
-      });
-    } else {
-      members.push({
-        steamId: user.steamId,
-        role,
-        removable: role === "admin" ? actorIsOwner : true,
-        roleEditable: actorIsOwner,
-      });
-    }
+    const role = normalizeStoredRole(user.role);
+    members.push(memberListEntry(user.steamId, role, actorIsOwner));
     seen.add(user.steamId);
   }
 
   return members;
+}
+
+function hasManagedAccess(data, id, env) {
+  if (isEnvOwner(id, env) || isEnvAdmin(id, env)) {
+    return true;
+  }
+  if (isEnvAssist(id, env) || isEnvEditor(id, env) || isEnvViewer(id, env)) {
+    return true;
+  }
+  return data.users.some((user) => user.steamId === id);
 }
 
 export async function addManagedUser(env, steamId) {
@@ -157,31 +288,39 @@ export async function addManagedUser(env, steamId) {
     return { error: "This Steam ID is already an owner" };
   }
 
+  const data = await loadUsersData(env);
+  const revoked = (data.revoked || []).includes(id);
+
   if (isEnvAdmin(id, env)) {
-    const data = await loadUsersData(env);
-    if ((data.revoked || []).includes(id)) {
+    if (revoked) {
       data.revoked = data.revoked.filter((entry) => entry !== id);
       await saveUsersData(env, data);
       return {
         member: { steamId: id, role: "admin", removable: true, roleEditable: true },
       };
     }
-    return { error: "This Steam ID is already an administrator" };
+    return { error: "This Steam ID is already a Comp Admin" };
   }
 
-  const data = await loadUsersData(env);
-  if ((data.revoked || []).includes(id)) {
-    data.revoked = data.revoked.filter((entry) => entry !== id);
-    await saveUsersData(env, data);
-  }
-
-  if (data.users.some((user) => user.steamId === id)) {
+  if (hasManagedAccess(data, id, env) && !revoked) {
     return { error: "User already has access" };
   }
 
-  data.users.push({ steamId: id, role: "user" });
+  if (revoked) {
+    data.revoked = data.revoked.filter((entry) => entry !== id);
+  }
+
+  const existing = data.users.find((user) => user.steamId === id);
+  if (existing) {
+    existing.role = "viewer";
+  } else {
+    data.users.push({ steamId: id, role: "viewer" });
+  }
+
   await saveUsersData(env, data);
-  return { member: { steamId: id, role: "user", removable: true, roleEditable: false } };
+  return {
+    member: { steamId: id, role: "viewer", removable: true, roleEditable: false },
+  };
 }
 
 export async function removeManagedUser(env, steamId, actorSteamId, actorRole) {
@@ -204,23 +343,18 @@ export async function removeManagedUser(env, steamId, actorSteamId, actorRole) {
 
   if (actorRole !== "owner") {
     if (isEnvAdmin(id, env)) {
-      return { error: "Cannot remove an administrator" };
+      return { error: "Cannot remove a Comp Admin" };
     }
     if (kvMember?.role === "admin") {
-      return { error: "Cannot remove an administrator" };
+      return { error: "Cannot remove a Comp Admin" };
     }
   }
 
   let changed = false;
 
-  if (isEnvAdmin(id, env) && !isEnvOwner(id, env)) {
-    if (!data.revoked) {
-      data.revoked = [];
-    }
-    if (!isRevokedId(data.revoked, id)) {
-      data.revoked.push(id);
-      changed = true;
-    }
+  revokeEnvGrants(data, id, env);
+  if (isEnvAdmin(id, env) || isEnvAssist(id, env) || isEnvEditor(id, env) || isEnvViewer(id, env)) {
+    changed = true;
   }
 
   const index = data.users.findIndex((user) => user.steamId === id);
@@ -241,8 +375,8 @@ export async function updateManagedUserRole(env, actorSteamId, targetSteamId, ne
   const targetId = String(targetSteamId).trim();
   const actorId = String(actorSteamId).trim();
 
-  if (newRole !== "user" && newRole !== "admin") {
-    return { error: "Role must be user or administrator" };
+  if (!ASSIGNABLE_ROLES.includes(newRole)) {
+    return { error: "Role must be Comp Member, Comp Advisor, Comp Assist, or Comp Admin" };
   }
 
   if (targetId === actorId) {
@@ -261,9 +395,15 @@ export async function updateManagedUserRole(env, actorSteamId, targetSteamId, ne
 
   const envAdmin = isEnvAdmin(targetId, env);
   const inKv = Boolean(kvMember);
-  const activeEnvAdmin = envAdmin && !(data.revoked || []).includes(targetId);
+  const activeEnvAdmin = envAdmin && !isRevokedId(data.revoked, targetId);
+  const hasAccess =
+    inKv ||
+    activeEnvAdmin ||
+    (isEnvAssist(targetId, env) && !isRevokedId(data.revoked, targetId)) ||
+    (isEnvEditor(targetId, env) && !isRevokedId(data.revoked, targetId)) ||
+    (isEnvViewer(targetId, env) && !isRevokedId(data.revoked, targetId));
 
-  if (!inKv && !activeEnvAdmin) {
+  if (!hasAccess) {
     return { error: "User not found" };
   }
 
@@ -278,15 +418,13 @@ export async function updateManagedUserRole(env, actorSteamId, targetSteamId, ne
     } else {
       data.users.push({ steamId: targetId, role: "admin" });
     }
-  } else if (envAdmin && !isEnvOwner(targetId, env)) {
-    if (!isRevokedId(data.revoked, targetId)) {
-      data.revoked.push(targetId);
-    }
+  } else {
+    syncRevokedForRole(data, targetId, env, newRole);
     if (inKv) {
-      kvMember.role = "user";
+      kvMember.role = newRole;
+    } else {
+      data.users.push({ steamId: targetId, role: newRole });
     }
-  } else if (inKv) {
-    kvMember.role = "user";
   }
 
   await saveUsersData(env, data);
@@ -294,7 +432,7 @@ export async function updateManagedUserRole(env, actorSteamId, targetSteamId, ne
     member: {
       steamId: targetId,
       role: newRole,
-      removable: true,
+      removable: newRole === "admin" ? true : true,
       roleEditable: true,
     },
   };

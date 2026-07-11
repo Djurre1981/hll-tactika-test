@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-import { canModifyPin } from "./helpers/permissions.js";
+import { canModifyPin, canEnterEditorMode } from "./helpers/permissions.js";
 import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
 import { hidePreviewImmediately } from "./ui/pin-preview.js";
 import {
@@ -111,6 +111,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
     if (state.panelMode !== null) exitEditorMode();
   });
   modeSwitch?.querySelector('[data-mode="editor"]')?.addEventListener("click", () => {
+    if (!canEnterEditorMode()) return;
     if (state.panelMode === null) toggleEditMode();
   });
 

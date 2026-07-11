@@ -12,8 +12,8 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 ## Features
 
-- **Steam sign-in** for circle members (administrator and user Steam ID lists)
-- **Role-based permissions**: users manage their own tricks; administrators manage all tricks
+- **Steam sign-in** for circle members (role-based allowlist)
+- **Role-based permissions**: Comp Member (read-only), Comp Advisor (own pins), Comp Assist (any pin), Comp Admin, Owner — see [docs/roles.md](docs/roles.md)
 - **Protected trick data** served only to authenticated, approved users
 - **All 20 HLL tacmaps** with a map selector in the sidebar
 - **Pan & zoom** on high-resolution tactical maps (1920×1920)
@@ -32,8 +32,11 @@ Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Page
 1. Install dependencies: `npm install`
 2. Copy `.dev.vars.example` → `.dev.vars` and set:
    - `SESSION_SECRET` — long random string
-   - `ADMIN_STEAM_IDS` — comma-separated Steam ID64 values for administrators
-   - `USER_STEAM_IDS` — comma-separated Steam ID64 values for regular users
+   - `OWNER_STEAM_IDS` — owners (full control)
+   - `ADMIN_STEAM_IDS` — Comp Admins
+   - `ASSIST_STEAM_IDS` — Comp Assist (optional)
+   - `EDITOR_STEAM_IDS` — Comp Advisor (optional)
+   - `VIEWER_STEAM_IDS` — Comp Member (optional; `USER_STEAM_IDS` is a legacy alias)
    - `STEAM_API_KEY` (optional) — [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
 3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
 4. Deploy: `npm run deploy` (or connect the GitHub repo in Cloudflare Pages dashboard)
@@ -54,7 +57,7 @@ Open [http://localhost:8080](http://localhost:8080) only for map asset testing.
 
 Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; they are returned from `/api/pins` after Steam auth.
 
-Use **Add pin** in the UI to create tricks. Seed pins in `data/pins.json` (with `createdBy: null`) are editable only by administrators.
+Use **Add pin** in editor mode to create tricks. Seed pins in `data/pins.json` (with `createdBy: null`) are editable by Comp Assist, Comp Admin, and Owner.
 
 ```json
 {

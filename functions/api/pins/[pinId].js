@@ -1,5 +1,5 @@
 import { requireAuth } from "../../lib/auth-request.js";
-import { canModifyPin } from "../../lib/pin-permissions.js";
+import { canEnterEditorMode, canModifyPin } from "../../lib/pin-permissions.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
@@ -86,6 +86,10 @@ export async function onRequestPut(context) {
     return auth.error;
   }
 
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
+  }
+
   const pinId = context.params.pinId;
   let body;
   try {
@@ -130,6 +134,10 @@ export async function onRequestDelete(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
   }
 
   const pinId = context.params.pinId;

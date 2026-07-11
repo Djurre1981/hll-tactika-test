@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth-request.js";
+import { canEnterEditorMode } from "../lib/pin-permissions.js";
 import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { errorResponse, json } from "../lib/response.js";
@@ -70,6 +71,10 @@ export async function onRequestPost(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
   }
 
   let body;
