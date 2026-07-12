@@ -174,13 +174,107 @@
   width: 6.5rem;
 }
 
-.admin-panel__role-select {
+.admin-role-picker {
+  --role-picker-item-height: 2.05rem;
+  position: relative;
   width: 100%;
   max-width: 11rem;
-  padding: 0.35rem 2rem 0.35rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--glass-radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease-smooth);
+}
+
+.admin-role-picker.is-open {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.admin-role-picker.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.admin-role-picker__summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--role-picker-item-height);
+  padding: 0.55rem 0.85rem;
+  padding-right: 2rem;
+  font-size: 0.78rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-role-picker.is-open .admin-role-picker__summary {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.admin-role-picker__chevron {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: var(--role-picker-item-height);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='rgba(255,255,255,0.5)' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: transform 0.35s var(--ease-smooth);
+}
+
+.admin-role-picker.is-open .admin-role-picker__chevron {
+  transform: rotate(180deg);
+}
+
+.admin-role-picker__list-wrap {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s var(--ease-smooth);
+}
+
+.admin-role-picker.is-open .admin-role-picker__list-wrap {
+  overflow-y: auto;
+}
+
+.admin-role-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-role-picker__option {
+  min-height: var(--role-picker-item-height);
+  padding: 0.55rem 0.85rem;
+  padding-right: 2rem;
+  font-size: 0.78rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition:
+    color 0.2s var(--ease-smooth),
+    background 0.2s var(--ease-smooth);
+}
+
+.admin-role-picker__option:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-role-picker__option.is-selected {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .admin-panel__empty {

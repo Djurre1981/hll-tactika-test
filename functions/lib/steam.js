@@ -1,7 +1,8 @@
 const STEAM_OPENID_ENDPOINT = "https://steamcommunity.com/openid/login";
+const STEAM_ID64_BASE = 76561197960265728n;
 const STEAM_FETCH_HEADERS = {
-  Accept: "text/xml,application/xml,application/json",
-  "User-Agent": "HLL-Tactika/1.0",
+  Accept: "application/json,text/xml,application/xml",
+  "User-Agent": "Mozilla/5.0 (compatible; HLL-Tactika/1.0)",
 };
 const PROFILE_CACHE_PREFIX = "steam-profile:";
 const PROFILE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -111,6 +112,59 @@ async function cacheProfile(profile, env) {
   }
 }
 
+function toSteamAccountId(steamId64) {
+  try {
+    const accountId = BigInt(steamId64) - STEAM_ID64_BASE;
+    return accountId >= 0n ? accountId.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeProfile(profile, steamId) {
+  if (!profile?.name) {
+    return null;
+  }
+
+  return {
+    steamId: String(steamId),
+    name: profile.name,
+    avatar: profile.avatar || null,
+  };
+}
+
+async function fetchSteamProfileFromMiniprofile(steamId) {
+  const accountId = toSteamAccountId(steamId);
+  if (!accountId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://steamcommunity.com/miniprofile/${accountId}/json`, {
+      headers: STEAM_FETCH_HEADERS,
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const name = String(data?.persona_name || "").trim();
+    if (!name || /^\d{17}$/.test(name)) {
+      return null;
+    }
+
+    return normalizeProfile(
+      {
+        name,
+        avatar: data.avatar_url || null,
+      },
+      steamId
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function fetchSteamProfileFromXml(steamId) {
   try {
     const response = await fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`, {
@@ -126,11 +180,13 @@ async function fetchSteamProfileFromXml(steamId) {
       return null;
     }
 
-    return {
-      steamId,
-      name,
-      avatar: readXmlCdata(xml, "avatarFull"),
-    };
+    return normalizeProfile(
+      {
+        name,
+        avatar: readXmlCdata(xml, "avatarFull"),
+      },
+      steamId
+    );
   } catch {
     return null;
   }
@@ -153,8 +209,8 @@ async function fetchSteamProfilesFromApi(steamIds, apiKey) {
       if (!player?.steamid || !player?.personaname) {
         continue;
       }
-      profiles.set(player.steamid, {
-        steamId: player.steamid,
+      profiles.set(String(player.steamid), {
+        steamId: String(player.steamid),
         name: player.personaname,
         avatar: player.avatarfull || null,
       });
@@ -183,9 +239,9 @@ export async function fetchSteamProfiles(steamIds, env) {
   for (const steamId of uniqueIds) {
     const cached = await getCachedProfile(steamId, env);
     if (cached?.name) {
-      profiles.set(steamId, cached);
+      profiles.set(String(steamId), cached);
     } else {
-      missing.push(steamId);
+      missing.push(String(steamId));
     }
   }
 
@@ -198,7 +254,7 @@ export async function fetchSteamProfiles(steamIds, env) {
       const batch = missing.slice(index, index + PROFILE_BATCH_SIZE);
       const apiProfiles = await fetchSteamProfilesFromApi(batch, env.STEAM_API_KEY);
       for (const [steamId, profile] of apiProfiles) {
-        profiles.set(steamId, profile);
+        profiles.set(String(steamId), profile);
         await cacheProfile(profile, env);
       }
     }
@@ -206,15 +262,24 @@ export async function fetchSteamProfiles(steamIds, env) {
 
   await Promise.all(
     missing
-      .filter((steamId) => !profiles.has(steamId))
+      .filter((steamId) => !profiles.has(String(steamId)))
       .map(async (steamId) => {
-        const xmlProfile = await fetchSteamProfileFromXml(steamId);
+        const id = String(steamId);
+        const miniProfile = await fetchSteamProfileFromMiniprofile(id);
+        if (miniProfile?.name) {
+          profiles.set(id, miniProfile);
+          await cacheProfile(miniProfile, env);
+          return;
+        }
+
+        const xmlProfile = await fetchSteamProfileFromXml(id);
         if (xmlProfile?.name) {
-          profiles.set(steamId, xmlProfile);
+          profiles.set(id, xmlProfile);
           await cacheProfile(xmlProfile, env);
           return;
         }
-        profiles.set(steamId, { steamId, name: null, avatar: null });
+
+        profiles.set(id, { steamId: id, name: null, avatar: null });
       })
   );
 

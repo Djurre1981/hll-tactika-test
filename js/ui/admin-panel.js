@@ -30,6 +30,7 @@ const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
 
 let users = [];
 let currentUser = null;
+let openRolePicker = null;
 
 export function initAdminPanel() {
   currentUser = getCurrentUser();
@@ -57,6 +58,122 @@ export function initAdminPanel() {
     }
   });
   els.form?.addEventListener("submit", onAddUser);
+  bindRolePickerDismiss();
+}
+
+function closeRolePicker(picker = openRolePicker) {
+  if (!picker) return;
+
+  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
+  picker.classList.remove("is-open");
+  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "false");
+  if (wrap) {
+    wrap.style.maxHeight = "0px";
+  }
+  if (openRolePicker === picker) {
+    openRolePicker = null;
+  }
+}
+
+function bindRolePickerDismiss() {
+  document.addEventListener("click", (event) => {
+    if (!openRolePicker?.contains(event.target)) {
+      closeRolePicker();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeRolePicker();
+    }
+  });
+}
+
+function openRolePickerMenu(picker) {
+  if (openRolePicker && openRolePicker !== picker) {
+    closeRolePicker();
+  }
+
+  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
+  if (!wrap) return;
+
+  picker.classList.add("is-open");
+  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "true");
+  wrap.style.maxHeight = `${wrap.scrollHeight}px`;
+  openRolePicker = picker;
+}
+
+function toggleRolePicker(picker) {
+  if (picker.classList.contains("is-open")) {
+    closeRolePicker(picker);
+  } else {
+    openRolePickerMenu(picker);
+  }
+}
+
+function setRolePickerValue(picker, role) {
+  const label = picker.querySelector(".admin-role-picker__label");
+  if (label) {
+    label.textContent = ROLE_LABELS[role] || role;
+  }
+
+  picker.querySelectorAll(".admin-role-picker__option").forEach((option) => {
+    const isSelected = option.dataset.value === role;
+    option.classList.toggle("is-selected", isSelected);
+    option.setAttribute("aria-selected", isSelected ? "true" : "false");
+  });
+}
+
+function createRolePicker(user) {
+  const picker = document.createElement("div");
+  picker.className = "admin-role-picker";
+  picker.innerHTML = `
+    <button type="button" class="admin-role-picker__chevron" aria-label="Change role" aria-expanded="false"></button>
+    <div class="admin-role-picker__summary" tabindex="0" role="button" aria-haspopup="listbox">
+      <span class="admin-role-picker__label"></span>
+    </div>
+    <div class="admin-role-picker__list-wrap">
+      <ul class="admin-role-picker__list" role="listbox"></ul>
+    </div>
+  `;
+
+  const list = picker.querySelector(".admin-role-picker__list");
+  for (const role of ASSIGNABLE_ROLES) {
+    const option = document.createElement("li");
+    option.className = "admin-role-picker__option";
+    option.role = "option";
+    option.dataset.value = role;
+    option.textContent = ROLE_LABELS[role];
+    option.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (role === user.role) {
+        closeRolePicker(picker);
+        return;
+      }
+      closeRolePicker(picker);
+      void onRoleChange(user, role, picker);
+    });
+    list.appendChild(option);
+  }
+
+  const chevron = picker.querySelector(".admin-role-picker__chevron");
+  const summary = picker.querySelector(".admin-role-picker__summary");
+
+  chevron?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleRolePicker(picker);
+  });
+
+  summary?.addEventListener("click", () => openRolePickerMenu(picker));
+  summary?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleRolePicker(picker);
+    }
+  });
+
+  setRolePickerValue(picker, user.role);
+  return picker;
 }
 
 function dismissUserMenu() {
@@ -103,20 +220,7 @@ async function loadUsers() {
 
 function renderRoleCell(user) {
   if (user.roleEditable) {
-    const select = document.createElement("select");
-    select.className = "glass-select admin-panel__role-select";
-    select.setAttribute("aria-label", `Role for ${user.name || user.steamId}`);
-
-    for (const role of ASSIGNABLE_ROLES) {
-      const option = document.createElement("option");
-      option.value = role;
-      option.textContent = ROLE_LABELS[role];
-      option.selected = user.role === role;
-      select.appendChild(option);
-    }
-
-    select.addEventListener("change", () => void onRoleChange(user, select));
-    return select;
+    return createRolePicker(user);
   }
 
   const roleBadge = document.createElement("span");
@@ -128,6 +232,7 @@ function renderRoleCell(user) {
 function renderUsers() {
   if (!els.usersBody) return;
 
+  closeRolePicker();
   els.usersBody.innerHTML = "";
 
   if (users.length === 0) {
@@ -141,7 +246,7 @@ function renderUsers() {
     const row = document.createElement("tr");
 
     const nameCell = document.createElement("td");
-    nameCell.textContent = user.name || user.steamId;
+    nameCell.textContent = user.name || "—";
 
     const steamIdCell = document.createElement("td");
     steamIdCell.className = "admin-panel__steam-id";
@@ -168,15 +273,14 @@ function renderUsers() {
   }
 }
 
-async function onRoleChange(user, select) {
-  const newRole = select.value;
+async function onRoleChange(user, newRole, picker) {
   if (newRole === user.role) {
     return;
   }
 
   const label = user.name || user.steamId;
   const previousRole = user.role;
-  select.disabled = true;
+  picker?.classList.add("is-disabled");
   setStatus(`Updating role for ${label}…`);
 
   try {
@@ -185,14 +289,15 @@ async function onRoleChange(user, select) {
     user.removable = updated.removable;
     user.roleEditable = updated.roleEditable;
     user.name = updated.name || user.name;
+    setRolePickerValue(picker, updated.role);
     await loadUsers();
     setStatus(`Updated ${label} to ${ROLE_LABELS[newRole]}.`);
   } catch (error) {
     console.error(error);
-    select.value = previousRole;
+    setRolePickerValue(picker, previousRole);
     setStatus(error.message || "Could not update role", true);
   } finally {
-    select.disabled = false;
+    picker?.classList.remove("is-disabled");
   }
 }
 
