@@ -64,32 +64,54 @@ export function initAdminPanel() {
 function closeRolePicker(picker = openRolePicker) {
   if (!picker) return;
 
-  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
+  const wrap = picker.querySelector(".admin-role-picker__list-wrap")
+    || picker._rolePickerListWrap;
   picker.classList.remove("is-open");
   picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "false");
   if (wrap) {
+    wrap.classList.remove("is-open");
     wrap.style.top = "";
     wrap.style.left = "";
     wrap.style.width = "";
+    if (wrap.parentElement === document.body) {
+      picker.appendChild(wrap);
+    }
+    delete picker._rolePickerListWrap;
   }
   if (openRolePicker === picker) {
     openRolePicker = null;
   }
 }
 
+function getRolePickerListWrap(picker) {
+  return picker._rolePickerListWrap || picker.querySelector(".admin-role-picker__list-wrap");
+}
+
 function positionRolePickerList(picker) {
-  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
+  const wrap = getRolePickerListWrap(picker);
   if (!wrap) return;
 
   const rect = picker.getBoundingClientRect();
-  wrap.style.top = `${rect.bottom + 4}px`;
-  wrap.style.left = `${rect.left}px`;
+  const listHeight = wrap.offsetHeight;
+  const spaceBelow = window.innerHeight - rect.bottom - 8;
+  const spaceAbove = rect.top - 8;
+  const openBelow = spaceBelow >= listHeight || spaceBelow >= spaceAbove;
+
   wrap.style.width = `${rect.width}px`;
+  wrap.style.left = `${rect.left}px`;
+  wrap.style.top = openBelow
+    ? `${rect.bottom + 4}px`
+    : `${rect.top - listHeight - 4}px`;
 }
 
 function bindRolePickerDismiss() {
   document.addEventListener("click", (event) => {
-    if (!openRolePicker?.contains(event.target)) {
+    if (!openRolePicker) return;
+
+    const wrap = getRolePickerListWrap(openRolePicker);
+    const clickedInsidePicker = openRolePicker.contains(event.target);
+    const clickedInsideList = wrap?.contains(event.target);
+    if (!clickedInsidePicker && !clickedInsideList) {
       closeRolePicker();
     }
   });
@@ -106,18 +128,12 @@ function bindRolePickerDismiss() {
     }
   });
 
-  const tableWrap = els.panel?.querySelector(".admin-panel__table-wrap");
-  tableWrap?.addEventListener("scroll", () => {
+  const tableBody = els.panel?.querySelector(".admin-panel__table tbody");
+  tableBody?.addEventListener("scroll", () => {
     if (openRolePicker) {
       positionRolePickerList(openRolePicker);
     }
   });
-
-  els.panel?.addEventListener("scroll", () => {
-    if (openRolePicker) {
-      positionRolePickerList(openRolePicker);
-    }
-  }, true);
 }
 
 function openRolePickerMenu(picker) {
@@ -128,7 +144,11 @@ function openRolePickerMenu(picker) {
   const wrap = picker.querySelector(".admin-role-picker__list-wrap");
   if (!wrap) return;
 
+  document.body.appendChild(wrap);
+  picker._rolePickerListWrap = wrap;
+
   picker.classList.add("is-open");
+  wrap.classList.add("is-open");
   picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "true");
   positionRolePickerList(picker);
   openRolePicker = picker;
