@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { getMapPins } from "./filter-bar.js";
+import { isGuideInteractionAllowed, isStratsAppMode } from "../helpers/app-mode.js";
 import { getPinTag } from "../pin-tags.js";
 import { hasPinDirection, renderMgSpotGroup } from "./mg-spot-arrows.js";
 import { positionPins, highlightPin } from "../helpers/proximity.js";
@@ -20,6 +21,11 @@ export function getPinStylingClasses(pin) {
 
 export function renderPins() {
   const pinsLayer = document.getElementById("map-pins");
+  if (isStratsAppMode()) {
+    pinsLayer.innerHTML = "";
+    updatePinCount();
+    return;
+  }
   pinsLayer.innerHTML = "";
 
   const mgPins = [];
@@ -99,31 +105,31 @@ export function renderPins() {
 
 export function attachPinInteractions(element, pin) {
   element.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || state.panelMode !== null) return;
+    if (event.button !== 0 || !isGuideInteractionAllowed() || state.panelMode !== null) return;
     armModalDismissGuard();
   });
   element.addEventListener("mouseenter", (event) => {
-    if (state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
     highlightPin(pin.id);
     showPreview(pin, event);
   });
   element.addEventListener("mousemove", (event) => {
-    if (state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
     movePreview(event);
   });
   element.addEventListener("mouseleave", () => {
-    if (state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
     if (state.modalPin?.id === pin.id && document.getElementById("video-modal")?.open) return;
     scheduleHidePreview();
     highlightPin(null);
   });
   element.addEventListener("click", (event) => {
     event.stopPropagation();
-    if (state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
     openModal(pin);
   });
   element.addEventListener("contextmenu", (event) => {
-    if (state.panelMode === null) return;
+    if (!isGuideInteractionAllowed() || state.panelMode === null) return;
     if (state.panelMode === "add" || state.panelMode === "edit") {
       event.preventDefault();
       event.stopPropagation();

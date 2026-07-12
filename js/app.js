@@ -41,6 +41,7 @@ async function init() {
     import("./ui/pin-marker.js"),
     import("./ui/sidebar.js"),
     import("./ui/pin-editor.js"),
+    import("./ui/app-mode.js"),
     import("./ui/toggles.js"),
   ]);
   const restModulesPromise = Promise.all([
@@ -75,6 +76,7 @@ async function init() {
       { renderPins },
       { renderPinList },
       { exitEditorMode, updateZoomLabel },
+      { setAppMode, syncAppModeChrome },
       { applyToggleStateToUi, applyToggleStateToOverlays },
     ],
     spawnData,
@@ -86,7 +88,9 @@ async function init() {
 
     applyMapBgFade();
 
-    exitEditorMode();
+    if (state.appMode === "editor") {
+      setAppMode("viewer");
+    }
 
     state.searchQuery = "";
     const searchEl = document.getElementById("pin-search");
@@ -194,6 +198,7 @@ async function init() {
   applyTagFiltersToUi();
   applyFactionFiltersToUi();
   initUndoRedoKeyboard();
+  syncAppModeChrome();
   bindUi({ reloadPinsForMap, switchMap });
 }
 

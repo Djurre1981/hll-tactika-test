@@ -76,7 +76,7 @@ function getZoomLabel() {
 }
 
 function isInEditorMode() {
-  return state.panelMode !== null;
+  return state.appMode === "editor" && state.panelMode !== null;
 }
 
 function isFormOpen() {
@@ -355,12 +355,7 @@ export function startEditPin(pin, { focus = false } = {}) {
 export function updateEditorHeaderButtons({ animate = false } = {}) {
   const inEditor = isInEditorMode();
   const formOpen = isFormOpen();
-  const modeSwitch = getModeSwitch();
   const editToolButtons = getEditToolButtons();
-
-  modeSwitch?.classList.toggle("is-editor", inEditor);
-  modeSwitch?.querySelector('[data-mode="viewer"]')?.setAttribute("aria-selected", String(!inEditor));
-  modeSwitch?.querySelector('[data-mode="editor"]')?.setAttribute("aria-selected", String(inEditor));
 
   document.getElementById("sidebar-edit-tools")?.classList.toggle("hidden", !inEditor || formOpen);
 

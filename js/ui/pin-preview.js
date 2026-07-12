@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { isGuideInteractionAllowed } from "../helpers/app-mode.js";
 import {
   createVideoElement,
   isMedalUrl,
@@ -96,7 +97,7 @@ function renderPreviewRequires(pin) {
 }
 
 export function showPreview(pin, event) {
-  if (!state.previewEnabled || state.panelMode !== null) return;
+  if (!state.previewEnabled || !isGuideInteractionAllowed() || state.panelMode !== null) return;
 
   clearTimeout(state.previewHideTimer);
 

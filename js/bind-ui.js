@@ -3,8 +3,6 @@ import { canModifyPin, canEnterEditorMode } from "./helpers/permissions.js";
 import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
 import { hidePreviewImmediately } from "./ui/pin-preview.js";
 import {
-  toggleEditMode,
-  exitEditorMode,
   backToEditorBrowse,
   tryBackToEditorBrowse,
   openAddPinForm,
@@ -49,6 +47,8 @@ import { highlightPin, focusPendingPlacement } from "./helpers/proximity.js";
 import { initDraftPinDrag } from "./editor/pin-drag.js";
 import { initMapColorControl } from "./ui/map-bg-fade.js";
 import { setShellCollapsed } from "./ui/chrome-panels.js";
+import { setAppMode } from "./ui/app-mode.js";
+import { canEnterStratsMode } from "./helpers/app-mode.js";
 
 function suppressNativeContextMenu(elements) {
   for (const element of elements) {
@@ -108,11 +108,15 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   const modeSwitch = document.getElementById("mode-switch");
   modeSwitch?.querySelector('[data-mode="viewer"]')?.addEventListener("click", () => {
-    if (state.panelMode !== null) exitEditorMode();
+    setAppMode("viewer");
   });
   modeSwitch?.querySelector('[data-mode="editor"]')?.addEventListener("click", () => {
     if (!canEnterEditorMode()) return;
-    if (state.panelMode === null) toggleEditMode();
+    setAppMode("editor");
+  });
+  modeSwitch?.querySelector('[data-mode="strats"]')?.addEventListener("click", () => {
+    if (!canEnterStratsMode()) return;
+    setAppMode("strats");
   });
 
   document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));

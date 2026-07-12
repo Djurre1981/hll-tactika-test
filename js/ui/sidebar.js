@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { getFilteredPins } from "./filter-bar.js";
+import { isStratsAppMode } from "../helpers/app-mode.js";
 import { getPinTag, normalizePinTag } from "../pin-tags.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { canModifyPin } from "../helpers/permissions.js";
@@ -13,7 +14,7 @@ function normalizeFaction(faction) {
 }
 
 function isEditorBrowseMode() {
-  return state.panelMode === "browse";
+  return state.appMode === "editor" && state.panelMode === "browse";
 }
 
 function buildRequiresRow(pin, faction) {
@@ -95,6 +96,11 @@ function buildPinListBody(pin) {
 
 export function renderPinList() {
   const pinList = document.getElementById("pin-list");
+  if (isStratsAppMode()) {
+    pinList.innerHTML = "";
+    updatePinCount();
+    return;
+  }
   pinList.innerHTML = "";
   for (const pin of getFilteredPins()) {
     const row = document.createElement("li");

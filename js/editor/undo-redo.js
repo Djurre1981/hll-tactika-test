@@ -12,7 +12,7 @@ import { renderPinList } from "../ui/sidebar.js";
 const MAX_EDIT_HISTORY = 30;
 
 function isEditHistoryEnabled() {
-  return state.panelMode !== null
+  return state.appMode === "editor" && state.panelMode !== null
     || state.positionHistory.length > 0
     || state.redoHistory.length > 0;
 }

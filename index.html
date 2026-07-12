@@ -42,6 +42,7 @@
   <link rel="stylesheet" href="css/components/welcome-page.css" />
   <link rel="stylesheet" href="css/components/bye-page.css" />
   <link rel="stylesheet" href="css/components/mode-switch.css" />
+  <link rel="stylesheet" href="css/components/strats-panel.css" />
   <link rel="stylesheet" href="css/components/user-menu.css" />
   <link rel="stylesheet" href="css/components/map-viewer.css" />
   <link rel="stylesheet" href="css/components/map-overlays.css" />
@@ -158,6 +159,7 @@
       <div class="mode-switch__surface glass-surface" role="tablist" aria-label="Application mode">
         <button type="button" class="mode-switch__tab" role="tab" data-mode="viewer" aria-selected="true">Viewer</button>
         <button type="button" class="mode-switch__tab" role="tab" data-mode="editor" aria-selected="false">Editor</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-mode="strats" aria-selected="false">Strats</button>
         <span class="mode-switch__thumb" aria-hidden="true"></span>
       </div>
     </div>
@@ -256,6 +258,52 @@
         <input type="text" class="sidebar__search glass-input" id="pin-search" placeholder="Search by name, code (#A3-12), tag..." />
         <ul class="pin-list" id="pin-list"></ul>
       </div>
+      </div>
+      <div id="strats-sidebar" class="hidden">
+        <div class="sidebar__section">
+          <h2>Strat</h2>
+          <div class="strats-sidebar__actions">
+            <button type="button" class="glass-pill-btn" id="btn-strats-new" disabled>New strat</button>
+            <button type="button" class="glass-pill-btn" id="btn-strats-open" disabled>Open strat</button>
+          </div>
+        </div>
+        <div class="sidebar__section" id="strats-tools-panel">
+          <h2>Tools</h2>
+          <div class="strats-tools" role="toolbar" aria-label="Drawing tools">
+            <button type="button" class="strats-tools__btn is-active" data-tool="select" title="Select" aria-pressed="true">
+              <i class="fa-solid fa-arrow-pointer" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="line" title="Line" disabled>
+              <i class="fa-solid fa-minus" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="arrow" title="Arrow" disabled>
+              <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="rect" title="Rectangle" disabled>
+              <i class="fa-regular fa-square" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="ellipse" title="Ellipse" disabled>
+              <i class="fa-regular fa-circle" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="pen" title="Freehand" disabled>
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="text" title="Text" disabled>
+              <i class="fa-solid fa-font" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="eraser" title="Eraser" disabled>
+              <i class="fa-solid fa-eraser" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="strats-tools__colors" role="group" aria-label="Stroke color">
+            <button type="button" class="strats-tools__swatch is-active" data-color="#ffffff" style="background:#ffffff" title="White" aria-label="White"></button>
+            <button type="button" class="strats-tools__swatch" data-color="#ff4444" style="background:#ff4444" title="Red" aria-label="Red"></button>
+            <button type="button" class="strats-tools__swatch" data-color="#44aaff" style="background:#44aaff" title="Blue" aria-label="Blue"></button>
+            <button type="button" class="strats-tools__swatch" data-color="#ffcc00" style="background:#ffcc00" title="Yellow" aria-label="Yellow"></button>
+            <button type="button" class="strats-tools__swatch" data-color="#44dd66" style="background:#44dd66" title="Green" aria-label="Green"></button>
+          </div>
+          <p class="strats-tools__hint">Drawing tools activate in the next phase. Strat save/load follows in Phase 1.</p>
+        </div>
       </div>
       <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
         <div class="edit-panel__header">
@@ -468,6 +516,18 @@
         </div>
       </div>
     </section>
+
+    <div class="strats-slides-shell hidden" id="strats-slides-shell">
+      <aside class="strats-slides glass-panel" id="strats-slides-panel" aria-label="Strategy slides">
+        <div class="strats-slides__header">
+          <h2>Slides</h2>
+          <button type="button" class="glass-btn glass-btn--icon" id="btn-strats-add-slide" title="Add slide" disabled aria-label="Add slide">+</button>
+        </div>
+        <ul class="strats-slides__list" id="strats-slides-list">
+          <li class="strats-slides__empty">No slides yet — strat planning opens in the next phase.</li>
+        </ul>
+      </aside>
+    </div>
   </main>
   </div>
 
