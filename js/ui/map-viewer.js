@@ -251,6 +251,7 @@ export class MapViewer {
   onPointerDown(event) {
     if (event.button !== 0) return;
     if (state.pinDragSession) return;
+    if (this.shouldAllowPan && !this.shouldAllowPan(event)) return;
     this.stopLayoutFollow();
     if (event.target.closest(".map-pin, .map-mg-spot, .map-pin--draft.is-draggable, .map-mg-spot--draft.is-placement-complete, .mg-spot-head, .mg-spot-base")) return;
 

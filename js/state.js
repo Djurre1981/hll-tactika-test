@@ -1,8 +1,20 @@
+import { createDefaultToolSettings } from "./helpers/strat-defaults.js";
+
 export const state = {
   appMode: "viewer",
   pins: [],
   pinCatalog: {},
   mapCatalog: [],
+  stratsCatalog: [],
+  activeStrat: null,
+  activeSlideId: null,
+  stratsPanelTab: "strat",
+  pendingDuplicateSlideId: null,
+  stratsToolSettings: createDefaultToolSettings(),
+  stratsSaveInFlight: false,
+  stratsDirty: false,
+  stratsUndoStack: [],
+  stratsRedoStack: [],
   currentMapId: "SMDMV2",
   currentMap: null,
   editMode: false,

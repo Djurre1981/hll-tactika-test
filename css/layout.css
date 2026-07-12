@@ -162,12 +162,8 @@
 
 #strats-sidebar:not(.hidden) {
   overflow-y: auto;
-}
-
-.strats-sidebar__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
 }
 
 #strats-sidebar .sidebar__section + .sidebar__section {

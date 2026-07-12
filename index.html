@@ -259,50 +259,174 @@
         <ul class="pin-list" id="pin-list"></ul>
       </div>
       </div>
-      <div id="strats-sidebar" class="hidden">
-        <div class="sidebar__section">
-          <h2>Strat</h2>
-          <div class="strats-sidebar__actions">
-            <button type="button" class="glass-pill-btn" id="btn-strats-new" disabled>New strat</button>
-            <button type="button" class="glass-pill-btn" id="btn-strats-open" disabled>Open strat</button>
-          </div>
-        </div>
+      <div id="strats-sidebar" class="hidden strats-scroll">
         <div class="sidebar__section" id="strats-tools-panel">
           <h2>Tools</h2>
+          <div class="strats-tools__color-row" role="group" aria-label="Stroke color">
+            <label class="strats-tools__color-pick" title="Pick any color">
+              <span class="sr-only">Pick any color</span>
+              <span class="strats-tools__color-pick-swatch" id="strats-color-preview"></span>
+              <input type="color" id="strats-color-picker" value="#ffffff" />
+            </label>
+            <div class="strats-tools__swatches" id="strats-color-swatches"></div>
+          </div>
           <div class="strats-tools" role="toolbar" aria-label="Drawing tools">
-            <button type="button" class="strats-tools__btn is-active" data-tool="select" title="Select" aria-pressed="true">
+            <button type="button" class="strats-tools__btn is-active" data-tool="select" title="Select" aria-pressed="true" disabled>
               <i class="fa-solid fa-arrow-pointer" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="pen" title="Draw" disabled>
+              <i class="fa-solid fa-pen" aria-hidden="true"></i>
             </button>
             <button type="button" class="strats-tools__btn" data-tool="line" title="Line" disabled>
               <i class="fa-solid fa-minus" aria-hidden="true"></i>
             </button>
-            <button type="button" class="strats-tools__btn" data-tool="arrow" title="Arrow" disabled>
-              <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
+            <button type="button" class="strats-tools__btn" data-tool="ellipse" title="Circle" disabled>
+              <i class="fa-regular fa-circle" aria-hidden="true"></i>
             </button>
             <button type="button" class="strats-tools__btn" data-tool="rect" title="Rectangle" disabled>
               <i class="fa-regular fa-square" aria-hidden="true"></i>
             </button>
-            <button type="button" class="strats-tools__btn" data-tool="ellipse" title="Ellipse" disabled>
-              <i class="fa-regular fa-circle" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="strats-tools__btn" data-tool="pen" title="Freehand" disabled>
-              <i class="fa-solid fa-pen" aria-hidden="true"></i>
+            <button type="button" class="strats-tools__btn" data-tool="eraser" title="Eraser" disabled>
+              <i class="fa-solid fa-eraser" aria-hidden="true"></i>
             </button>
             <button type="button" class="strats-tools__btn" data-tool="text" title="Text" disabled>
               <i class="fa-solid fa-font" aria-hidden="true"></i>
             </button>
-            <button type="button" class="strats-tools__btn" data-tool="eraser" title="Eraser" disabled>
-              <i class="fa-solid fa-eraser" aria-hidden="true"></i>
+            <button type="button" class="strats-tools__btn" data-tool="arrow" title="Arrow" disabled>
+              <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="icons" title="Icons" disabled>
+              <i class="fa-solid fa-icons" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="strats-tools__btn" data-tool="ping" title="Ping" disabled>
+              <i class="fa-solid fa-bullseye" aria-hidden="true"></i>
             </button>
           </div>
-          <div class="strats-tools__colors" role="group" aria-label="Stroke color">
-            <button type="button" class="strats-tools__swatch is-active" data-color="#ffffff" style="background:#ffffff" title="White" aria-label="White"></button>
-            <button type="button" class="strats-tools__swatch" data-color="#ff4444" style="background:#ff4444" title="Red" aria-label="Red"></button>
-            <button type="button" class="strats-tools__swatch" data-color="#44aaff" style="background:#44aaff" title="Blue" aria-label="Blue"></button>
-            <button type="button" class="strats-tools__swatch" data-color="#ffcc00" style="background:#ffcc00" title="Yellow" aria-label="Yellow"></button>
-            <button type="button" class="strats-tools__swatch" data-color="#44dd66" style="background:#44dd66" title="Green" aria-label="Green"></button>
+          <div class="strats-tools__options strats-scroll" id="strats-tool-options">
+            <div class="strats-tools__panel" data-tool-panel="select">
+              <h3 class="strats-tools__panel-title">Select</h3>
+              <div class="strats-tools__clipboard-row">
+                <button type="button" class="strats-tools__action-btn strats-tools__action-btn--wide" id="strats-btn-paste" title="Paste (Ctrl+V)" aria-label="Paste" disabled>
+                  <i class="fa-solid fa-paste" aria-hidden="true"></i>
+                  <span>Paste</span>
+                </button>
+              </div>
+              <div class="strats-tools__selection hidden" id="strats-selection-info">
+                <p class="strats-tools__selection-type" id="strats-selection-type"></p>
+                <div class="strats-tools__selection-actions" role="group" aria-label="Selection actions">
+                  <button type="button" class="strats-tools__action-btn" id="strats-btn-copy" title="Copy (Ctrl+C)" aria-label="Copy">
+                    <i class="fa-solid fa-copy" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="strats-tools__action-btn" id="strats-btn-duplicate" title="Duplicate (Ctrl+D)" aria-label="Duplicate">
+                    <i class="fa-solid fa-clone" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="strats-tools__action-btn" id="strats-btn-send-back" title="Send backward [" aria-label="Send backward">
+                    <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="strats-tools__action-btn" id="strats-btn-bring-forward" title="Bring forward ]" aria-label="Bring forward">
+                    <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="strats-tools__action-btn strats-tools__action-btn--danger" id="strats-btn-delete-object" title="Delete" aria-label="Delete">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div class="strats-tools__option hidden" id="strats-shape-convert">
+                  <span>Convert to</span>
+                  <div class="strats-tools__segmented" role="group" aria-label="Shape type">
+                    <button type="button" data-convert-type="rect" title="Rectangle"><i class="fa-regular fa-square" aria-hidden="true"></i></button>
+                    <button type="button" data-convert-type="ellipse" title="Circle"><i class="fa-regular fa-circle" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+                <div class="strats-tools__option hidden" id="strats-line-convert">
+                  <span>Convert to</span>
+                  <div class="strats-tools__segmented" role="group" aria-label="Line type">
+                    <button type="button" data-convert-type="line" title="Line"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+                    <button type="button" data-convert-type="arrow" title="Arrow"><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                  </div>
+                </div>
+              </div>
+              <p class="strats-tools__panel-empty" id="strats-select-empty-hint">Click a shape to select. Copy Ctrl+C, cut Ctrl+X, paste Ctrl+V, duplicate Ctrl+D.</p>
+            </div>
+            <div class="strats-tools__panel hidden" data-tool-panel="stroke">
+              <h3 class="strats-tools__panel-title">Stroke</h3>
+              <p class="strats-tools__panel-empty">Shift snaps lines and arrows to 45°.</p>
+              <label class="strats-tools__option">
+                <span>Size</span>
+                <input type="range" id="strats-opt-size" min="1" max="24" value="3" />
+                <output id="strats-opt-size-value">3</output>
+              </label>
+              <div class="strats-tools__option">
+                <span>Line type</span>
+                <div class="strats-tools__segmented" role="group" aria-label="Line type">
+                  <button type="button" class="is-active" data-line-type="solid" aria-pressed="true" title="Solid"><i class="fa-solid fa-minus"></i></button>
+                  <button type="button" data-line-type="dashed" aria-pressed="false" title="Dashed"><i class="fa-solid fa-grip-lines"></i></button>
+                  <button type="button" data-line-type="dotted" aria-pressed="false" title="Dotted"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+              </div>
+              <div class="strats-tools__option">
+                <span>End type</span>
+                <div class="strats-tools__segmented" role="group" aria-label="End type">
+                  <button type="button" class="is-active" data-end-type="none" aria-pressed="true" title="None"><i class="fa-solid fa-minus"></i></button>
+                  <button type="button" data-end-type="start" aria-pressed="false" title="Start arrow"><i class="fa-solid fa-arrow-left"></i></button>
+                  <button type="button" data-end-type="end" aria-pressed="false" title="End arrow"><i class="fa-solid fa-arrow-right"></i></button>
+                  <button type="button" data-end-type="both" aria-pressed="false" title="Both arrows"><i class="fa-solid fa-arrows-left-right"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="strats-tools__panel hidden" data-tool-panel="shape">
+              <h3 class="strats-tools__panel-title">Shape</h3>
+              <p class="strats-tools__panel-empty">Shift keeps circles round and squares square. Alt draws from center.</p>
+              <label class="strats-tools__option">
+                <span>Size</span>
+                <input type="range" id="strats-opt-shape-size" min="1" max="24" value="3" />
+                <output id="strats-opt-shape-size-value">3</output>
+              </label>
+              <div class="strats-tools__option">
+                <span>Line type</span>
+                <div class="strats-tools__segmented" role="group" aria-label="Line type">
+                  <button type="button" class="is-active" data-shape-line-type="solid" aria-pressed="true" title="Solid"><i class="fa-solid fa-minus"></i></button>
+                  <button type="button" data-shape-line-type="dashed" aria-pressed="false" title="Dashed"><i class="fa-solid fa-grip-lines"></i></button>
+                  <button type="button" data-shape-line-type="dotted" aria-pressed="false" title="Dotted"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+              </div>
+              <label class="strats-tools__option strats-tools__option--checkbox">
+                <input type="checkbox" id="strats-opt-filled" checked />
+                <span>Filled</span>
+              </label>
+            </div>
+            <div class="strats-tools__panel hidden" data-tool-panel="text">
+              <h3 class="strats-tools__panel-title">Text</h3>
+              <label class="strats-tools__option">
+                <span>Font size</span>
+                <input type="range" id="strats-opt-font-size" min="8" max="48" value="10" />
+                <output id="strats-opt-font-size-value">10</output>
+              </label>
+              <div class="strats-tools__option">
+                <span>Text type</span>
+                <div class="strats-tools__segmented" role="group" aria-label="Text style">
+                  <button type="button" class="is-active" data-text-style="0" aria-pressed="true" title="Regular">Aa</button>
+                  <button type="button" data-text-style="1" aria-pressed="false" title="Bold"><strong>B</strong></button>
+                  <button type="button" data-text-style="2" aria-pressed="false" title="Italic"><em>I</em></button>
+                </div>
+              </div>
+              <div class="strats-tools__option">
+                <span>Alignment</span>
+                <div class="strats-tools__segmented" role="group" aria-label="Text alignment">
+                  <button type="button" data-text-align="left" aria-pressed="false" title="Left"><i class="fa-solid fa-align-left"></i></button>
+                  <button type="button" class="is-active" data-text-align="center" aria-pressed="true" title="Center"><i class="fa-solid fa-align-center"></i></button>
+                  <button type="button" data-text-align="right" aria-pressed="false" title="Right"><i class="fa-solid fa-align-right"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="strats-tools__panel hidden" data-tool-panel="icons">
+              <h3 class="strats-tools__panel-title">Icons</h3>
+              <label class="strats-tools__option">
+                <span>Label</span>
+                <input type="text" class="glass-input" id="strats-opt-icon-label" placeholder="Label (optional)" maxlength="40" />
+              </label>
+            <div class="strats-tools__icon-grid strats-scroll" id="strats-icon-grid" role="radiogroup" aria-label="Icon"></div>
+            </div>
           </div>
-          <p class="strats-tools__hint">Drawing tools activate in the next phase. Strat save/load follows in Phase 1.</p>
         </div>
       </div>
       <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
@@ -472,6 +596,27 @@
               } catch (_) {}
             })();
           </script>
+          <svg
+            class="strats-draw-layer hidden"
+            id="strats-draw-layer"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          ></svg>
+          <svg
+            class="strats-draw-layer strats-draw-layer--preview hidden"
+            id="strats-draw-preview"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          ></svg>
+          <svg
+            class="strats-draw-layer strats-draw-layer--handles hidden"
+            id="strats-handles-layer"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          ></svg>
           <div class="map-pins" id="map-pins"></div>
           <div class="map-pins-draft" id="map-pins-draft" aria-hidden="true">
             <svg
@@ -485,6 +630,15 @@
           </div>
         </div>
         <div class="map-crosshair hidden" id="map-crosshair" aria-hidden="true"></div>
+        <div class="strats-map-nav hidden" id="strats-map-nav" aria-label="Slide navigation">
+          <button type="button" class="strats-map-nav__btn" id="btn-strats-slide-prev" title="Previous slide" aria-label="Previous slide" disabled>
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <span class="strats-map-nav__label" id="strats-map-nav-label">Slide 1 / 1</span>
+          <button type="button" class="strats-map-nav__btn" id="btn-strats-slide-next" title="Next slide" aria-label="Next slide" disabled>
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
 
       <div class="pin-context-menu hidden" id="pin-context-menu">
@@ -518,18 +672,134 @@
     </section>
 
     <div class="strats-slides-shell hidden" id="strats-slides-shell">
-      <aside class="strats-slides glass-panel" id="strats-slides-panel" aria-label="Strategy slides">
-        <div class="strats-slides__header">
-          <h2>Slides</h2>
-          <button type="button" class="glass-btn glass-btn--icon" id="btn-strats-add-slide" title="Add slide" disabled aria-label="Add slide">+</button>
+      <aside class="strats-panel glass-panel" id="strats-panel" aria-label="Strategy panel">
+        <header class="strats-panel__header hidden" id="strats-panel-header">
+          <h2 class="strats-panel__title" id="strats-panel-title"></h2>
+          <p class="strats-panel__chips" id="strats-panel-chips"></p>
+        </header>
+        <div class="strats-panel__tabs" role="tablist" aria-label="Strategy panel sections">
+          <div class="strats-panel__tabs-surface glass-surface">
+            <button type="button" class="strats-panel__tab" role="tab" data-strats-tab="strat" aria-selected="true">Strat</button>
+            <button type="button" class="strats-panel__tab" role="tab" data-strats-tab="slides" aria-selected="false">Slides</button>
+            <span class="strats-panel__tab-thumb" aria-hidden="true"></span>
+          </div>
         </div>
-        <ul class="strats-slides__list" id="strats-slides-list">
-          <li class="strats-slides__empty">No slides yet — strat planning opens in the next phase.</li>
-        </ul>
+        <div class="strats-panel__body" id="strats-panel-body">
+          <div class="strats-panel__tab-panel strats-scroll" id="strats-tab-strat" role="tabpanel" aria-label="Strat properties">
+            <div class="strats-panel__launch">
+              <button type="button" class="glass-pill-btn" id="btn-strats-new" disabled>New strat</button>
+              <button type="button" class="glass-pill-btn" id="btn-strats-open" disabled>Open strat</button>
+            </div>
+            <p class="strats-panel__empty" id="strats-panel-empty">Create or open a strat to edit properties and slides.</p>
+            <div class="strats-editor hidden" id="strats-editor-panel">
+              <details class="strats-acc" id="strats-acc-title" open>
+                <summary class="strats-acc__summary">
+                  <span class="strats-acc__label">Title</span>
+                  <span class="strats-acc__value" id="strats-acc-title-value"></span>
+                </summary>
+                <label class="strats-field">
+                  <span class="sr-only">Title</span>
+                  <input type="text" class="glass-input" id="strats-title" maxlength="80" placeholder="Untitled Strat" />
+                </label>
+              </details>
+              <details class="strats-acc" id="strats-acc-tags">
+                <summary class="strats-acc__summary">
+                  <span class="strats-acc__label">Team &amp; type</span>
+                  <span class="strats-acc__value" id="strats-acc-tags-value"></span>
+                </summary>
+                <div class="strats-acc__body">
+                  <div class="strats-field">
+                    <span class="strats-field__label">Team</span>
+                    <div class="strats-tag-bar" id="strats-team-bar" role="radiogroup" aria-label="Team" data-current-value="jr">
+                      <span class="strats-tag-bar__thumb" aria-hidden="true"></span>
+                      <button type="button" class="strats-tag-bar__btn is-active" data-team="jr" aria-pressed="true">JR</button>
+                      <button type="button" class="strats-tag-bar__btn" data-team="sr" aria-pressed="false">SR</button>
+                    </div>
+                  </div>
+                  <div class="strats-field">
+                    <span class="strats-field__label">Type</span>
+                    <div class="strats-tag-bar strats-tag-bar--wide" id="strats-type-bar" role="radiogroup" aria-label="Match type" data-current-value="friendly">
+                      <span class="strats-tag-bar__thumb" aria-hidden="true"></span>
+                      <button type="button" class="strats-tag-bar__btn is-active" data-type="friendly" aria-pressed="true">Friendly</button>
+                      <button type="button" class="strats-tag-bar__btn" data-type="tournament" aria-pressed="false">Tournament</button>
+                    </div>
+                  </div>
+                </div>
+              </details>
+              <details class="strats-acc" id="strats-acc-notes">
+                <summary class="strats-acc__summary">
+                  <span class="strats-acc__label">Notes</span>
+                  <span class="strats-acc__value" id="strats-acc-notes-value"></span>
+                </summary>
+                <label class="strats-field">
+                  <span class="sr-only">Notes</span>
+                  <textarea class="glass-input strats-notes" id="strats-notes" rows="3" placeholder="Optional match notes"></textarea>
+                </label>
+              </details>
+              <div class="strats-editor__actions">
+                <button type="button" class="glass-btn" id="btn-strats-duplicate">Duplicate strat</button>
+                <button type="button" class="glass-btn" id="btn-strats-delete">Delete</button>
+                <button type="button" class="glass-btn" id="btn-strats-close-editor">Close</button>
+              </div>
+            </div>
+          </div>
+          <div class="strats-panel__tab-panel hidden strats-scroll" id="strats-tab-slides" role="tabpanel" aria-label="Slides">
+            <div class="strats-slides__toolbar">
+              <span class="strats-slides__count" id="strats-slides-count"></span>
+              <button type="button" class="glass-btn glass-btn--icon" id="btn-strats-add-slide" title="Add slide" disabled aria-label="Add slide">+</button>
+            </div>
+            <ul class="strats-slides__list strats-scroll" id="strats-slides-list">
+              <li class="strats-slides__empty">No slides yet.</li>
+            </ul>
+            <div class="strats-slide-editor hidden" id="strats-slide-editor">
+              <h3 class="strats-slide-editor__title">Active slide</h3>
+              <label class="strats-field">
+                Name
+                <input type="text" class="glass-input" id="strats-slide-name" maxlength="40" placeholder="Untitled" />
+              </label>
+              <label class="strats-field">
+                Map
+                <select class="glass-select" id="strats-slide-map"></select>
+              </label>
+            </div>
+          </div>
+          <p class="strats-save-status" id="strats-save-status" aria-live="polite"></p>
+        </div>
       </aside>
     </div>
   </main>
   </div>
+
+  <dialog class="strats-open-dialog" id="strats-open-dialog">
+    <div class="strats-open-dialog__inner glass-surface">
+      <button class="strats-open-dialog__close" id="btn-close-strats-open" type="button" aria-label="Close">&times;</button>
+      <header class="strats-open-dialog__header">
+        <h2>Open strat</h2>
+        <p>Select a saved strat to continue planning.</p>
+      </header>
+      <label class="strats-open-dialog__search">
+        <span class="sr-only">Search strats</span>
+        <input type="search" class="glass-input" id="strats-open-search" placeholder="Search by title…" />
+      </label>
+      <ul class="strats-open__list strats-scroll" id="strats-open-list"></ul>
+    </div>
+  </dialog>
+
+  <dialog class="strats-open-dialog" id="strats-duplicate-slide-dialog">
+    <div class="strats-open-dialog__inner glass-surface">
+      <button class="strats-open-dialog__close" id="btn-close-strats-duplicate-slide" type="button" aria-label="Close">&times;</button>
+      <header class="strats-open-dialog__header">
+        <h2>Duplicate slide to</h2>
+        <p>Choose which strat should receive a copy of this slide.</p>
+      </header>
+      <label class="strats-open-dialog__search">
+        <span class="sr-only">Search strats</span>
+        <input type="search" class="glass-input" id="strats-duplicate-search" placeholder="Search by title…" />
+      </label>
+      <button type="button" class="glass-pill-btn strats-open-dialog__new" id="btn-strats-duplicate-new">New strat from slide</button>
+      <ul class="strats-open__list strats-scroll" id="strats-duplicate-target-list"></ul>
+    </div>
+  </dialog>
 
   <dialog class="admin-panel" id="admin-panel">
     <div class="admin-panel__inner">

@@ -50,6 +50,7 @@ async function init() {
     import("./ui/map-picker.js"),
     import("./editor/undo-redo.js"),
     import("./bind-ui.js"),
+    import("./ui/strats.js"),
   ]);
   const spawnPromise = mapsModulePromise.then(({ loadSpawnData }) => loadSpawnData());
   const adminPanelPromise = import("./ui/admin-panel.js");
@@ -184,6 +185,7 @@ async function init() {
     { populateMapSelect },
     { initUndoRedoKeyboard },
     { bindUi },
+    { initStratsUi },
   ] = await restModulesPromise;
 
   async function reloadPinsForMap(mapId = state.currentMapId) {
@@ -200,6 +202,7 @@ async function init() {
   initUndoRedoKeyboard();
   syncAppModeChrome();
   bindUi({ reloadPinsForMap, switchMap });
+  await initStratsUi({ switchMap, mapViewer: state.mapViewer });
 }
 
 init();

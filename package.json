@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler pages dev . --compatibility-date=2024-01-01",
-    "deploy": "wrangler pages deploy",
+    "deploy": "wrangler pages deploy . --project-name=hll-tactika --branch=main",
     "migrate:videos:setup": "powershell -File scripts/video-migration/setup-r2.ps1",
     "migrate:videos:export": "node scripts/video-migration/1-export-discord.mjs",
     "migrate:videos:download": "node scripts/video-migration/2-download-videos.mjs",

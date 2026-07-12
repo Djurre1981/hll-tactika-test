@@ -4,6 +4,7 @@ import { hidePreviewImmediately } from "./pin-preview.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { closeModal } from "./pin-modal.js";
+import { confirmStratsUnsavedAction, discardStratsUnsavedChanges } from "./strats.js";
 
 function getLayout() {
   return document.querySelector(".layout");
@@ -33,6 +34,21 @@ export function syncAppModeChrome() {
   document.getElementById("strats-slides-shell")?.classList.toggle("hidden", mode !== "strats");
   document.getElementById("map-toolbar-shell")?.classList.toggle("hidden", mode === "strats");
 
+  const showDrawLayer = mode === "strats" && Boolean(state.activeStrat);
+  document.getElementById("strats-draw-layer")?.classList.toggle("hidden", !showDrawLayer);
+  document.getElementById("strats-draw-preview")?.classList.toggle("hidden", !showDrawLayer);
+  document.getElementById("strats-handles-layer")?.classList.toggle("hidden", !showDrawLayer);
+  document.getElementById("strats-map-nav")?.classList.toggle("hidden", !showDrawLayer);
+
+  const viewport = document.getElementById("map-viewport");
+  viewport?.classList.toggle("is-strats-mode", mode === "strats");
+  if (mode === "strats") {
+    const tool = state.stratsToolSettings.activeTool;
+    viewport?.classList.toggle("is-strats-drawing", tool !== "select");
+  } else {
+    viewport?.classList.remove("is-strats-drawing");
+  }
+
   if (mode === "strats") {
     document.getElementById("edit-panel")?.classList.add("hidden");
   } else if (mode === "editor") {
@@ -45,6 +61,13 @@ export function syncAppModeChrome() {
 export function setAppMode(mode) {
   if (state.appMode === mode) {
     return;
+  }
+
+  if (state.appMode === "strats" && mode !== "strats") {
+    if (!confirmStratsUnsavedAction("Discard unsaved strat changes and leave Strats mode?")) {
+      return;
+    }
+    discardStratsUnsavedChanges();
   }
 
   if (mode !== "editor" && state.panelMode !== null) {
