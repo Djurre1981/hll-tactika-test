@@ -5,8 +5,8 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "PINS_KV"
-id = "f526ba31599a4425ab30b42ac226820e"
-preview_id = "1aafe163b4da4c8091bf61b31fbdaeda"
+id = "25a3a121f49e4bc082cfa7d565d0890d"
+preview_id = "e5ed67e5071744a290fa94f020905a6c"
 
 [[r2_buckets]]
 binding = "VIDEOS_R2"
