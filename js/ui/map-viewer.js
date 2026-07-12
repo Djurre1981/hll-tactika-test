@@ -57,7 +57,8 @@ export class MapViewer {
       const bounds = this.getVisibleBounds({ trackPanelMotion: true });
       const contentW = imgW * this.scale;
       const contentH = imgH * this.scale;
-      this.translateX = bounds.centerX - contentW / 2;
+      const centerX = this.getFocusCenterX();
+      this.translateX = centerX - contentW / 2;
       this.translateY = bounds.centerY - contentH / 2;
       this.clampTranslation();
       this.applyTransform();
@@ -81,17 +82,31 @@ export class MapViewer {
     if (!imgW || !imgH) return;
 
     const bounds = this.getVisibleBounds();
-    this.translateX = bounds.centerX - (imgW * this.scale) / 2;
+    const centerX = this.getFocusCenterX();
+    this.translateX = centerX - (imgW * this.scale) / 2;
     this.translateY = bounds.centerY - (imgH * this.scale) / 2;
     this.clampTranslation();
     this.applyTransform();
   }
 
-  /** Re-fit after chrome animations / late layout so centering matches sidebar. */
-  scheduleLayoutFit() {
-    const fit = () => requestAnimationFrame(() => this.fitToView());
-    document.getElementById("sidebar-shell")?.addEventListener("animationend", fit, { once: true });
-    fit();
+  getSettledSidebarOffset(viewportLeft = 0) {
+    const sidebarShell = document.getElementById("sidebar-shell");
+    if (!sidebarShell || isPortraitLayout()) return 0;
+    if (sidebarShell.classList.contains("is-collapsed")) return 0;
+
+    const rootStyles = getComputedStyle(document.documentElement);
+    const shellStyles = getComputedStyle(sidebarShell);
+    const gap = parseFloat(rootStyles.getPropertyValue("--sidebar-gap")) || 0;
+    const toggleW = parseFloat(shellStyles.getPropertyValue("--toggle-w")) || 0;
+    const shellGap = parseFloat(shellStyles.getPropertyValue("--shell-gap")) || 0;
+    const sidebar = sidebarShell.querySelector(".sidebar");
+    const sidebarW = sidebar?.offsetWidth || 0;
+    if (!sidebarW) {
+      const sidebarRect = sidebarShell.getBoundingClientRect();
+      return Math.max(0, sidebarRect.right - viewportLeft);
+    }
+
+    return Math.max(0, gap + sidebarW + shellGap + toggleW - viewportLeft);
   }
 
   bindEvents() {
@@ -121,16 +136,16 @@ export class MapViewer {
     let visibleWidth = rect.width;
     let visibleHeight = rect.height;
 
-    if (sidebarShell && !isPortraitLayout()) {
-      const collapsed = sidebarShell.classList.contains("is-collapsed");
-      const useLiveGeometry = trackPanelMotion || !collapsed;
-
-      if (useLiveGeometry) {
+    if (sidebarShell && !isPortraitLayout() && !sidebarShell.classList.contains("is-collapsed")) {
+      if (trackPanelMotion) {
         const sidebarRect = sidebarShell.getBoundingClientRect();
         if (sidebarRect.right > rect.left && sidebarRect.left < rect.right) {
           visibleLeft = Math.max(0, sidebarRect.right - rect.left);
           visibleWidth = Math.max(0, rect.width - visibleLeft);
         }
+      } else {
+        visibleLeft = this.getSettledSidebarOffset(rect.left);
+        visibleWidth = Math.max(0, rect.width - visibleLeft);
       }
     }
 
@@ -169,7 +184,7 @@ export class MapViewer {
 
     this.scale = this.clampScale(zoomPercent / 100);
 
-    const focalX = this.getVisibleCenterX();
+    const focalX = this.getFocusCenterX();
     const focalY = rect.height / 2;
     const contentW = imgW * this.scale;
     const contentH = imgH * this.scale;
@@ -188,8 +203,9 @@ export class MapViewer {
     if (!imgW || !imgH) return;
 
     const bounds = this.getVisibleBounds();
+    const centerX = this.getFocusCenterX();
     this.scale = this.getFitScale();
-    this.translateX = bounds.centerX - (imgW * this.scale) / 2;
+    this.translateX = centerX - (imgW * this.scale) / 2;
     this.translateY = bounds.centerY - (imgH * this.scale) / 2;
     this.clampTranslation();
     this.applyTransform();
@@ -217,12 +233,12 @@ export class MapViewer {
 
   zoomIn() {
     const rect = this.viewport.getBoundingClientRect();
-    this.zoomBy(ZOOM_STEP, this.getVisibleCenterX(), rect.height / 2);
+    this.zoomBy(ZOOM_STEP, this.getFocusCenterX(), rect.height / 2);
   }
 
   zoomOut() {
     const rect = this.viewport.getBoundingClientRect();
-    this.zoomBy(1 / ZOOM_STEP, this.getVisibleCenterX(), rect.height / 2);
+    this.zoomBy(1 / ZOOM_STEP, this.getFocusCenterX(), rect.height / 2);
   }
 
   onWheel(event) {

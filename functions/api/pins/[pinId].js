@@ -5,15 +5,16 @@ import {
   normalizePinTag,
   sanitizeRequires,
 } from "../../lib/pin-fields.js";
-import { canModifyPin } from "../../lib/pin-permissions.js";
+import { canEnterEditorMode, canModifyPin } from "../../lib/pin-permissions.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
+import { normalizePinTitle } from "../../lib/pin-title.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 function applyPinUpdates(existing, pin) {
   const updated = { ...existing };
 
   if (pin.title !== undefined) {
-    updated.title = String(pin.title).trim();
+    updated.title = normalizePinTitle(pin.title);
   }
   if (pin.description !== undefined) {
     updated.description = String(pin.description).trim();
@@ -105,6 +106,10 @@ export async function onRequestPut(context) {
     return auth.error;
   }
 
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
+  }
+
   const pinId = context.params.pinId;
   let body;
   try {
@@ -149,6 +154,10 @@ export async function onRequestDelete(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
   }
 
   const pinId = context.params.pinId;

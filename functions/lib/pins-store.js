@@ -1,4 +1,5 @@
 import seedPins from "../../data/pins.json";
+import { normalizePinTitle } from "./pin-title.js";
 
 const KV_KEY = "pins";
 
@@ -15,22 +16,45 @@ function cloneSeedPins() {
   return data;
 }
 
-export async function loadPinsData(env) {
+function migratePinTitles(data) {
+  let changed = false;
+  for (const mapPins of Object.values(data.pins || {})) {
+    for (const pin of mapPins) {
+      const normalized = normalizePinTitle(pin.title);
+      if (pin.title !== normalized) {
+        pin.title = normalized;
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+async function loadAndMigratePinsData(env) {
+  let data;
   if (env.PINS_KV) {
     const stored = await env.PINS_KV.get(KV_KEY, "json");
     if (stored?.pins) {
-      return stored;
+      data = stored;
+    } else {
+      data = cloneSeedPins();
+      await env.PINS_KV.put(KV_KEY, JSON.stringify(data));
     }
-
-    const initial = cloneSeedPins();
-    await env.PINS_KV.put(KV_KEY, JSON.stringify(initial));
-    return initial;
+  } else {
+    if (!memoryStore) {
+      memoryStore = cloneSeedPins();
+    }
+    data = memoryStore;
   }
 
-  if (!memoryStore) {
-    memoryStore = cloneSeedPins();
+  if (migratePinTitles(data)) {
+    await savePinsData(env, data);
   }
-  return memoryStore;
+  return data;
+}
+
+export async function loadPinsData(env) {
+  return loadAndMigratePinsData(env);
 }
 
 export async function savePinsData(env, data) {

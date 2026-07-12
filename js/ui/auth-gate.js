@@ -8,7 +8,7 @@ const DEFAULT_AUTH = {
 };
 
 const AUTH_CLOSE_MS = 500;
-const AUTH_BOOT_KEY = "hll_authed";
+const AUTH_BOOT_KEY = "hll-tactika-authed";
 const WELCOME_SCRUB_MODULE = new URL("./welcome-scrub.js", import.meta.url);
 
 function hasStoredAuthSession() {
@@ -267,6 +267,11 @@ function showApp(user) {
 
   const label = user.name || `Steam user ${user.steamId}`;
   if (els.userName) els.userName.textContent = label;
+  if (user.role === "viewer") {
+    els.modeSwitch?.classList.add("hidden");
+  } else {
+    els.modeSwitch?.classList.remove("hidden");
+  }
   if (user.avatar) {
     if (els.userAvatar) {
       els.userAvatar.src = user.avatar;

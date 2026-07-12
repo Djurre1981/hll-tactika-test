@@ -5,14 +5,16 @@ import {
   normalizePinTag,
   sanitizeRequires,
 } from "../lib/pin-fields.js";
+import { canEnterEditorMode } from "../lib/pin-permissions.js";
 import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
+import { normalizePinTitle } from "../lib/pin-title.js";
 import { errorResponse, json } from "../lib/response.js";
 
 function buildPinFromBody(pin, createdBy) {
   const next = {
     id: pin.id,
-    title: String(pin.title || "").trim(),
+    title: normalizePinTitle(pin.title),
     description: String(pin.description || "").trim(),
     tag: normalizePinTag(pin.tag),
     x: Number(pin.x),
@@ -86,6 +88,10 @@ export async function onRequestPost(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
   }
 
   let body;

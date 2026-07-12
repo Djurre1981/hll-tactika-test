@@ -59,8 +59,9 @@ export async function onRequestPost(context) {
       user: {
         steamId,
         name: profile.name,
-        role: "user",
-        removable: true,
+        role: result.member.role,
+        removable: result.member.removable,
+        roleEditable: result.member.roleEditable,
       },
     },
     { status: 201 }

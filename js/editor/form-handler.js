@@ -8,6 +8,7 @@ import { validatePinMediaForm } from "./media-form.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
+import { normalizePinTitle } from "../helpers/pin-title.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Gate", icon: "fa-archway" },
@@ -151,8 +152,9 @@ export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToE
   event.preventDefault();
   if (!canSavePlacement()) return;
 
-  const title = getPinTitle()?.value.trim();
+  const title = normalizePinTitle(getPinTitle()?.value);
   if (!title) return;
+  getPinTitle().value = title;
 
   const tag = getPinFormTag();
   if (!tag) return;

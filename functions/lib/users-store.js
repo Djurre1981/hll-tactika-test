@@ -10,13 +10,30 @@ const KV_KEY = "users";
 let memoryStore = null;
 
 function seedFromEnv(env) {
-  return {
-    users: parseSteamIds(env.USER_STEAM_IDS).map((steamId) => ({
-      steamId,
-      role: "user",
-    })),
-    revoked: [],
-  };
+  const users = [];
+  const seen = new Set();
+
+  function addRole(steamIds, role) {
+    for (const steamId of steamIds) {
+      if (seen.has(steamId)) continue;
+      users.push({ steamId, role });
+      seen.add(steamId);
+    }
+  }
+
+  addRole(parseSteamIds(env.VIEWER_STEAM_IDS), "viewer");
+  addRole(parseSteamIds(env.USER_STEAM_IDS), "viewer");
+  addRole(parseSteamIds(env.EDITOR_STEAM_IDS), "editor");
+  addRole(parseSteamIds(env.ASSIST_STEAM_IDS), "assist");
+
+  return { users, revoked: [] };
+}
+
+function normalizeStoredRole(role) {
+  if (role === "user") {
+    return "viewer";
+  }
+  return role;
 }
 
 export async function loadUsersData(env) {
@@ -39,12 +56,25 @@ export async function loadUsersData(env) {
 async function migrateEnvUsers(env, data) {
   const envOwners = new Set(parseSteamIds(env.OWNER_STEAM_IDS));
   const envAdmins = new Set(parseSteamIds(env.ADMIN_STEAM_IDS));
-  const envUsers = parseSteamIds(env.USER_STEAM_IDS);
+  const envAssists = new Set(parseSteamIds(env.ASSIST_STEAM_IDS));
+  const envEditors = new Set(parseSteamIds(env.EDITOR_STEAM_IDS));
+  const envViewers = new Set([
+    ...parseSteamIds(env.VIEWER_STEAM_IDS),
+    ...parseSteamIds(env.USER_STEAM_IDS),
+  ]);
   let changed = false;
 
   if (!Array.isArray(data.revoked)) {
     data.revoked = [];
     changed = true;
+  }
+
+  for (const user of data.users) {
+    const normalized = normalizeStoredRole(user.role);
+    if (user.role !== normalized) {
+      user.role = normalized;
+      changed = true;
+    }
   }
 
   const ownerIds = new Set(envOwners);
@@ -62,44 +92,29 @@ async function migrateEnvUsers(env, data) {
     }
   }
 
-  for (const steamId of envOwners) {
-    const existing = data.users.find((user) => user.steamId === steamId);
-    if (existing) {
-      if (existing.role !== "owner") {
-        existing.role = "owner";
+  function syncEnvRole(steamIds, role, skipIf) {
+    for (const steamId of steamIds) {
+      if (skipIf.has(steamId)) {
+        continue;
+      }
+      const existing = data.users.find((user) => user.steamId === steamId);
+      if (existing) {
+        if (existing.role !== role) {
+          existing.role = role;
+          changed = true;
+        }
+      } else {
+        data.users.push({ steamId, role });
         changed = true;
       }
-    } else {
-      data.users.push({ steamId, role: "owner" });
-      changed = true;
     }
   }
 
-  for (const steamId of envAdmins) {
-    if (envOwners.has(steamId)) {
-      continue;
-    }
-    const existing = data.users.find((user) => user.steamId === steamId);
-    if (existing) {
-      if (existing.role !== "admin") {
-        existing.role = "admin";
-        changed = true;
-      }
-    } else {
-      data.users.push({ steamId, role: "admin" });
-      changed = true;
-    }
-  }
-
-  for (const steamId of envUsers) {
-    if (envAdmins.has(steamId)) {
-      continue;
-    }
-    if (!data.users.some((user) => user.steamId === steamId)) {
-      data.users.push({ steamId, role: "user" });
-      changed = true;
-    }
-  }
+  syncEnvRole(envOwners, "owner", new Set());
+  syncEnvRole(envAdmins, "admin", envOwners);
+  syncEnvRole(envAssists, "assist", new Set([...envOwners, ...envAdmins]));
+  syncEnvRole(envEditors, "editor", new Set([...envOwners, ...envAdmins, ...envAssists]));
+  syncEnvRole(envViewers, "viewer", new Set([...envOwners, ...envAdmins, ...envAssists, ...envEditors]));
 
   if (changed) {
     await saveUsersData(env, data);

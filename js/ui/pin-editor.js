@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { canModifyPin } from "../helpers/permissions.js";
+import { canEnterEditorMode, canModifyPin } from "../helpers/permissions.js";
 import { DEFAULT_PIN_TAG } from "../pin-tags.js";
 import { hasPinDirection, renderDraftMgSpot } from "./mg-spot-arrows.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
@@ -89,6 +89,10 @@ export function updateZoomLabel() {
 }
 
 export function toggleEditMode() {
+  if (!canEnterEditorMode()) {
+    return;
+  }
+
   if (isInEditorMode()) {
     exitEditorMode();
     return;
@@ -170,6 +174,10 @@ function transitionEditorMode({
 }
 
 export function enterEditorMode() {
+  if (!canEnterEditorMode()) {
+    return;
+  }
+
   transitionEditorMode({
     panelMode: "browse",
     hidePreview: true,
@@ -263,6 +271,10 @@ function resetAddForm() {
 }
 
 export function openAddPinForm(tag = DEFAULT_PIN_TAG) {
+  if (!canEnterEditorMode()) {
+    return;
+  }
+
   if (!isInEditorMode()) {
     enterEditorMode();
   }

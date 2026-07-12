@@ -190,8 +190,8 @@
 }
 
 .map-pin.pin--no-media {
-  --pin-color: var(--pin-no-media);
-  --pin-glow: var(--pin-no-media-glow);
+  --pin-color: var(--pin-mg-no-media);
+  --pin-glow: var(--pin-mg-no-media-glow);
 }
 
 .map-pin:hover,

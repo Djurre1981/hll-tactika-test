@@ -169,6 +169,7 @@ function renderModalImage(url, title) {
 
 export function openModal(pin) {
   hidePreviewImmediately();
+  cancelPendingModalClose();
   state.modalPin = pin;
   state.modalMediaIndex = 0;
   getModalTitle().textContent = pin.title;
@@ -382,7 +383,27 @@ function clearModalDismissGuard() {
 
 const MODAL_CLOSE_MS = 320;
 
-function finishModalClose() {
+let pendingCloseTimer = null;
+let pendingCloseAnimationHandler = null;
+let pendingCloseId = 0;
+
+function cancelPendingModalClose() {
+  pendingCloseId += 1;
+  if (pendingCloseTimer != null) {
+    clearTimeout(pendingCloseTimer);
+    pendingCloseTimer = null;
+  }
+  if (pendingCloseAnimationHandler) {
+    getModal()?.removeEventListener("animationend", pendingCloseAnimationHandler);
+    pendingCloseAnimationHandler = null;
+  }
+}
+
+function finishModalClose(closeId) {
+  if (closeId !== pendingCloseId) return;
+  pendingCloseTimer = null;
+  pendingCloseAnimationHandler = null;
+
   const modal = getModal();
   modal.classList.remove("is-closing");
   modal.close();
@@ -396,17 +417,20 @@ export function closeModal() {
   if (!modal?.open || modal.classList.contains("is-closing")) return;
 
   clearModalDismissGuard();
+  cancelPendingModalClose();
+  const closeId = pendingCloseId;
+
   modal.classList.add("is-closing");
-  const timer = setTimeout(finishModalClose, MODAL_CLOSE_MS);
-  modal.addEventListener(
-    "animationend",
-    (event) => {
-      if (event.target !== modal) return;
-      clearTimeout(timer);
-      finishModalClose();
-    },
-    { once: true },
-  );
+  pendingCloseTimer = setTimeout(() => finishModalClose(closeId), MODAL_CLOSE_MS);
+  pendingCloseAnimationHandler = (event) => {
+    if (event.target !== modal) return;
+    if (pendingCloseTimer != null) {
+      clearTimeout(pendingCloseTimer);
+      pendingCloseTimer = null;
+    }
+    finishModalClose(closeId);
+  };
+  modal.addEventListener("animationend", pendingCloseAnimationHandler, { once: true });
 }
 
 export function handleModalCloseEvent() {

@@ -23,7 +23,7 @@ export async function requireAdmin(context) {
   }
 
   if (!isStaffRole(auth.role)) {
-    return { error: errorResponse("Administrators only", 403) };
+    return { error: errorResponse("Comp Admins only", 403) };
   }
 
   return auth;

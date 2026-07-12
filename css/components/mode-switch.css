@@ -5,7 +5,12 @@
   z-index: var(--z-chrome);
   transform: translateX(-50%);
   min-width: 15rem;
+  transition: left 0.4s var(--ease-smooth);
   animation: chrome-enter 0.6s var(--ease-smooth) 0.05s both;
+}
+
+.layout:has(.sidebar-shell.is-collapsed) .mode-switch {
+  left: 50%;
 }
 
 .mode-switch__surface {

@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 # One-time Cloudflare Pages setup after `npx wrangler login`
 param(
-  [string]$ProjectName = "hll-climb-guide"
+  [string]$ProjectName = "hll-tactika"
 )
 
 $ErrorActionPreference = "Stop"
