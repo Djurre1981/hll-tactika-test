@@ -102,6 +102,20 @@
   margin-bottom: 0.45rem;
 }
 
+.pin-form__media.is-dragover {
+  outline: 1px dashed rgba(255, 255, 255, 0.35);
+  outline-offset: 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pin-media-row__url-wrap.is-dragover {
+  outline: 1px dashed rgba(255, 255, 255, 0.45);
+  outline-offset: 2px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .pin-media-file.hidden {
   display: none;
 }

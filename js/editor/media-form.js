@@ -25,6 +25,55 @@ function getMediaFileInput() {
   return document.getElementById("pin-media-file");
 }
 
+function getMediaFieldset() {
+  return document.querySelector(".pin-form__media");
+}
+
+function isPinFormOpen() {
+  const panel = document.getElementById("edit-panel");
+  return Boolean(panel && !panel.classList.contains("hidden"));
+}
+
+function resolveUploadTargetRow(preferredRow = null) {
+  if (preferredRow) return preferredRow;
+  const rows = [...getMediaList()?.querySelectorAll(".pin-media-row") || []];
+  const empty = rows.find((row) => !row.querySelector(".pin-media-row__url")?.value.trim());
+  return empty || rows[0] || null;
+}
+
+function getDropFile(dataTransfer) {
+  const files = dataTransfer?.files;
+  if (!files?.length) return null;
+  for (const file of files) {
+    if (isVideoFile(file) || isImageFile(file)) return file;
+  }
+  return files[0];
+}
+
+function clearDragoverState(fieldset) {
+  fieldset?.classList.remove("is-dragover");
+  fieldset?.querySelectorAll(".pin-media-row__url-wrap.is-dragover").forEach((el) => {
+    el.classList.remove("is-dragover");
+  });
+}
+
+function setDragoverTarget(fieldset, wrap) {
+  clearDragoverState(fieldset);
+  if (wrap) {
+    wrap.classList.add("is-dragover");
+  } else {
+    fieldset?.classList.add("is-dragover");
+  }
+}
+
+async function startMediaUpload(file, preferredRow = null) {
+  if (isMediaUploadInProgress()) return;
+  const row = resolveUploadTargetRow(preferredRow);
+  if (!row) return;
+  activeUploadRow = row;
+  await handleMediaFileUpload(file);
+}
+
 function getRowUploadButton(row) {
   return row?.querySelector(".pin-media-row__upload") || null;
 }
@@ -69,7 +118,7 @@ function createMediaRow({ url = "", isFirst = false, isThumbnail = false } = {})
   const uploadBtn = row.querySelector(".pin-media-row__upload");
   uploadBtn?.addEventListener("click", () => {
     if (uploadBtn.disabled) return;
-    activeUploadRow = row;
+    activeUploadRow = resolveUploadTargetRow(row);
     getMediaFileInput()?.click();
   });
 
@@ -311,6 +360,64 @@ async function handleMediaFileUpload(file) {
   }
 }
 
+function initMediaDropAndPaste() {
+  const fieldset = getMediaFieldset();
+  if (!fieldset) return;
+
+  fieldset.addEventListener("dragover", (event) => {
+    if (!isPinFormOpen()) return;
+    if (!event.dataTransfer?.types?.includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    const wrap = event.target.closest(".pin-media-row__url-wrap");
+    setDragoverTarget(fieldset, wrap);
+  });
+
+  fieldset.addEventListener("dragleave", (event) => {
+    if (!fieldset.contains(event.relatedTarget)) {
+      clearDragoverState(fieldset);
+    }
+  });
+
+  fieldset.addEventListener("drop", async (event) => {
+    if (!isPinFormOpen()) return;
+    event.preventDefault();
+    clearDragoverState(fieldset);
+    const file = getDropFile(event.dataTransfer);
+    if (!file) return;
+    const row = event.target.closest(".pin-media-row");
+    await startMediaUpload(file, row);
+  });
+
+  fieldset.addEventListener("paste", async (event) => {
+    if (!isPinFormOpen()) return;
+    const item = [...event.clipboardData.items].find((clipboardItem) =>
+      clipboardItem.type.startsWith("image/")
+    );
+    if (!item) return;
+    event.preventDefault();
+    const file = item.getAsFile();
+    if (!file) return;
+    const focusedInput = document.activeElement?.closest?.(".pin-media-row__url");
+    const row = focusedInput?.closest(".pin-media-row") || null;
+    await startMediaUpload(file, row);
+  });
+
+  document.addEventListener("dragover", (event) => {
+    if (!isPinFormOpen()) return;
+    if (event.dataTransfer?.types?.includes("Files")) {
+      event.preventDefault();
+    }
+  });
+
+  document.addEventListener("drop", (event) => {
+    if (!isPinFormOpen()) return;
+    if (!event.target.closest(".pin-form__media")) {
+      event.preventDefault();
+    }
+  });
+}
+
 export function initPinMediaForm() {
   const input = getMediaFileInput();
   if (!input) return;
@@ -319,7 +426,7 @@ export function initPinMediaForm() {
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    await handleMediaFileUpload(file);
+    await startMediaUpload(file, activeUploadRow);
   });
 
   getMediaList()?.addEventListener("input", (event) => {
@@ -333,6 +440,8 @@ export function initPinMediaForm() {
       syncThumbnailUi();
     }
   });
+
+  initMediaDropAndPaste();
 }
 
 export function resetPinMediaForm() {
