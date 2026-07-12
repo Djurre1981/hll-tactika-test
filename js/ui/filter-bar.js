@@ -2,6 +2,7 @@ import { state, TAG_FILTER_STORAGE_KEY, FACTION_FILTER_STORAGE_KEY } from "../st
 import { PIN_TAGS, normalizePinTag, getPinTag } from "../pin-tags.js";
 import { hasPinDirection } from "./mg-spot-arrows.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
+import { normalizePinTitle } from "../helpers/pin-title.js";
 
 export function loadTagFilters() {
   try {
@@ -114,5 +115,9 @@ export function getMapPins() {
 }
 
 export function normalizePin(pin) {
-  return { ...pin, tag: normalizePinTag(pin) };
+  return {
+    ...pin,
+    tag: normalizePinTag(pin),
+    title: normalizePinTitle(pin.title),
+  };
 }

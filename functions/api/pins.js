@@ -2,12 +2,13 @@ import { requireAuth } from "../lib/auth-request.js";
 import { canEnterEditorMode } from "../lib/pin-permissions.js";
 import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
+import { normalizePinTitle } from "../lib/pin-title.js";
 import { errorResponse, json } from "../lib/response.js";
 
 function buildPinFromBody(pin, createdBy) {
   const next = {
     id: pin.id,
-    title: String(pin.title || "").trim(),
+    title: normalizePinTitle(pin.title),
     description: String(pin.description || "").trim(),
     tag: pin.tag || "climb",
     x: Number(pin.x),
