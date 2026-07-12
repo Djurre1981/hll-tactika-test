@@ -13,9 +13,12 @@ See also: [project-overview.md](project-overview.md), [roles.md](roles.md).
 ├── .gitignore
 │
 ├── docs/
+│   ├── user-guide.md                # Member & editor guide (pins, colours, workflows)
 │   ├── folder-structure.md          # This file — repo layout reference
 │   ├── project-overview.md          # Architecture, stack, and feature knowledge base
-│   └── roles.md                     # Role hierarchy and permission matrix
+│   ├── roles.md                     # Role hierarchy and permission matrix
+│   ├── api.md                       # REST API reference
+│   └── data-schemas.md              # KV, pin/user schemas, static data files
 │
 ├── assets/
 │   ├── fonts/                       # Texta / TextaAlt font files (.ttf)

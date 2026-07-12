@@ -33,9 +33,12 @@ There are a lot of ideas (Planning section for rostering etc..?, Our version of 
 
 ## Documentation
 
+- [User & editor guide](docs/user-guide.md) — for members and pin contributors
 - [Project overview](docs/project-overview.md)
 - [Folder structure](docs/folder-structure.md)
 - [Circle roles](docs/roles.md)
+- [API reference](docs/api.md)
+- [Data schemas & storage](docs/data-schemas.md)
 
 ## Quick start
 
