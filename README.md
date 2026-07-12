@@ -6,21 +6,30 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 
 ## Cloudflare media hosting
 
-Trick **videos** and **preview images** can be uploaded when adding a pin. Files are stored in **Cloudflare R2** and served only to signed-in circle members:
+Trick **videos** and **preview images** can be uploaded from the editor panel. Files are stored in **Cloudflare R2** and served only to signed-in circle members:
 
 - `POST /api/uploads/video` → `GET /api/videos/{id}`
 - `POST /api/uploads/image` → `GET /api/images/{id}`
 
-Supported uploads: **MP4, WebM, MOV, OGG** (video) and **JPEG, PNG, WebP, GIF** (preview). If no preview is provided, the first frame of the video is captured automatically.
+Supported uploads: **MP4, WebM, MOV, OGG** (video) and **JPEG, PNG, WebP, GIF** (preview). If no preview exists after a video upload, the first frame is captured automatically.
 
-External links (YouTube, Medal.tv, Vimeo, etc.) still work. A one-time **Discord → R2 migration** for legacy `#climbing-guide` clips is documented in [`scripts/video-migration/README.md`](scripts/video-migration/README.md) (requires Discord bot access on the Circle server).
+External links (YouTube, Medal.tv, Vimeo, Discord, etc.) still work alongside uploaded media.
+
+### R2 setup (one-time)
+
+```powershell
+npx wrangler r2 bucket create hll-climb-videos
+npx wrangler r2 bucket create hll-climb-videos-preview
+```
+
+After deploy, confirm the `VIDEOS_R2` binding is attached in **Cloudflare Pages → Settings → Functions**.
 
 ## ToDo / Planned / Ideas
 
-V **Include MG spots** Title is self explainatory
-V **Tags for types of pins** To tag types like climb, mg spot etc
-V **Custom names for mini spots like 'Grandma's house'**
-- **Limit upload size and/length of video/images**
+- **Include MG spots** Title is self explainatory
+- **Tags for types of pins** To tag types like climb, mg spot etc
+- **Custom names for mini spots like 'Grandma's house'**
+- ** **
 
 ## Features
 
@@ -33,7 +42,7 @@ V **Custom names for mini spots like 'Grandma's house'**
 - **Pins** mark trick locations with title and description
 - **Hover** a pin to preview the trick video
 - **Click** a pin to play the full embedded video (YouTube, Vimeo, Medal.tv, or Cloudflare-hosted uploads)
-- **Upload videos and preview images** to Cloudflare R2 when adding a pin (or paste external links)
+- **Upload videos and preview images** to Cloudflare R2 from the editor (or paste external links)
 - **Add pins** directly on the map; tricks are saved on the server (Cloudflare KV in production, in-memory during local dev without KV)
 
 ## Quick start

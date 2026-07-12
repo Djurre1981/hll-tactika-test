@@ -1,0 +1,174 @@
+.map-toolbar .tag-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.25s var(--ease-smooth),
+    transform 0.2s var(--ease-smooth);
+}
+
+.tag-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.tag-filters--two {
+  grid-template-columns: 2fr 1fr;
+}
+
+.tag-filter--wide {
+  grid-column: 1 / 2;
+}
+
+.tag-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 4.25rem;
+  padding: 0.45rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.tag-filter:hover {
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+
+.tag-filter.is-active.tag-filter--mg-spot {
+  color: #ffb4a8;
+  border-color: rgba(255, 0, 0, 0.45);
+  background: rgba(255, 0, 0, 0.18);
+}
+
+.tag-filter.is-active.tag-filter--climb {
+  color: #a8e8b8;
+  border-color: rgba(61, 173, 92, 0.45);
+  background: rgba(61, 173, 92, 0.18);
+}
+
+.tag-filter--axis {
+  color: #e84040;
+}
+
+.tag-filter--axis.is-active {
+  border-color: rgba(232, 64, 64, 0.45);
+  background: rgba(232, 64, 64, 0.18);
+}
+
+.tag-filter--neutral {
+  color: var(--text-muted);
+}
+
+.tag-filter--neutral.is-active {
+  color: #d0d4d0;
+  border-color: rgba(208, 212, 208, 0.35);
+  background: rgba(208, 212, 208, 0.12);
+}
+
+.tag-filter--allies {
+  color: #4682d4;
+}
+
+.tag-filter--allies.is-active {
+  border-color: rgba(70, 130, 212, 0.45);
+  background: rgba(70, 130, 212, 0.18);
+}
+
+.tag-swatch {
+  font-size: 1.15rem;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 0 1px rgba(255, 255, 255, 0.15));
+}
+
+.tag-swatch--mg-spot {
+  color: var(--pin-mg-spot);
+}
+
+.tag-swatch--climb {
+  color: var(--pin-climb);
+}
+
+.map-faction-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.faction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.faction-btn i {
+  font-size: 0.75rem;
+}
+
+.faction-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.faction-btn.is-active {
+  background: transparent;
+}
+
+.faction-btn--axis.is-active {
+  color: #e84040;
+  border-color: rgba(232, 64, 64, 0.35);
+}
+
+.faction-btn--axis.is-active i {
+  color: #e84040;
+}
+
+.faction-btn--axis:hover.is-active {
+  background: rgba(232, 64, 64, 0.1);
+}
+
+.faction-btn--neutral.is-active {
+  color: #d0d4d0;
+  border-color: rgba(208, 212, 208, 0.35);
+}
+
+.faction-btn--neutral:hover.is-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.faction-btn--allies.is-active {
+  color: #4682d4;
+  border-color: rgba(70, 130, 212, 0.35);
+}
+
+.faction-btn--allies.is-active i {
+  color: #4682d4;
+}
+
+.faction-btn--allies:hover.is-active {
+  background: rgba(70, 130, 212, 0.1);
+}

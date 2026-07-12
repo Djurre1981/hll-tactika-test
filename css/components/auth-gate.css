@@ -1,0 +1,193 @@
+@keyframes auth-gate-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-gate-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+@keyframes auth-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes auth-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.auth-gate {
+  width: min(410px, calc(100vw - 2.5rem));
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2f2f2;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  font-family: "Texta", sans-serif;
+}
+
+.auth-gate[open]:not(.is-closing) {
+  animation: auth-gate-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-gate[open].is-closing {
+  animation: auth-gate-out 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.auth-gate::backdrop {
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.auth-gate[open]:not(.is-closing)::backdrop {
+  animation: auth-backdrop-in 0.4s ease;
+}
+
+.auth-gate[open].is-closing::backdrop {
+  animation: auth-backdrop-out 0.4s ease forwards;
+}
+
+.auth-gate__card {
+  position: relative;
+  padding: 3.15rem 2.9rem 2.75rem;
+  text-align: center;
+}
+
+.auth-gate__close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.9rem;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 1.35rem;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.auth-gate__close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-gate__card h2 {
+  margin: 0 0 1.2rem;
+  font-family: "Texta Alt", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auth-gate__message {
+  margin: 0 0 2rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-family: "Texta Alt", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.btn--steam {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+  padding: 0.72rem 1.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+  font-family: "Texta Alt", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --mirror-x: 50%;
+  --mirror-y: 50%;
+  --mirror-opacity: 0;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.btn--steam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--mirror-opacity);
+  background: radial-gradient(
+    circle 5rem at var(--mirror-x) var(--mirror-y),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.14) 22%,
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0.03) 62%,
+    rgba(255, 255, 255, 0.01) 78%,
+    transparent 100%
+  );
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.btn--steam:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.btn--steam__icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.btn--steam__label {
+  position: relative;
+  z-index: 1;
+}
+
+.btn--steam__icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

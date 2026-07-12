@@ -92,3 +92,31 @@ export function isSupportedThumbnailUrl(url) {
     return false;
   }
 }
+
+export function validatePinMediaFields(pin) {
+  const videoUrl = String(pin.videoUrl || "").trim();
+  if (videoUrl && !isSupportedHostedVideoUrl(videoUrl)) {
+    return { error: "Unsupported video URL" };
+  }
+
+  const thumbnail = String(pin.thumbnail || "").trim();
+  if (thumbnail && !isSupportedThumbnailUrl(thumbnail)) {
+    return { error: "Unsupported preview image URL" };
+  }
+
+  if (Array.isArray(pin.mediaItems)) {
+    for (const item of pin.mediaItems) {
+      const url = String(item?.url || "").trim();
+      if (!url) continue;
+      const kind = item?.kind === "image" ? "image" : "video";
+      if (kind === "image" && !isSupportedThumbnailUrl(url)) {
+        return { error: "Unsupported image URL in media items" };
+      }
+      if (kind === "video" && !isSupportedHostedVideoUrl(url)) {
+        return { error: "Unsupported video URL in media items" };
+      }
+    }
+  }
+
+  return null;
+}

@@ -1,8 +1,10 @@
 import { requireAuth } from "../lib/auth-request.js";
+import { validatePinMediaFields } from "../lib/media-urls.js";
 import {
-  isSupportedHostedVideoUrl,
-  isSupportedThumbnailUrl,
-} from "../lib/media-urls.js";
+  normalizePinFaction,
+  normalizePinTag,
+  sanitizeRequires,
+} from "../lib/pin-fields.js";
 import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { errorResponse, json } from "../lib/response.js";
@@ -12,7 +14,7 @@ function buildPinFromBody(pin, createdBy) {
     id: pin.id,
     title: String(pin.title || "").trim(),
     description: String(pin.description || "").trim(),
-    tag: pin.tag || "climb",
+    tag: normalizePinTag(pin.tag),
     x: Number(pin.x),
     y: Number(pin.y),
     videoUrl: String(pin.videoUrl || "").trim(),
@@ -25,19 +27,22 @@ function buildPinFromBody(pin, createdBy) {
   if (!Number.isFinite(next.x) || !Number.isFinite(next.y)) {
     return { error: "Valid pin coordinates are required" };
   }
-  if (!next.videoUrl) {
-    return { error: "Video is required" };
-  }
-  if (!isSupportedHostedVideoUrl(next.videoUrl)) {
-    return { error: "Unsupported video URL" };
-  }
 
   const thumbnail = String(pin.thumbnail || "").trim();
   if (thumbnail) {
-    if (!isSupportedThumbnailUrl(thumbnail)) {
-      return { error: "Unsupported preview image URL" };
-    }
     next.thumbnail = thumbnail;
+  }
+
+  next.faction = normalizePinFaction(pin.faction);
+  next.requires = sanitizeRequires(pin.requires);
+
+  if (Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0) {
+    next.mediaItems = pin.mediaItems
+      .map((item) => ({
+        kind: item?.kind === "image" ? "image" : "video",
+        url: String(item?.url || "").trim(),
+      }))
+      .filter((item) => item.url);
   }
 
   if (next.tag === "mg-spot") {
@@ -56,6 +61,11 @@ function buildPinFromBody(pin, createdBy) {
   const sourceDiscordMessageId = String(pin.sourceDiscordMessageId || "").trim();
   if (sourceDiscordMessageId) {
     next.sourceDiscordMessageId = sourceDiscordMessageId;
+  }
+
+  const mediaError = validatePinMediaFields(next);
+  if (mediaError) {
+    return mediaError;
   }
 
   return { pin: next };

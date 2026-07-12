@@ -1,0 +1,210 @@
+.map-pins,
+.map-pins-draft {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-pin--draft {
+  --pin-scale-selected: 5.8;
+  transform: scale(calc(var(--pin-scale-selected) * 0.375));
+  z-index: 12;
+  pointer-events: none;
+  animation: none;
+}
+
+.map-pin--draft.is-draggable {
+  pointer-events: auto;
+}
+
+.map-pin--draft.is-draggable.map-pin--dragging {
+  pointer-events: none;
+  cursor: grabbing;
+}
+
+.map-pin--draft .map-pin__icon {
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
+}
+
+.map-pin--draft::before {
+  content: none;
+}
+
+@keyframes draft-pin-pulse {
+  0%,
+  100% {
+    transform: scale(calc(var(--pin-scale-selected) * 0.88));
+  }
+
+  50% {
+    transform: scale(calc(var(--pin-scale-selected) * 0.96));
+  }
+}
+
+.map-pin {
+  --pin-scale-selected: 5.8;
+  --pin-scale-default: calc(var(--pin-scale-selected) * 0.375);
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -28px 0 0 -14px;
+  border: none;
+  background: none;
+  cursor: default;
+  pointer-events: none;
+  padding: 0;
+  z-index: 5;
+  transform: scale(var(--pin-scale-default));
+  transform-origin: 50% 100%;
+}
+
+.map-pin__icon {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-size: 28px;
+  line-height: 1;
+  text-align: center;
+  color: var(--pin-color, var(--pin-climb));
+  cursor: default;
+  pointer-events: auto;
+  -webkit-text-stroke: 1px #000;
+  filter: drop-shadow(0 0 14px var(--pin-glow, var(--pin-climb-glow)));
+  transition: filter 0.35s cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.map-viewport:not(.is-edit-mode) .map-pin__icon {
+  cursor: pointer;
+}
+
+/* Match MG spots: only the visible glyph receives pointer events, not the full em box. */
+.map-pin--climb .map-pin__icon {
+  pointer-events: none;
+}
+
+.map-pin--climb .map-pin__icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 100%;
+  border-radius: 7px;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.map-viewport:not(.is-edit-mode) .map-pin--climb .map-pin__icon::after {
+  cursor: pointer;
+}
+
+.map-viewport.is-editor-mode .map-pin--climb .map-pin__icon::after {
+  cursor: grab;
+}
+
+.map-viewport.is-editor-mode .map-pin--draft.is-draggable .map-pin__icon::after {
+  cursor: grab;
+  touch-action: none;
+}
+
+.map-viewport.is-editor-mode .map-pin--draft.is-draggable {
+  touch-action: none;
+}
+
+.map-viewport.is-editor-mode.is-pin-dragging,
+.map-viewport.is-editor-mode.is-pin-dragging .map-pin--climb .map-pin__icon::after,
+.map-viewport.is-editor-mode.is-pin-dragging .map-pin--draft.is-draggable .map-pin__icon::after {
+  cursor: grabbing;
+}
+
+.map-pin--dragging {
+  pointer-events: none;
+  z-index: 50;
+  cursor: grabbing;
+}
+
+.map-pin--dragging .map-pin__icon,
+.map-pin--dragging .map-pin__icon::after {
+  cursor: grabbing;
+}
+
+.map-pin--dragging .map-pin__icon {
+  transition: none;
+}
+
+.map-pin__label--dragging {
+  pointer-events: none;
+  z-index: 50;
+}
+
+.map-viewport.is-labels-hidden .map-pin__label {
+  display: none;
+}
+
+.map-pin__label {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: rgba(15, 18, 16, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  line-height: 1.3;
+  text-shadow: 0 0 4px rgba(0,0,0,0.9);
+  transform: translate(20px, -16px);
+}
+
+.map-pin__label--left {
+  transform: translate(calc(-100% - 20px), -16px);
+}
+
+.map-pin__label--right {
+  transform: translate(20px, -16px);
+}
+
+.map-pin__label--top {
+  transform: translate(-50%, calc(-100% - 16px));
+}
+
+.map-pin__label--bottom {
+  transform: translate(-50%, 4px);
+}
+
+.map-pin--mg-spot {
+  --pin-color: var(--pin-mg-spot);
+  --pin-glow: var(--pin-mg-spot-glow);
+}
+
+.map-pin--climb {
+  --pin-color: var(--pin-climb);
+  --pin-glow: var(--pin-climb-glow);
+}
+
+.map-pin.pin--no-media {
+  --pin-color: var(--pin-no-media);
+  --pin-glow: var(--pin-no-media-glow);
+}
+
+.map-pin:hover,
+.map-pin.is-highlighted {
+  z-index: 10;
+}
+
+.map-pin:hover:not(.is-highlighted) .map-pin__icon {
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 22px var(--pin-glow, var(--pin-climb-glow)));
+}
+
+.map-pin.is-highlighted .map-pin__icon {
+  -webkit-text-stroke: 1.5px #000;
+  filter: drop-shadow(0 0 28px var(--pin-glow, var(--pin-climb-glow)));
+}

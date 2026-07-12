@@ -1,8 +1,10 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import { validatePinMediaFields } from "../../lib/media-urls.js";
 import {
-  isSupportedHostedVideoUrl,
-  isSupportedThumbnailUrl,
-} from "../../lib/media-urls.js";
+  normalizePinFaction,
+  normalizePinTag,
+  sanitizeRequires,
+} from "../../lib/pin-fields.js";
 import { canModifyPin } from "../../lib/pin-permissions.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -17,7 +19,7 @@ function applyPinUpdates(existing, pin) {
     updated.description = String(pin.description).trim();
   }
   if (pin.tag !== undefined) {
-    updated.tag = pin.tag;
+    updated.tag = normalizePinTag(pin.tag);
   }
   if (pin.x !== undefined) {
     updated.x = Number(pin.x);
@@ -34,6 +36,25 @@ function applyPinUpdates(existing, pin) {
       updated.thumbnail = thumbnail;
     } else {
       delete updated.thumbnail;
+    }
+  }
+  if (pin.faction !== undefined) {
+    updated.faction = normalizePinFaction(pin.faction);
+  }
+  if (pin.requires !== undefined) {
+    updated.requires = sanitizeRequires(pin.requires);
+  }
+  if (Array.isArray(pin.mediaItems)) {
+    const mediaItems = pin.mediaItems
+      .map((item) => ({
+        kind: item?.kind === "image" ? "image" : "video",
+        url: String(item?.url || "").trim(),
+      }))
+      .filter((item) => item.url);
+    if (mediaItems.length > 0) {
+      updated.mediaItems = mediaItems;
+    } else {
+      delete updated.mediaItems;
     }
   }
   if (pin.dirX !== undefined) {
@@ -69,14 +90,10 @@ function applyPinUpdates(existing, pin) {
   if (!Number.isFinite(updated.x) || !Number.isFinite(updated.y)) {
     return { error: "Valid pin coordinates are required" };
   }
-  if (!updated.videoUrl) {
-    return { error: "Video is required" };
-  }
-  if (!isSupportedHostedVideoUrl(updated.videoUrl)) {
-    return { error: "Unsupported video URL" };
-  }
-  if (updated.thumbnail && !isSupportedThumbnailUrl(updated.thumbnail)) {
-    return { error: "Unsupported preview image URL" };
+
+  const mediaError = validatePinMediaFields(updated);
+  if (mediaError) {
+    return mediaError;
   }
 
   return { pin: updated };

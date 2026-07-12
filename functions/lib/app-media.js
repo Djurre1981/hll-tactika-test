@@ -45,11 +45,6 @@ export function appImageUrl(imageId) {
   return `/api/images/${String(imageId).trim()}`;
 }
 
-/** @deprecated use legacyDiscordR2VideoKey — kept for migration scripts */
-export function r2ObjectKey(videoId) {
-  return legacyDiscordR2VideoKey(videoId);
-}
-
 export function legacyDiscordR2VideoKey(videoId) {
   return `tricks/${String(videoId).trim()}.mp4`;
 }
