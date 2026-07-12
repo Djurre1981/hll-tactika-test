@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="welcome-boot">
+<html lang="en" class="app-boot">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,8 +8,6 @@
     (function () {
       try {
         if (localStorage.getItem("hll-tactika-authed") !== "1") return;
-        document.documentElement.classList.remove("welcome-boot");
-        document.documentElement.classList.add("app-boot");
         var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
         if (!mapImage) {
           var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
@@ -32,6 +30,10 @@
     html.app-boot #welcome-page,
     html.app-boot #bye-page { display: none !important; }
     html.app-boot #app-root.hidden { display: block !important; }
+    html.app-boot #app-root.is-auth-pending .sidebar-shell,
+    html.app-boot #app-root.is-auth-pending .map-toolbar-shell {
+      display: none !important;
+    }
   </style>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/layout.css" />
@@ -152,7 +154,7 @@
     </div>
   </dialog>
 
-  <div id="app-root" class="hidden">
+  <div id="app-root" class="hidden is-auth-pending">
   <main class="layout">
     <div class="mode-switch hidden" id="mode-switch">
       <div class="mode-switch__surface glass-surface" role="tablist" aria-label="Application mode">

@@ -11,14 +11,6 @@ const AUTH_CLOSE_MS = 500;
 const AUTH_BOOT_KEY = "hll-tactika-authed";
 const WELCOME_SCRUB_MODULE = new URL("./welcome-scrub.js", import.meta.url);
 
-function hasStoredAuthSession() {
-  try {
-    return localStorage.getItem(AUTH_BOOT_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
 function setStoredAuthSession(active) {
   try {
     if (active) localStorage.setItem(AUTH_BOOT_KEY, "1");
@@ -141,9 +133,23 @@ function startTypewriter() {
   typewriterController = initWelcomeTypewriter(document.getElementById("welcome-intro"));
 }
 
+function clearAuthPending() {
+  getAuthEls().appRoot?.classList.remove("is-auth-pending");
+}
+
+function showAuthPending() {
+  const els = getAuthEls();
+  document.documentElement.classList.remove("welcome-boot", "bye-boot");
+  document.documentElement.classList.add("app-boot");
+  els.welcomePage?.classList.add("is-hidden");
+  els.byePage?.classList.add("is-hidden");
+  els.appRoot?.classList.add("is-auth-pending");
+}
+
 function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) {
   const els = getAuthEls();
   hideBye();
+  clearAuthPending();
   setStoredAuthSession(false);
   document.documentElement.classList.remove("app-boot", "bye-boot");
   document.documentElement.classList.add("welcome-boot");
@@ -224,6 +230,7 @@ function startByeTypewriter() {
 
 function showBye() {
   const els = getAuthEls();
+  clearAuthPending();
   setStoredAuthSession(false);
   document.documentElement.classList.remove("app-boot", "welcome-boot");
   document.documentElement.classList.add("bye-boot");
@@ -257,6 +264,7 @@ function hideBye() {
 
 function showApp(user) {
   const els = getAuthEls();
+  clearAuthPending();
   setCurrentUser(user);
   setStoredAuthSession(true);
   hideBye();
@@ -352,9 +360,7 @@ export async function initAuth() {
     return { ok: false, reason: "forbidden" };
   }
 
-  if (!hasStoredAuthSession()) {
-    showWelcome({ openDialog: false });
-  }
+  showAuthPending();
 
   els.btnLogout?.addEventListener("click", async () => {
     setStoredAuthSession(false);
@@ -385,6 +391,7 @@ export async function initAuth() {
     return { ok: true, user };
   } catch (error) {
     console.error(error);
+    showWelcome({ openDialog: false });
     openAuthDialog({
       title: "Authentication unavailable",
       message:
