@@ -30,11 +30,11 @@ export const state = {
   mapLabelsVisible: true,
 };
 
-export const MAP_STORAGE_KEY = "hll-climb-selected-map";
-export const MAP_IMAGE_STORAGE_KEY = "hll-climb-selected-map-image";
-export const TOGGLE_STORAGE_KEY = "hll-climb-overlay-tchoggles";
-export const TAG_FILTER_STORAGE_KEY = "hll-climb-tag-filters";
-export const FACTION_FILTER_STORAGE_KEY = "hll-climb-faction-filters";
+export const MAP_STORAGE_KEY = "hll-tactika-selected-map";
+export const MAP_IMAGE_STORAGE_KEY = "hll-tactika-selected-map-image";
+export const TOGGLE_STORAGE_KEY = "hll-tactika-overlay-toggles";
+export const TAG_FILTER_STORAGE_KEY = "hll-tactika-tag-filters";
+export const FACTION_FILTER_STORAGE_KEY = "hll-tactika-faction-filters";
 
 export function loadSelectedMapId(fallbackId) {
   const stored = localStorage.getItem(MAP_STORAGE_KEY);

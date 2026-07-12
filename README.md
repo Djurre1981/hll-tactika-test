@@ -1,45 +1,59 @@
-# Hell Let Loose — Interactive Climb Guide
+# HLL Tactika
 
-An interactive map guide for [Hell Let Loose](https://www.hellletloose.com/) trick spots — bush climbs, roof access, wall boosts, and more.
+Developed by The Circle community and kept strictly exclusive to our competitive team. The platform is a tailored strategy and planning platform for Hell Let Loose designed to scale as our team needs grow. 
 
-Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
-## ToDo / Planned / Ideas
+Its first release features an interactive climb and MG guide. 
 
-- **Include MG spots** Title is self explainatory
-- **Tags for types of pins** To tag types like climb, mg spot etc
-- **Custom names for mini spots like 'Grandma's house'**
-- ** **
+This module came as a solution to MG prep problems. Years of trick videos/spots are scattered across PDFs, local drives and chat threads... Hard to navigate through and therefore rarely used. HLL Tactika puts everything in one place on a map we all understand, making guides easy to access and raising the team's baseline knowledge.
 
-## Features
+Furthermore, access is fully controlled: Steam sign-in, an approved-member allowlist, and role-based permissions ensure our material stays internal. No more leaked or problems sharing guides with our members.
 
-- **Steam sign-in** for circle members (role-based allowlist)
-- **Role-based permissions**: Comp Member (read-only), Comp Advisor (own pins), Comp Assist (any pin), Comp Admin, Owner — see [docs/roles.md](docs/roles.md)
-- **Protected trick data** served only to authenticated, approved users
-- **All 20 HLL tacmaps** with a map selector in the sidebar
-- **Pan & zoom** on high-resolution tactical maps (1920×1920)
-- **Toggle overlays**: grid and strongpoints
-- **Pins** mark trick locations with title and description
-- **Hover** a pin to preview the trick video
-- **Click** a pin to play the full embedded video (YouTube, Vimeo, or local `.mp4`)
-- **Add pins** directly on the map; tricks are saved on the server (Cloudflare KV in production, in-memory during local dev without KV)
+
+## Current module features: Interactive Climbing Guide
+
+- All 20 tactical maps with pan/zoom on high-resolution maps
+- Grid and strongpoint overlays
+- Pin types: **climb** and **MG spot**
+- Faction tagging (Axis / Allies / Neutral) and tag filters
+- Hover a pin to preview; click to play full video (YouTube, Vimeo, MP4, Medal.tv, Discord attachments)
+- Multi-media pins with image/video carousel
+- Viewer and Editor modes: place pins on the map, drag, undo/redo
+- **Steam sign-in** with role-based allowlist
+- **Role-based permissions**: Comp Member, Comp Advisor, Comp Assist, Comp Admin, Owner. See [docs/roles.md](docs/roles.md)
+- Protected pin data served only to authenticated, approved users
+- Admin panel for member management
+
+## Roadmap
+
+- Fixing any bugs after release.
+- Reviewing the requested changes for the current module and implementing them.
+
+After this any future module addition will depend on feedback of members and prep team needs.
+There are a lot of ideas (Planning section for rostering etc..?, Our version of stratsketch?, More Guides? Tanks section?..)
+
+## Documentation
+
+- [Project overview](docs/project-overview.md)
+- [Folder structure](docs/folder-structure.md)
+- [Circle roles](docs/roles.md)
 
 ## Quick start
 
 ### Production (Cloudflare Pages)
 
-Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Pages alone cannot run the auth API).
+Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Pages alone cannot run the auth API). The Cloudflare project name is **`hll-tactika`** (see [wrangler.toml](wrangler.toml)).
 
 1. Install dependencies: `npm install`
-2. Copy `.dev.vars.example` → `.dev.vars` and set:
-   - `SESSION_SECRET` — long random string
-   - `OWNER_STEAM_IDS` — owners (full control)
-   - `ADMIN_STEAM_IDS` — Comp Admins
-   - `ASSIST_STEAM_IDS` — Comp Assist (optional)
-   - `EDITOR_STEAM_IDS` — Comp Advisor (optional)
-   - `VIEWER_STEAM_IDS` — Comp Member (optional; `USER_STEAM_IDS` is a legacy alias)
-   - `STEAM_API_KEY` (optional) — [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
+2. Copy `.dev.vars.example` to `.dev.vars` and set:
+   - `SESSION_SECRET`: long random string
+   - `OWNER_STEAM_IDS`: owners (full control)
+   - `ADMIN_STEAM_IDS`: Comp Admins
+   - `ASSIST_STEAM_IDS`: Comp Assist (optional)
+   - `EDITOR_STEAM_IDS`: Comp Advisor (optional)
+   - `VIEWER_STEAM_IDS`: Comp Member (optional; `USER_STEAM_IDS` is a legacy alias)
+   - `STEAM_API_KEY` (optional): [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
 3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
-4. Deploy: `npm run deploy` (or connect the GitHub repo in Cloudflare Pages dashboard)
+4. Deploy: `npm run deploy` (or connect the GitHub repo in the Cloudflare Pages dashboard)
 
 Set the same secrets in Cloudflare: **Pages → your project → Settings → Environment variables**.
 
@@ -53,7 +67,7 @@ After a member signs in once (even if not yet allowlisted), check server logs, o
 
 Open [http://localhost:8080](http://localhost:8080) only for map asset testing.
 
-## Adding tricks
+## Adding pins
 
 Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; they are returned from `/api/pins` after Steam auth.
 
@@ -66,19 +80,22 @@ Use **Add pin** in editor mode to create tricks. Seed pins in `data/pins.json` (
     "SMDMV2": [
       {
         "id": "unique-id",
-        "title": "Bush climb — orchard edge",
+        "title": "Bush climb, orchard edge",
         "description": "Short explanation of the trick",
+        "tag": "climb",
+        "faction": "neutral",
         "x": 38.5,
         "y": 52.0,
         "videoUrl": "https://www.youtube.com/watch?v=VIDEO_ID",
-        "thumbnail": "optional-preview-image-url"
+        "requires": {},
+        "createdBy": null
       }
     ]
   }
 }
 ```
 
-Coordinates are percentages (0–100) so pins stay aligned when zooming.
+Coordinates are percentages (0-100) so pins stay aligned when zooming. MG spots also need `dirX` and `dirY` for arrow direction. Optional `mediaItems` array supports multiple images and videos per pin.
 
 ## Maps & attribution
 

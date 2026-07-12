@@ -8,7 +8,7 @@ const DEFAULT_AUTH = {
 };
 
 const AUTH_CLOSE_MS = 500;
-const AUTH_BOOT_KEY = "hll_authed";
+const AUTH_BOOT_KEY = "hll-tactika-authed";
 const WELCOME_SCRUB_MODULE = new URL("./welcome-scrub.js", import.meta.url);
 
 function hasStoredAuthSession() {

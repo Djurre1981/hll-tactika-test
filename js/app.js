@@ -107,7 +107,7 @@ async function init() {
       await waitForImage(image);
     }
     image.alt = `${map.name} tactical map`;
-    document.title = `HLL Climb Guide — ${map.name}`;
+    document.title = `HLL Tactika — ${map.name}`;
 
     if (!state.mapViewer) {
       const viewport = document.getElementById("map-viewport");

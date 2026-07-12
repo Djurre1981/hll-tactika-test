@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hell Let Loose — Interactive Climb Guide</title>
+  <title>HLL Tactika</title>
   <script>
     (function () {
       try {
-        if (localStorage.getItem("hll_authed") !== "1") return;
+        if (localStorage.getItem("hll-tactika-authed") !== "1") return;
         document.documentElement.classList.remove("welcome-boot");
         document.documentElement.classList.add("app-boot");
-        var mapImage = localStorage.getItem("hll-climb-selected-map-image");
+        var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
         if (!mapImage) {
-          var mapId = localStorage.getItem("hll-climb-selected-map") || "SMDMV2";
+          var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
           mapImage = "maps/no-grid/" + mapId + "_NoGrid.webp";
         }
         var preload = document.createElement("link");
@@ -85,7 +85,7 @@
         <img
           class="welcome-page__logo"
           src="assets/logos/tactika-full-logo.svg"
-          alt="Tactika"
+          alt="HLL Tactika"
           width="840"
           height="186"
         />
@@ -109,7 +109,7 @@
         <img
           class="bye-page__logo"
           src="assets/logos/tactika-full-logo.svg"
-          alt="Tactika"
+          alt="HLL Tactika"
           width="840"
           height="186"
         />
@@ -177,7 +177,7 @@
     <aside class="sidebar glass-panel" id="sidebar">
       <div class="sidebar__brand">
         <div class="sidebar__logo">
-          <img src="assets/logos/tactika-full-logo.svg" alt="Tactika" width="246" height="62" />
+          <img src="assets/logos/tactika-full-logo.svg" alt="HLL Tactika" width="246" height="62" />
         </div>
       </div>
       <div class="sidebar__divider" role="presentation"></div>
@@ -402,10 +402,10 @@
           <script>
             (function () {
               try {
-                if (localStorage.getItem("hll_authed") !== "1") return;
-                var mapImage = localStorage.getItem("hll-climb-selected-map-image");
+                if (localStorage.getItem("hll-tactika-authed") !== "1") return;
+                var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
                 if (!mapImage) {
-                  var mapId = localStorage.getItem("hll-climb-selected-map") || "SMDMV2";
+                  var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
                   mapImage = "maps/no-grid/" + mapId + "_NoGrid.webp";
                 }
                 document.getElementById("map-image").src = mapImage;

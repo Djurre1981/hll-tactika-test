@@ -8,4 +8,3 @@ credentials.json
 .dev.vars
 node_modules/
 .wrangler/
-docs/
