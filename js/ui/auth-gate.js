@@ -10,6 +10,17 @@ const DEFAULT_AUTH = {
 const AUTH_CLOSE_MS = 500;
 const AUTH_BOOT_KEY = "hll-tactika-authed";
 const WELCOME_SCRUB_MODULE = new URL("./welcome-scrub.js", import.meta.url);
+const BYE_VIDEO_SRC = "assets/welcome/bye.mp4";
+
+function preloadVideoAsset(href) {
+  if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "video";
+  link.href = href;
+  link.type = "video/mp4";
+  document.head.appendChild(link);
+}
 
 function setStoredAuthSession(active) {
   try {
@@ -242,6 +253,8 @@ function showBye() {
   els.userCluster?.classList.add("hidden");
   els.modeSwitch?.classList.add("hidden");
   closeAuthDialog();
+
+  preloadVideoAsset(BYE_VIDEO_SRC);
 
   byeScrubController = els.byeScrubVideo?.__welcomeScrub ?? null;
   if (els.byeScrubVideo && !byeScrubController) {

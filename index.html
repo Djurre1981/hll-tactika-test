@@ -7,7 +7,20 @@
   <script>
     (function () {
       try {
-        if (localStorage.getItem("hll-tactika-authed") !== "1") return;
+        var authed = localStorage.getItem("hll-tactika-authed") === "1";
+        if (!authed) {
+          var params = new URLSearchParams(window.location.search);
+          var isForbidden = params.get("auth") === "forbidden";
+          var videoPreload = document.createElement("link");
+          videoPreload.rel = "preload";
+          videoPreload.as = "video";
+          videoPreload.href = isForbidden
+            ? "assets/welcome/bye.mp4"
+            : "assets/welcome/welcome.mp4";
+          videoPreload.type = "video/mp4";
+          document.head.appendChild(videoPreload);
+          return;
+        }
         var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
         if (!mapImage) {
           var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";

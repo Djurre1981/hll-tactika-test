@@ -5,12 +5,17 @@ const ACTIVATE_RETRY_MS = 500;
 const LOAD_TIMEOUT_MS = 15000;
 const DEFAULT_VIDEO_SRC = "assets/welcome/welcome.mp4";
 
+function resolveSourceUrl(sourceUrl) {
+  return new URL(sourceUrl, window.location.href).href;
+}
+
 export function initWelcomeScrub(video) {
   if (!video) return { destroy() {} };
   if (video.__welcomeScrub) return video.__welcomeScrub;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const sourceUrl = video.dataset.src || DEFAULT_VIDEO_SRC;
+  const resolvedSourceUrl = resolveSourceUrl(sourceUrl);
 
   let videoDuration = 0;
   let videoReady = false;
@@ -22,14 +27,15 @@ export function initWelcomeScrub(video) {
   let lastSeekTimestamp = 0;
   let tabHidden = false;
   let activating = false;
+  let upgrading = false;
   let retryTimer = null;
   let destroyed = false;
   let blobUrl = null;
+  let blobAbort = null;
 
   video.muted = true;
   video.playsInline = true;
-  // No src here — fetch as blob so hard refresh never stalls at metadata-only.
-  video.removeAttribute("src");
+  video.preload = "auto";
 
   function hasValidDuration() {
     return Number.isFinite(video.duration) && video.duration > 0;
@@ -37,6 +43,16 @@ export function initWelcomeScrub(video) {
 
   function hasFrameData() {
     return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  }
+
+  function isFullyBuffered() {
+    if (!hasValidDuration()) return false;
+    for (let i = 0; i < video.buffered.length; i++) {
+      if (video.buffered.start(i) <= 0.05 && video.buffered.end(i) >= video.duration - 0.05) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function stopRetry() {
@@ -77,8 +93,8 @@ export function initWelcomeScrub(video) {
     }
   }
 
-  function waitForFrameData() {
-    if (hasFrameData()) return Promise.resolve(true);
+  function waitForFrameData({ allowCached = true } = {}) {
+    if (allowCached && hasFrameData()) return Promise.resolve(true);
 
     return new Promise((resolve) => {
       let done = false;
@@ -111,18 +127,47 @@ export function initWelcomeScrub(video) {
     });
   }
 
-  async function loadVideo() {
-    if (blobUrl) return hasFrameData();
-
-    const response = await fetch(sourceUrl);
-    if (!response.ok) return false;
-
-    const data = await response.blob();
-    if (destroyed) return false;
-
-    blobUrl = URL.createObjectURL(data);
-    video.src = blobUrl;
+  async function startStreaming() {
+    if (video.src !== resolvedSourceUrl) {
+      video.src = sourceUrl;
+    }
     return waitForFrameData();
+  }
+
+  async function upgradeToBlob() {
+    if (destroyed || blobUrl || upgrading || isFullyBuffered()) return;
+
+    upgrading = true;
+    blobAbort = new AbortController();
+
+    try {
+      const response = await fetch(sourceUrl, { signal: blobAbort.signal });
+      if (!response.ok || destroyed) return;
+
+      const data = await response.blob();
+      if (destroyed) return;
+
+      const nextBlobUrl = URL.createObjectURL(data);
+      const preservedTime = video.currentTime;
+      video.src = nextBlobUrl;
+
+      const ready = await waitForFrameData({ allowCached: false });
+      if (!ready || destroyed) {
+        URL.revokeObjectURL(nextBlobUrl);
+        return;
+      }
+
+      blobUrl = nextBlobUrl;
+      applySeek(preservedTime);
+      video.pause();
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        console.warn("Welcome video blob upgrade failed; streaming scrub continues.", error);
+      }
+    } finally {
+      upgrading = false;
+      blobAbort = null;
+    }
   }
 
   async function activate() {
@@ -130,7 +175,7 @@ export function initWelcomeScrub(video) {
 
     activating = true;
     try {
-      const loaded = await loadVideo();
+      const loaded = await startStreaming();
       if (destroyed || !loaded || !hasValidDuration() || !hasFrameData()) {
         scheduleRetry();
         return;
@@ -146,6 +191,7 @@ export function initWelcomeScrub(video) {
       stopRetry();
       videoReady = true;
       if (!reducedMotion) startLoop();
+      void upgradeToBlob();
     } finally {
       activating = false;
     }
@@ -226,6 +272,8 @@ export function initWelcomeScrub(video) {
       destroyed = true;
       stopRetry();
       stopLoop();
+      blobAbort?.abort();
+      blobAbort = null;
       video.pause();
       if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
