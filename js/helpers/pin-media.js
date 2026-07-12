@@ -1,12 +1,24 @@
 import {
+  isAppVideoPath,
   isSupportedVideoUrl,
   normalizeVideoUrl,
 } from "../utils/video.js";
 
 const IMAGE_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|$)/i;
+const APP_IMAGE_PATH_RE = /^\/api\/images\/[0-9a-f-]{36}$/i;
+
+export function isAppImagePath(url) {
+  if (!url) return false;
+  try {
+    const path = url.startsWith("/") ? url.split("?")[0] : new URL(url, window.location.origin).pathname;
+    return APP_IMAGE_PATH_RE.test(path);
+  } catch {
+    return false;
+  }
+}
 
 export function isDirectImageUrl(url) {
-  return IMAGE_EXTENSION_RE.test(normalizeVideoUrl(url));
+  return isAppImagePath(url) || IMAGE_EXTENSION_RE.test(normalizeVideoUrl(url));
 }
 
 export function detectMediaKind(url) {
@@ -24,7 +36,7 @@ export function detectMediaKind(url) {
 }
 
 export function getUnsupportedMediaUrlMessage() {
-  return "Use a supported video link (YouTube, Medal.tv, Discord, Vimeo, .mp4) or a direct image URL (.jpg, .png, .webp, etc.).";
+  return "Use a supported video link (YouTube, Medal.tv, Discord, Vimeo, uploaded video, .mp4) or a direct image URL (.jpg, .png, .webp, etc.).";
 }
 
 export function normalizeMediaItem(item) {
@@ -65,10 +77,20 @@ export function deriveLegacyMediaFields(mediaItems) {
 }
 
 export function isValidMediaUrl(url) {
+  const normalized = normalizeVideoUrl(url);
+  if (!normalized) return false;
+  if (isAppImagePath(normalized) || isAppVideoPath(normalized)) {
+    return true;
+  }
   try {
-    new URL(url);
+    new URL(normalized);
     return true;
   } catch {
-    return false;
+    try {
+      new URL(normalized, window.location.origin);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

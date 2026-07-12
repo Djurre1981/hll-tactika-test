@@ -242,8 +242,7 @@ export function initUndoRedoKeyboard() {
       return;
     }
 
-    const isUndo = event.key === "w" || event.key === "W" || event.code === "KeyW"
-      || event.key === "z" || event.key === "Z" || event.code === "KeyZ";
+    const isUndo = event.key === "z" || event.key === "Z" || event.code === "KeyZ";
     const isRedo = event.key === "y" || event.key === "Y" || event.code === "KeyY";
 
     if (!isUndo && !isRedo) return;

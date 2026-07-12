@@ -1,12 +1,25 @@
+import { uploadPreviewImage, uploadVideo } from "../api/media.js";
 import { normalizeVideoUrl } from "../utils/video.js";
 import {
   detectMediaKind,
   getUnsupportedMediaUrlMessage,
 } from "../helpers/pin-media.js";
+import { canExtractVideoFrame, fileFromVideoFrame } from "../utils/video-frame.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
+
+const UPLOAD_BUTTON_HTML =
+  '<i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i><span>Upload</span>';
 
 function getMediaList() {
   return document.getElementById("pin-media-list");
+}
+
+function getUploadButton() {
+  return document.getElementById("btn-upload-media");
+}
+
+function getMediaFileInput() {
+  return document.getElementById("pin-media-file");
 }
 
 function notifyFormChanged() {
@@ -67,8 +80,98 @@ function syncFirstRowAction() {
   });
 }
 
+function appendMediaUrl(url) {
+  const list = getMediaList();
+  if (!list) return;
+
+  const rows = [...list.querySelectorAll(".pin-media-row")];
+  const emptyRow = rows.find((row) => !row.querySelector(".pin-media-row__url")?.value.trim());
+  if (emptyRow) {
+    emptyRow.querySelector(".pin-media-row__url").value = url;
+    return;
+  }
+
+  list.appendChild(createMediaRow({ url, isFirst: false }));
+  syncFirstRowAction();
+}
+
+function isVideoFile(file) {
+  return (
+    /^video\//.test(file.type) ||
+    /\.(mp4|webm|mov|ogg)$/i.test(file.name)
+  );
+}
+
+function isImageFile(file) {
+  return (
+    /^image\/(jpeg|png|webp|gif)$/i.test(file.type) ||
+    /\.(jpe?g|png|webp|gif)$/i.test(file.name)
+  );
+}
+
+function setUploadBusy(btn, label) {
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>${label}</span>`;
+}
+
+function resetUploadButton(btn) {
+  btn.disabled = false;
+  btn.innerHTML = UPLOAD_BUTTON_HTML;
+}
+
+async function handleMediaFileUpload(file) {
+  const btn = getUploadButton();
+  if (!btn) return;
+
+  if (!isVideoFile(file) && !isImageFile(file)) {
+    alert("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
+    return;
+  }
+
+  try {
+    if (isVideoFile(file)) {
+      setUploadBusy(btn, "Uploading…");
+      const uploaded = await uploadVideo(file);
+      appendMediaUrl(uploaded.url);
+
+      const hasImage = getPinMediaFormItems().some((item) => item.kind === "image");
+      if (!hasImage && canExtractVideoFrame(uploaded.url)) {
+        setUploadBusy(btn, "Preview…");
+        const previewFile = await fileFromVideoFrame(uploaded.url);
+        const preview = await uploadPreviewImage(previewFile);
+        appendMediaUrl(preview.url);
+      }
+    } else {
+      setUploadBusy(btn, "Uploading…");
+      const uploaded = await uploadPreviewImage(file);
+      appendMediaUrl(uploaded.url);
+    }
+
+    notifyFormChanged();
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Upload failed");
+  } finally {
+    resetUploadButton(btn);
+  }
+}
+
 export function initPinMediaForm() {
-  /* First row + button handles add; no separate control. */
+  const btn = getUploadButton();
+  const input = getMediaFileInput();
+  if (!btn || !input) return;
+
+  btn.addEventListener("click", () => {
+    if (btn.disabled) return;
+    input.click();
+  });
+
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    await handleMediaFileUpload(file);
+  });
 }
 
 export function resetPinMediaForm() {

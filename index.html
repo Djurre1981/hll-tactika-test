@@ -318,6 +318,18 @@
           </label>
           <fieldset class="pin-form__media">
             <legend>Images &amp; Videos</legend>
+            <div class="pin-media-toolbar">
+              <button type="button" id="btn-upload-media" class="glass-btn pin-media-upload" title="Upload file">
+                <i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i>
+                <span>Upload</span>
+              </button>
+              <input
+                type="file"
+                id="pin-media-file"
+                class="pin-media-file hidden"
+                accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.ogg,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+              />
+            </div>
             <div class="pin-media-list" id="pin-media-list"></div>
           </fieldset>
           <div class="pin-form__coords-label">Coordinates</div>

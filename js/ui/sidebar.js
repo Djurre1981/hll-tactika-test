@@ -1,62 +1,109 @@
 import { state } from "../state.js";
 import { getFilteredPins } from "./filter-bar.js";
-import { getPinTag } from "../pin-tags.js";
-import { escapeHtml } from "../helpers/sanitizer.js";
+import { getPinTag, normalizePinTag } from "../pin-tags.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { canModifyPin } from "../helpers/permissions.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { openModal, armModalDismissGuard, getRequiresDisplayConfig } from "./pin-modal.js";
 
+const FACTIONS = new Set(["axis", "allies", "neutral"]);
+
+function normalizeFaction(faction) {
+  return FACTIONS.has(faction) ? faction : "neutral";
+}
+
 function isEditorBrowseMode() {
   return state.panelMode === "browse";
+}
+
+function buildRequiresRow(pin, faction) {
+  const requiresWrap = document.createElement("span");
+  requiresWrap.className = "pin-list__requires";
+
+  if (!pin.requires) {
+    return null;
+  }
+
+  for (const [key, value] of Object.entries(pin.requires)) {
+    if (!value) continue;
+    const config = getRequiresDisplayConfig(key, value, faction);
+    if (!config) continue;
+
+    const item = document.createElement("span");
+    item.className = `pin-list__requires-item is-requires--${key}`;
+    item.title = config.label;
+
+    const icon = document.createElement("i");
+    icon.className = config.icon;
+    icon.setAttribute("aria-hidden", "true");
+    item.appendChild(icon);
+    requiresWrap.appendChild(item);
+  }
+
+  return requiresWrap.childElementCount > 0 ? requiresWrap : null;
+}
+
+function buildPinListBody(pin) {
+  const body = document.createElement("button");
+  body.type = "button";
+  body.className = "pin-list__body";
+  body.dataset.id = pin.id;
+
+  const tag = getPinTag(pin.tag);
+  const tagId = normalizePinTag(pin);
+  const faction = normalizeFaction(pin.faction);
+  const tagLabel = tag?.shortLabel || (tag?.label || tagId).slice(0, 2).toUpperCase();
+
+  const tagSpan = document.createElement("span");
+  tagSpan.className = `pin-list__tag pin-list__tag--${tagId}`;
+  if (tagId === "mg-spot") {
+    tagSpan.classList.add(`pin-list__tag--faction-${faction}`);
+  }
+  tagSpan.textContent = tagLabel;
+
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "pin-list__title";
+
+  const titleText = document.createElement("span");
+  titleText.className = "pin-list__title-text";
+  titleText.textContent = pin.title || "";
+  titleSpan.appendChild(titleText);
+
+  const metaSpan = document.createElement("span");
+  metaSpan.className = "pin-list__meta";
+
+  const posCodeSpan = document.createElement("span");
+  posCodeSpan.className = "pin-list__position-code";
+  posCodeSpan.textContent = getPinPositionCode(pin);
+  metaSpan.appendChild(posCodeSpan);
+
+  const requiresRow = buildRequiresRow(pin, faction);
+  if (requiresRow) {
+    metaSpan.appendChild(requiresRow);
+  }
+
+  body.appendChild(tagSpan);
+  body.appendChild(titleSpan);
+  body.appendChild(metaSpan);
+
+  body.addEventListener("click", () => {
+    focusPin(pin);
+  });
+
+  return body;
 }
 
 export function renderPinList() {
   const pinList = document.getElementById("pin-list");
   pinList.innerHTML = "";
   for (const pin of getFilteredPins()) {
-    const tag = getPinTag(pin.tag);
     const row = document.createElement("li");
     row.className = "pin-list__row";
 
     const item = document.createElement("div");
     item.className = "pin-list__item";
 
-    const body = document.createElement("button");
-    body.type = "button";
-    body.className = "pin-list__body";
-    body.dataset.id = pin.id;
-
-    const faction = pin.faction || "neutral";
-
-    const posCode = getPinPositionCode(pin);
-
-    let requiresHtml = "";
-    if (pin.requires) {
-      for (const [key, value] of Object.entries(pin.requires)) {
-        if (!value) continue;
-        const config = getRequiresDisplayConfig(key, value, pin.faction || "neutral");
-        if (!config) continue;
-        requiresHtml += `<span class="pin-list__requires-item is-requires--${key}" title="${escapeHtml(config.label)}"><i class="${config.icon}" aria-hidden="true"></i></span>`;
-      }
-    }
-
-    const tagLabel = tag?.shortLabel || (tag?.label || pin.tag).slice(0, 2).toUpperCase();
-
-    body.innerHTML = `
-      <span class="pin-list__tag pin-list__tag--${pin.tag}${pin.tag === "mg-spot" ? ` pin-list__tag--faction-${faction}` : ""}">${escapeHtml(tagLabel)}</span>
-      <span class="pin-list__title">
-        <span class="pin-list__title-text">${escapeHtml(pin.title)}</span>
-      </span>
-      <span class="pin-list__meta">
-        <span class="pin-list__position-code">${posCode}</span>
-        ${requiresHtml ? `<span class="pin-list__requires">${requiresHtml}</span>` : ""}
-      </span>
-    `;
-
-    body.addEventListener("click", () => {
-      focusPin(pin);
-    });
+    const body = buildPinListBody(pin);
 
     row.addEventListener("mouseenter", () => {
       if (state.panelMode === "edit" && pin.id !== state.editingPinId) return;

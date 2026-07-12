@@ -102,6 +102,35 @@
   margin-bottom: 0.45rem;
 }
 
+.pin-media-toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.pin-media-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pin-media-upload i {
+  font-size: 0.85rem;
+}
+
+.pin-media-upload:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pin-media-file.hidden {
+  display: none;
+}
+
 .pin-media-list {
   display: flex;
   flex-direction: column;

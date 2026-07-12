@@ -1,4 +1,10 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import { validatePinMediaFields } from "../../lib/media-urls.js";
+import {
+  normalizePinFaction,
+  normalizePinTag,
+  sanitizeRequires,
+} from "../../lib/pin-fields.js";
 import { canModifyPin } from "../../lib/pin-permissions.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -13,7 +19,7 @@ function applyPinUpdates(existing, pin) {
     updated.description = String(pin.description).trim();
   }
   if (pin.tag !== undefined) {
-    updated.tag = pin.tag;
+    updated.tag = normalizePinTag(pin.tag);
   }
   if (pin.x !== undefined) {
     updated.x = Number(pin.x);
@@ -33,10 +39,10 @@ function applyPinUpdates(existing, pin) {
     }
   }
   if (pin.faction !== undefined) {
-    updated.faction = pin.faction;
+    updated.faction = normalizePinFaction(pin.faction);
   }
   if (pin.requires !== undefined) {
-    updated.requires = pin.requires;
+    updated.requires = sanitizeRequires(pin.requires);
   }
   if (Array.isArray(pin.mediaItems)) {
     const mediaItems = pin.mediaItems
@@ -57,6 +63,14 @@ function applyPinUpdates(existing, pin) {
   if (pin.dirY !== undefined) {
     updated.dirY = Number(pin.dirY);
   }
+  if (pin.sourceDiscordMessageId !== undefined) {
+    const sourceDiscordMessageId = String(pin.sourceDiscordMessageId || "").trim();
+    if (sourceDiscordMessageId) {
+      updated.sourceDiscordMessageId = sourceDiscordMessageId;
+    } else {
+      delete updated.sourceDiscordMessageId;
+    }
+  }
 
   if (updated.tag === "mg-spot") {
     if (!Number.isFinite(updated.dirX) || !Number.isFinite(updated.dirY)) {
@@ -75,6 +89,11 @@ function applyPinUpdates(existing, pin) {
   }
   if (!Number.isFinite(updated.x) || !Number.isFinite(updated.y)) {
     return { error: "Valid pin coordinates are required" };
+  }
+
+  const mediaError = validatePinMediaFields(updated);
+  if (mediaError) {
+    return mediaError;
   }
 
   return { pin: updated };

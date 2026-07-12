@@ -3,6 +3,27 @@
 An interactive map guide for [Hell Let Loose](https://www.hellletloose.com/) trick spots — bush climbs, roof access, wall boosts, and more.
 
 Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
+
+## Cloudflare media hosting
+
+Trick **videos** and **preview images** can be uploaded from the editor panel. Files are stored in **Cloudflare R2** and served only to signed-in circle members:
+
+- `POST /api/uploads/video` → `GET /api/videos/{id}`
+- `POST /api/uploads/image` → `GET /api/images/{id}`
+
+Supported uploads: **MP4, WebM, MOV, OGG** (video) and **JPEG, PNG, WebP, GIF** (preview). If no preview exists after a video upload, the first frame is captured automatically.
+
+External links (YouTube, Medal.tv, Vimeo, Discord, etc.) still work alongside uploaded media.
+
+### R2 setup (one-time)
+
+```powershell
+npx wrangler r2 bucket create hll-climb-videos
+npx wrangler r2 bucket create hll-climb-videos-preview
+```
+
+After deploy, confirm the `VIDEOS_R2` binding is attached in **Cloudflare Pages → Settings → Functions**.
+
 ## ToDo / Planned / Ideas
 
 - **Include MG spots** Title is self explainatory
@@ -20,7 +41,8 @@ Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection
 - **Toggle overlays**: grid and strongpoints
 - **Pins** mark trick locations with title and description
 - **Hover** a pin to preview the trick video
-- **Click** a pin to play the full embedded video (YouTube, Vimeo, or local `.mp4`)
+- **Click** a pin to play the full embedded video (YouTube, Vimeo, Medal.tv, or Cloudflare-hosted uploads)
+- **Upload videos and preview images** to Cloudflare R2 from the editor (or paste external links)
 - **Add pins** directly on the map; tricks are saved on the server (Cloudflare KV in production, in-memory during local dev without KV)
 
 ## Quick start
