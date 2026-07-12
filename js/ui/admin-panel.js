@@ -73,7 +73,7 @@ function closeRolePicker(picker = openRolePicker) {
     wrap.style.top = "";
     wrap.style.left = "";
     wrap.style.width = "";
-    if (wrap.parentElement === document.body) {
+    if (wrap.parentElement === els.panel) {
       picker.appendChild(wrap);
     }
     delete picker._rolePickerListWrap;
@@ -89,19 +89,20 @@ function getRolePickerListWrap(picker) {
 
 function positionRolePickerList(picker) {
   const wrap = getRolePickerListWrap(picker);
-  if (!wrap) return;
+  if (!wrap || !els.panel) return;
 
+  const dialogRect = els.panel.getBoundingClientRect();
   const rect = picker.getBoundingClientRect();
   const listHeight = wrap.offsetHeight;
-  const spaceBelow = window.innerHeight - rect.bottom - 8;
-  const spaceAbove = rect.top - 8;
+  const spaceBelow = dialogRect.bottom - rect.bottom - 8;
+  const spaceAbove = rect.top - dialogRect.top - 8;
   const openBelow = spaceBelow >= listHeight || spaceBelow >= spaceAbove;
 
   wrap.style.width = `${rect.width}px`;
-  wrap.style.left = `${rect.left}px`;
+  wrap.style.left = `${rect.left - dialogRect.left}px`;
   wrap.style.top = openBelow
-    ? `${rect.bottom + 4}px`
-    : `${rect.top - listHeight - 4}px`;
+    ? `${rect.bottom - dialogRect.top + 4}px`
+    : `${rect.top - dialogRect.top - listHeight - 4}px`;
 }
 
 function bindRolePickerDismiss() {
@@ -144,7 +145,7 @@ function openRolePickerMenu(picker) {
   const wrap = picker.querySelector(".admin-role-picker__list-wrap");
   if (!wrap) return;
 
-  document.body.appendChild(wrap);
+  els.panel.appendChild(wrap);
   picker._rolePickerListWrap = wrap;
 
   picker.classList.add("is-open");
@@ -241,6 +242,7 @@ function openPanel() {
 }
 
 function closePanel() {
+  closeRolePicker();
   els.panel?.close();
 }
 
