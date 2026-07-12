@@ -1,4 +1,5 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import { mirrorPinMedia } from "../../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../../lib/media-urls.js";
 import {
   normalizePinFaction,
@@ -92,11 +93,6 @@ function applyPinUpdates(existing, pin) {
     return { error: "Valid pin coordinates are required" };
   }
 
-  const mediaError = validatePinMediaFields(updated);
-  if (mediaError) {
-    return mediaError;
-  }
-
   return { pin: updated };
 }
 
@@ -138,7 +134,17 @@ export async function onRequestPut(context) {
     return errorResponse(built.error, 400);
   }
 
-  found.pins[found.index] = built.pin;
+  const mirrored = await mirrorPinMedia(context.env, built.pin);
+  if (mirrored.error) {
+    return errorResponse(mirrored.error, mirrored.status || 400);
+  }
+
+  const mediaError = validatePinMediaFields(mirrored.pin);
+  if (mediaError) {
+    return errorResponse(mediaError.error, 400);
+  }
+
+  found.pins[found.index] = mirrored.pin;
 
   try {
     await savePinsData(context.env, data);
@@ -147,7 +153,7 @@ export async function onRequestPut(context) {
     return errorResponse("Pin storage is not configured", 503);
   }
 
-  return json({ pin: built.pin, mapId });
+  return json({ pin: mirrored.pin, mapId });
 }
 
 export async function onRequestDelete(context) {

@@ -1,6 +1,7 @@
 import {
   appImageUrl,
   appVideoUrl,
+  imageR2LookupKeys,
   newUploadMediaId,
   r2ImageKey,
   r2UploadedVideoKey,
@@ -67,5 +68,12 @@ export async function getR2ImageObject(env, imageId) {
     return null;
   }
 
-  return env.VIDEOS_R2.get(r2ImageKey(imageId));
+  for (const key of imageR2LookupKeys(imageId)) {
+    const object = await env.VIDEOS_R2.get(key);
+    if (object) {
+      return object;
+    }
+  }
+
+  return null;
 }

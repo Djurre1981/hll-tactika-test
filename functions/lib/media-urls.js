@@ -1,4 +1,5 @@
 import { isAppImagePath, isAppVideoPath } from "./app-media.js";
+import { isDiscordMediaUrl } from "./discord-url.js";
 
 const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com"];
 const VIMEO_HOSTS = ["vimeo.com", "www.vimeo.com", "player.vimeo.com"];
@@ -19,15 +20,6 @@ function parseMediaUrl(url) {
 function getHostname(url) {
   const parsed = parseMediaUrl(url);
   return parsed?.hostname.replace(/^www\./, "") || "";
-}
-
-function isDiscordMediaUrl(url) {
-  const hostname = getHostname(url);
-  if (hostname !== "cdn.discordapp.com" && hostname !== "media.discordapp.net") {
-    return false;
-  }
-  const parsed = parseMediaUrl(url);
-  return parsed?.pathname.includes("/attachments/") ?? false;
 }
 
 function isDirectVideoUrl(url) {

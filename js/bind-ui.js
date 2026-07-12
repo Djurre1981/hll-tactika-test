@@ -117,7 +117,16 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));
   document.getElementById("btn-add-climb")?.addEventListener("click", () => openAddPinForm("climb"));
-  document.getElementById("btn-edit-panel-back").addEventListener("click", () => tryBackToEditorBrowse());
+  document.getElementById("btn-edit-panel-back")?.addEventListener("click", async () => {
+    const backBtn = document.getElementById("btn-edit-panel-back");
+    if (backBtn?.disabled) return;
+    if (backBtn) backBtn.disabled = true;
+    try {
+      await tryBackToEditorBrowse();
+    } finally {
+      if (backBtn) backBtn.disabled = false;
+    }
+  });
 
   document.addEventListener("pin-list-edit", (event) => {
     const pin = state.pins.find((item) => item.id === event.detail?.pinId);

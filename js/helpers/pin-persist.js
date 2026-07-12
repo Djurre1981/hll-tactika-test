@@ -6,7 +6,8 @@ import { updatePinElementPosition } from "./proximity.js";
 import { renderPinList } from "../ui/sidebar.js";
 
 function buildPinPayload(pin) {
-  const mediaFields = deriveLegacyMediaFields(getPinMediaItems(pin));
+  const items = getPinMediaItems(pin);
+  const mediaFields = deriveLegacyMediaFields(items);
   const payload = {
     title: pin.title,
     description: pin.description || "",
@@ -14,7 +15,7 @@ function buildPinPayload(pin) {
     x: pin.x,
     y: pin.y,
     videoUrl: mediaFields.videoUrl,
-    thumbnail: mediaFields.thumbnail || "",
+    thumbnail: pin.thumbnail || mediaFields.thumbnail || "",
     mediaItems: mediaFields.mediaItems,
     faction: pin.faction || "neutral",
     requires: pin.requires || {},

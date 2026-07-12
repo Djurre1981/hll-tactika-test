@@ -33,8 +33,25 @@ export async function getMediaPlayback(mediaItem) {
   return { playbackUrl, thumbnail, isImage: false, sourceUrl: mediaItem.url };
 }
 
+export function getPinThumbnailMediaItem(pin) {
+  const items = getPinMediaItems(pin);
+  if (!items.length) return null;
+
+  const thumb = String(pin.thumbnail || "").trim();
+  if (thumb) {
+    const match = items.find(
+      (item) => normalizeVideoUrl(item.url) === normalizeVideoUrl(thumb)
+    );
+    if (match) return match;
+  }
+
+  return items[0];
+}
+
 export async function getPinPlayback(pin, mediaIndex = 0) {
-  const mediaItem = getPinMediaItems(pin)[mediaIndex];
+  const items = getPinMediaItems(pin);
+  const mediaItem =
+    mediaIndex === 0 ? getPinThumbnailMediaItem(pin) || items[mediaIndex] : items[mediaIndex];
   return getMediaPlayback(mediaItem);
 }
 

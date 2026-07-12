@@ -44,12 +44,12 @@ Role capabilities: [roles.md](roles.md). Pin field shapes: [data-schemas.md](dat
 
 Stored in Cloudflare KV — see [data-schemas.md](data-schemas.md). `/data/pins.json` returns `404`; use `GET /api/pins`.
 
-- **POST** — `createdBy` / `createdByName` set server-side. `pin.id` optional (auto `pin-<uuid>`).
-- **PUT** — only sent fields updated; non-`mg-spot` tag strips `dirX`/`dirY`.
+- **POST** — `createdBy` / `createdByName` set server-side. `pin.id` optional (auto `pin-<uuid>`). Discord CDN attachment URLs in `mediaItems`, `videoUrl`, or `thumbnail` are **mirrored to R2 on save** and rewritten to `/api/videos/{attachmentId}` or `/api/images/{attachmentId}` before KV write (deduped by attachment ID).
+- **PUT** — only sent fields updated; non-`mg-spot` tag strips `dirX`/`dirY`. Same Discord mirroring as POST when media fields change.
 - **DELETE** — `mapId` query param required.
 - **Permissions** — `editor` can only mutate own pins; `assist`/`admin`/`owner` can mutate any pin.
 
-Common errors: `400` validation, `403` role/ownership, `404` pin not found, `503` KV unavailable.
+Common errors: `400` validation (including expired Discord links — *"Discord link expired — copy a fresh attachment URL from Discord or upload the file directly"*), `403` role/ownership, `404` pin not found, `503` KV or R2 unavailable.
 
 ---
 

@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth-request.js";
+import { mirrorPinMedia } from "../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../lib/media-urls.js";
 import {
   normalizePinFaction,
@@ -65,11 +66,6 @@ function buildPinFromBody(pin, createdBy) {
     next.sourceDiscordMessageId = sourceDiscordMessageId;
   }
 
-  const mediaError = validatePinMediaFields(next);
-  if (mediaError) {
-    return mediaError;
-  }
-
   return { pin: next };
 }
 
@@ -111,6 +107,16 @@ export async function onRequestPost(context) {
     return errorResponse(built.error, 400);
   }
 
+  const mirrored = await mirrorPinMedia(context.env, built.pin);
+  if (mirrored.error) {
+    return errorResponse(mirrored.error, mirrored.status || 400);
+  }
+
+  const mediaError = validatePinMediaFields(mirrored.pin);
+  if (mediaError) {
+    return errorResponse(mediaError.error, 400);
+  }
+
   const createdByName = await resolveCreatorName(
     auth.session.steamId,
     context.env,
@@ -123,7 +129,7 @@ export async function onRequestPost(context) {
   }
 
   const newPin = {
-    ...built.pin,
+    ...mirrored.pin,
     id: built.pin.id || `pin-${crypto.randomUUID()}`,
     createdBy: auth.session.steamId,
     createdByName,

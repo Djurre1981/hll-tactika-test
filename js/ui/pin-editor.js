@@ -8,12 +8,13 @@ import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, updatePlacementUi, syncViewportFormClasses, isPlacementComplete } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
-import { updateFactionRequires, setRequiresData, resetRequires, resetEditUndoSnapshot } from "../editor/form-handler.js";
-import { resetPinMediaForm, setPinMediaFormItems } from "../editor/media-form.js";
+import { updateFactionRequires, setRequiresData, resetRequires, resetEditUndoSnapshot, flushAndSavePin } from "../editor/form-handler.js";
+import { resetPinMediaForm, setPinMediaFormItems, isMediaUploadInProgress } from "../editor/media-form.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { hidePinContextMenu } from "./pin-context-menu.js";
+import { showEditorToast } from "./editor-toast.js";
 
 function getEditPanel() {
   return document.getElementById("edit-panel");
@@ -198,13 +199,26 @@ export function backToEditorBrowse({ preserveHistory = true } = {}) {
   });
 }
 
-export function tryBackToEditorBrowse(options = {}) {
+export async function tryBackToEditorBrowse(options = {}) {
   if (isFormOpen()) {
     const canLeaveWithoutTitle = state.panelMode === "add" && !isPlacementComplete();
     if (!canLeaveWithoutTitle) {
       const title = getPinTitle()?.value.trim();
       if (!title) {
         shakeTitleField();
+        return false;
+      }
+
+      if (isMediaUploadInProgress()) {
+        showEditorToast("Wait for the upload to finish", { durationMs: 3000 });
+        return false;
+      }
+
+      const result = await flushAndSavePin();
+      if (!result.ok) {
+        if (result.reason === "title") {
+          shakeTitleField();
+        }
         return false;
       }
     }
@@ -330,7 +344,7 @@ export function startEditPin(pin, { focus = false } = {}) {
   getEditPanel().classList.remove("hidden");
   getPinTitle().value = pin.title;
   getPinDescription().value = pin.description || "";
-  setPinMediaFormItems(getPinMediaItems(pin));
+  setPinMediaFormItems(getPinMediaItems(pin), pin.thumbnail);
   state.pendingFaction = pin.faction || "neutral";
   setPinFormTag(pin.tag);
   applyEditorFactionToUi();

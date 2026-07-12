@@ -2,7 +2,7 @@ export function isAppImagePath(url) {
   if (!url) return false;
   try {
     const path = url.startsWith("/") ? url.split("?")[0] : new URL(url).pathname;
-    return /^\/api\/images\/[0-9a-f-]{36}$/i.test(path);
+    return /^\/api\/images\/(\d{17,20}|[0-9a-f-]{36})$/i.test(path);
   } catch {
     return false;
   }

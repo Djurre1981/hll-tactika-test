@@ -5,7 +5,7 @@ import {
 } from "../utils/video.js";
 
 const IMAGE_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|$)/i;
-const APP_IMAGE_PATH_RE = /^\/api\/images\/[0-9a-f-]{36}$/i;
+const APP_IMAGE_PATH_RE = /^\/api\/images\/(\d{17,20}|[0-9a-f-]{36})$/i;
 
 export function isAppImagePath(url) {
   if (!url) return false;
@@ -66,12 +66,23 @@ export function pinHasMedia(pin) {
   return getPinMediaItems(pin).length > 0;
 }
 
-export function deriveLegacyMediaFields(mediaItems) {
+export function deriveLegacyMediaFields(mediaItems, thumbnailUrl = "") {
   const firstVideo = mediaItems.find((item) => item.kind === "video");
   const firstImage = mediaItems.find((item) => item.kind === "image");
+  const explicitThumbnail = String(thumbnailUrl || "").trim();
+  let thumbnail;
+  if (explicitThumbnail) {
+    const normalizedThumb = normalizeVideoUrl(explicitThumbnail);
+    const match = mediaItems.find(
+      (item) => normalizeVideoUrl(item.url) === normalizedThumb
+    );
+    thumbnail = match?.url || explicitThumbnail;
+  } else {
+    thumbnail = firstImage?.url || undefined;
+  }
   return {
     videoUrl: firstVideo?.url || "",
-    thumbnail: firstImage?.url || undefined,
+    thumbnail,
     mediaItems,
   };
 }
