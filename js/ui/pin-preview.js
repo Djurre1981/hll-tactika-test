@@ -33,6 +33,15 @@ export async function getMediaPlayback(mediaItem) {
   return { playbackUrl, thumbnail, isImage: false, sourceUrl: mediaItem.url };
 }
 
+export function getPinPreviewMediaItem(pin) {
+  const items = getPinMediaItems(pin);
+  return items.find((item) => item.kind === "video") || items.find((item) => item.kind === "image") || null;
+}
+
+export async function getPinPreviewPlayback(pin) {
+  return getMediaPlayback(getPinPreviewMediaItem(pin));
+}
+
 export function getPinThumbnailMediaItem(pin) {
   const items = getPinMediaItems(pin);
   if (!items.length) return null;
@@ -152,8 +161,8 @@ export function showPreview(pin, event) {
 
   renderPreviewRequires(pin);
 
-  const firstMedia = getPinMediaItems(pin)[0];
-  if (!firstMedia) {
+  const previewMediaItem = getPinPreviewMediaItem(pin);
+  if (!previewMediaItem) {
     getPreviewMedia().innerHTML = "";
     showPreviewTooltip();
     movePreview(event);
@@ -168,35 +177,61 @@ export function showPreview(pin, event) {
   loadPreviewMedia(pin, previewPinId);
 }
 
-export async function loadPreviewMedia(pin, previewPinId) {
-  try {
-    const { playbackUrl, thumbnail, isImage } = await getPinPlayback(pin);
-    if (state.highlightedPinId !== previewPinId) return;
+function renderPreviewPlayer(previewMedia, { playbackUrl, thumbnail, isImage }, pinTitle) {
+  previewMedia.innerHTML = "";
 
-    const previewMedia = getPreviewMedia();
-    previewMedia.innerHTML = "";
-    if (isImage || thumbnail) {
-      const img = document.createElement("img");
-      img.src = thumbnail;
-      img.alt = `${pin.title} preview`;
-      previewMedia.appendChild(img);
-    } else if (isPlayableDirectUrl(playbackUrl)) {
+  if (isImage) {
+    const img = document.createElement("img");
+    img.src = playbackUrl;
+    img.alt = `${pinTitle} preview`;
+    previewMedia.appendChild(img);
+    return;
+  }
+
+  if (playbackUrl) {
+    if (isPlayableDirectUrl(playbackUrl)) {
       const video = createVideoElement(playbackUrl, {
         autoplay: true,
         muted: true,
         controls: false,
       });
       video.loop = true;
+      video.preload = "auto";
+      video.addEventListener(
+        "canplay",
+        () => {
+          video.play().catch(() => {});
+        },
+        { once: true }
+      );
       previewMedia.appendChild(video);
-    } else {
-      const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
-      previewMedia.appendChild(iframe);
+      return;
     }
+
+    const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
+    previewMedia.appendChild(iframe);
+    return;
+  }
+
+  if (thumbnail) {
+    const img = document.createElement("img");
+    img.src = thumbnail;
+    img.alt = `${pinTitle} preview`;
+    previewMedia.appendChild(img);
+  }
+}
+
+export async function loadPreviewMedia(pin, previewPinId) {
+  try {
+    const playback = await getPinPreviewPlayback(pin);
+    if (state.highlightedPinId !== previewPinId) return;
+
+    renderPreviewPlayer(getPreviewMedia(), playback, pin.title);
   } catch (error) {
     console.warn(error);
     if (state.highlightedPinId !== previewPinId) return;
     getPreviewMedia().innerHTML =
-      '<p class="preview-error">Could not load Medal.tv clip. Open the link on medal.tv instead.</p>';
+      '<p class="preview-error">Could not load preview. Click the pin to open the clip.</p>';
   }
 }
 
