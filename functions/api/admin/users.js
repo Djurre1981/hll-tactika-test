@@ -1,22 +1,33 @@
 import { requireAdmin } from "../../lib/auth-request.js";
 import { addManagedUser, listAllMembers } from "../../lib/roles.js";
-import { fetchSteamProfile } from "../../lib/steam.js";
+import { fetchSteamProfile, fetchSteamProfiles } from "../../lib/steam.js";
 import { isValidSteamId64 } from "../../lib/users-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
-async function enrichMembers(members, env) {
-  return Promise.all(
-    members.map(async (member) => {
-      const profile = await fetchSteamProfile(member.steamId, env);
-      return {
-        steamId: member.steamId,
-        name: profile.name,
-        role: member.role,
-        removable: member.removable,
-        roleEditable: member.roleEditable,
-      };
-    })
+function resolveMemberName(member, profiles, session) {
+  const profileName = profiles.get(String(member.steamId))?.name;
+  if (profileName) {
+    return profileName;
+  }
+  if (session?.steamId === member.steamId && session.name) {
+    return session.name;
+  }
+  return null;
+}
+
+async function enrichMembers(members, env, session = null) {
+  const profiles = await fetchSteamProfiles(
+    members.map((member) => member.steamId),
+    env
   );
+
+  return members.map((member) => ({
+    steamId: member.steamId,
+    name: resolveMemberName(member, profiles, session),
+    role: member.role,
+    removable: member.removable,
+    roleEditable: member.roleEditable,
+  }));
 }
 
 export async function onRequestGet(context) {
@@ -26,7 +37,7 @@ export async function onRequestGet(context) {
   }
 
   const members = await listAllMembers(context.env, auth.role);
-  const users = await enrichMembers(members, context.env);
+  const users = await enrichMembers(members, context.env, auth.session);
   return json({ users });
 }
 

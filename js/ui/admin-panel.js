@@ -104,7 +104,7 @@ async function loadUsers() {
 function renderRoleCell(user) {
   if (user.roleEditable) {
     const select = document.createElement("select");
-    select.className = "admin-panel__role-select";
+    select.className = "glass-select admin-panel__role-select";
     select.setAttribute("aria-label", `Role for ${user.name || user.steamId}`);
 
     for (const role of ASSIGNABLE_ROLES) {
@@ -141,7 +141,7 @@ function renderUsers() {
     const row = document.createElement("tr");
 
     const nameCell = document.createElement("td");
-    nameCell.textContent = user.name || "Unknown";
+    nameCell.textContent = user.name || user.steamId;
 
     const steamIdCell = document.createElement("td");
     steamIdCell.className = "admin-panel__steam-id";
