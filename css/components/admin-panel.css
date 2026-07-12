@@ -99,9 +99,46 @@
 }
 
 .admin-panel__table-wrap {
-  overflow: auto;
+  --admin-table-row-height: 2.75rem;
+  --admin-table-visible-rows: 10;
+  max-height: calc(var(--admin-table-row-height) * var(--admin-table-visible-rows) + 2.4rem);
+  overflow-x: auto;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 7px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+.admin-panel__table-wrap::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.admin-panel__table-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-panel__table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--glass-radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition:
+    background 0.3s var(--ease-smooth),
+    border-color 0.3s var(--ease-smooth),
+    box-shadow 0.3s var(--ease-smooth);
+}
+
+.admin-panel__table-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.admin-panel__table-wrap::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .admin-panel__table {
@@ -118,11 +155,16 @@
 }
 
 .admin-panel__table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(20, 22, 26, 0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .admin-panel__table tr:last-child td {
@@ -174,6 +216,10 @@
   width: 6.5rem;
 }
 
+.admin-panel__table td:has(.admin-role-picker) {
+  overflow: visible;
+}
+
 .admin-role-picker {
   --role-picker-item-height: 2.05rem;
   position: relative;
@@ -182,7 +228,6 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--glass-radius-sm);
   background: rgba(0, 0, 0, 0.25);
-  overflow: hidden;
   transition: border-color 0.25s var(--ease-smooth);
 }
 
@@ -207,10 +252,6 @@
   color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   user-select: none;
-}
-
-.admin-role-picker.is-open .admin-role-picker__summary {
-  color: rgba(255, 255, 255, 0.55);
 }
 
 .admin-role-picker__chevron {
@@ -238,13 +279,29 @@
 }
 
 .admin-role-picker__list-wrap {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s var(--ease-smooth);
+  position: fixed;
+  z-index: 1200;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--glass-radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 0.2s var(--ease-smooth),
+    transform 0.2s var(--ease-smooth),
+    visibility 0.2s var(--ease-smooth);
 }
 
 .admin-role-picker.is-open .admin-role-picker__list-wrap {
-  overflow-y: auto;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .admin-role-picker__list {
