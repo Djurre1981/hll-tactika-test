@@ -282,6 +282,13 @@ function renderRoleCell(user) {
   return roleBadge;
 }
 
+function syncTableScrollHeight(rowCount = users.length) {
+  const tableWrap = els.panel?.querySelector(".admin-panel__table-wrap");
+  if (!tableWrap) return;
+  const visibleRows = Math.min(Math.max(rowCount, 1), 10);
+  tableWrap.style.setProperty("--admin-table-visible-rows", String(visibleRows));
+}
+
 function renderUsers() {
   if (!els.usersBody) return;
 
@@ -292,6 +299,7 @@ function renderUsers() {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="4" class="admin-panel__empty">No members yet.</td>`;
     els.usersBody.appendChild(row);
+    syncTableScrollHeight(1);
     return;
   }
 
@@ -324,6 +332,8 @@ function renderUsers() {
     row.append(nameCell, steamIdCell, roleCell, actionsCell);
     els.usersBody.appendChild(row);
   }
+
+  syncTableScrollHeight(users.length);
 }
 
 async function onRoleChange(user, newRole, picker) {

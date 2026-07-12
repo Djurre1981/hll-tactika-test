@@ -107,8 +107,7 @@
 .admin-panel__table-wrap {
   --admin-table-row-height: 2.75rem;
   --admin-table-visible-rows: 10;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 7px;
@@ -322,13 +321,11 @@
 
 .admin-role-picker__list-wrap {
   position: absolute;
-  z-index: 30;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 100;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--glass-radius-sm);
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  background: #12151a;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -360,7 +357,8 @@
   font-size: 0.78rem;
   font-weight: 300;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.72);
+  background: #12151a;
   cursor: pointer;
   transition:
     color 0.2s var(--ease-smooth),
@@ -368,13 +366,13 @@
 }
 
 .admin-role-picker__option:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.95);
+  background: #1a1e25;
 }
 
 .admin-role-picker__option.is-selected {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.95);
+  background: #1f2430;
 }
 
 .admin-panel__empty {

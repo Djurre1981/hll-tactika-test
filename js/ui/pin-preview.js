@@ -10,7 +10,7 @@ import { resolveMedalClip } from "../utils/medal.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
-import { getPinMediaItems } from "../helpers/pin-media.js";
+import { detectMediaKind, getPinMediaItems } from "../helpers/pin-media.js";
 
 export async function getMediaPlayback(mediaItem) {
   if (!mediaItem) {
@@ -33,13 +33,8 @@ export async function getMediaPlayback(mediaItem) {
   return { playbackUrl, thumbnail, isImage: false, sourceUrl: mediaItem.url };
 }
 
-export function getPinPreviewMediaItem(pin) {
-  const items = getPinMediaItems(pin);
-  return items.find((item) => item.kind === "video") || items.find((item) => item.kind === "image") || null;
-}
-
 export async function getPinPreviewPlayback(pin) {
-  return getMediaPlayback(getPinPreviewMediaItem(pin));
+  return getMediaPlayback(getPinThumbnailMediaItem(pin));
 }
 
 export function getPinThumbnailMediaItem(pin) {
@@ -48,10 +43,18 @@ export function getPinThumbnailMediaItem(pin) {
 
   const thumb = String(pin.thumbnail || "").trim();
   if (thumb) {
-    const match = items.find(
-      (item) => normalizeVideoUrl(item.url) === normalizeVideoUrl(thumb)
+    const normalizedThumb = normalizeVideoUrl(thumb);
+    const matches = items.filter(
+      (item) => normalizeVideoUrl(item.url) === normalizedThumb
     );
-    if (match) return match;
+    if (matches.length > 0) {
+      const preferredKind = detectMediaKind(thumb);
+      if (preferredKind) {
+        const kindMatch = matches.find((item) => item.kind === preferredKind);
+        if (kindMatch) return kindMatch;
+      }
+      return matches[0];
+    }
   }
 
   return items[0];
@@ -161,7 +164,7 @@ export function showPreview(pin, event) {
 
   renderPreviewRequires(pin);
 
-  const previewMediaItem = getPinPreviewMediaItem(pin);
+  const previewMediaItem = getPinThumbnailMediaItem(pin);
   if (!previewMediaItem) {
     getPreviewMedia().innerHTML = "";
     showPreviewTooltip();
