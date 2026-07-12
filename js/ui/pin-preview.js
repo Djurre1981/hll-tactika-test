@@ -62,9 +62,7 @@ export function getPinThumbnailMediaItem(pin) {
 
 export async function getPinPlayback(pin, mediaIndex = 0) {
   const items = getPinMediaItems(pin);
-  const mediaItem =
-    mediaIndex === 0 ? getPinThumbnailMediaItem(pin) || items[mediaIndex] : items[mediaIndex];
-  return getMediaPlayback(mediaItem);
+  return getMediaPlayback(items[mediaIndex]);
 }
 
 const TOOLTIP_TRANSITION_MS = 320;
