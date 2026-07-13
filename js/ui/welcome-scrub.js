@@ -6,7 +6,7 @@ const SEEK_THROTTLE_MS = 30;
 const ACTIVATE_RETRY_MS = 500;
 const LOAD_TIMEOUT_MS = 15000;
 const DEFAULT_VIDEO_SRC = "assets/welcome/welcome.mp4";
-const AWAITING_TOUCH_CLASS = "scrub-video--awaiting-touch";
+const TAP_TO_PLAY_CLASS = "scrub-video--tap-to-play";
 
 function resolveSourceUrl(sourceUrl) {
   return new URL(sourceUrl, window.location.href).href;
@@ -38,7 +38,7 @@ export function initWelcomeScrub(video) {
   let blobUrl = null;
   let blobAbort = null;
   let phoneAutoplayMode = false;
-  let phonePlaybackStarted = false;
+  let phoneGestureRegistered = false;
 
   video.muted = true;
   video.playsInline = true;
@@ -79,12 +79,8 @@ export function initWelcomeScrub(video) {
     }, ACTIVATE_RETRY_MS);
   }
 
-  function revealVideo() {
-    video.classList.remove(AWAITING_TOUCH_CLASS);
-  }
-
   function startLoop() {
-    if (animationId || reducedMotion || phoneAutoplayMode) return;
+    if (animationId || reducedMotion || phoneLayout) return;
     lastFrameTime = performance.now();
     animationId = requestAnimationFrame(scrubLoop);
   }
@@ -138,26 +134,37 @@ export function initWelcomeScrub(video) {
     });
   }
 
-  function waitForSeeked() {
+  function waitForMetadata() {
+    if (hasValidDuration()) return Promise.resolve(true);
+
     return new Promise((resolve) => {
+      let done = false;
       const finish = (ok) => {
+        if (done) return;
+        done = true;
         cleanup();
         resolve(ok);
       };
 
+      const check = () => {
+        if (hasValidDuration()) finish(true);
+      };
+
       const cleanup = () => {
         window.clearTimeout(timer);
-        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("loadedmetadata", check);
+        video.removeEventListener("durationchange", check);
         video.removeEventListener("error", onError);
       };
 
-      const onSeeked = () => finish(true);
       const onError = () => finish(false);
 
-      video.addEventListener("seeked", onSeeked, { once: true });
-      video.addEventListener("error", onError, { once: true });
+      video.addEventListener("loadedmetadata", check);
+      video.addEventListener("durationchange", check);
+      video.addEventListener("error", onError);
 
-      const timer = window.setTimeout(() => finish(hasFrameData()), 2000);
+      const timer = window.setTimeout(() => finish(hasValidDuration()), LOAD_TIMEOUT_MS);
+      check();
     });
   }
 
@@ -165,7 +172,7 @@ export function initWelcomeScrub(video) {
     if (video.src !== resolvedSourceUrl) {
       video.src = sourceUrl;
     }
-    return waitForFrameData();
+    return phoneLayout ? waitForMetadata() : waitForFrameData();
   }
 
   function removeTouchScrubListeners() {
@@ -173,52 +180,50 @@ export function initWelcomeScrub(video) {
     document.removeEventListener("touchmove", handleTouchMove);
   }
 
+  function showTapHint() {
+    welcomePage?.classList.add(TAP_TO_PLAY_CLASS);
+  }
+
+  function hideTapHint() {
+    welcomePage?.classList.remove(TAP_TO_PLAY_CLASS);
+  }
+
   function removePhoneGestureListener() {
-    welcomePage?.removeEventListener("touchstart", handlePhoneGestureStart);
+    welcomePage?.removeEventListener("pointerdown", handlePhoneGesturePlay);
+    welcomePage?.removeEventListener("touchstart", handlePhoneGesturePlay);
+    phoneGestureRegistered = false;
   }
 
-  function startAutoplayLoop() {
-    if (destroyed || phoneAutoplayMode) return;
-    phoneAutoplayMode = true;
-    revealVideo();
-    stopLoop();
-    removeTouchScrubListeners();
+  function handlePhoneGesturePlay() {
+    removePhoneGestureListener();
+    void tryPhoneAutoplay();
+  }
+
+  function registerPhoneGestureFallback() {
+    if (!welcomePage || destroyed || phoneGestureRegistered || phoneAutoplayMode) return;
+    phoneGestureRegistered = true;
+    showTapHint();
+    welcomePage.addEventListener("pointerdown", handlePhoneGesturePlay, { passive: true });
+    welcomePage.addEventListener("touchstart", handlePhoneGesturePlay, { passive: true });
+  }
+
+  async function tryPhoneAutoplay() {
+    if (destroyed || phoneAutoplayMode) return true;
+
     video.loop = true;
-    void video.play().catch(() => {});
-  }
-
-  async function primeDecoder() {
     try {
       await video.play();
-      video.pause();
-      applySeek(currentDisplayTime);
-      await waitForSeeked();
-      return hasFrameData() && video.videoWidth > 0;
+      if (destroyed) return false;
+      phoneAutoplayMode = true;
+      videoReady = true;
+      hideTapHint();
+      removePhoneGestureListener();
+      stopRetry();
+      return true;
     } catch {
+      if (!destroyed) registerPhoneGestureFallback();
       return false;
     }
-  }
-
-  async function startPhonePlaybackFromGesture() {
-    if (!phoneLayout || destroyed || phonePlaybackStarted) return;
-    phonePlaybackStarted = true;
-    removePhoneGestureListener();
-    revealVideo();
-
-    const primed = await primeDecoder();
-    stopRetry();
-    videoReady = true;
-
-    if (primed && !reducedMotion) {
-      startLoop();
-      return;
-    }
-
-    startAutoplayLoop();
-  }
-
-  function handlePhoneGestureStart() {
-    void startPhonePlaybackFromGesture();
   }
 
   async function upgradeToBlob() {
@@ -263,24 +268,29 @@ export function initWelcomeScrub(video) {
     activating = true;
     try {
       const loaded = await startStreaming();
-      if (destroyed || !loaded || !hasValidDuration() || !hasFrameData()) {
+      if (destroyed || !loaded || !hasValidDuration()) {
         scheduleRetry();
         return;
       }
 
       videoDuration = video.duration;
+
+      if (phoneLayout) {
+        stopRetry();
+        await tryPhoneAutoplay();
+        return;
+      }
+
+      if (!hasFrameData()) {
+        scheduleRetry();
+        return;
+      }
+
       updateTargetTime();
       currentDisplayTime = targetTime;
 
       video.pause();
       applySeek(currentDisplayTime);
-
-      if (phoneLayout) {
-        video.classList.add(AWAITING_TOUCH_CLASS);
-        welcomePage?.addEventListener("touchstart", handlePhoneGestureStart, { passive: true });
-        stopRetry();
-        return;
-      }
 
       stopRetry();
       videoReady = true;
@@ -303,7 +313,6 @@ export function initWelcomeScrub(video) {
   }
 
   function handleTouchMove(e) {
-    if (phoneAutoplayMode) return;
     if (e.touches.length > 0) {
       mouseX = e.touches[0].clientX;
       updateTargetTime();
@@ -337,7 +346,7 @@ export function initWelcomeScrub(video) {
   function scrubLoop(timestamp) {
     animationId = requestAnimationFrame(scrubLoop);
 
-    if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData() || phoneAutoplayMode) return;
+    if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData() || phoneLayout) return;
 
     const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
     lastFrameTime = timestamp;
@@ -358,34 +367,38 @@ export function initWelcomeScrub(video) {
 
   void activate();
 
-  document.addEventListener("mousemove", handleMouseMove, { passive: true });
-  document.addEventListener("touchstart", handleTouchMove, { passive: true });
-  document.addEventListener("touchmove", handleTouchMove, { passive: true });
-  document.addEventListener("mouseenter", handleMouseEnter);
-  window.addEventListener("resize", handleResize);
+  if (!phoneLayout) {
+    document.addEventListener("mousemove", handleMouseMove, { passive: true });
+    document.addEventListener("touchstart", handleTouchMove, { passive: true });
+    document.addEventListener("touchmove", handleTouchMove, { passive: true });
+    document.addEventListener("mouseenter", handleMouseEnter);
+    window.addEventListener("resize", handleResize);
+  }
   document.addEventListener("visibilitychange", handleVisibility);
 
   const controller = {
     get isReady() {
-      return videoReady && hasFrameData();
+      return videoReady && (phoneAutoplayMode || hasFrameData());
     },
     destroy() {
       destroyed = true;
       stopRetry();
       stopLoop();
       removePhoneGestureListener();
+      hideTapHint();
       blobAbort?.abort();
       blobAbort = null;
       video.pause();
-      video.classList.remove(AWAITING_TOUCH_CLASS);
       if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
         blobUrl = null;
       }
-      document.removeEventListener("mousemove", handleMouseMove);
-      removeTouchScrubListeners();
-      document.removeEventListener("mouseenter", handleMouseEnter);
-      window.removeEventListener("resize", handleResize);
+      if (!phoneLayout) {
+        document.removeEventListener("mousemove", handleMouseMove);
+        removeTouchScrubListeners();
+        document.removeEventListener("mouseenter", handleMouseEnter);
+        window.removeEventListener("resize", handleResize);
+      }
       document.removeEventListener("visibilitychange", handleVisibility);
       delete video.__welcomeScrub;
     },

@@ -18,9 +18,22 @@
   pointer-events: none;
 }
 
-.welcome-page__video.scrub-video--awaiting-touch,
-.bye-page__video.scrub-video--awaiting-touch {
-  opacity: 0;
+.welcome-page.scrub-video--tap-to-play::after,
+.bye-page.scrub-video--tap-to-play::after {
+  content: "Tap to play";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--welcome-font-light, var(--bye-font-light, "Texta Alt", sans-serif));
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
 .welcome-page__gradient {
