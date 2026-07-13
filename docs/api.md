@@ -13,6 +13,7 @@ Auth: HttpOnly cookie `hll-tactika-session` (7-day TTL), set after Steam OpenID.
 | `GET` | `/api/auth/steam` | — | `302` → Steam OpenID |
 | `GET` | `/api/auth/callback` | — | `302` → `/` + cookie if allowlisted; `/?auth=forbidden&steamId=…` if not; `/?auth=error` on failure |
 | `GET` | `/api/auth/me` | optional cookie | See [Auth status](#auth-status) below |
+| `PATCH` | `/api/auth/preferences` | allowlisted | `200` `{ preferences }` — body: viewer UI prefs (see [data-schemas.md](data-schemas.md)) |
 | `POST` | `/api/auth/logout` | — | `200` `{ ok: true }`, clears cookie |
 | `GET` | `/api/pins` | allowlisted | `200` `{ defaultMapId, pins: { [mapId]: Pin[] } }` — see [data-schemas.md](data-schemas.md) |
 | `POST` | `/api/pins` | `editor`+ | `201` `{ pin, mapId }` — body: `{ mapId, pin }` |
@@ -34,7 +35,7 @@ Role capabilities: [roles.md](roles.md). Pin field shapes: [data-schemas.md](dat
 
 | Status | Body |
 |--------|------|
-| `200` | `{ authenticated: true, steamId, name, avatar, role }` — role: `owner` \| `admin` \| `assist` \| `editor` \| `viewer` |
+| `200` | `{ authenticated: true, steamId, name, avatar, role, preferences? }` — role: `owner` \| `admin` \| `assist` \| `editor` \| `viewer`; `preferences` omitted when the user has never saved viewer settings |
 | `401` | `{ authenticated: false }` — no valid session |
 | `403` | `{ authenticated: false, forbidden: true }` — signed in but not allowlisted |
 

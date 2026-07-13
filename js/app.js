@@ -1,8 +1,8 @@
 import { initAuth, loadProtectedPins } from "./ui/auth-gate.js";
-import { applyMapBgFade, initMapColorControl, restoreMapBgFadeSettings } from "./ui/map-bg-fade.js";
-import { state, loadSelectedMapId, saveSelectedMapId, loadToggleState } from "./state.js";
+import { applyMapBgFade } from "./ui/map-bg-fade.js";
+import { state, loadSelectedMapId, saveSelectedMapId } from "./state.js";
+import { initViewerPreferences, getViewerPreferences } from "./viewer-preferences.js";
 import { setMapPickerValue } from "./ui/map-picker.js";
-import { loadTagFilters, loadCurrentFaction } from "./ui/filter-bar.js";
 import { initPortraitPanelDefaults } from "./ui/chrome-panels.js";
 
 function waitForImage(image) {
@@ -22,16 +22,6 @@ function revealAppChrome() {
 }
 
 async function init() {
-  state.tagFilters = loadTagFilters();
-  state.currentFaction = loadCurrentFaction();
-
-  const savedToggles = loadToggleState();
-  restoreMapBgFadeSettings({
-    enabled: savedToggles.bgColor ?? true,
-    hue: savedToggles.bgHue ?? null,
-    random: savedToggles.bgRandom ?? savedToggles.bgHue == null,
-  });
-
   const mapsModulePromise = import("./api/maps.js");
   const mapModulesPromise = Promise.all([
     import("./ui/map-viewer.js"),
@@ -55,6 +45,13 @@ async function init() {
 
   const auth = await initAuth();
   if (!auth.ok) return;
+
+  initViewerPreferences(auth.user);
+  const prefs = getViewerPreferences();
+  state.tagFilters = { ...prefs.tagFilters };
+  state.currentFaction = prefs.faction;
+  state.mapLabelsVisible = prefs.mapLabels;
+  state.previewEnabled = prefs.preview;
 
   const pinDataPromise = loadProtectedPins();
   const { initAdminPanel } = await adminPanelPromise;

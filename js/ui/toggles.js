@@ -1,5 +1,6 @@
-import { state, loadToggleState, saveToggleState } from "../state.js";
-import { restoreMapBgFadeSettings } from "./map-bg-fade.js";
+import { state } from "../state.js";
+import { getViewerPreferences, scheduleSaveViewerPreferences } from "../viewer-preferences.js";
+import { getMapBgHue, isMapBgHueRandom, restoreMapBgFadeSettings } from "./map-bg-fade.js";
 
 export function setMapLabelsVisible(show) {
   state.mapLabelsVisible = show;
@@ -12,63 +13,64 @@ export function setMapLabelsVisible(show) {
 }
 
 export function applyMapLabelsToUi() {
-  const saved = loadToggleState();
-  setMapLabelsVisible(saved.mapLabels ?? true);
+  const prefs = getViewerPreferences();
+  setMapLabelsVisible(prefs.mapLabels);
 }
 
 export function applyToggleStateToUi() {
-  const saved = loadToggleState();
+  const prefs = getViewerPreferences();
   const gridEl = document.getElementById("toggle-grid");
   const spEl = document.getElementById("toggle-strongpoints");
   const previewEl = document.getElementById("toggle-preview");
   const colorEl = document.getElementById("toggle-color");
-  if (gridEl) gridEl.checked = saved.grid ?? false;
-  if (spEl) spEl.checked = saved.strongpoints ?? true;
-  if (previewEl) previewEl.checked = saved.preview ?? true;
-  if (colorEl) colorEl.checked = saved.bgColor ?? true;
-  state.previewEnabled = previewEl ? previewEl.checked : saved.preview ?? true;
+  if (gridEl) gridEl.checked = prefs.grid;
+  if (spEl) spEl.checked = prefs.strongpoints;
+  if (previewEl) previewEl.checked = prefs.preview;
+  if (colorEl) colorEl.checked = prefs.bgColor;
+  state.previewEnabled = previewEl ? previewEl.checked : prefs.preview;
   applyMapLabelsToUi();
   restoreMapBgFadeSettings({
-    enabled: saved.bgColor ?? true,
-    hue: saved.bgHue ?? null,
-    random: saved.bgRandom ?? saved.bgHue == null,
+    enabled: prefs.bgColor,
+    hue: prefs.bgHue,
+    random: prefs.bgRandom,
   });
 }
 
 export function applyToggleStateToOverlays() {
   if (!state.mapOverlays) return;
-  const saved = loadToggleState();
-  state.mapOverlays.setToggle("grid", saved.grid ?? false);
-  state.mapOverlays.setToggle("strongpoints", saved.strongpoints ?? true);
+  const prefs = getViewerPreferences();
+  state.mapOverlays.setToggle("grid", prefs.grid);
+  state.mapOverlays.setToggle("strongpoints", prefs.strongpoints);
 }
 
-export function persistToggles() {
+function readTogglePrefsFromUi() {
   const gridEl = document.getElementById("toggle-grid");
   const spEl = document.getElementById("toggle-strongpoints");
   const previewEl = document.getElementById("toggle-preview");
   const colorEl = document.getElementById("toggle-color");
-  const saved = loadToggleState();
-  saveToggleState({
-    grid: gridEl ? gridEl.checked : false,
-    strongpoints: spEl ? spEl.checked : true,
-    preview: previewEl ? previewEl.checked : true,
-    bgColor: colorEl ? colorEl.checked : true,
+  const prefs = getViewerPreferences();
+  return {
+    grid: gridEl ? gridEl.checked : prefs.grid,
+    strongpoints: spEl ? spEl.checked : prefs.strongpoints,
+    preview: previewEl ? previewEl.checked : prefs.preview,
+    bgColor: colorEl ? colorEl.checked : prefs.bgColor,
     mapLabels: state.mapLabelsVisible,
-    bgHue: saved.bgHue ?? null,
-    bgRandom: saved.bgRandom ?? true,
-  });
+    bgHue: isMapBgHueRandom() ? null : getMapBgHue(),
+    bgRandom: isMapBgHueRandom(),
+  };
+}
+
+export function persistToggles() {
+  scheduleSaveViewerPreferences(readTogglePrefsFromUi());
 }
 
 export function persistBgHue(hue) {
-  const saved = loadToggleState();
-  saveToggleState({ ...saved, bgHue: hue, bgRandom: false });
+  scheduleSaveViewerPreferences({ bgHue: hue, bgRandom: false });
 }
 
 export function persistBgRandom(random, hue = null) {
-  const saved = loadToggleState();
-  saveToggleState({
-    ...saved,
+  scheduleSaveViewerPreferences({
     bgRandom: random,
-    bgHue: random ? null : hue ?? saved.bgHue ?? null,
+    bgHue: random ? null : hue ?? getViewerPreferences().bgHue,
   });
 }

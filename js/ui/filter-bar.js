@@ -1,22 +1,12 @@
-import { state, TAG_FILTER_STORAGE_KEY, FACTION_FILTER_STORAGE_KEY } from "../state.js";
+import { state } from "../state.js";
+import { scheduleSaveViewerPreferences } from "../viewer-preferences.js";
 import { PIN_TAGS, normalizePinTag, getPinTag } from "../pin-tags.js";
 import { hasPinDirection } from "./mg-spot-arrows.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { normalizePinTitle } from "../helpers/pin-title.js";
 
-export function loadTagFilters() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(TAG_FILTER_STORAGE_KEY) || "{}");
-    return Object.fromEntries(
-      PIN_TAGS.map((tag) => [tag.id, saved[tag.id] ?? true])
-    );
-  } catch {
-    return Object.fromEntries(PIN_TAGS.map((tag) => [tag.id, true]));
-  }
-}
-
 export function saveTagFilters() {
-  localStorage.setItem(TAG_FILTER_STORAGE_KEY, JSON.stringify(state.tagFilters));
+  scheduleSaveViewerPreferences({ tagFilters: { ...state.tagFilters } });
 }
 
 export function applyTagFiltersToUi() {
@@ -33,18 +23,8 @@ export function isPinTagVisible(tagId) {
   return state.tagFilters[tagId] !== false;
 }
 
-export function loadCurrentFaction() {
-  try {
-    const saved = localStorage.getItem(FACTION_FILTER_STORAGE_KEY);
-    if (saved && ["axis", "neutral", "allies"].includes(saved)) return saved;
-  } catch {
-    // fall through
-  }
-  return "neutral";
-}
-
 export function saveCurrentFaction() {
-  localStorage.setItem(FACTION_FILTER_STORAGE_KEY, state.currentFaction);
+  scheduleSaveViewerPreferences({ faction: state.currentFaction });
 }
 
 export function applyFactionFiltersToUi() {

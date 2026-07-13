@@ -1,5 +1,6 @@
 import { fetchSteamProfile } from "../../lib/steam.js";
 import { getUserRole } from "../../lib/roles.js";
+import { getUserPreferences } from "../../lib/user-preferences.js";
 import { verifySession } from "../../lib/session.js";
 import { json } from "../../lib/response.js";
 
@@ -21,11 +22,16 @@ export async function onRequestGet(context) {
     avatar = profile.avatar || avatar;
   }
 
-  return json({
+  const preferences = await getUserPreferences(session.steamId, context.env);
+  const body = {
     authenticated: true,
     steamId: session.steamId,
     name,
     avatar,
     role,
-  });
+  };
+  if (preferences) {
+    body.preferences = preferences;
+  }
+  return json(body);
 }
