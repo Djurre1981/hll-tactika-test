@@ -1,3 +1,4 @@
+import { cachePinDetail, resolvePinDetail } from "../helpers/pin-detail-cache.js";
 import { state } from "../state.js";
 import { canEnterEditorMode, canModifyPin } from "../helpers/permissions.js";
 import { DEFAULT_PIN_TAG } from "../pin-tags.js";
@@ -252,11 +253,6 @@ export function exitEditorMode() {
   });
 }
 
-/** @deprecated Use exitEditorMode — kept for map-switch and legacy callers */
-export function closeEditPanel() {
-  exitEditorMode();
-}
-
 export function setSidebarDefaultVisible(visible) {
   const sidebarDefault = getSidebarDefault();
   sidebarDefault?.classList.toggle("hidden", !visible);
@@ -314,13 +310,8 @@ export function openAddPinForm(tag = DEFAULT_PIN_TAG) {
   syncViewportFormClasses();
 }
 
-/** @deprecated Use openAddPinForm */
-export function startAddPin() {
-  openAddPinForm();
-}
-
-export function startEditPin(pin, { focus = false } = {}) {
-  if (!pin || !canModifyPin(pin)) return;
+export async function startEditPin(marker, { focus = false } = {}) {
+  if (!marker || !canModifyPin(marker)) return;
 
   if (!isInEditorMode()) {
     enterEditorMode();
@@ -331,39 +322,56 @@ export function startEditPin(pin, { focus = false } = {}) {
   resetEditUndoSnapshot();
   state.addPinSession = false;
   state.panelMode = "edit";
-  state.editingPinId = pin.id;
-  state.pendingCoords = { x: pin.x, y: pin.y };
+  state.editingPinId = marker.id;
+  state.pendingCoords = { x: marker.x, y: marker.y };
   state.pendingDirection =
-    pin.tag === "mg-spot" && hasPinDirection(pin)
-      ? { x: pin.dirX, y: pin.dirY }
+    marker.tag === "mg-spot" && hasPinDirection(marker)
+      ? { x: marker.dirX, y: marker.dirY }
       : null;
   state.editMode = true;
 
   setSidebarDefaultVisible(false);
   state.mapViewer?.setEditMode(true);
   getEditPanel().classList.remove("hidden");
-  getPinTitle().value = pin.title;
-  getPinDescription().value = pin.description || "";
-  setPinMediaFormItems(getPinMediaItems(pin), pin.thumbnail);
-  state.pendingFaction = pin.faction || "neutral";
-  setPinFormTag(pin.tag);
+  getPinTitle().value = marker.title;
+  getPinDescription().value = "";
+  setPinMediaFormItems([], marker.thumbnail);
+  state.pendingFaction = marker.faction || "neutral";
+  setPinFormTag(marker.tag);
   applyEditorFactionToUi();
   updateFactionRequires(state.pendingFaction);
-  setRequiresData(pin.requires);
+  setRequiresData(marker.requires);
   getEditPanelTitle().textContent = "EDIT POSITION";
   const editPanelHint = getEditPanelHint();
-  if (editPanelHint) editPanelHint.textContent = "";
+  if (editPanelHint) editPanelHint.textContent = "Loading pin details…";
   updateEditorHeaderButtons();
-  highlightPin(pin.id);
+  highlightPin(marker.id);
   hidePlacementCrosshair();
   updatePlacementUi();
   updateDraftMarker();
   renderPins();
   if (focus) {
-    focusPin(pin, { zoomPercent: 100 });
+    focusPin(marker, { zoomPercent: 100 });
   }
   syncViewportModeClasses();
   syncViewportFormClasses();
+
+  try {
+    const pin = await resolvePinDetail(state.currentMapId, marker);
+    if (state.editingPinId !== marker.id) return;
+    if (!canModifyPin(pin)) {
+      exitEditorMode();
+      return;
+    }
+    getPinDescription().value = pin.description || "";
+    setPinMediaFormItems(getPinMediaItems(pin), pin.thumbnail);
+    cachePinDetail(state.currentMapId, pin.id, pin);
+    if (editPanelHint) editPanelHint.textContent = "";
+  } catch (error) {
+    console.error(error);
+    if (state.editingPinId !== marker.id) return;
+    if (editPanelHint) editPanelHint.textContent = "Could not load pin details.";
+  }
 }
 
 export function updateEditorHeaderButtons({ animate = false } = {}) {

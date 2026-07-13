@@ -415,8 +415,10 @@ export async function initAuth() {
   }
 }
 
-export async function loadProtectedPins() {
-  const response = await fetch("/api/pins", { credentials: "same-origin" });
+export async function loadMapMarkers(mapId) {
+  const response = await fetch(`/api/pins?mapId=${encodeURIComponent(mapId)}`, {
+    credentials: "same-origin",
+  });
   if (response.status === 401) {
     showWelcome({
       openDialog: true,
@@ -440,8 +442,19 @@ export async function loadProtectedPins() {
     });
     throw new Error("forbidden");
   }
-  if (!response.ok) {
-    throw new Error("Failed to load protected pin data");
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 503 && data.error) {
+    openAuthDialog({
+      title: "Map data unavailable",
+      message: data.error,
+      showLogin: false,
+    });
+    throw new Error(data.error);
   }
-  return response.json();
+  if (!response.ok) {
+    const message = data.error || `Failed to load map markers (${response.status})`;
+    console.error(message);
+    throw new Error(message);
+  }
+  return data;
 }

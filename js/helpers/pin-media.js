@@ -54,7 +54,9 @@ export function getPinMediaItems(pin) {
 
   const items = [];
   if (pin?.thumbnail) {
-    items.push({ kind: "image", url: String(pin.thumbnail).trim() });
+    const url = String(pin.thumbnail).trim();
+    const kind = detectMediaKind(url) === "video" ? "video" : "image";
+    items.push({ kind, url });
   }
   if (pin?.videoUrl) {
     items.push({ kind: "video", url: String(pin.videoUrl).trim() });
@@ -63,6 +65,8 @@ export function getPinMediaItems(pin) {
 }
 
 export function pinHasMedia(pin) {
+  if (pin?.hasMedia === true) return true;
+  if (pin?.hasMedia === false) return false;
   return getPinMediaItems(pin).length > 0;
 }
 
@@ -93,15 +97,13 @@ export function isValidMediaUrl(url) {
   if (isAppImagePath(normalized) || isAppVideoPath(normalized)) {
     return true;
   }
+  if (normalized.startsWith("/") && !normalized.startsWith("//")) {
+    return false;
+  }
   try {
-    new URL(normalized);
-    return true;
+    const parsed = new URL(normalized);
+    return parsed.protocol === "https:";
   } catch {
-    try {
-      new URL(normalized, window.location.origin);
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }

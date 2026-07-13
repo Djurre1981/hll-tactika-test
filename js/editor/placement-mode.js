@@ -2,7 +2,9 @@ import { state } from "../state.js";
 import { isDirectionalPinTag, DEFAULT_PIN_TAG } from "../pin-tags.js";
 import { generatePositionCode, roundCoord } from "../helpers/position-code.js";
 import { MG_COLLAPSE_HINT, mgHandlesCollapsed } from "../helpers/mg-placement.js";
-import { hidePlacementCrosshair } from "./draft-renderer.js";
+import { hidePlacementCrosshair, showPlacementCrosshairAtScreen, updateDraftMarker } from "./draft-renderer.js";
+import { pushPositionSnapshot } from "./undo-redo.js";
+import { highlightPin } from "../helpers/proximity.js";
 
 export function setPinFormTag(tagId) {
   state.pendingTag = tagId;
@@ -211,7 +213,3 @@ export function onViewportMouseLeave() {
     highlightPin(null);
   }
 }
-
-import { pushPositionSnapshot } from "./undo-redo.js";
-import { showPlacementCrosshairAtScreen, updateDraftMarker } from "./draft-renderer.js";
-import { highlightPin } from "../helpers/proximity.js";

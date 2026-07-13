@@ -335,7 +335,9 @@ export function initWelcomeScrub(video) {
       return;
     }
     if (phoneAutoplayMode) {
-      void video.play().catch(() => {});
+      void video.play().catch(() => {
+      /* autoplay blocked — expect user gesture */
+    });
       return;
     }
     if (videoReady && !reducedMotion) {

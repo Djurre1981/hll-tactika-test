@@ -12,9 +12,40 @@ async function pinApiRequest(url, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return data;
+}
+
+export async function fetchMapMarkers(mapId) {
+  return pinApiRequest(`/api/pins?mapId=${encodeURIComponent(mapId)}`);
+}
+
+export async function fetchPinDetail(mapId, pinId, detailToken) {
+  const url = `/api/pins/${encodeURIComponent(pinId)}/details?mapId=${encodeURIComponent(mapId)}&token=${encodeURIComponent(detailToken)}`;
+  const response = await fetch(url, { credentials: "same-origin" });
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 498) {
+    const error = new Error(data.error || "Detail token expired");
+    error.status = 498;
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return data.pin;
+}
+
+export async function refreshPinDetailToken(mapId, pinId) {
+  const data = await pinApiRequest(`/api/pins/${encodeURIComponent(pinId)}/token`, {
+    method: "POST",
+    body: JSON.stringify({ mapId }),
+  });
+  return data.detailToken;
 }
 
 export async function createPin(mapId, pin) {
@@ -38,12 +69,4 @@ export async function deletePin(mapId, pinId) {
     `/api/pins/${encodeURIComponent(pinId)}?mapId=${encodeURIComponent(mapId)}`,
     { method: "DELETE" }
   );
-}
-
-export async function fetchPinsCatalog() {
-  const response = await fetch("/api/pins", { credentials: "same-origin" });
-  if (!response.ok) {
-    throw new Error("Failed to load pins");
-  }
-  return response.json();
 }

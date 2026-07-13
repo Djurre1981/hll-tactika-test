@@ -1,10 +1,13 @@
 import { uploadPreviewImage, uploadVideo } from "../api/media.js";
 import { normalizeVideoUrl } from "../utils/video.js";
+import { fileFromVideoFrame } from "../utils/video-frame.js";
 import {
   detectMediaKind,
   getUnsupportedMediaUrlMessage,
+  isDirectImageUrl,
 } from "../helpers/pin-media.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
+import { showEditorToast } from "../ui/editor-toast.js";
 
 const UPLOAD_BUTTON_HTML =
   '<i class="fa-solid fa-image" aria-hidden="true"></i>';
@@ -177,6 +180,10 @@ function resolveFormThumbnail(items) {
       (item) => normalizeVideoUrl(item.url) === normalizeVideoUrl(selectedThumbnailUrl)
     );
     if (match) return match.url;
+    // Auto-captured stills are stored as /api/images/… without a media row.
+    if (isDirectImageUrl(selectedThumbnailUrl)) {
+      return selectedThumbnailUrl;
+    }
   }
   const firstImage = items.find((item) => item.kind === "image");
   return firstImage?.url || items[0].url;
@@ -318,7 +325,7 @@ async function handleMediaFileUpload(file) {
   if (!row) return;
 
   if (!isVideoFile(file) && !isImageFile(file)) {
-    alert("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
+    showEditorToast("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
     return;
   }
 
@@ -339,21 +346,35 @@ async function handleMediaFileUpload(file) {
     if (isVideoFile(file)) {
       setUploadBusy(row, "Uploading…");
       uploaded = await uploadVideo(file);
+      row.querySelector(".pin-media-row__url").value = uploaded.url;
+
+      // Video URLs are not displayable as <img>; capture a still for hover previews.
+      if (!selectedThumbnailUrl || !isDirectImageUrl(selectedThumbnailUrl)) {
+        try {
+          setUploadBusy(row, "Thumbnail…");
+          const thumbFile = await fileFromVideoFrame(file, "preview.jpg");
+          const thumb = await uploadPreviewImage(thumbFile);
+          selectedThumbnailUrl = thumb.url;
+          syncThumbnailUi();
+        } catch (thumbError) {
+          console.warn("Could not capture video thumbnail", thumbError);
+        }
+      }
     } else {
       setUploadBusy(row, "Uploading…");
       uploaded = await uploadPreviewImage(file);
-    }
-    row.querySelector(".pin-media-row__url").value = uploaded.url;
+      row.querySelector(".pin-media-row__url").value = uploaded.url;
 
-    if (!selectedThumbnailUrl) {
-      selectedThumbnailUrl = uploaded.url;
-      syncThumbnailUi();
+      if (!selectedThumbnailUrl) {
+        selectedThumbnailUrl = uploaded.url;
+        syncThumbnailUi();
+      }
     }
 
     notifyFormChanged();
   } catch (error) {
     console.error(error);
-    alert(error.message || "Upload failed");
+    showEditorToast(error.message || "Upload failed");
   } finally {
     resetUploadButton(row);
     activeUploadRow = null;

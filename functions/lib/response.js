@@ -13,3 +13,7 @@ export function redirect(location, init = {}) {
 export function errorResponse(message, status = 400) {
   return json({ error: message }, { status });
 }
+
+export function tokenExpiredResponse(message = "Detail token expired") {
+  return json({ error: message }, { status: 498 });
+}

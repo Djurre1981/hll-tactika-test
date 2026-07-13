@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
+import { cachePinDetail } from "../helpers/pin-detail-cache.js";
 import { pushPinCreateSnapshot, pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
 import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
@@ -353,7 +354,8 @@ export async function savePin(
         editUndoSnapshotPushed = true;
       }
 
-      await updatePin(state.currentMapId, state.editingPinId, payload);
+      const saved = await updatePin(state.currentMapId, state.editingPinId, payload);
+      cachePinDetail(state.currentMapId, state.editingPinId, saved);
       await reloadPinsForMap(state.currentMapId);
 
       if (autoSave) {
@@ -368,6 +370,7 @@ export async function savePin(
 
     if (state.panelMode === "add") {
       const created = await createPin(state.currentMapId, payload);
+      cachePinDetail(state.currentMapId, created.id, created);
       await reloadPinsForMap(state.currentMapId);
       pushPinCreateSnapshot(created.id);
       editUndoSnapshotPushed = true;
@@ -415,7 +418,7 @@ export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn })
         }
       } catch (error) {
         console.error(error);
-        alert(error.message || "Could not delete trick");
+        showEditorToast(error.message || "Could not delete trick");
         return;
       }
     }
@@ -449,7 +452,7 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   } catch (error) {
     state.positionHistory.pop();
     console.error(error);
-    alert(error.message || "Could not delete trick");
+    showEditorToast(error.message || "Could not delete trick");
   } finally {
     if (btnDeletePin) {
       btnDeletePin.disabled = false;

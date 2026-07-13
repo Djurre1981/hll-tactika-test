@@ -62,6 +62,7 @@ There are a lot of ideas (Planning section for rostering etc..?, Our version of 
 - [Circle roles](docs/roles.md)
 - [API reference](docs/api.md)
 - [Data schemas & storage](docs/data-schemas.md)
+- [Security: anti-exfiltration plan](docs/security-hybrid-plan.md) — deployed hybrid marker/detail split
 
 ## Quick start
 
@@ -72,16 +73,20 @@ Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Page
 1. Install dependencies: `npm install`
 2. Copy `.dev.vars.example` to `.dev.vars` and set:
    - `SESSION_SECRET`: long random string
+   - `PIN_DETAIL_SECRET`: separate long random string for per-pin detail tokens (required)
    - `OWNER_STEAM_IDS`: owners (full control)
    - `ADMIN_STEAM_IDS`: Comp Admins
    - `ASSIST_STEAM_IDS`: Comp Assist (optional)
    - `EDITOR_STEAM_IDS`: Comp Advisor (optional)
    - `VIEWER_STEAM_IDS`: Comp Member (optional; `USER_STEAM_IDS` is a legacy alias)
    - `STEAM_API_KEY` (optional): [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
+   - `ALERT_DISCORD_WEBHOOK_URL` (optional): Discord webhook(s) for access anomaly alerts (comma-separated for multiple)
 3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
 4. Deploy: `npm run deploy` (or connect the GitHub repo in the Cloudflare Pages dashboard)
 
 Set the same secrets in Cloudflare: **Pages → your project → Settings → Environment variables**.
+
+Optional security tuning (defaults are sensible): `DETAIL_TOKEN_TTL_SEC`, `RATE_LIMIT_*`, `ALERT_*`, `AUDIT_ENABLED`, `AUDIT_MAX_EVENTS`. See [`docs/security-hybrid-plan.md`](docs/security-hybrid-plan.md).
 
 ### Finding a Steam ID64
 
@@ -95,7 +100,7 @@ Open [http://localhost:8080](http://localhost:8080) only for map asset testing.
 
 ## Adding pins
 
-Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; they are returned from `/api/pins` after Steam auth.
+Edit `data/pins.json` to add built-in pins per map. Pins are **not** served publicly; markers load per map from `GET /api/pins?mapId=...` after Steam auth. Full pin details (video URLs, descriptions) require a per-pin token fetch.
 
 Use **Add pin** in editor mode to create tricks. Seed pins in `data/pins.json` (with `createdBy: null`) are editable by Comp Assist, Comp Admin, and Owner.
 

@@ -45,6 +45,7 @@ Your role decides what you can do. In short:
 - Use the **sidebar pin list** to jump to a trick; clicking a row focuses that pin on the map.
 - **Filter by tag** — show only climbs or only MG spots.
 - **Filter by faction** — Axis, Allies, or Neutral (mainly affects MG spot arrows; see colours below).
+- **Search** — matches pin **title**, **tag**, and **position code** only (description text is not searchable).
 
 ## Pin colours — read the map at a glance
 

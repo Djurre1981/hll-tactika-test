@@ -1,4 +1,5 @@
 import { requireAdmin } from "../../lib/auth-request.js";
+import { guardAccess } from "../../lib/access-guard.js";
 import { addManagedUser, listAllMembers } from "../../lib/roles.js";
 import { fetchSteamProfile, fetchSteamProfiles } from "../../lib/steam.js";
 import { isValidSteamId64 } from "../../lib/users-store.js";
@@ -36,6 +37,16 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
+  const access = await guardAccess(context, {
+    bucket: "admin",
+    endpoint: "admin.users.list",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+  });
+  if (access.error) {
+    return access.error;
+  }
+
   const members = await listAllMembers(context.env, auth.role);
   const users = await enrichMembers(members, context.env, auth.session);
   return json({ users });
@@ -45,6 +56,17 @@ export async function onRequestPost(context) {
   const auth = await requireAdmin(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "admin",
+    endpoint: "admin.users.create",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    statusOnSuccess: 201,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   let body;

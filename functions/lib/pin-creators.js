@@ -13,6 +13,15 @@ export async function resolveCreatorName(steamId, env, session = null) {
   return profile.name || null;
 }
 
+export async function enrichPin(pin, env, session = null) {
+  if (!pin?.createdBy || pin.createdByName) {
+    return structuredClone(pin);
+  }
+  const enriched = structuredClone(pin);
+  enriched.createdByName = await resolveCreatorName(pin.createdBy, env, session);
+  return enriched;
+}
+
 export async function enrichPinsData(data, env) {
   const steamIds = new Set();
 

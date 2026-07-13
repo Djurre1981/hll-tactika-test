@@ -108,7 +108,7 @@ export async function mirrorDiscordUrl(env, url, kind) {
         "User-Agent": "Mozilla/5.0 (compatible; HLL-Tactika/1.0)",
         Accept: "*/*",
       },
-      redirect: "follow",
+      redirect: "error",
     });
   } catch {
     return { error: EXPIRED_DISCORD_MESSAGE };

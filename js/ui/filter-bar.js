@@ -61,8 +61,6 @@ function pinMatchesSearch(pin, query) {
   if (tag?.id?.toLowerCase().includes(query)) return true;
   if (pin.tag?.toLowerCase().includes(query)) return true;
 
-  if (pin.description?.toLowerCase().includes(query)) return true;
-
   return false;
 }
 

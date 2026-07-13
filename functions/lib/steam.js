@@ -32,6 +32,23 @@ export async function verifySteamCallback(request) {
     throw new Error("Invalid OpenID response");
   }
 
+  const expectedReturnTo = `${getOrigin(request)}/api/auth/callback`;
+  const returnTo = url.searchParams.get("openid.return_to") || "";
+  if (returnTo !== expectedReturnTo) {
+    throw new Error("OpenID return_to mismatch");
+  }
+
+  const claimedId = url.searchParams.get("openid.claimed_id") || "";
+  const identity = url.searchParams.get("openid.identity") || "";
+  if (!claimedId || (identity && identity !== claimedId)) {
+    throw new Error("OpenID identity mismatch");
+  }
+
+  const signed = (url.searchParams.get("openid.signed") || "").split(",");
+  if (!signed.includes("return_to") || !signed.includes("claimed_id")) {
+    throw new Error("OpenID signed list incomplete");
+  }
+
   const body = new URLSearchParams();
   for (const [key, value] of url.searchParams.entries()) {
     if (key.startsWith("openid.")) {
@@ -51,7 +68,6 @@ export async function verifySteamCallback(request) {
     throw new Error("Steam OpenID verification failed");
   }
 
-  const claimedId = url.searchParams.get("openid.claimed_id") || "";
   const match = claimedId.match(/\/openid\/id\/(\d+)$/);
   if (!match) {
     throw new Error("Could not parse Steam ID");

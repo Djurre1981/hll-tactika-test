@@ -15,7 +15,11 @@ Auth: HttpOnly cookie `hll-tactika-session` (7-day TTL), set after Steam OpenID.
 | `GET` | `/api/auth/me` | optional cookie | See [Auth status](#auth-status) below |
 | `PATCH` | `/api/auth/preferences` | allowlisted | `200` `{ preferences }` — body: viewer UI prefs (see [data-schemas.md](data-schemas.md)) |
 | `POST` | `/api/auth/logout` | — | `200` `{ ok: true }`, clears cookie |
-| `GET` | `/api/pins` | allowlisted | `200` `{ defaultMapId, pins: { [mapId]: Pin[] } }` — see [data-schemas.md](data-schemas.md) |
+| `GET` | `/api/pins?mapId=` | allowlisted | `200` `{ mapId, pins: MarkerPin[] }` — one map only; no bulk export |
+| `GET` | `/api/pins` (no `mapId`) | allowlisted | `403` — bulk export not allowed |
+| `GET` | `/api/pins/:pinId/details?mapId=&token=` | allowlisted + token | `200` `{ pin, mapId }` — full pin; `498` if token expired; `403` if invalid |
+| `POST` | `/api/pins/:pinId/token` | allowlisted | `200` `{ detailToken }` — body: `{ mapId }`; silent refresh for expired tokens |
+| `GET` | `/api/admin/pins-full` | `owner` | `200` full catalogue + `exportedAt`, `exportedBy` |
 | `POST` | `/api/pins` | `editor`+ | `201` `{ pin, mapId }` — body: `{ mapId, pin }` |
 | `PUT` | `/api/pins/:pinId` | `editor`+ | `200` `{ pin, mapId }` — body: `{ mapId, pin: { …fields } }` (partial update) |
 | `DELETE` | `/api/pins/:pinId?mapId=` | `editor`+ | `200` `{ ok, mapId, pinId }` |
@@ -43,14 +47,17 @@ Role capabilities: [roles.md](roles.md). Pin field shapes: [data-schemas.md](dat
 
 ## Pins
 
-Stored in Cloudflare KV — see [data-schemas.md](data-schemas.md). `/data/pins.json` returns `404`; use `GET /api/pins`.
+Stored in Cloudflare KV — see [data-schemas.md](data-schemas.md). `/data/pins.json` returns `404`.
 
+- **Markers** (`GET ?mapId=`) — `id`, coords, tag, faction, title, thumbnail, `detailToken`, `hasMedia`; no `description`, `videoUrl`, `mediaItems`, or creator fields.
+- **Details** (`GET …/details`) — HMAC token in query (`PIN_DETAIL_SECRET`, 20 min TTL). Expired token → **HTTP 498** (client refreshes via `POST …/token` and retries).
+- **Token refresh** (`POST …/token`) — body `{ mapId }` only; returns fresh `detailToken`.
 - **POST** — `createdBy` / `createdByName` set server-side. `pin.id` optional (auto `pin-<uuid>`). Discord CDN attachment URLs in `mediaItems`, `videoUrl`, or `thumbnail` are **mirrored to R2 on save** and rewritten to `/api/videos/{attachmentId}` or `/api/images/{attachmentId}` before KV write (deduped by attachment ID).
 - **PUT** — only sent fields updated; non-`mg-spot` tag strips `dirX`/`dirY`. Same Discord mirroring as POST when media fields change.
 - **DELETE** — `mapId` query param required.
 - **Permissions** — `editor` can only mutate own pins; `assist`/`admin`/`owner` can mutate any pin.
 
-Common errors: `400` validation (including expired Discord links — *"Discord link expired — copy a fresh attachment URL from Discord or upload the file directly"*), `403` role/ownership, `404` pin not found, `503` KV or R2 unavailable.
+Common errors: `400` validation (including expired Discord links — *"Discord link expired — copy a fresh attachment URL from Discord or upload the file directly"*), `403` role/ownership, `404` pin not found, `429` rate limit (`Retry-After` header), `498` expired detail token, `503` KV or R2 unavailable.
 
 ---
 

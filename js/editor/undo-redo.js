@@ -7,7 +7,7 @@ import { updatePinElementPosition } from "../helpers/proximity.js";
 import { persistPinPosition } from "../helpers/pin-persist.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 import { renderPins } from "../ui/pin-marker.js";
-import { renderPinList } from "../ui/sidebar.js";
+import { showEditorToast } from "../ui/editor-toast.js";
 
 const MAX_EDIT_HISTORY = 30;
 
@@ -135,7 +135,7 @@ function applyPinMoveSnapshot(snapshot) {
   }
   void persistPinPosition(pin).catch((error) => {
     console.error(error);
-    alert(error.message || "Could not save pin position");
+    showEditorToast(error.message || "Could not save pin position");
   });
   return true;
 }
@@ -207,7 +207,7 @@ async function applyPinUpdateSnapshot(snapshot) {
     return true;
   } catch (error) {
     console.error(error);
-    alert(error.message || "Could not revert trick changes");
+    showEditorToast(error.message || "Could not revert trick changes");
     return false;
   }
 }
@@ -219,7 +219,7 @@ async function applyPinRestoreSnapshot(snapshot) {
     return true;
   } catch (error) {
     console.error(error);
-    alert(error.message || "Could not restore trick");
+    showEditorToast(error.message || "Could not restore trick");
     return false;
   }
 }
@@ -231,7 +231,7 @@ async function applyPinRemoveSnapshot(snapshot) {
     return true;
   } catch (error) {
     console.error(error);
-    alert(error.message || "Could not delete trick");
+    showEditorToast(error.message || "Could not delete trick");
     return false;
   }
 }

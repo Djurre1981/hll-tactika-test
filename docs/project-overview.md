@@ -63,9 +63,11 @@ sequenceDiagram
 
   Browser->>CF: GET /api/auth/me (cookie)
   CF->>Browser: session + role
-  Browser->>CF: GET /api/pins
-  CF->>KV: load pins JSON
-  CF->>Browser: enriched pin catalog
+  Browser->>CF: GET /api/pins?mapId=SMDMV2
+  CF->>KV: load pins for map
+  CF->>Browser: markers + detailToken per pin
+  Browser->>CF: GET /api/pins/:id/details?mapId&token
+  CF->>Browser: full pin (video, description)
   Browser->>CF: PUT /api/pins/:id (editor)
   CF->>KV: save updated pins
   CF->>Browser: updated pin
@@ -73,7 +75,7 @@ sequenceDiagram
 
 - **Persistence**: Cloudflare KV (`PINS_KV` binding in [`wrangler.toml`](../wrangler.toml)); local dev falls back to in-memory store ([`functions/lib/pins-store.js`](../functions/lib/pins-store.js))
 - **Concurrency**: Last-write-wins on the full pins JSON blob — no optimistic locking or live multi-user sync
-- **Protection**: [`functions/_middleware.js`](../functions/_middleware.js) blocks direct access to `/data/pins.json`; pins only via authenticated `/api/pins`
+- **Protection**: [`functions/_middleware.js`](../functions/_middleware.js) blocks direct access to `/data/pins.json`; bulk `GET /api/pins` returns 403 — markers load per map via `GET /api/pins?mapId=`
 - **Seed data**: [`data/pins.json`](../data/pins.json) shipped with repo; copied into KV on first prod load
 
 If you expected a collaborative canvas backbone, this project uses **server-authoritative CRUD** instead.
@@ -93,7 +95,8 @@ If you expected a collaborative canvas backbone, this project uses **server-auth
 | Dependencies | Only **Wrangler ^4.0.0** (devDependency) — zero runtime npm deps |
 
 **API routes** (`functions/api/`):
-- `GET/POST /api/pins`, `PUT/DELETE /api/pins/:pinId`
+- `GET /api/pins?mapId=` (markers), `GET /api/pins/:pinId/details`, `POST /api/pins/:pinId/token`, `POST/PUT/DELETE /api/pins`
+- `GET /api/admin/pins-full` (owner backup export)
 - `GET /api/auth/steam`, `GET /api/auth/callback`, `GET /api/auth/me`, `POST /api/auth/logout`
 - `GET/POST /api/admin/users`, `DELETE/PATCH /api/admin/users/:steamId`
 - `GET /api/medal/resolve?url=` — Medal.tv clip proxy
