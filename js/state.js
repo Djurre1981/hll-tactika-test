@@ -8,7 +8,7 @@ export const state = {
   stratsCatalog: [],
   activeStrat: null,
   activeSlideId: null,
-  stratsPanelTab: "strat",
+  stratsPanelView: "slides",
   pendingDuplicateSlideId: null,
   stratsToolSettings: createDefaultToolSettings(),
   stratsSaveInFlight: false,

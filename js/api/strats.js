@@ -61,3 +61,15 @@ export async function duplicateSlide(stratId, slideId, { targetStratId, name } =
   );
   return data;
 }
+
+export async function fetchStratSketchImportMetadata(urlOrCode) {
+  const params = new URLSearchParams({ url: String(urlOrCode || "").trim() });
+  return stratsApiRequest(`/api/strats/import-stratsketch/metadata?${params}`);
+}
+
+export async function importStratSketchFromServer(urlOrCode, { title } = {}) {
+  return stratsApiRequest("/api/strats/import-stratsketch", {
+    method: "POST",
+    body: JSON.stringify({ url: String(urlOrCode || "").trim(), title }),
+  });
+}

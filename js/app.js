@@ -44,13 +44,16 @@ async function init() {
     import("./ui/app-mode.js"),
     import("./ui/toggles.js"),
   ]);
-  const restModulesPromise = Promise.all([
-    import("./ui/admin-panel.js"),
+  const coreUiPromise = Promise.all([
     import("./api/pins.js"),
     import("./ui/map-picker.js"),
     import("./editor/undo-redo.js"),
     import("./bind-ui.js"),
-    import("./ui/strats.js"),
+  ]);
+  const stratsUiPromise = import("./ui/strats.js");
+  const restModulesPromise = Promise.all([
+    import("./ui/admin-panel.js"),
+    coreUiPromise,
   ]);
   const spawnPromise = mapsModulePromise.then(({ loadSpawnData }) => loadSpawnData());
   const adminPanelPromise = import("./ui/admin-panel.js");
@@ -181,11 +184,7 @@ async function init() {
 
   const [
     _adminPanelModule,
-    { fetchPinsCatalog },
-    { populateMapSelect },
-    { initUndoRedoKeyboard },
-    { bindUi },
-    { initStratsUi },
+    [{ fetchPinsCatalog }, { populateMapSelect }, { initUndoRedoKeyboard }, { bindUi }],
   ] = await restModulesPromise;
 
   async function reloadPinsForMap(mapId = state.currentMapId) {
@@ -202,7 +201,13 @@ async function init() {
   initUndoRedoKeyboard();
   syncAppModeChrome();
   bindUi({ reloadPinsForMap, switchMap });
-  await initStratsUi({ switchMap, mapViewer: state.mapViewer });
+
+  try {
+    const { initStratsUi } = await stratsUiPromise;
+    await initStratsUi({ switchMap, mapViewer: state.mapViewer });
+  } catch (error) {
+    console.error("Strats UI failed to load:", error);
+  }
 }
 
 init();

@@ -35,6 +35,9 @@ const ICON_IDS = new Set([
   "location-dot",
 ]);
 
+const COORD_MIN = -20;
+const COORD_MAX = 120;
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -45,8 +48,8 @@ function normalizePoint(point) {
   const y = Number(point.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   return {
-    x: clamp(x, 0, 100),
-    y: clamp(y, 0, 100),
+    x: clamp(x, COORD_MIN, COORD_MAX),
+    y: clamp(y, COORD_MIN, COORD_MAX),
   };
 }
 
@@ -77,6 +80,9 @@ function normalizeMeta(meta = {}, type) {
   if (type === "icon") {
     normalized.iconId = ICON_IDS.has(meta.iconId) ? meta.iconId : "check";
     normalized.iconLabel = String(meta.iconLabel || "").slice(0, 40);
+    if (Number.isFinite(Number(meta.ssIconId)) && Number(meta.ssIconId) > 19) {
+      normalized.ssIconId = Number(meta.ssIconId);
+    }
   }
   return normalized;
 }

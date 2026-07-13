@@ -20,6 +20,7 @@ function buildStratFromBody(strat, createdBy, createdByName) {
       createdByName,
       createdAt: strat.createdAt || now,
       updatedAt: now,
+      importSource: strat.importSource || undefined,
     },
   };
 }

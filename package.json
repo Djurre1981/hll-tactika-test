@@ -3,15 +3,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev . --compatibility-date=2024-01-01",
+    "dev": "node scripts/run-dev.mjs",
+    "dev:pages": "wrangler pages dev . --compatibility-date=2024-01-01",
     "deploy": "wrangler pages deploy . --project-name=hll-tactika --branch=main",
     "migrate:videos:setup": "powershell -File scripts/video-migration/setup-r2.ps1",
     "migrate:videos:export": "node scripts/video-migration/1-export-discord.mjs",
     "migrate:videos:download": "node scripts/video-migration/2-download-videos.mjs",
     "migrate:videos:upload": "node scripts/video-migration/3-upload-r2.mjs",
-    "migrate:videos:apply": "node scripts/video-migration/4-apply-kv.mjs"
+    "migrate:videos:apply": "node scripts/video-migration/4-apply-kv.mjs",
+    "stratsketch:spike": "node scripts/stratsketch-spike.mjs",
+    "stratsketch:icons": "node scripts/build-stratsketch-icon-pack.mjs"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.0.0",
+    "ws": "^8.21.0"
   }
 }

@@ -4,7 +4,8 @@ import { hidePreviewImmediately } from "./pin-preview.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { closeModal } from "./pin-modal.js";
-import { confirmStratsUnsavedAction, discardStratsUnsavedChanges } from "./strats.js";
+import { confirmStratsUnsavedAction, discardStratsUnsavedChanges } from "../helpers/strats-unsaved.js";
+import { exitStratEditorSession } from "./strats.js";
 
 function getLayout() {
   return document.querySelector(".layout");
@@ -38,7 +39,6 @@ export function syncAppModeChrome() {
   document.getElementById("strats-draw-layer")?.classList.toggle("hidden", !showDrawLayer);
   document.getElementById("strats-draw-preview")?.classList.toggle("hidden", !showDrawLayer);
   document.getElementById("strats-handles-layer")?.classList.toggle("hidden", !showDrawLayer);
-  document.getElementById("strats-map-nav")?.classList.toggle("hidden", !showDrawLayer);
 
   const viewport = document.getElementById("map-viewport");
   viewport?.classList.toggle("is-strats-mode", mode === "strats");
@@ -63,7 +63,8 @@ export function setAppMode(mode) {
     return;
   }
 
-  if (state.appMode === "strats" && mode !== "strats") {
+  const leavingStrats = state.appMode === "strats" && mode !== "strats";
+  if (leavingStrats) {
     if (!confirmStratsUnsavedAction("Discard unsaved strat changes and leave Strats mode?")) {
       return;
     }
@@ -80,6 +81,10 @@ export function setAppMode(mode) {
   }
 
   state.appMode = mode;
+
+  if (leavingStrats) {
+    void exitStratEditorSession();
+  }
 
   if (mode === "editor" && state.panelMode === null) {
     enterEditorMode();

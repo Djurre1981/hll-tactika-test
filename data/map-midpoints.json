@@ -1,0 +1,102 @@
+{
+  "Carentan": [
+    { "id": "12", "label": "Canal Crossing" },
+    { "id": "22", "label": "Town Center" },
+    { "id": "32", "label": "Train Station" }
+  ],
+  "Driel": [
+    { "id": "21", "label": "Brick Factory" },
+    { "id": "22", "label": "Railway Bridge" },
+    { "id": "23", "label": "Gun Emplacements" }
+  ],
+  "ElAlamein": [
+    { "id": "12", "label": "Desert Rat Trenches" },
+    { "id": "22", "label": "Oasis" },
+    { "id": "32", "label": "Valley" }
+  ],
+  "Elsenborn": [
+    { "id": "21", "label": "Road to Elsenborn Ridge" },
+    { "id": "22", "label": "Dug Out Tank" },
+    { "id": "23", "label": "Checkpoint" }
+  ],
+  "Foy": [
+    { "id": "21", "label": "West Bend" },
+    { "id": "22", "label": "Southern Edge" },
+    { "id": "23", "label": "Dugout Barn" }
+  ],
+  "Hill400": [
+    { "id": "12", "label": "Flak Pits" },
+    { "id": "22", "label": "Hill 400" },
+    { "id": "32", "label": "Southern Approach" }
+  ],
+  "HurtgenV2": [
+    { "id": "12", "label": "North Pass" },
+    { "id": "22", "label": "The Scar" },
+    { "id": "32", "label": "The Siegfried Line" }
+  ],
+  "Juno": [
+    { "id": "21", "label": "Graye-Sur-Mer" },
+    { "id": "22", "label": "La Suelles River" },
+    { "id": "23", "label": "Market Square" }
+  ],
+  "Kharkov": [
+    { "id": "21", "label": "Water Mill" },
+    { "id": "22", "label": "St Mary" },
+    { "id": "23", "label": "Distillery" }
+  ],
+  "Kursk": [
+    { "id": "21", "label": "The Windmills" },
+    { "id": "22", "label": "Yamki" },
+    { "id": "23", "label": "Oleg's House" }
+  ],
+  "Mortain": [
+    { "id": "12", "label": "Hill 314" },
+    { "id": "22", "label": "Petit Chappelle Saint Michel" },
+    { "id": "32", "label": "U.S. Southern Roadblock" }
+  ],
+  "Omaha": [
+    { "id": "12", "label": "West Vierville" },
+    { "id": "22", "label": "Vierville Sur Mer" },
+    { "id": "32", "label": "Artillery Battery" }
+  ],
+  "PHL": [
+    { "id": "21", "label": "Groult Pillbox" },
+    { "id": "22", "label": "Carentan Causeway" },
+    { "id": "23", "label": "Flak Position" }
+  ],
+  "Remagen": [
+    { "id": "21", "label": "St. Severin Chapel" },
+    { "id": "22", "label": "Ludendorff Bridge" },
+    { "id": "23", "label": "Bauernhof Am Rhein" }
+  ],
+  "SMDMV2": [
+    { "id": "21", "label": "The Dugout" },
+    { "id": "22", "label": "AA Network" },
+    { "id": "23", "label": "Pierre's Farm" }
+  ],
+  "SME": [
+    { "id": "12", "label": "Hospice" },
+    { "id": "22", "label": "Ste Mère Église" },
+    { "id": "32", "label": "Checkpoint" }
+  ],
+  "Stalingrad": [
+    { "id": "21", "label": "Yellow House" },
+    { "id": "22", "label": "Carriage Depot" },
+    { "id": "23", "label": "Pavlov's House" }
+  ],
+  "Smolensk": [
+    { "id": "12", "label": "Pyatnitskii Overpass" },
+    { "id": "22", "label": "Zhelyabova Square" },
+    { "id": "32", "label": "8/4th Battalion" }
+  ],
+  "Tobruk": [
+    { "id": "12", "label": "Desert Rat Caves" },
+    { "id": "22", "label": "Church Grounds" },
+    { "id": "32", "label": "Southern Approach" }
+  ],
+  "Utah": [
+    { "id": "12", "label": "WN4" },
+    { "id": "22", "label": "The Chapel" },
+    { "id": "32", "label": "WN7" }
+  ]
+}

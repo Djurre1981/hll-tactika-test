@@ -1,9 +1,9 @@
-import { requireAuth } from "../../../../lib/auth-request.js";
-import { canEnterEditorMode } from "../../../../lib/pin-permissions.js";
-import { normalizeSlideName } from "../../../../lib/strat-fields.js";
-import { canModifyStrat } from "../../../../lib/strat-permissions.js";
-import { findStrat, loadStratsData, saveStratsData } from "../../../../lib/strats-store.js";
-import { errorResponse, json } from "../../../../lib/response.js";
+import { requireAuth } from "../../../../../lib/auth-request.js";
+import { canEnterEditorMode } from "../../../../../lib/pin-permissions.js";
+import { normalizeSlideName } from "../../../../../lib/strat-fields.js";
+import { canModifyStrat } from "../../../../../lib/strat-permissions.js";
+import { findStrat, loadStratsData, saveStratsData } from "../../../../../lib/strats-store.js";
+import { errorResponse, json } from "../../../../../lib/response.js";
 
 function cloneSlide(slide, order, name) {
   return {

@@ -1,8 +1,32 @@
 import { STRAT_ICON_OPTIONS } from "../helpers/strat-defaults.js";
 import { getObjectBounds } from "./strat-object-schema.js";
+import { getStratSketchIconSync } from "./stratsketch-icons.js";
+import ssIconPack from "./stratsketch-icon-pack.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ICON_MAP = Object.fromEntries(STRAT_ICON_OPTIONS.map((option) => [option.id, option.icon]));
+const LEGACY_ICON_GLYPHS = {
+  check: "✓",
+  xmark: "✕",
+  "circle-question": "?",
+  "circle-info": "i",
+  "triangle-exclamation": "!",
+  house: "⌂",
+  ban: "⊘",
+  binoculars: "◎",
+  bomb: "✹",
+  "car-side": "▣",
+  "truck-pickup": "▣",
+  "jet-fighter": "▲",
+  crosshairs: "+",
+  flag: "⚑",
+  gun: "╋",
+  shield: "⛨",
+  "skull-crossbones": "☠",
+  "person-rifle": "⚔",
+  "map-pin": "📍",
+  "location-dot": "•",
+};
 
 function dashArray(lineType, size) {
   if (lineType === "dashed") return `${size * 2.5} ${size * 1.5}`;
@@ -73,11 +97,20 @@ function createBaseGroup(object, { selected = false, preview = false } = {}) {
 }
 
 function renderPen(group, object) {
+  const pointsStr = object.points.map((point) => `${point.x},${point.y}`).join(" ");
+
+  if (object.style.filled && object.points.length >= 3) {
+    const polygon = document.createElementNS(SVG_NS, "polygon");
+    polygon.setAttribute("points", pointsStr);
+    polygon.setAttribute("fill", object.style.color);
+    polygon.setAttribute("fill-opacity", "0.25");
+    setStrokeAttributes(polygon, object.style);
+    group.appendChild(polygon);
+    return;
+  }
+
   const polyline = document.createElementNS(SVG_NS, "polyline");
-  polyline.setAttribute(
-    "points",
-    object.points.map((point) => `${point.x},${point.y}`).join(" ")
-  );
+  polyline.setAttribute("points", pointsStr);
   polyline.setAttribute("fill", "none");
   setStrokeAttributes(polyline, object.style);
   group.appendChild(polyline);
@@ -173,9 +206,25 @@ function renderText(group, object) {
   group.appendChild(text);
 }
 
-function renderIcon(group, object) {
+function renderStratSketchIcon(group, object, ssIcon) {
   const [point] = object.points;
-  const size = Math.max(1.2, object.style.size * 0.35);
+  const displaySize = Math.max(1.8, object.style.size * 0.55);
+  const scale = displaySize / Math.max(ssIcon.width, ssIcon.height);
+  const iconGroup = document.createElementNS(SVG_NS, "g");
+  iconGroup.setAttribute(
+    "transform",
+    `translate(${point.x} ${point.y}) scale(${scale}) translate(${-ssIcon.width / 2} ${-ssIcon.height / 2})`
+  );
+
+  const path = document.createElementNS(SVG_NS, "path");
+  path.setAttribute("d", ssIcon.path);
+  path.setAttribute("fill", object.style.color);
+  path.setAttribute("stroke", "none");
+  iconGroup.appendChild(path);
+  group.appendChild(iconGroup);
+}
+
+function renderLegacyIconBadge(group, object, point, size) {
   const circle = document.createElementNS(SVG_NS, "circle");
   circle.setAttribute("cx", String(point.x));
   circle.setAttribute("cy", String(point.y));
@@ -184,15 +233,44 @@ function renderIcon(group, object) {
   circle.setAttribute("stroke", object.style.color);
   circle.setAttribute("stroke-width", String(object.style.size * 0.08));
   group.appendChild(circle);
+  return circle;
+}
 
-  const iconClass = ICON_MAP[object.meta?.iconId] || "fa-check";
-  const foreign = document.createElementNS(SVG_NS, "foreignObject");
-  foreign.setAttribute("x", String(point.x - size / 2));
-  foreign.setAttribute("y", String(point.y - size / 2));
-  foreign.setAttribute("width", String(size));
-  foreign.setAttribute("height", String(size));
-  foreign.innerHTML = `<div xmlns="http://www.w3.org/1999/xhtml" class="strat-object__icon"><i class="fa-solid ${iconClass}"></i></div>`;
-  group.appendChild(foreign);
+function renderRasterLegacyIcon(group, object, point, size) {
+  renderLegacyIconBadge(group, object, point, size);
+  const glyph = document.createElementNS(SVG_NS, "text");
+  glyph.setAttribute("x", String(point.x));
+  glyph.setAttribute("y", String(point.y));
+  glyph.setAttribute("fill", object.style.color);
+  glyph.setAttribute("font-size", String(size * 0.55));
+  glyph.setAttribute("text-anchor", "middle");
+  glyph.setAttribute("dominant-baseline", "middle");
+  glyph.textContent = LEGACY_ICON_GLYPHS[object.meta?.iconId] || "•";
+  group.appendChild(glyph);
+}
+
+function renderIcon(group, object, { rasterize = false } = {}) {
+  const [point] = object.points;
+  const size = Math.max(1.2, object.style.size * 0.35);
+  const ssIcon = object.meta?.ssIconId
+    ? getStratSketchIconSync(object.meta.ssIconId, ssIconPack)
+    : null;
+
+  if (ssIcon) {
+    renderStratSketchIcon(group, object, ssIcon);
+  } else if (rasterize) {
+    renderRasterLegacyIcon(group, object, point, size);
+  } else {
+    renderLegacyIconBadge(group, object, point, size);
+    const iconClass = ICON_MAP[object.meta?.iconId] || "fa-check";
+    const foreign = document.createElementNS(SVG_NS, "foreignObject");
+    foreign.setAttribute("x", String(point.x - size / 2));
+    foreign.setAttribute("y", String(point.y - size / 2));
+    foreign.setAttribute("width", String(size));
+    foreign.setAttribute("height", String(size));
+    foreign.innerHTML = `<div xmlns="http://www.w3.org/1999/xhtml" class="strat-object__icon"><i class="fa-solid ${iconClass}"></i></div>`;
+    group.appendChild(foreign);
+  }
 
   if (object.meta?.iconLabel) {
     const label = document.createElementNS(SVG_NS, "text");
@@ -224,6 +302,7 @@ function renderPing(group, object) {
 
 export function renderStratObject(object, options = {}) {
   const group = createBaseGroup(object, options);
+  const { rasterize = false } = options;
 
   switch (object.type) {
     case "pen":
@@ -245,7 +324,7 @@ export function renderStratObject(object, options = {}) {
       renderText(group, object);
       break;
     case "icon":
-      renderIcon(group, object);
+      renderIcon(group, object, { rasterize });
       break;
     case "ping":
       renderPing(group, object);
@@ -257,26 +336,52 @@ export function renderStratObject(object, options = {}) {
   return group;
 }
 
-export function renderStratObjects(objects, { selectedId = null, preview = null } = {}) {
+export function renderStratObjects(objects, { selectedId = null, preview = null, rasterize = false } = {}) {
   const fragment = document.createDocumentFragment();
   const sorted = [...objects].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
 
   for (const object of sorted) {
-    fragment.appendChild(renderStratObject(object, { selected: object.id === selectedId }));
+    fragment.appendChild(renderStratObject(object, { selected: object.id === selectedId, rasterize }));
   }
 
   if (preview) {
-    fragment.appendChild(renderStratObject(preview, { preview: true }));
+    fragment.appendChild(renderStratObject(preview, { preview: true, rasterize }));
   }
 
   return fragment;
 }
 
-export function renderStratThumbnail(objects, mapImageSrc) {
+export function renderStratSlideOverlaySvg(objects) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.appendChild(renderStratObjects(objects || [], { rasterize: true }));
+  return svg;
+}
+
+export function renderRasterSlide(imageUrl) {
+  const fragment = document.createDocumentFragment();
+  const image = document.createElementNS(SVG_NS, "image");
+  image.setAttribute("href", imageUrl);
+  image.setAttribute("x", "0");
+  image.setAttribute("y", "0");
+  image.setAttribute("width", "100");
+  image.setAttribute("height", "100");
+  image.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  fragment.appendChild(image);
+  return fragment;
+}
+
+export function renderStratThumbnail(objects, mapImageSrc, { rasterUrl } = {}) {
   const svg = document.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 100 100");
   svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
   svg.setAttribute("class", "strats-slides__thumb-svg");
+
+  if (rasterUrl) {
+    svg.appendChild(renderRasterSlide(rasterUrl));
+    return svg;
+  }
 
   if (mapImageSrc) {
     const image = document.createElementNS(SVG_NS, "image");

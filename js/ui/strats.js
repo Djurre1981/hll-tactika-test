@@ -2,9 +2,17 @@ import { state } from "../state.js";
 import {
   createStrat,
   createSlide,
+  ensureStratMatch,
   getActiveSlide,
+  getStratDefaultSlideMapId,
   sortSlides,
 } from "../helpers/strat-defaults.js";
+import {
+  getMidpointsForMap,
+  getStartingPointLabel,
+  isValidStartingPoint,
+  loadMapMidpoints,
+} from "../helpers/map-midpoints.js";
 import {
   createStrat as apiCreateStrat,
   deleteStrat as apiDeleteStrat,
@@ -13,6 +21,7 @@ import {
   fetchStratsCatalog,
   updateStrat as apiUpdateStrat,
 } from "../api/strats.js";
+import { getCurrentUser } from "../api/auth.js";
 import { initStratsTools, setStratsToolsEnabled, syncStratsToolsUi, handleStratsSelectionChange } from "./strats-tools.js";
 import {
   clearDrawLayer,
@@ -23,10 +32,15 @@ import {
 } from "../strats/strat-drawing.js";
 import { renderStratThumbnail } from "../strats/strat-draw-render.js";
 import { normalizeStratObjects } from "../strats/strat-object-schema.js";
+import { importStratSketchBriefing, parseStratSketchCode, fetchStratSketchImportMetadata } from "../strats/stratsketch-import.js";
 
-const STRAT_UI_PREFS_KEY = "hll-tactika-strat-ui-prefs";
-let saveTimer = null;
-let slideDragId = null;
+import {
+  clearStratsDirty,
+  confirmStratsUnsavedAction,
+  discardStratsUnsavedChanges,
+  hasStratsUnsavedChanges,
+  scheduleStratsAutosave,
+} from "../helpers/strats-unsaved.js";
 
 function getMapName(mapId) {
   return state.mapCatalog.find((map) => map.id === mapId)?.name || mapId;
@@ -38,6 +52,164 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function setImportStatus(message, { error = false } = {}) {
+  const status = document.getElementById("strats-import-status");
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("is-error", error);
+}
+
+function resetImportDialog() {
+  setImportStatus("");
+  setImportPreview(null);
+  const titleInput = document.getElementById("strats-import-title");
+  if (titleInput) titleInput.value = "";
+}
+
+function setImportPreview(metadata) {
+  const preview = document.getElementById("strats-import-preview");
+  if (!preview) return;
+  if (!metadata) {
+    preview.textContent = "";
+    preview.classList.add("hidden");
+    return;
+  }
+
+  const lines = [];
+  if (metadata.name) lines.push(`Title: ${metadata.name}`);
+  if (metadata.creatorUsername) lines.push(`Creator: ${metadata.creatorUsername}`);
+  if (metadata.createdAt) {
+    const date = new Date(metadata.createdAt);
+    if (!Number.isNaN(date.getTime())) {
+      lines.push(`Created: ${date.toLocaleString()}`);
+    }
+  }
+  if (metadata.slideCount) lines.push(`Slides: ${metadata.slideCount}`);
+
+  if (!lines.length) {
+    preview.textContent = "";
+    preview.classList.add("hidden");
+    return;
+  }
+
+  preview.textContent = lines.join(" · ");
+  preview.classList.remove("hidden");
+}
+
+function buildStratSketchImportNotes(metadata = {}) {
+  const lines = [];
+  if (metadata.creatorUsername) {
+    lines.push(`StratSketch creator: ${metadata.creatorUsername}`);
+  }
+  if (metadata.createdAt) {
+    lines.push(`StratSketch created: ${metadata.createdAt}`);
+  }
+  if (metadata.code) {
+    lines.push(`StratSketch code: ${metadata.code}`);
+  }
+  return lines.join("\n");
+}
+
+function buildStratSketchImportSource(metadata = {}) {
+  return {
+    type: "stratsketch",
+    code: metadata.code || null,
+    revision: metadata.revision ?? null,
+    importMode: "png",
+    ssTitle: metadata.name || null,
+    ssCreator: metadata.creatorUsername || null,
+    ssCreatedAt: metadata.createdAt || null,
+  };
+}
+
+let importPreviewTimer = null;
+
+async function queueImportPreview(url) {
+  clearTimeout(importPreviewTimer);
+  const code = parseStratSketchCode(url);
+  if (!code) {
+    setImportPreview(null);
+    return;
+  }
+
+  importPreviewTimer = setTimeout(async () => {
+    try {
+      const { metadata } = await fetchStratSketchImportMetadata(url);
+      setImportPreview(metadata);
+      const titleInput = document.getElementById("strats-import-title");
+      if (titleInput && !titleInput.value.trim() && metadata?.name) {
+        titleInput.placeholder = metadata.name;
+      }
+    } catch {
+      setImportPreview(null);
+    }
+  }, 350);
+}
+
+async function submitStratSketchImport(event) {
+  event.preventDefault();
+  const urlInput = document.getElementById("strats-import-url");
+  const titleInput = document.getElementById("strats-import-title");
+  const submitButton = document.getElementById("btn-strats-import-submit");
+  const url = urlInput?.value?.trim() || "";
+  if (!url) return;
+
+  if (hasStratsUnsavedChanges()) {
+    if (!window.confirm("Discard unsaved changes and import a StratSketch briefing?")) return;
+    discardStratsUnsavedChanges();
+  }
+
+  submitButton?.setAttribute("disabled", "true");
+  setImportStatus("Loading briefing from StratSketch…");
+
+  try {
+    const result = await importStratSketchBriefing(url, {
+      defaultMapId: state.currentMapId,
+      mapCatalog: state.mapCatalog,
+      title: titleInput?.value?.trim(),
+      onStatus: setImportStatus,
+    });
+
+    if (result.mode === "server") {
+      state.stratsCatalog.push(result.strat);
+      await openStrat(result.strat);
+      renderStratsPicker();
+      setSaveStatus("Imported");
+      document.getElementById("strats-import-dialog")?.close();
+      resetImportDialog();
+      return;
+    }
+
+    const converted = result.converted;
+    const titleOverride = titleInput?.value?.trim();
+    const draft = createStrat({
+      title: titleOverride || converted.title,
+      team: converted.tags?.team,
+      type: converted.tags?.type,
+      mapId: converted.slides[0]?.mapId || state.currentMapId,
+    });
+    const created = await apiCreateStrat({
+      ...draft,
+      title: titleOverride || converted.title,
+      notes: buildStratSketchImportNotes(result.metadata),
+      tags: converted.tags,
+      slides: converted.slides,
+      importSource: buildStratSketchImportSource(result.metadata),
+    });
+
+    state.stratsCatalog.push(created);
+    await openStrat(created);
+    renderStratsPicker();
+    setSaveStatus("Imported");
+    document.getElementById("strats-import-dialog")?.close();
+    resetImportDialog();
+  } catch (error) {
+    setImportStatus(error.message || "Import failed", { error: true });
+  } finally {
+    submitButton?.removeAttribute("disabled");
+  }
 }
 
 function setSaveStatus(message, { error = false } = {}) {
@@ -55,40 +227,24 @@ function loadStratUiPrefs() {
   }
 }
 
-function saveStratUiPrefs(stratId, { slideId, panelTab } = {}) {
+function saveStratUiPrefs(stratId, { slideId } = {}) {
   if (!stratId) return;
   const prefs = loadStratUiPrefs();
   prefs[stratId] = {
     slideId: slideId ?? prefs[stratId]?.slideId ?? null,
-    panelTab: panelTab ?? prefs[stratId]?.panelTab ?? "strat",
   };
   localStorage.setItem(STRAT_UI_PREFS_KEY, JSON.stringify(prefs));
 }
 
-function markStratsDirty() {
-  state.stratsDirty = true;
-}
+const STRAT_UI_PREFS_KEY = "hll-tactika-strat-ui-prefs";
+let slideDragId = null;
+let stratsPickerOpen = false;
 
-function clearStratsDirty() {
-  state.stratsDirty = false;
-}
-
-export function hasStratsUnsavedChanges() {
-  return state.stratsDirty || Boolean(saveTimer);
-}
-
-export function confirmStratsUnsavedAction(message = "You have unsaved changes. Continue anyway?") {
-  if (!hasStratsUnsavedChanges()) return true;
-  return window.confirm(message);
-}
-
-export function discardStratsUnsavedChanges() {
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
-  clearStratsDirty();
-}
+export {
+  confirmStratsUnsavedAction,
+  discardStratsUnsavedChanges,
+  hasStratsUnsavedChanges,
+};
 
 function filterStratsBySearch(strats, query) {
   const needle = String(query || "").trim().toLowerCase();
@@ -99,9 +255,132 @@ function filterStratsBySearch(strats, query) {
       strat.tags?.team,
       strat.tags?.type,
       strat.notes,
+      strat.match?.opponent,
+      strat.match?.faction,
+      strat.createdByName,
     ].join(" ").toLowerCase();
     return haystack.includes(needle);
   });
+}
+
+function setStratsPickerOpen(open) {
+  stratsPickerOpen = open;
+  const picker = document.getElementById("strats-picker");
+  const menu = document.getElementById("strats-picker-menu");
+  const trigger = document.getElementById("strats-picker-trigger");
+  const closeBtn = document.getElementById("btn-strats-close-editor");
+  const panelBody = document.getElementById("strats-panel-body");
+  picker?.classList.toggle("is-open", open);
+  panelBody?.classList.toggle("is-picker-open", open);
+  menu?.classList.toggle("hidden", !open);
+  trigger?.setAttribute("aria-expanded", String(open));
+  closeBtn?.classList.toggle("hidden", !state.activeStrat);
+
+  if (open) {
+    const search = document.getElementById("strats-picker-search");
+    if (search) {
+      search.value = "";
+    }
+    renderStratsPickerList();
+    window.setTimeout(() => search?.focus(), 0);
+  }
+}
+
+function renderStratsPickerTrigger() {
+  const label = document.getElementById("strats-picker-label");
+  const meta = document.getElementById("strats-picker-meta");
+  if (!label || !meta) return;
+
+  if (!state.activeStrat) {
+    label.textContent = "Select or create a strat…";
+    meta.textContent = "";
+    meta.classList.add("hidden");
+    return;
+  }
+
+  const strat = state.activeStrat;
+  label.textContent = strat.title || "Untitled Strat";
+  const team = strat.tags?.team?.toUpperCase() || "JR";
+  const type = strat.tags?.type === "tournament" ? "Tournament" : "Friendly";
+  const slideCount = strat.slides?.length || 0;
+  meta.textContent = `${team} · ${type} · ${slideCount} slide${slideCount === 1 ? "" : "s"}`;
+  meta.classList.remove("hidden");
+}
+
+function renderStratsPickerList() {
+  const list = document.getElementById("strats-picker-list");
+  if (!list) return;
+
+  const query = document.getElementById("strats-picker-search")?.value || "";
+  const catalog = filterStratsBySearch(state.stratsCatalog, query);
+
+  if (!state.stratsCatalog.length) {
+    list.innerHTML = '<li class="strats-open__empty">No strats yet. Create one with +.</li>';
+    return;
+  }
+
+  if (!catalog.length) {
+    list.innerHTML = '<li class="strats-open__empty">No matching strats.</li>';
+    return;
+  }
+
+  list.innerHTML = "";
+  const sorted = [...catalog].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+
+  for (const strat of sorted) {
+    const item = document.createElement("li");
+    item.className = "strats-open__item";
+    const isActive = strat.id === state.activeStrat?.id;
+    const showDelete = canDeleteStratFromOpenList();
+    const team = strat.tags?.team?.toUpperCase() || "JR";
+    const type = strat.tags?.type || "friendly";
+    const slideCount = strat.slides?.length || 0;
+    item.innerHTML = `
+      <button type="button" class="strats-open__btn${isActive ? " is-current" : ""}${showDelete ? " strats-open__btn--deletable" : ""}" role="option" aria-selected="${isActive}">
+        <span class="strats-open__title">${escapeHtml(strat.title || "Untitled Strat")}</span>
+        <span class="strats-open__meta">${team} · ${type} · ${slideCount} slide${slideCount === 1 ? "" : "s"}</span>
+        <span class="strats-open__meta">${escapeHtml(strat.createdByName || "Unknown")}</span>
+      </button>
+      ${showDelete ? `<button type="button" class="strats-open__delete" title="Delete strat" aria-label="Delete ${escapeHtml(strat.title || "Untitled Strat")}"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>` : ""}
+    `;
+    item.querySelector(".strats-open__btn")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (strat.id === state.activeStrat?.id) {
+        setStratsPickerOpen(false);
+        return;
+      }
+      setStratsPickerOpen(false);
+      await openStrat(strat);
+    });
+    item.querySelector(".strats-open__delete")?.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await deleteStratFromCatalog(strat);
+    });
+    list.appendChild(item);
+  }
+}
+
+function renderStratsPicker() {
+  renderStratsPickerTrigger();
+  if (stratsPickerOpen) {
+    renderStratsPickerList();
+  }
+}
+
+export function setStratsPanelView(view) {
+  const nextView = view === "details" ? "details" : "slides";
+  state.stratsPanelView = nextView;
+
+  document.getElementById("strats-view-slides")?.classList.toggle("hidden", nextView !== "slides");
+  document.getElementById("strats-view-details")?.classList.toggle("hidden", nextView !== "details");
+
+  const detailsBtn = document.getElementById("btn-strats-details");
+  detailsBtn?.classList.toggle("is-active", nextView === "details");
+  detailsBtn?.setAttribute("aria-pressed", String(nextView === "details"));
 }
 
 function resolveImageSrc(imagePath) {
@@ -113,20 +392,62 @@ function getSlideMapImage(mapId) {
   return map?.image ? resolveImageSrc(map.image) : "";
 }
 
+function waitForMapImage(image) {
+  if (image.complete && image.naturalWidth) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    image.addEventListener("load", resolve, { once: true });
+    image.addEventListener("error", reject, { once: true });
+  });
+}
+
+async function syncStratSlideMapImage(slide, { fit = false } = {}) {
+  const image = document.getElementById("map-image");
+  const viewport = document.getElementById("map-viewport");
+  if (!image) return;
+
+  const isRaster = Boolean(slide?.rasterUrl);
+  viewport?.classList.toggle("is-raster-slide", isRaster);
+
+  if (isRaster) {
+    const nextSrc = resolveImageSrc(slide.rasterUrl);
+    if (image.src !== nextSrc) {
+      image.src = slide.rasterUrl;
+      await waitForMapImage(image);
+    }
+    image.alt = slide.name ? `${slide.name} strat slide` : "Strat slide";
+  } else if (slide?.mapId) {
+    const map = state.mapCatalog.find((entry) => entry.id === slide.mapId);
+    if (map) {
+      const nextSrc = resolveImageSrc(map.image);
+      if (image.src !== nextSrc) {
+        image.src = map.image;
+        await waitForMapImage(image);
+      }
+      image.alt = `${map.name} tactical map`;
+    }
+  }
+
+  state.mapOverlays?.syncGridSize();
+  if (fit) {
+    state.mapViewer?.fitToView();
+  } else {
+    state.mapViewer?.clampTranslation();
+    state.mapViewer?.applyTransform();
+  }
+}
+
 let switchMapCallback = null;
 
 function scheduleSave() {
   if (!state.activeStrat) return;
-  markStratsDirty();
   setSaveStatus("Unsaved changes…");
-  if (saveTimer) {
-    clearTimeout(saveTimer);
-  }
-  saveTimer = setTimeout(() => {
+  scheduleStratsAutosave(() => {
     saveActiveStrat().catch((error) => {
       setSaveStatus(error.message || "Save failed", { error: true });
     });
-  }, 700);
+  });
 }
 
 async function saveActiveStrat() {
@@ -142,6 +463,7 @@ async function saveActiveStrat() {
       title: state.activeStrat.title,
       tags: state.activeStrat.tags,
       notes: state.activeStrat.notes,
+      match: state.activeStrat.match,
       slides: sortSlides(state.activeStrat.slides),
       locked: state.activeStrat.locked,
       lockedBy: state.activeStrat.lockedBy,
@@ -154,20 +476,47 @@ async function saveActiveStrat() {
     }
     setSaveStatus("Saved");
     clearStratsDirty();
-    renderStratsOpenList();
+    renderStratsPicker();
   } finally {
     state.stratsSaveInFlight = false;
   }
 }
 
-function closeStratEditor() {
+async function closeStratEditor() {
   state.activeStrat = null;
   state.activeSlideId = null;
   state.pendingDuplicateSlideId = null;
+  setStratsPickerOpen(false);
+  setStratsPanelView("slides");
+  document.getElementById("btn-strats-details")?.classList.add("hidden");
   clearStratsDirty();
   resetStratDrawingHistory();
   clearDrawLayer();
+  document.getElementById("map-viewport")?.classList.remove("is-raster-slide");
+  if (state.currentMapId) {
+    await switchMapCallback?.(state.currentMapId, { fit: false });
+  }
   renderStratsChrome();
+}
+
+export async function exitStratEditorSession() {
+  if (!state.activeStrat) {
+    document.getElementById("map-viewport")?.classList.remove("is-raster-slide");
+    const map = state.mapCatalog.find((entry) => entry.id === state.currentMapId);
+    const image = document.getElementById("map-image");
+    if (map && image) {
+      const nextSrc = resolveImageSrc(map.image);
+      if (image.src !== nextSrc) {
+        image.src = map.image;
+        await waitForMapImage(image);
+      }
+      image.alt = `${map.name} tactical map`;
+      state.mapOverlays?.syncGridSize();
+      state.mapViewer?.fitToView();
+    }
+    return;
+  }
+  await closeStratEditor();
 }
 
 async function openStrat(strat) {
@@ -175,11 +524,7 @@ async function openStrat(strat) {
     if (!window.confirm("Discard unsaved changes and open this strat?")) {
       return;
     }
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-    }
-    clearStratsDirty();
+    discardStratsUnsavedChanges();
   }
 
   const prefs = loadStratUiPrefs()[strat.id];
@@ -187,8 +532,9 @@ async function openStrat(strat) {
   const preferredSlide = slides.find((slide) => slide.id === prefs?.slideId);
 
   state.activeStrat = structuredClone(strat);
+  ensureStratMatch(state.activeStrat);
   state.activeSlideId = preferredSlide?.id || slides[0]?.id || null;
-  setStratsPanelTab(prefs?.panelTab === "slides" ? "slides" : "strat");
+  setStratsPanelView("slides");
   resetStratDrawingHistory();
   renderStratsChrome();
   refreshDrawLayer();
@@ -203,28 +549,12 @@ async function activateCurrentSlideMap() {
     saveStratUiPrefs(state.activeStrat.id, { slideId: slide.id });
   }
   slide.objects = normalizeStratObjects(slide.objects || []);
-  refreshDrawLayer();
   if (slide.mapId && slide.mapId !== state.currentMapId) {
-    await switchMapCallback?.(slide.mapId, { fit: true });
+    await switchMapCallback?.(slide.mapId, { fit: false });
   }
+  await syncStratSlideMapImage(slide, { fit: true });
+  refreshDrawLayer();
   renderStratsChrome();
-}
-
-export function setStratsPanelTab(tab) {
-  state.stratsPanelTab = tab;
-  if (state.activeStrat) {
-    saveStratUiPrefs(state.activeStrat.id, { panelTab: tab, slideId: state.activeSlideId });
-  }
-  const tabs = document.querySelector(".strats-panel__tabs-surface");
-  tabs?.classList.toggle("is-slides", tab === "slides");
-
-  document.querySelectorAll("[data-strats-tab]").forEach((button) => {
-    const isActive = button.dataset.stratsTab === tab;
-    button.setAttribute("aria-selected", String(isActive));
-  });
-
-  document.getElementById("strats-tab-strat")?.classList.toggle("hidden", tab !== "strat");
-  document.getElementById("strats-tab-slides")?.classList.toggle("hidden", tab !== "slides");
 }
 
 function updateTagBar(barId, value, attrName) {
@@ -244,6 +574,40 @@ function truncateText(value, max = 28) {
   return `${text.slice(0, max - 1)}…`;
 }
 
+function formatMatchDateLabel(value) {
+  if (!value) return "";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatMatchSummary(match) {
+  if (!match) return "None";
+
+  const parts = [];
+  const dateLabel = formatMatchDateLabel(match.date);
+  if (dateLabel) parts.push(dateLabel);
+  if (match.faction) {
+    parts.push(match.faction === "axis" ? "Axis" : "Allies");
+  }
+  if (match.mapId && match.startingPoint) {
+    const pointLabel = getStartingPointLabel(match.mapId, match.startingPoint);
+    if (pointLabel) parts.push(pointLabel);
+  }
+  if (match.opponent) {
+    parts.push(`vs ${match.opponent}`);
+  }
+  if (match.result) {
+    parts.push(match.result === "win" ? "Win" : "Loss");
+  }
+
+  return parts.length ? truncateText(parts.join(" · "), 42) : "None";
+}
+
 function syncAccordionSummaries() {
   const strat = state.activeStrat;
   if (!strat) return;
@@ -260,6 +624,10 @@ function syncAccordionSummaries() {
 
   document.getElementById("strats-acc-notes-value")?.replaceChildren(
     document.createTextNode(truncateText(strat.notes, 32) || "None")
+  );
+
+  document.getElementById("strats-acc-match-value")?.replaceChildren(
+    document.createTextNode(formatMatchSummary(strat.match))
   );
 }
 
@@ -291,6 +659,32 @@ function bindAccordionAutoCollapse() {
       window.setTimeout(() => {
         syncAccordionSummaries();
         collapseAccordionIfFilled("strats-acc-tags", { filled: true });
+      }, 0);
+    });
+  });
+
+  const matchFields = [
+    document.getElementById("strats-match-date"),
+    document.getElementById("strats-match-opponent"),
+    document.getElementById("strats-match-map"),
+    document.getElementById("strats-match-starting-point"),
+  ];
+  matchFields.forEach((field) => {
+    field?.addEventListener("blur", () => {
+      syncAccordionSummaries();
+      collapseAccordionIfFilled("strats-acc-match", {
+        filled: formatMatchSummary(state.activeStrat?.match) !== "None",
+      });
+    });
+  });
+
+  document.getElementById("strats-acc-match")?.querySelectorAll("[data-faction], [data-result]").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.setTimeout(() => {
+        syncAccordionSummaries();
+        collapseAccordionIfFilled("strats-acc-match", {
+          filled: formatMatchSummary(state.activeStrat?.match) !== "None",
+        });
       }, 0);
     });
   });
@@ -394,7 +788,7 @@ async function duplicateSlideToNewStrat() {
     state.stratsCatalog.push(created);
     state.pendingDuplicateSlideId = null;
     await openStrat(created);
-    renderStratsOpenList();
+    renderStratsPicker();
     setSaveStatus("New strat created from slide");
   } catch (error) {
     setSaveStatus(error.message || "Create failed", { error: true });
@@ -414,7 +808,6 @@ async function duplicateSlideToStrat(targetStratId) {
     if (targetStratId === state.activeStrat.id) {
       state.activeStrat.slides.push(result.slide);
       state.activeSlideId = result.slide.id;
-      setStratsPanelTab("slides");
       renderStratsChrome();
       setSaveStatus("Slide duplicated");
     } else {
@@ -428,43 +821,6 @@ async function duplicateSlideToStrat(targetStratId) {
   }
 }
 
-function renderPanelHeader() {
-  const header = document.getElementById("strats-panel-header");
-  const titleEl = document.getElementById("strats-panel-title");
-  const chipsEl = document.getElementById("strats-panel-chips");
-  const hasStrat = Boolean(state.activeStrat);
-
-  header?.classList.toggle("hidden", !hasStrat);
-  if (!hasStrat || !titleEl || !chipsEl) return;
-
-  titleEl.textContent = state.activeStrat.title || "Untitled Strat";
-  const team = state.activeStrat.tags?.team?.toUpperCase() || "JR";
-  const type = state.activeStrat.tags?.type === "tournament" ? "Tournament" : "Friendly";
-  chipsEl.textContent = `${team} · ${type}`;
-}
-
-function renderMapNav() {
-  const nav = document.getElementById("strats-map-nav");
-  const label = document.getElementById("strats-map-nav-label");
-  const prevBtn = document.getElementById("btn-strats-slide-prev");
-  const nextBtn = document.getElementById("btn-strats-slide-next");
-  const show = state.appMode === "strats" && state.activeStrat;
-
-  nav?.classList.toggle("hidden", !show);
-  if (!show) return;
-
-  const slides = sortSlides(state.activeStrat.slides);
-  const index = slides.findIndex((slide) => slide.id === state.activeSlideId);
-  const current = index >= 0 ? index + 1 : 1;
-
-  if (label) {
-    label.textContent = `Slide ${current} / ${slides.length || 1}`;
-  }
-
-  prevBtn?.toggleAttribute("disabled", index <= 0);
-  nextBtn?.toggleAttribute("disabled", index < 0 || index >= slides.length - 1);
-}
-
 function navigateSlide(delta) {
   if (!state.activeStrat) return;
   const slides = sortSlides(state.activeStrat.slides);
@@ -473,8 +829,7 @@ function navigateSlide(delta) {
   if (!target) return;
 
   state.activeSlideId = target.id;
-  saveStratUiPrefs(state.activeStrat.id, { slideId: target.id, panelTab: "slides" });
-  setStratsPanelTab("slides");
+  saveStratUiPrefs(state.activeStrat.id, { slideId: target.id });
   renderStratsChrome();
   activateCurrentSlideMap();
 }
@@ -541,22 +896,26 @@ function startInlineSlideRename(nameEl, slide) {
 function renderStratMeta() {
   const hasStrat = Boolean(state.activeStrat);
   document.getElementById("strats-panel-empty")?.classList.toggle("hidden", hasStrat);
-  document.getElementById("strats-editor-panel")?.classList.toggle("hidden", !hasStrat);
-  renderPanelHeader();
-  renderMapNav();
+  document.getElementById("strats-workspace")?.classList.toggle("hidden", !hasStrat);
+  renderStratsPicker();
+
+  const detailsBtn = document.getElementById("btn-strats-details");
+  detailsBtn?.classList.toggle("hidden", !hasStrat);
+  if (!hasStrat) {
+    setStratsPanelView("slides");
+  }
+
+  if (hasStrat) {
+    setStratsPanelView(state.stratsPanelView);
+  }
 
   if (!hasStrat) {
     setStratsToolsEnabled(false);
     setSaveStatus("");
-    setStratsPanelTab("strat");
-    document.querySelector('[data-strats-tab="slides"]')?.replaceChildren(document.createTextNode("Slides"));
-    document.querySelector('[data-strats-tab="strat"]')?.removeAttribute("disabled");
-    document.querySelector('[data-strats-tab="slides"]')?.toggleAttribute("disabled", true);
     return;
   }
 
   setStratsToolsEnabled(!state.activeStrat.locked);
-  setStratsPanelTab(state.stratsPanelTab);
 
   const titleInput = document.getElementById("strats-title");
   if (titleInput && titleInput !== document.activeElement) {
@@ -570,6 +929,34 @@ function renderStratMeta() {
 
   updateTagBar("strats-team-bar", state.activeStrat.tags.team, "team");
   updateTagBar("strats-type-bar", state.activeStrat.tags.type, "type");
+
+  ensureStratMatch(state.activeStrat, {
+    defaultMapId: getActiveSlide(state.activeStrat, state.activeSlideId)?.mapId || state.currentMapId,
+  });
+
+  const match = state.activeStrat.match;
+  const matchDateInput = document.getElementById("strats-match-date");
+  if (matchDateInput && matchDateInput !== document.activeElement) {
+    matchDateInput.value = match.date || "";
+  }
+
+  const matchOpponentInput = document.getElementById("strats-match-opponent");
+  if (matchOpponentInput && matchOpponentInput !== document.activeElement) {
+    matchOpponentInput.value = match.opponent || "";
+  }
+
+  const matchMapSelect = document.getElementById("strats-match-map");
+  if (matchMapSelect && matchMapSelect !== document.activeElement) {
+    if (!match.mapId) {
+      match.mapId = getActiveSlide(state.activeStrat, state.activeSlideId)?.mapId || state.currentMapId || "";
+    }
+    matchMapSelect.value = match.mapId || "";
+  }
+
+  populateMatchStartingPointSelect(match.mapId, match.startingPoint);
+
+  updateTagBar("strats-faction-bar", match.faction || "", "faction");
+  updateTagBar("strats-result-bar", match.result || "", "result");
 
   const slide = getActiveSlide(state.activeStrat, state.activeSlideId);
   const slideEditor = document.getElementById("strats-slide-editor");
@@ -590,16 +977,6 @@ function renderStratMeta() {
     const count = state.activeStrat.slides.length;
     countEl.textContent = `${count} slide${count === 1 ? "" : "s"}`;
   }
-
-  const slidesTab = document.querySelector('[data-strats-tab="slides"]');
-  if (slidesTab) {
-    const count = state.activeStrat.slides.length;
-    slidesTab.textContent = count > 0 ? `Slides (${count})` : "Slides";
-  }
-
-  document.querySelectorAll("[data-strats-tab]").forEach((button) => {
-    button.toggleAttribute("disabled", button.dataset.stratsTab === "slides" && !hasStrat);
-  });
 
   syncAccordionSummaries();
 }
@@ -652,7 +1029,6 @@ function renderSlidesList() {
       </div>
       <div class="strats-slides__thumb" aria-hidden="true"></div>
       <div class="strats-slides__meta">
-        <span class="strats-slides__index">${index + 1}</span>
         <span class="strats-slides__name">${escapeHtml(slide.name)}</span>
         <span class="strats-slides__map">${escapeHtml(getMapName(slide.mapId))}</span>
       </div>
@@ -668,7 +1044,9 @@ function renderSlidesList() {
 
     const thumb = item.querySelector(".strats-slides__thumb");
     if (thumb) {
-      thumb.replaceChildren(renderStratThumbnail(slide.objects, getSlideMapImage(slide.mapId)));
+      thumb.replaceChildren(renderStratThumbnail(slide.objects, getSlideMapImage(slide.mapId), {
+        rasterUrl: slide.rasterUrl,
+      }));
     }
 
     item.addEventListener("dragstart", (event) => {
@@ -710,8 +1088,7 @@ function renderSlidesList() {
     item.addEventListener("click", (event) => {
       if (event.target.closest("[data-action]")) return;
       state.activeSlideId = slide.id;
-      saveStratUiPrefs(state.activeStrat.id, { slideId: slide.id, panelTab: "slides" });
-      setStratsPanelTab("slides");
+      saveStratUiPrefs(state.activeStrat.id, { slideId: slide.id });
       renderStratsChrome();
       activateCurrentSlideMap();
     });
@@ -759,43 +1136,70 @@ function renderSlidesList() {
   });
 }
 
-function renderStratsOpenList() {
-  const list = document.getElementById("strats-open-list");
-  if (!list) return;
+function canDeleteStratFromOpenList() {
+  return getCurrentUser()?.role === "owner";
+}
 
-  const query = document.getElementById("strats-open-search")?.value || "";
-  const catalog = filterStratsBySearch(state.stratsCatalog, query);
+let stratDeleteConfirmResolver = null;
 
-  if (!state.stratsCatalog.length) {
-    list.innerHTML = '<li class="strats-open__empty">No strats yet. Create one to get started.</li>';
-    return;
+function bindStratDeleteConfirmDialog() {
+  const dialog = document.getElementById("strats-delete-confirm-dialog");
+  const confirmBtn = document.getElementById("btn-strats-delete-confirm");
+  const cancelBtn = document.getElementById("btn-strats-delete-cancel");
+  if (!dialog) return;
+
+  const finish = (confirmed) => {
+    if (!stratDeleteConfirmResolver) return;
+    dialog.close();
+    const resolve = stratDeleteConfirmResolver;
+    stratDeleteConfirmResolver = null;
+    resolve(confirmed);
+  };
+
+  confirmBtn?.addEventListener("click", () => finish(true));
+  cancelBtn?.addEventListener("click", () => finish(false));
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    finish(false);
+  });
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) {
+      finish(false);
+    }
+  });
+}
+
+function confirmStratDelete(strat) {
+  const dialog = document.getElementById("strats-delete-confirm-dialog");
+  const message = document.getElementById("strats-delete-confirm-message");
+  if (!dialog || !message || !strat) {
+    return Promise.resolve(false);
   }
 
-  if (!catalog.length) {
-    list.innerHTML = '<li class="strats-open__empty">No matching strats.</li>';
-    return;
-  }
+  message.textContent = `Delete "${strat.title}"? This cannot be undone.`;
+  return new Promise((resolve) => {
+    stratDeleteConfirmResolver = resolve;
+    dialog.showModal();
+  });
+}
 
-  list.innerHTML = "";
-  const sorted = [...catalog].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+async function deleteStratFromCatalog(strat) {
+  if (!strat) return false;
+  const confirmed = await confirmStratDelete(strat);
+  if (!confirmed) return false;
 
-  for (const strat of sorted) {
-    const item = document.createElement("li");
-    item.className = "strats-open__item";
-    item.innerHTML = `
-      <button type="button" class="strats-open__btn">
-        <span class="strats-open__title">${escapeHtml(strat.title)}</span>
-        <span class="strats-open__meta">${strat.tags.team.toUpperCase()} · ${strat.tags.type} · ${strat.slides.length} slide${strat.slides.length === 1 ? "" : "s"}</span>
-        <span class="strats-open__meta">${escapeHtml(strat.createdByName || "Unknown")}</span>
-      </button>
-    `;
-    item.querySelector("button")?.addEventListener("click", async () => {
-      document.getElementById("strats-open-dialog")?.close();
-      await openStrat(strat);
-    });
-    list.appendChild(item);
+  try {
+    await apiDeleteStrat(strat.id);
+    state.stratsCatalog = state.stratsCatalog.filter((entry) => entry.id !== strat.id);
+    if (state.activeStrat?.id === strat.id) {
+      await closeStratEditor();
+    }
+    renderStratsPicker();
+    setSaveStatus("Deleted");
+    return true;
+  } catch (error) {
+    setSaveStatus(error.message || "Delete failed", { error: true });
+    return false;
   }
 }
 
@@ -810,13 +1214,12 @@ function syncStratsMapChrome() {
   document.getElementById("strats-draw-layer")?.classList.toggle("hidden", !show);
   document.getElementById("strats-draw-preview")?.classList.toggle("hidden", !show);
   document.getElementById("strats-handles-layer")?.classList.toggle("hidden", !show);
-  document.getElementById("strats-map-nav")?.classList.toggle("hidden", !show);
 }
 
 async function reloadStratsCatalog() {
   const data = await fetchStratsCatalog();
   state.stratsCatalog = data.strats || [];
-  renderStratsOpenList();
+  renderStratsPicker();
 }
 
 function populateSlideMapSelect() {
@@ -828,6 +1231,52 @@ function populateSlideMapSelect() {
     option.value = map.id;
     option.textContent = map.name;
     select.appendChild(option);
+  }
+}
+
+function populateMatchMapSelect() {
+  const select = document.getElementById("strats-match-map");
+  if (!select || select.options.length > 0) return;
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select map…";
+  select.appendChild(placeholder);
+
+  for (const map of state.mapCatalog) {
+    const option = document.createElement("option");
+    option.value = map.id;
+    option.textContent = map.name;
+    select.appendChild(option);
+  }
+}
+
+function populateMatchStartingPointSelect(mapId, selectedId = "") {
+  const select = document.getElementById("strats-match-starting-point");
+  if (!select) return;
+
+  const currentValue = select === document.activeElement ? select.value : selectedId;
+  select.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select starting point…";
+  select.appendChild(placeholder);
+
+  for (const midpoint of getMidpointsForMap(mapId)) {
+    const option = document.createElement("option");
+    option.value = midpoint.id;
+    option.textContent = midpoint.label;
+    select.appendChild(option);
+  }
+
+  if (currentValue && isValidStartingPoint(mapId, currentValue)) {
+    select.value = currentValue;
+  } else {
+    select.value = "";
+    if (state.activeStrat?.match) {
+      state.activeStrat.match.startingPoint = "";
+    }
   }
 }
 
@@ -844,48 +1293,87 @@ function bindTagBar(barId, attrName, onChange) {
 }
 
 function bindStratsUi() {
-  document.querySelectorAll("[data-strats-tab]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!state.activeStrat && button.dataset.stratsTab !== "strat") return;
-      setStratsPanelTab(button.dataset.stratsTab);
-    });
+  bindStratDeleteConfirmDialog();
+
+  document.getElementById("strats-picker-trigger")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setStratsPickerOpen(!stratsPickerOpen);
+  });
+
+  document.getElementById("strats-picker-search")?.addEventListener("input", () => {
+    renderStratsPickerList();
+  });
+
+  document.getElementById("btn-strats-details")?.addEventListener("click", () => {
+    if (!state.activeStrat) return;
+    setStratsPickerOpen(false);
+    setStratsPanelView(state.stratsPanelView === "details" ? "slides" : "details");
+  });
+
+  document.getElementById("btn-strats-back-slides")?.addEventListener("click", () => {
+    setStratsPanelView("slides");
+  });
+
+  document.addEventListener("mousedown", (event) => {
+    if (!stratsPickerOpen) return;
+    const picker = document.getElementById("strats-picker");
+    if (picker && event.target instanceof Node && !picker.contains(event.target)) {
+      setStratsPickerOpen(false);
+    }
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.stratsPanelView === "details") {
+      setStratsPanelView("slides");
+      return;
+    }
+    if (event.key === "Escape" && stratsPickerOpen) {
+      setStratsPickerOpen(false);
+    }
   });
 
   document.getElementById("btn-strats-new")?.addEventListener("click", async () => {
     if (hasStratsUnsavedChanges()) {
       if (!window.confirm("Discard unsaved changes and create a new strat?")) return;
-      if (saveTimer) {
-        clearTimeout(saveTimer);
-        saveTimer = null;
-      }
-      clearStratsDirty();
+      discardStratsUnsavedChanges();
     }
+    setStratsPickerOpen(false);
     try {
       const draft = createStrat({ mapId: state.currentMapId });
       const created = await apiCreateStrat(draft);
       state.stratsCatalog.push(created);
       await openStrat(created);
-      renderStratsOpenList();
+      renderStratsPicker();
       setSaveStatus("Saved");
     } catch (error) {
       setSaveStatus(error.message || "Create failed", { error: true });
     }
   });
 
-  document.getElementById("btn-strats-open")?.addEventListener("click", () => {
-    renderStratsOpenList();
-    document.getElementById("strats-open-dialog")?.showModal();
+  document.getElementById("btn-strats-import")?.addEventListener("click", () => {
+    resetImportDialog();
+    const urlInput = document.getElementById("strats-import-url");
+    const openLink = document.getElementById("strats-import-open-link");
+    if (openLink && urlInput?.value?.trim()) {
+      const code = urlInput.value.trim();
+      openLink.href = code.includes("stratsketch.com") ? code : `https://stratsketch.com/${code}`;
+    }
+    document.getElementById("strats-import-dialog")?.showModal();
+    urlInput?.focus();
+  });
+
+  document.getElementById("strats-import-form")?.addEventListener("submit", submitStratSketchImport);
+
+  document.getElementById("strats-import-url")?.addEventListener("input", (event) => {
+    queueImportPreview(event.target?.value || "");
   });
 
   document.getElementById("btn-strats-close-editor")?.addEventListener("click", () => {
     if (hasStratsUnsavedChanges()) {
       if (!window.confirm("Discard unsaved changes and close this strat?")) return;
-      if (saveTimer) {
-        clearTimeout(saveTimer);
-        saveTimer = null;
-      }
-      clearStratsDirty();
+      discardStratsUnsavedChanges();
     }
+    setStratsPickerOpen(false);
     closeStratEditor();
   });
 
@@ -895,7 +1383,7 @@ function bindStratsUi() {
       const duplicate = await apiDuplicateStrat(state.activeStrat.id);
       state.stratsCatalog.push(duplicate);
       await openStrat(duplicate);
-      renderStratsOpenList();
+      renderStratsPicker();
       setSaveStatus("Saved");
     } catch (error) {
       setSaveStatus(error.message || "Duplicate failed", { error: true });
@@ -904,34 +1392,21 @@ function bindStratsUi() {
 
   document.getElementById("btn-strats-delete")?.addEventListener("click", async () => {
     if (!state.activeStrat) return;
-    if (!window.confirm(`Delete "${state.activeStrat.title}"?`)) return;
-    try {
-      await apiDeleteStrat(state.activeStrat.id);
-      state.stratsCatalog = state.stratsCatalog.filter((strat) => strat.id !== state.activeStrat.id);
-      closeStratEditor();
-      renderStratsOpenList();
-    } catch (error) {
-      setSaveStatus(error.message || "Delete failed", { error: true });
-    }
+    await deleteStratFromCatalog(state.activeStrat);
   });
 
   document.getElementById("btn-strats-add-slide")?.addEventListener("click", () => {
     if (!state.activeStrat) return;
     const slide = createSlide({
-      mapId: getActiveSlide(state.activeStrat, state.activeSlideId)?.mapId || state.currentMapId,
+      mapId: getStratDefaultSlideMapId(state.activeStrat, state.activeSlideId),
       order: state.activeStrat.slides.length,
       name: `Slide ${state.activeStrat.slides.length + 1}`,
     });
     state.activeStrat.slides.push(slide);
     state.activeSlideId = slide.id;
-    setStratsPanelTab("slides");
     renderStratsChrome();
     scheduleSave();
     document.getElementById("strats-slide-name")?.focus();
-  });
-
-  document.getElementById("strats-open-search")?.addEventListener("input", () => {
-    renderStratsOpenList();
   });
 
   document.getElementById("strats-duplicate-search")?.addEventListener("input", () => {
@@ -941,9 +1416,6 @@ function bindStratsUi() {
   document.getElementById("btn-strats-duplicate-new")?.addEventListener("click", () => {
     duplicateSlideToNewStrat();
   });
-
-  document.getElementById("btn-strats-slide-prev")?.addEventListener("click", () => navigateSlide(-1));
-  document.getElementById("btn-strats-slide-next")?.addEventListener("click", () => navigateSlide(1));
 
   window.addEventListener("keydown", (event) => {
     if (state.appMode !== "strats" || !state.activeStrat) return;
@@ -974,13 +1446,49 @@ function bindStratsUi() {
     if (!state.activeStrat) return;
     state.activeStrat.title = event.target.value;
     syncAccordionSummaries();
-    renderPanelHeader();
+    renderStratsPickerTrigger();
     scheduleSave();
   });
 
   document.getElementById("strats-notes")?.addEventListener("input", (event) => {
     if (!state.activeStrat) return;
     state.activeStrat.notes = event.target.value;
+    syncAccordionSummaries();
+    scheduleSave();
+  });
+
+  document.getElementById("strats-match-date")?.addEventListener("input", (event) => {
+    if (!state.activeStrat) return;
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.date = event.target.value;
+    syncAccordionSummaries();
+    scheduleSave();
+  });
+
+  document.getElementById("strats-match-opponent")?.addEventListener("input", (event) => {
+    if (!state.activeStrat) return;
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.opponent = event.target.value;
+    syncAccordionSummaries();
+    scheduleSave();
+  });
+
+  document.getElementById("strats-match-map")?.addEventListener("change", (event) => {
+    if (!state.activeStrat) return;
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.mapId = event.target.value;
+    if (!isValidStartingPoint(state.activeStrat.match.mapId, state.activeStrat.match.startingPoint)) {
+      state.activeStrat.match.startingPoint = "";
+    }
+    populateMatchStartingPointSelect(state.activeStrat.match.mapId, state.activeStrat.match.startingPoint);
+    syncAccordionSummaries();
+    scheduleSave();
+  });
+
+  document.getElementById("strats-match-starting-point")?.addEventListener("change", (event) => {
+    if (!state.activeStrat) return;
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.startingPoint = event.target.value;
     syncAccordionSummaries();
     scheduleSave();
   });
@@ -1011,15 +1519,29 @@ function bindStratsUi() {
     syncAccordionSummaries();
   });
 
-  bindAccordionAutoCollapse();
-
-  document.getElementById("btn-close-strats-open")?.addEventListener("click", () => {
-    document.getElementById("strats-open-dialog")?.close();
+  bindTagBar("strats-faction-bar", "faction", (faction) => {
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.faction = faction;
+    syncAccordionSummaries();
   });
 
-  document.getElementById("strats-open-dialog")?.addEventListener("click", (event) => {
+  bindTagBar("strats-result-bar", "result", (result) => {
+    ensureStratMatch(state.activeStrat);
+    state.activeStrat.match.result = result;
+    syncAccordionSummaries();
+  });
+
+  bindAccordionAutoCollapse();
+
+  document.getElementById("btn-close-strats-import")?.addEventListener("click", () => {
+    document.getElementById("strats-import-dialog")?.close();
+    resetImportDialog();
+  });
+
+  document.getElementById("strats-import-dialog")?.addEventListener("click", (event) => {
     if (event.target === event.currentTarget) {
       event.currentTarget.close();
+      resetImportDialog();
     }
   });
 
@@ -1038,7 +1560,9 @@ function bindStratsUi() {
 
 export async function initStratsUi({ switchMap, mapViewer } = {}) {
   switchMapCallback = switchMap;
+  await loadMapMidpoints();
   populateSlideMapSelect();
+  populateMatchMapSelect();
   initStratsTools({
     onSettingsChange: () => {
       scheduleSave();
@@ -1067,7 +1591,7 @@ export async function initStratsUi({ switchMap, mapViewer } = {}) {
   }
 
   document.getElementById("btn-strats-new")?.removeAttribute("disabled");
-  document.getElementById("btn-strats-open")?.removeAttribute("disabled");
+  document.getElementById("btn-strats-import")?.removeAttribute("disabled");
 }
 
 export async function refreshStratsCatalog() {

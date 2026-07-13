@@ -322,6 +322,14 @@ export function refreshDrawLayer() {
   if (selectedObjectId && !objects.some((object) => object.id === selectedObjectId)) {
     setSelectedObject(null);
   }
+  if (slide?.rasterUrl) {
+    svgLayer.replaceChildren(
+      objects.length ? renderStratObjects(objects, { selectedId: selectedObjectId }) : [],
+    );
+    setPreviewObject(drawSession?.preview || null);
+    renderHandlesOverlay();
+    return;
+  }
   svgLayer.replaceChildren(renderStratObjects(objects, { selectedId: selectedObjectId }));
   setPreviewObject(drawSession?.preview || null);
   renderHandlesOverlay();

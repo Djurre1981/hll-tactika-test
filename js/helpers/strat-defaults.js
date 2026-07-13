@@ -2,6 +2,8 @@ import { state } from "../state.js";
 
 export const STRAT_TEAMS = ["jr", "sr"];
 export const STRAT_TYPES = ["friendly", "tournament"];
+export const STRAT_FACTIONS = ["axis", "allies"];
+export const STRAT_RESULTS = ["win", "loss"];
 
 export const STRAT_ICON_OPTIONS = [
   { id: "check", icon: "fa-check" },
@@ -53,6 +55,48 @@ export function createDefaultToolSettings() {
   };
 }
 
+export function createDefaultMatch(mapId = "") {
+  return {
+    date: "",
+    faction: "",
+    mapId: mapId || "",
+    startingPoint: "",
+    opponent: "",
+    result: "",
+  };
+}
+
+export function ensureStratMatch(strat, { defaultMapId = "" } = {}) {
+  if (!strat) {
+    return;
+  }
+
+  const fallbackMapId = defaultMapId || strat.slides?.[0]?.mapId || "";
+  if (!strat.match || typeof strat.match !== "object") {
+    strat.match = createDefaultMatch(fallbackMapId);
+    return;
+  }
+
+  strat.match = {
+    date: strat.match.date || "",
+    faction: STRAT_FACTIONS.includes(strat.match.faction) ? strat.match.faction : "",
+    mapId: strat.match.mapId || fallbackMapId,
+    startingPoint: strat.match.startingPoint || "",
+    opponent: String(strat.match.opponent || "").trim(),
+    result: STRAT_RESULTS.includes(strat.match.result) ? strat.match.result : "",
+  };
+}
+
+export function getStratDefaultSlideMapId(strat, slideId = null) {
+  const matchMapId = String(strat?.match?.mapId || "").trim();
+  if (matchMapId) {
+    return matchMapId;
+  }
+
+  const activeSlide = getActiveSlide(strat, slideId);
+  return activeSlide?.mapId || state.currentMapId;
+}
+
 export function createSlide({ mapId, order, name } = {}) {
   return {
     id: `slide-${crypto.randomUUID()}`,
@@ -74,6 +118,7 @@ export function createStrat({ title, team, type, mapId } = {}) {
       type: STRAT_TYPES.includes(type) ? type : "friendly",
     },
     notes: "",
+    match: createDefaultMatch(mapId),
     slides: [slide],
     locked: false,
     lockedBy: null,
