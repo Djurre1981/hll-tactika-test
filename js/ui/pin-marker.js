@@ -3,8 +3,15 @@ import { getMapPins } from "./filter-bar.js";
 import { getPinTag } from "../pin-tags.js";
 import { hasPinDirection, renderMgSpotGroup } from "./mg-spot-arrows.js";
 import { positionPins, highlightPin } from "../helpers/proximity.js";
+import { isPhoneLayout } from "../helpers/layout.js";
 import { updatePinCount } from "./sidebar.js";
-import { showPreview, movePreview, scheduleHidePreview } from "./pin-preview.js";
+import {
+  showPreview,
+  showPreviewAtPin,
+  movePreview,
+  scheduleHidePreview,
+  isPreviewVisible,
+} from "./pin-preview.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
 import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
@@ -120,6 +127,17 @@ export function attachPinInteractions(element, pin) {
   element.addEventListener("click", (event) => {
     event.stopPropagation();
     if (state.panelMode !== null) return;
+
+    if (isPhoneLayout()) {
+      const previewVisible = isPreviewVisible();
+      const samePin = state.highlightedPinId === pin.id;
+      if (!previewVisible || !samePin) {
+        highlightPin(pin.id);
+        showPreviewAtPin(pin);
+        return;
+      }
+    }
+
     openModal(pin);
   });
   element.addEventListener("contextmenu", (event) => {

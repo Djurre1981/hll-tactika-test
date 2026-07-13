@@ -11,6 +11,7 @@ import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { detectMediaKind, getPinMediaItems } from "../helpers/pin-media.js";
+import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 
 export async function getMediaPlayback(mediaItem) {
   if (!mediaItem) {
@@ -234,6 +235,27 @@ export async function loadPreviewMedia(pin, previewPinId) {
     getPreviewMedia().innerHTML =
       '<p class="preview-error">Could not load preview. Click the pin to open the clip.</p>';
   }
+}
+
+export function isPreviewVisible() {
+  return getPreviewTooltip()?.classList.contains("is-visible") ?? false;
+}
+
+export function showPreviewAtPin(pin) {
+  const viewport = document.getElementById("map-viewport");
+  const rect = viewport?.getBoundingClientRect();
+  let clientX = window.innerWidth / 2;
+  let clientY = window.innerHeight / 2;
+
+  if (state.mapViewer && rect) {
+    const coords =
+      pin.tag === "mg-spot" ? getMgArrowheadFocusCoords(pin) : { x: pin.x, y: pin.y };
+    const screen = state.mapViewer.mapPercentToScreen(coords.x, coords.y);
+    clientX = rect.left + screen.x;
+    clientY = rect.top + screen.y;
+  }
+
+  showPreview(pin, { clientX, clientY });
 }
 
 export function movePreview(event) {

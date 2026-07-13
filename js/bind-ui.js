@@ -1,7 +1,8 @@
 import { state } from "./state.js";
 import { canModifyPin, canEnterEditorMode } from "./helpers/permissions.js";
 import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
-import { hidePreviewImmediately } from "./ui/pin-preview.js";
+import { hidePreviewImmediately, scheduleHidePreview } from "./ui/pin-preview.js";
+import { isPhoneLayout } from "./helpers/layout.js";
 import {
   toggleEditMode,
   exitEditorMode,
@@ -69,6 +70,14 @@ function onTagFiltersChanged() {
   }
   renderPins();
   renderPinList();
+}
+
+function onViewportBackgroundTap(event) {
+  if (!isPhoneLayout() || state.panelMode !== null) return;
+  if (event.target.closest(".map-pin, .map-mg-spot, .map-pin__label")) return;
+  if (!state.highlightedPinId) return;
+  scheduleHidePreview();
+  highlightPin(null);
 }
 
 export function bindUi({ reloadPinsForMap, switchMap }) {
@@ -181,7 +190,10 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   });
 
   const viewport = document.getElementById("map-viewport");
-  viewport.addEventListener("click", onViewportClick);
+  viewport.addEventListener("click", (event) => {
+    onViewportBackgroundTap(event);
+    onViewportClick(event);
+  });
   viewport.addEventListener("contextmenu", (event) => {
     if (handleEditorPlacementContextMenu(event)) return;
     onViewportContextMenu(event);

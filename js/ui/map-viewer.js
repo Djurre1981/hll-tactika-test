@@ -3,7 +3,12 @@ const ZOOM_STEP = 1.15;
 const SIDEBAR_PANEL_TRANSITION_MS = 400;
 
 import { state } from "../state.js";
+import { isPhoneLayout } from "../helpers/layout.js";
 import { isPortraitLayout } from "./chrome-panels.js";
+
+function pointerDistance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 export class MapViewer {
   constructor(viewport, stage, image) {
@@ -15,6 +20,11 @@ export class MapViewer {
     this.translateX = 0;
     this.translateY = 0;
     this.isDragging = false;
+    this.isPinching = false;
+    this.activePointers = new Map();
+    this.pinchStartDistance = 0;
+    this.pinchStartScale = 1;
+    this.pinchFocal = { x: 0, y: 0 };
     this.dragStart = { x: 0, y: 0 };
     this.translateStart = { x: 0, y: 0 };
     this.onTransform = null;
@@ -114,6 +124,7 @@ export class MapViewer {
     this.viewport.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     window.addEventListener("pointermove", (e) => this.onPointerMove(e));
     window.addEventListener("pointerup", (e) => this.onPointerUp(e));
+    window.addEventListener("pointercancel", (e) => this.onPointerUp(e));
     window.addEventListener("resize", () => {
       this.scale = this.clampScale(this.scale);
       this.clampTranslation();
@@ -248,12 +259,12 @@ export class MapViewer {
     this.zoomBy(factor, event.clientX - rect.left, event.clientY - rect.top);
   }
 
-  onPointerDown(event) {
-    if (event.button !== 0) return;
-    if (state.pinDragSession) return;
-    this.stopLayoutFollow();
-    if (event.target.closest(".map-pin, .map-mg-spot, .map-pin--draft.is-draggable, .map-mg-spot--draft.is-placement-complete, .mg-spot-head, .mg-spot-base")) return;
+  getTouchPointers() {
+    return [...this.activePointers.values()].filter((pointer) => pointer.type === "touch");
+  }
 
+  startDrag(event) {
+    this.endPinch();
     this.isDragging = true;
     this.viewport.setPointerCapture(event.pointerId);
     this.viewport.classList.add("is-dragging");
@@ -261,7 +272,75 @@ export class MapViewer {
     this.translateStart = { x: this.translateX, y: this.translateY };
   }
 
+  endDrag() {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    this.viewport.classList.remove("is-dragging");
+  }
+
+  startPinch(pointers) {
+    this.endDrag();
+    this.isPinching = true;
+    const rect = this.viewport.getBoundingClientRect();
+    const [p1, p2] = pointers;
+    this.pinchStartDistance = pointerDistance(p1, p2);
+    this.pinchStartScale = this.scale;
+    this.pinchFocal = {
+      x: (p1.x + p2.x) / 2 - rect.left,
+      y: (p1.y + p2.y) / 2 - rect.top,
+    };
+  }
+
+  endPinch() {
+    this.isPinching = false;
+  }
+
+  onPointerDown(event) {
+    if (event.button !== 0) return;
+    if (state.pinDragSession) return;
+    this.stopLayoutFollow();
+    if (event.target.closest(".map-pin, .map-mg-spot, .map-pin--draft.is-draggable, .map-mg-spot--draft.is-placement-complete, .mg-spot-head, .mg-spot-base")) return;
+
+    this.activePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+      type: event.pointerType,
+    });
+
+    const touchPointers = this.getTouchPointers();
+    if (touchPointers.length >= 2) {
+      this.startPinch(touchPointers);
+      return;
+    }
+
+    if (event.pointerType === "touch" || event.pointerType === "mouse") {
+      this.startDrag(event);
+    }
+  }
+
   onPointerMove(event) {
+    if (!this.activePointers.has(event.pointerId)) return;
+
+    this.activePointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+      type: event.pointerType,
+    });
+
+    if (this.isPinching) {
+      const touchPointers = this.getTouchPointers();
+      if (touchPointers.length < 2 || this.pinchStartDistance <= 0) return;
+
+      const [p1, p2] = touchPointers;
+      const distance = pointerDistance(p1, p2);
+      const targetScale = this.clampScale(this.pinchStartScale * (distance / this.pinchStartDistance));
+      const factor = targetScale / this.scale;
+      if (Math.abs(factor - 1) > 0.0001) {
+        this.zoomBy(factor, this.pinchFocal.x, this.pinchFocal.y);
+      }
+      return;
+    }
+
     if (!this.isDragging) return;
 
     this.translateX = this.translateStart.x + (event.clientX - this.dragStart.x);
@@ -271,18 +350,22 @@ export class MapViewer {
   }
 
   onPointerUp(event) {
+    this.activePointers.delete(event.pointerId);
+
+    if (this.isPinching) {
+      if (this.getTouchPointers().length < 2) {
+        this.endPinch();
+      }
+      return;
+    }
+
     if (!this.isDragging) return;
-    this.isDragging = false;
-    this.viewport.classList.remove("is-dragging");
+    this.endDrag();
     try {
       this.viewport.releasePointerCapture(event.pointerId);
     } catch {
       /* pointer may already be released */
     }
-  }
-
-  isPhoneLayout() {
-    return window.matchMedia("(max-width: 768px), (hover: none) and (pointer: coarse)").matches;
   }
 
   isLandscapeViewport() {
@@ -297,7 +380,7 @@ export class MapViewer {
 
     if (!imgW || !imgH || !rect.width || !rect.height) return 0.1;
 
-    if (this.isPhoneLayout()) {
+    if (isPhoneLayout()) {
       return rect.width / imgW;
     }
     return rect.height / imgH;

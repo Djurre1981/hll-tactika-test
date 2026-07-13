@@ -1,8 +1,11 @@
+import { isPhoneLayout } from "../helpers/layout.js";
+
 const LERP_FACTOR = 0.12;
 const SNAP_THRESHOLD = 0.001;
 const SEEK_THROTTLE_MS = 30;
 const ACTIVATE_RETRY_MS = 500;
 const LOAD_TIMEOUT_MS = 15000;
+const PHONE_SCRUB_TIMEOUT_MS = 3000;
 const DEFAULT_VIDEO_SRC = "assets/welcome/welcome.mp4";
 
 function resolveSourceUrl(sourceUrl) {
@@ -14,6 +17,7 @@ export function initWelcomeScrub(video) {
   if (video.__welcomeScrub) return video.__welcomeScrub;
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const phoneLayout = isPhoneLayout();
   const sourceUrl = video.dataset.src || DEFAULT_VIDEO_SRC;
   const resolvedSourceUrl = resolveSourceUrl(sourceUrl);
 
@@ -32,6 +36,9 @@ export function initWelcomeScrub(video) {
   let destroyed = false;
   let blobUrl = null;
   let blobAbort = null;
+  let phoneAutoplayMode = false;
+  let phoneScrubFallbackTimer = null;
+  let phoneScrubConfirmed = false;
 
   video.muted = true;
   video.playsInline = true;
@@ -73,7 +80,7 @@ export function initWelcomeScrub(video) {
   }
 
   function startLoop() {
-    if (animationId || reducedMotion) return;
+    if (animationId || reducedMotion || phoneAutoplayMode) return;
     lastFrameTime = performance.now();
     animationId = requestAnimationFrame(scrubLoop);
   }
@@ -127,6 +134,29 @@ export function initWelcomeScrub(video) {
     });
   }
 
+  function waitForSeeked() {
+    return new Promise((resolve) => {
+      const finish = (ok) => {
+        cleanup();
+        resolve(ok);
+      };
+
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        video.removeEventListener("seeked", onSeeked);
+        video.removeEventListener("error", onError);
+      };
+
+      const onSeeked = () => finish(true);
+      const onError = () => finish(false);
+
+      video.addEventListener("seeked", onSeeked, { once: true });
+      video.addEventListener("error", onError, { once: true });
+
+      const timer = window.setTimeout(() => finish(hasFrameData()), 2000);
+    });
+  }
+
   async function startStreaming() {
     if (video.src !== resolvedSourceUrl) {
       video.src = sourceUrl;
@@ -134,8 +164,58 @@ export function initWelcomeScrub(video) {
     return waitForFrameData();
   }
 
+  function clearPhoneScrubFallback() {
+    if (!phoneScrubFallbackTimer) return;
+    window.clearTimeout(phoneScrubFallbackTimer);
+    phoneScrubFallbackTimer = null;
+  }
+
+  function removeTouchScrubListeners() {
+    document.removeEventListener("touchstart", handleTouchMove);
+    document.removeEventListener("touchmove", handleTouchMove);
+  }
+
+  function startAutoplayLoop() {
+    if (destroyed || phoneAutoplayMode) return;
+    phoneAutoplayMode = true;
+    clearPhoneScrubFallback();
+    stopLoop();
+    removeTouchScrubListeners();
+    video.loop = true;
+    void video.play().catch(() => {});
+  }
+
+  function confirmPhoneScrub() {
+    if (!phoneLayout || phoneAutoplayMode || phoneScrubConfirmed) return;
+    phoneScrubConfirmed = true;
+    clearPhoneScrubFallback();
+  }
+
+  function schedulePhoneScrubFallback() {
+    if (!phoneLayout || phoneAutoplayMode || phoneScrubConfirmed) return;
+    clearPhoneScrubFallback();
+    phoneScrubFallbackTimer = window.setTimeout(() => {
+      phoneScrubFallbackTimer = null;
+      if (!destroyed && !phoneAutoplayMode && !phoneScrubConfirmed) {
+        startAutoplayLoop();
+      }
+    }, PHONE_SCRUB_TIMEOUT_MS);
+  }
+
+  async function primeDecoder() {
+    try {
+      await video.play();
+      video.pause();
+      applySeek(currentDisplayTime);
+      await waitForSeeked();
+      return hasFrameData() && video.videoWidth > 0;
+    } catch {
+      return false;
+    }
+  }
+
   async function upgradeToBlob() {
-    if (destroyed || blobUrl || upgrading || isFullyBuffered()) return;
+    if (phoneLayout || destroyed || blobUrl || upgrading || isFullyBuffered()) return;
 
     upgrading = true;
     blobAbort = new AbortController();
@@ -188,10 +268,24 @@ export function initWelcomeScrub(video) {
       video.pause();
       applySeek(currentDisplayTime);
 
+      if (phoneLayout) {
+        schedulePhoneScrubFallback();
+        const primed = await primeDecoder();
+        if (!primed) {
+          startAutoplayLoop();
+          stopRetry();
+          videoReady = true;
+          return;
+        }
+        confirmPhoneScrub();
+      }
+
       stopRetry();
       videoReady = true;
       if (!reducedMotion) startLoop();
-      void upgradeToBlob();
+      if (!phoneLayout) {
+        void upgradeToBlob();
+      }
     } finally {
       activating = false;
     }
@@ -209,9 +303,11 @@ export function initWelcomeScrub(video) {
   }
 
   function handleTouchMove(e) {
+    if (phoneAutoplayMode) return;
     if (e.touches.length > 0) {
       mouseX = e.touches[0].clientX;
       updateTargetTime();
+      if (phoneLayout) confirmPhoneScrub();
     }
   }
 
@@ -228,7 +324,13 @@ export function initWelcomeScrub(video) {
     tabHidden = document.hidden;
     if (tabHidden) {
       stopLoop();
-    } else if (videoReady && !reducedMotion) {
+      return;
+    }
+    if (phoneAutoplayMode) {
+      void video.play().catch(() => {});
+      return;
+    }
+    if (videoReady && !reducedMotion) {
       startLoop();
     }
   }
@@ -236,7 +338,7 @@ export function initWelcomeScrub(video) {
   function scrubLoop(timestamp) {
     animationId = requestAnimationFrame(scrubLoop);
 
-    if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData()) return;
+    if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData() || phoneAutoplayMode) return;
 
     const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
     lastFrameTime = timestamp;
@@ -252,6 +354,9 @@ export function initWelcomeScrub(video) {
     if (timestamp - lastSeekTimestamp >= SEEK_THROTTLE_MS) {
       applySeek(currentDisplayTime);
       lastSeekTimestamp = timestamp;
+      if (phoneLayout && video.videoWidth > 0) {
+        confirmPhoneScrub();
+      }
     }
   }
 
@@ -272,6 +377,7 @@ export function initWelcomeScrub(video) {
       destroyed = true;
       stopRetry();
       stopLoop();
+      clearPhoneScrubFallback();
       blobAbort?.abort();
       blobAbort = null;
       video.pause();
@@ -280,8 +386,7 @@ export function initWelcomeScrub(video) {
         blobUrl = null;
       }
       document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("touchstart", handleTouchMove);
-      document.removeEventListener("touchmove", handleTouchMove);
+      removeTouchScrubListeners();
       document.removeEventListener("mouseenter", handleMouseEnter);
       window.removeEventListener("resize", handleResize);
       document.removeEventListener("visibilitychange", handleVisibility);
