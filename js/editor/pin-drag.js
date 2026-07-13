@@ -296,7 +296,7 @@ function startClimbPinDrag(event, pin, element) {
           }
           updatePinElementPosition(pinRef.id);
         }
-        alert(error.message || "Could not save pin position");
+        showEditorToast(error.message || "Could not save pin position");
       }
     },
   });
@@ -436,7 +436,7 @@ function startMgSpotDrag(event, pin, group, handle) {
           refreshMgSpotGroup(group, pinRef);
           updatePinElementPosition(pinRef.id);
         }
-        alert(error.message || "Could not save pin position");
+        showEditorToast(error.message || "Could not save pin position");
       }
     },
   });

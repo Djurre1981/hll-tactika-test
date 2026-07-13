@@ -13,6 +13,12 @@ const BUCKET_WINDOWS = {
   detail: (config) => ({ limit: config.rateLimitDetailPerMin, windowMs: 60 * 1000 }),
   token: (config) => ({ limit: config.rateLimitTokenPerMin, windowMs: 60 * 1000 }),
   media: (config) => ({ limit: config.rateLimitMediaPerHour, windowMs: 60 * 60 * 1000 }),
+  upload: (config) => ({ limit: config.rateLimitUploadPerHour, windowMs: 60 * 60 * 1000 }),
+  pin_write: (config) => ({ limit: config.rateLimitPinWritePerMin, windowMs: 60 * 1000 }),
+  medal: (config) => ({ limit: config.rateLimitMedalPerMin, windowMs: 60 * 1000 }),
+  auth: (config) => ({ limit: config.rateLimitAuthPerMin, windowMs: 60 * 1000 }),
+  admin: (config) => ({ limit: config.rateLimitAdminPerMin, windowMs: 60 * 1000 }),
+  prefs: (config) => ({ limit: config.rateLimitPrefsPerMin, windowMs: 60 * 1000 }),
   admin_export: (config) => ({
     limit: config.rateLimitAdminExportPerHour,
     windowMs: 60 * 60 * 1000,

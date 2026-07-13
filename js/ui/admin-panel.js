@@ -36,6 +36,7 @@ const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
 let users = [];
 let currentUser = null;
 let openRolePicker = null;
+let rolePickerDismissAbort = null;
 
 export function initAdminPanel() {
   currentUser = getCurrentUser();
@@ -66,7 +67,6 @@ export function initAdminPanel() {
     }
   });
   els.form?.addEventListener("submit", onAddUser);
-  bindRolePickerDismiss();
 }
 
 function closeRolePicker(picker = openRolePicker) {
@@ -114,35 +114,60 @@ function positionRolePickerList(picker) {
 }
 
 function bindRolePickerDismiss() {
-  document.addEventListener("click", (event) => {
-    if (!openRolePicker) return;
+  rolePickerDismissAbort?.abort();
+  rolePickerDismissAbort = new AbortController();
+  const { signal } = rolePickerDismissAbort;
 
-    const wrap = getRolePickerListWrap(openRolePicker);
-    const clickedInsidePicker = openRolePicker.contains(event.target);
-    const clickedInsideList = wrap?.contains(event.target);
-    if (!clickedInsidePicker && !clickedInsideList) {
-      closeRolePicker();
-    }
-  });
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!openRolePicker) return;
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeRolePicker();
-    }
-  });
+      const wrap = getRolePickerListWrap(openRolePicker);
+      const clickedInsidePicker = openRolePicker.contains(event.target);
+      const clickedInsideList = wrap?.contains(event.target);
+      if (!clickedInsidePicker && !clickedInsideList) {
+        closeRolePicker();
+      }
+    },
+    { signal }
+  );
 
-  window.addEventListener("resize", () => {
-    if (openRolePicker) {
-      positionRolePickerList(openRolePicker);
-    }
-  });
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") {
+        closeRolePicker();
+      }
+    },
+    { signal }
+  );
+
+  window.addEventListener(
+    "resize",
+    () => {
+      if (openRolePicker) {
+        positionRolePickerList(openRolePicker);
+      }
+    },
+    { signal }
+  );
 
   const tableBody = els.panel?.querySelector(".admin-panel__table tbody");
-  tableBody?.addEventListener("scroll", () => {
-    if (openRolePicker) {
-      positionRolePickerList(openRolePicker);
-    }
-  });
+  tableBody?.addEventListener(
+    "scroll",
+    () => {
+      if (openRolePicker) {
+        positionRolePickerList(openRolePicker);
+      }
+    },
+    { signal }
+  );
+}
+
+function unbindRolePickerDismiss() {
+  rolePickerDismissAbort?.abort();
+  rolePickerDismissAbort = null;
 }
 
 function openRolePickerMenu(picker) {
@@ -244,6 +269,7 @@ function dismissUserMenu() {
 
 function openPanel() {
   dismissUserMenu();
+  bindRolePickerDismiss();
   els.panel?.showModal();
   setStatus("");
   void loadUsers();
@@ -251,6 +277,7 @@ function openPanel() {
 
 function closePanel() {
   closeRolePicker();
+  unbindRolePickerDismiss();
   els.panel?.close();
 }
 

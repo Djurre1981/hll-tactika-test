@@ -117,7 +117,7 @@ async function init() {
     spawnData,
   ] = await Promise.all([mapModulesPromise, spawnPromise]);
 
-  async function switchMap(mapId, { fit = false } = {}) {
+  async function switchMap(mapId, { fit = false, resolveIfEmpty = false } = {}) {
     const map = state.mapCatalog.find((item) => item.id === mapId);
     if (!map) return;
 
@@ -163,7 +163,9 @@ async function init() {
     state.mapOverlays.setMapData(map);
     const markerData = await ensureMapMarkers(mapId);
     let activeMapId = mapId;
-    const resolvedMapId = resolveMapWithPins(mapId, markerData);
+    const resolvedMapId = resolveIfEmpty
+      ? resolveMapWithPins(mapId, markerData)
+      : mapId;
     if (resolvedMapId !== mapId) {
       activeMapId = resolvedMapId;
       state.currentMapId = activeMapId;
@@ -214,7 +216,7 @@ async function init() {
   state.pins = [];
   state.currentMapId = initialMapId;
 
-  const mapInitPromise = switchMap(initialMapId, { fit: true }).catch((error) => {
+  const mapInitPromise = switchMap(initialMapId, { fit: true, resolveIfEmpty: true }).catch((error) => {
     console.error("Failed to initialize map:", error);
   });
 

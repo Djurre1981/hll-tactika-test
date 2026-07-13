@@ -418,7 +418,7 @@ export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn })
         }
       } catch (error) {
         console.error(error);
-        alert(error.message || "Could not delete trick");
+        showEditorToast(error.message || "Could not delete trick");
         return;
       }
     }
@@ -452,7 +452,7 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   } catch (error) {
     state.positionHistory.pop();
     console.error(error);
-    alert(error.message || "Could not delete trick");
+    showEditorToast(error.message || "Could not delete trick");
   } finally {
     if (btnDeletePin) {
       btnDeletePin.disabled = false;

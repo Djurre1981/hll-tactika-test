@@ -7,6 +7,7 @@ import {
   isDirectImageUrl,
 } from "../helpers/pin-media.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
+import { showEditorToast } from "../ui/editor-toast.js";
 
 const UPLOAD_BUTTON_HTML =
   '<i class="fa-solid fa-image" aria-hidden="true"></i>';
@@ -324,7 +325,7 @@ async function handleMediaFileUpload(file) {
   if (!row) return;
 
   if (!isVideoFile(file) && !isImageFile(file)) {
-    alert("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
+    showEditorToast("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
     return;
   }
 
@@ -373,7 +374,7 @@ async function handleMediaFileUpload(file) {
     notifyFormChanged();
   } catch (error) {
     console.error(error);
-    alert(error.message || "Upload failed");
+    showEditorToast(error.message || "Upload failed");
   } finally {
     resetUploadButton(row);
     activeUploadRow = null;

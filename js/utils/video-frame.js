@@ -1,6 +1,19 @@
 import { isPlayableDirectUrl } from "./video.js";
 
 const frameObjectUrlCache = new Map();
+const MAX_FRAME_CACHE = 24;
+
+function touchFrameCache(key, objectUrl) {
+  if (frameObjectUrlCache.has(key)) {
+    frameObjectUrlCache.delete(key);
+  }
+  frameObjectUrlCache.set(key, objectUrl);
+  while (frameObjectUrlCache.size > MAX_FRAME_CACHE) {
+    const oldest = frameObjectUrlCache.keys().next().value;
+    revokeObjectUrl(frameObjectUrlCache.get(oldest));
+    frameObjectUrlCache.delete(oldest);
+  }
+}
 
 export function canExtractVideoFrame(url) {
   return isPlayableDirectUrl(url);
@@ -109,7 +122,7 @@ export async function getVideoFrameObjectUrl(videoSource) {
 
   const blob = await captureVideoFrame(videoSource);
   const objectUrl = URL.createObjectURL(blob);
-  frameObjectUrlCache.set(cacheKey, objectUrl);
+  touchFrameCache(cacheKey, objectUrl);
   return objectUrl;
 }
 

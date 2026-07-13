@@ -1,4 +1,4 @@
-function parseMediaUrl(url) {
+export function parseMediaUrl(url) {
   if (!url) return null;
   try {
     return new URL(url);
@@ -11,9 +11,25 @@ function parseMediaUrl(url) {
   }
 }
 
-function getHostname(url) {
+export function getHostname(url) {
   const parsed = parseMediaUrl(url);
   return parsed?.hostname.replace(/^www\./, "") || "";
+}
+
+/** Absolute https URLs only — blocks javascript:/data:/http: etc. */
+export function isSafeHttpUrl(url) {
+  const parsed = parseMediaUrl(url);
+  if (!parsed) return false;
+  if (parsed.protocol !== "https:") {
+    return false;
+  }
+  // Relative app paths rebased against localhost are not "safe external" URLs
+  // when the original string was not absolute; callers should handle /api/ first.
+  const original = String(url || "").trim();
+  if (original.startsWith("/") && !original.startsWith("//")) {
+    return false;
+  }
+  return Boolean(parsed.hostname);
 }
 
 export function isDiscordMediaUrl(url) {
@@ -22,6 +38,9 @@ export function isDiscordMediaUrl(url) {
     return false;
   }
   const parsed = parseMediaUrl(url);
+  if (parsed?.protocol !== "https:") {
+    return false;
+  }
   return parsed?.pathname.includes("/attachments/") ?? false;
 }
 

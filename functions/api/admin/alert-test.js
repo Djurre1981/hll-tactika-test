@@ -1,6 +1,7 @@
 import { requireOwner } from "../../lib/auth-request.js";
+import { guardAccess } from "../../lib/access-guard.js";
 import { getSecurityConfig } from "../../lib/security-config.js";
-import { json } from "../../lib/response.js";
+import { errorResponse, json } from "../../lib/response.js";
 import {
   describeWebhookUrls,
   postDiscordAlerts,
@@ -10,6 +11,16 @@ async function runAlertTest(context) {
   const auth = await requireOwner(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "admin",
+    endpoint: "admin.alert_test",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   const config = getSecurityConfig(context.env);
@@ -49,10 +60,10 @@ async function runAlertTest(context) {
   );
 }
 
-export async function onRequestGet(context) {
+export async function onRequestPost(context) {
   return runAlertTest(context);
 }
 
-export async function onRequestPost(context) {
-  return runAlertTest(context);
+export async function onRequestGet() {
+  return errorResponse("Use POST", 405);
 }

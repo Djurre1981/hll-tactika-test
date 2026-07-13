@@ -253,11 +253,6 @@ export function exitEditorMode() {
   });
 }
 
-/** @deprecated Use exitEditorMode — kept for map-switch and legacy callers */
-export function closeEditPanel() {
-  exitEditorMode();
-}
-
 export function setSidebarDefaultVisible(visible) {
   const sidebarDefault = getSidebarDefault();
   sidebarDefault?.classList.toggle("hidden", !visible);
@@ -313,11 +308,6 @@ export function openAddPinForm(tag = DEFAULT_PIN_TAG) {
   renderPins();
   syncViewportModeClasses();
   syncViewportFormClasses();
-}
-
-/** @deprecated Use openAddPinForm */
-export function startAddPin() {
-  openAddPinForm();
 }
 
 export async function startEditPin(marker, { focus = false } = {}) {

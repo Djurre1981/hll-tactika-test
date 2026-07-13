@@ -97,15 +97,13 @@ export function isValidMediaUrl(url) {
   if (isAppImagePath(normalized) || isAppVideoPath(normalized)) {
     return true;
   }
+  if (normalized.startsWith("/") && !normalized.startsWith("//")) {
+    return false;
+  }
   try {
-    new URL(normalized);
-    return true;
+    const parsed = new URL(normalized);
+    return parsed.protocol === "https:";
   } catch {
-    try {
-      new URL(normalized, window.location.origin);
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }

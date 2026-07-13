@@ -7,9 +7,15 @@ export const REQUIRES_KEYS = new Set([
   "faction-specific",
 ]);
 
+export const DEFAULT_PIN_TAG = "mg-spot";
+
+export function isValidMapId(mapId) {
+  return typeof mapId === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(mapId);
+}
+
 export function normalizePinTag(tag) {
   const value = String(tag || "").trim();
-  return PIN_TAGS.has(value) ? value : "climb";
+  return PIN_TAGS.has(value) ? value : DEFAULT_PIN_TAG;
 }
 
 export function normalizePinFaction(faction) {

@@ -33,6 +33,7 @@ export async function onRequestGet(context) {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("Content-Type", headers.get("Content-Type") || "image/jpeg");
+  headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Cache-Control", "private, max-age=3600");
 
   return new Response(object.body, { headers });

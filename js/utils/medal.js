@@ -1,6 +1,7 @@
 import { isMedalUrl } from "./video.js";
 
 const cache = new Map();
+const MAX_MEDAL_CACHE = 40;
 
 export async function resolveMedalClip(url, { signal } = {}) {
   if (!isMedalUrl(url)) {
@@ -8,7 +9,10 @@ export async function resolveMedalClip(url, { signal } = {}) {
   }
 
   if (cache.has(url)) {
-    return cache.get(url);
+    const cached = cache.get(url);
+    cache.delete(url);
+    cache.set(url, cached);
+    return cached;
   }
 
   const response = await fetch(`/api/medal/resolve?url=${encodeURIComponent(url)}`, {
@@ -22,6 +26,10 @@ export async function resolveMedalClip(url, { signal } = {}) {
 
   const data = await response.json();
   cache.set(url, data);
+  while (cache.size > MAX_MEDAL_CACHE) {
+    const oldest = cache.keys().next().value;
+    cache.delete(oldest);
+  }
   return data;
 }
 

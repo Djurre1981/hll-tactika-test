@@ -13,6 +13,5 @@ export function canModifyPin(pin) {
   if (!user || !pin) return false;
   if (!canEnterEditorMode()) return false;
   if (ANY_PIN_ROLES.includes(user.role)) return true;
-  if (pin.createdBy == null) return true;
   return pin.createdBy === user.steamId;
 }

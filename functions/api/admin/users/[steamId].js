@@ -1,4 +1,5 @@
 import { requireAdmin, requireOwner } from "../../../lib/auth-request.js";
+import { guardAccess } from "../../../lib/access-guard.js";
 import { ASSIGNABLE_ROLES, removeManagedUser, updateManagedUserRole } from "../../../lib/roles.js";
 import { fetchSteamProfile } from "../../../lib/steam.js";
 import { isValidSteamId64 } from "../../../lib/users-store.js";
@@ -8,6 +9,16 @@ export async function onRequestDelete(context) {
   const auth = await requireAdmin(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "admin",
+    endpoint: "admin.users.delete",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   const steamId = String(context.params.steamId || "").trim();
@@ -33,6 +44,16 @@ export async function onRequestPatch(context) {
   const auth = await requireOwner(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "admin",
+    endpoint: "admin.users.role",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   const steamId = String(context.params.steamId || "").trim();

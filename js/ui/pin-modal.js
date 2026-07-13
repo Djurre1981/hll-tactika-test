@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
 import { getPinPlayback, hidePreviewImmediately } from "./pin-preview.js";
-import { escapeHtml } from "../helpers/sanitizer.js";
+import { escapeHtml, safeUrlAttr } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { createVideoElement, clearMediaContainer } from "../utils/video.js";
@@ -361,9 +361,10 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
     setModalMediaFullscreenVisible(false);
     const fallbackUrl = mediaItem.url;
     clearMediaContainer(getModalPlayer());
+    const safeHref = safeUrlAttr(fallbackUrl);
     getModalPlayer().innerHTML = `
       <p class="preview-error">Could not load clip.</p>
-      <p><a href="${escapeHtml(fallbackUrl)}" target="_blank" rel="noopener noreferrer">Open original link</a></p>
+      ${safeHref ? `<p><a href="${safeHref}" target="_blank" rel="noopener noreferrer">Open original link</a></p>` : ""}
     `;
   }
 }

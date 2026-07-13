@@ -1,30 +1,20 @@
 import { isAppImagePath, isAppVideoPath } from "./app-media.js";
-import { isDiscordMediaUrl } from "./discord-url.js";
+import {
+  getHostname,
+  isDiscordMediaUrl,
+  isSafeHttpUrl,
+  parseMediaUrl,
+} from "./discord-url.js";
 
 const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com"];
 const VIMEO_HOSTS = ["vimeo.com", "www.vimeo.com", "player.vimeo.com"];
 
-function parseMediaUrl(url) {
-  if (!url) return null;
-  try {
-    return new URL(url);
-  } catch {
-    try {
-      return new URL(url, "https://localhost/");
-    } catch {
-      return null;
-    }
-  }
-}
-
-function getHostname(url) {
-  const parsed = parseMediaUrl(url);
-  return parsed?.hostname.replace(/^www\./, "") || "";
-}
-
 function isDirectVideoUrl(url) {
   if (isAppVideoPath(url)) {
     return true;
+  }
+  if (!isSafeHttpUrl(url)) {
+    return false;
   }
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 }
@@ -33,12 +23,23 @@ function isDirectImageUrl(url) {
   if (isAppImagePath(url)) {
     return true;
   }
+  if (!isSafeHttpUrl(url)) {
+    return false;
+  }
   return /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
 }
 
 export function isSupportedHostedVideoUrl(url) {
   const normalized = String(url || "").trim();
   if (!normalized) {
+    return false;
+  }
+
+  if (isAppVideoPath(normalized)) {
+    return true;
+  }
+
+  if (!isSafeHttpUrl(normalized)) {
     return false;
   }
 
@@ -77,12 +78,7 @@ export function isSupportedThumbnailUrl(url) {
     return true;
   }
 
-  try {
-    const parsed = parseMediaUrl(normalized);
-    return parsed?.protocol === "https:" || parsed?.protocol === "http:";
-  } catch {
-    return false;
-  }
+  return isSafeHttpUrl(normalized);
 }
 
 export function validatePinMediaFields(pin) {
@@ -112,3 +108,5 @@ export function validatePinMediaFields(pin) {
 
   return null;
 }
+
+export { parseMediaUrl };

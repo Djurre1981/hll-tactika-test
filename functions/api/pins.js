@@ -7,6 +7,7 @@ import {
   normalizePinFaction,
   normalizePinTag,
   sanitizeRequires,
+  isValidMapId,
   toPinMarker,
 } from "../lib/pin-fields.js";
 import { canEnterEditorMode } from "../lib/pin-permissions.js";
@@ -82,6 +83,9 @@ export async function onRequestGet(context) {
   if (!mapId) {
     return errorResponse("Bulk pin export is not allowed. Request markers with ?mapId=.", 403);
   }
+  if (!isValidMapId(mapId)) {
+    return errorResponse("Invalid mapId", 400);
+  }
 
   try {
     assertPinDetailSecretConfigured(context.env);
@@ -150,6 +154,22 @@ export async function onRequestPost(context) {
     return errorResponse("mapId and pin are required", 400);
   }
 
+  if (!isValidMapId(mapId)) {
+    return errorResponse("Invalid mapId", 400);
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "pin_write",
+    endpoint: "pins.create",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    mapId,
+    statusOnSuccess: 201,
+  });
+  if (access.error) {
+    return access.error;
+  }
+
   const built = buildPinFromBody(pin, auth.session.steamId);
   if (built.error) {
     return errorResponse(built.error, 400);
@@ -178,7 +198,7 @@ export async function onRequestPost(context) {
 
   const newPin = {
     ...mirrored.pin,
-    id: built.pin.id || `pin-${crypto.randomUUID()}`,
+    id: `pin-${crypto.randomUUID()}`,
     createdBy: auth.session.steamId,
     createdByName,
   };

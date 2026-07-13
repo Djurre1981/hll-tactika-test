@@ -168,7 +168,11 @@ export function createVideoElement(
     video.preload = preload;
     if (autoplay) video.autoplay = true;
     if (muted) video.muted = true;
-    if (autoplay) video.play().catch(() => {});
+    if (autoplay) {
+      video.play().catch(() => {
+        /* autoplay blocked — expect user gesture */
+      });
+    }
     return video;
   }
 

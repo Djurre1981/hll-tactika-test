@@ -313,7 +313,9 @@ function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
     const reveal = () => {
       video.classList.remove("preview-video--pending");
       still?.remove();
-      video.play().catch(() => {});
+      video.play().catch(() => {
+        /* autoplay blocked — expect user gesture */
+      });
     };
     video.addEventListener("loadeddata", reveal, { once: true });
     video.addEventListener("canplay", reveal, { once: true });
