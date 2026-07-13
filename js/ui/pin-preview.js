@@ -9,6 +9,10 @@ import {
   youtubeThumbnail,
 } from "../utils/video.js";
 import { resolveMedalClip } from "../utils/medal.js";
+import {
+  canExtractVideoFrame,
+  getVideoFrameObjectUrl,
+} from "../utils/video-frame.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
@@ -71,7 +75,7 @@ export async function getPinPlayback(pin, mediaIndex = 0) {
 }
 
 const PREVIEW_DETAIL_DEBOUNCE_MS = 200;
-const PREVIEW_VIDEO_DWELL_MS = 2000;
+const PREVIEW_VIDEO_DWELL_MS = 1600;
 let previewDetailTimer = null;
 let previewVideoTimer = null;
 let previewLoadAbort = null;
@@ -283,13 +287,13 @@ export function showPreview(pin, event) {
   schedulePreviewDetailLoad(pin, previewPinId);
 }
 
-function schedulePreviewVideo(previewPinId, playback, pinTitle) {
+function schedulePreviewVideo(previewPinId, playback, pinTitle, dwellMs = PREVIEW_VIDEO_DWELL_MS) {
   clearTimeout(previewVideoTimer);
   previewVideoTimer = window.setTimeout(() => {
     previewVideoTimer = null;
     if (state.highlightedPinId !== previewPinId) return;
     startPreviewPlayback(getPreviewMedia(), playback, pinTitle);
-  }, PREVIEW_VIDEO_DWELL_MS);
+  }, dwellMs);
 }
 
 function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
@@ -306,15 +310,13 @@ function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
     video.loop = true;
     video.classList.add("preview-video--pending");
     video.setAttribute("aria-label", `${pinTitle} preview`);
-    video.addEventListener(
-      "canplay",
-      () => {
-        video.classList.remove("preview-video--pending");
-        still?.remove();
-        video.play().catch(() => {});
-      },
-      { once: true }
-    );
+    const reveal = () => {
+      video.classList.remove("preview-video--pending");
+      still?.remove();
+      video.play().catch(() => {});
+    };
+    video.addEventListener("loadeddata", reveal, { once: true });
+    video.addEventListener("canplay", reveal, { once: true });
     previewMedia.appendChild(video);
     return;
   }
@@ -324,15 +326,30 @@ function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
   previewMedia.appendChild(iframe);
 }
 
-function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
-  const stillUrl = resolvePreviewStillUrl(pin, playback);
+async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
+  let stillUrl = resolvePreviewStillUrl(pin, playback);
   renderPreviewStill(previewMedia, stillUrl, pinTitle);
 
   if (playback.isImage || !playback.playbackUrl) {
     return;
   }
 
-  schedulePreviewVideo(pin.id, playback, pinTitle);
+  if (!stillUrl && canExtractVideoFrame(playback.playbackUrl)) {
+    try {
+      stillUrl = await getVideoFrameObjectUrl(playback.playbackUrl);
+      if (state.highlightedPinId !== pin.id) return;
+      renderPreviewStill(previewMedia, stillUrl, pinTitle);
+    } catch (error) {
+      console.warn("Could not capture preview frame", error);
+    }
+  }
+
+  schedulePreviewVideo(
+    pin.id,
+    playback,
+    pinTitle,
+    stillUrl ? PREVIEW_VIDEO_DWELL_MS : 0
+  );
 }
 
 export async function loadPreviewMedia(marker, previewPinId) {
@@ -344,7 +361,7 @@ export async function loadPreviewMedia(marker, previewPinId) {
     const playback = await getPinPreviewPlayback(pin, signal);
     if (signal.aborted || state.highlightedPinId !== previewPinId) return;
 
-    renderPreviewPlayer(getPreviewMedia(), pin, playback, pin.title);
+    await renderPreviewPlayer(getPreviewMedia(), pin, playback, pin.title);
   } catch (error) {
     if (signal.aborted || error?.name === "AbortError") return;
     console.warn(error);

@@ -1,7 +1,15 @@
 import { isPlayableDirectUrl } from "./video.js";
 
+const frameObjectUrlCache = new Map();
+
 export function canExtractVideoFrame(url) {
   return isPlayableDirectUrl(url);
+}
+
+function revokeObjectUrl(url) {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function captureVideoFrame(videoSource, { seekTime = null, quality = 0.85 } = {}) {
@@ -86,4 +94,28 @@ export function captureVideoFrame(videoSource, { seekTime = null, quality = 0.85
 export async function fileFromVideoFrame(videoSource, filename = "preview.jpg") {
   const blob = await captureVideoFrame(videoSource);
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
+export async function getVideoFrameObjectUrl(videoSource) {
+  const cacheKey =
+    videoSource instanceof Blob
+      ? `${videoSource.name}:${videoSource.size}:${videoSource.lastModified}`
+      : String(videoSource);
+
+  const cached = frameObjectUrlCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const blob = await captureVideoFrame(videoSource);
+  const objectUrl = URL.createObjectURL(blob);
+  frameObjectUrlCache.set(cacheKey, objectUrl);
+  return objectUrl;
+}
+
+export function clearVideoFrameCache() {
+  for (const url of frameObjectUrlCache.values()) {
+    revokeObjectUrl(url);
+  }
+  frameObjectUrlCache.clear();
 }
