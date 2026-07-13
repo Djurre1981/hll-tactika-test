@@ -12,6 +12,8 @@ import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { detectMediaKind, getPinMediaItems } from "../helpers/pin-media.js";
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
+import { isPhoneLayout } from "../helpers/layout.js";
+import { openModal, armModalDismissGuard } from "./pin-modal.js";
 
 export async function getMediaPlayback(mediaItem) {
   if (!mediaItem) {
@@ -295,4 +297,30 @@ export function hidePreviewImmediately() {
   state.phonePreviewPinId = null;
   hidePreviewTooltip();
   getPreviewMedia().innerHTML = "";
+}
+
+export function initPreviewTooltip() {
+  const body = document.querySelector(".preview-tooltip__body");
+  if (!body || body.dataset.previewBound === "true") return;
+  body.dataset.previewBound = "true";
+
+  body.addEventListener("pointerdown", (event) => {
+    if (!isPhoneLayout() || state.panelMode !== null || !isPreviewVisible()) return;
+    if (event.button !== 0) return;
+    armModalDismissGuard();
+  });
+
+  body.addEventListener("click", (event) => {
+    if (!isPhoneLayout() || state.panelMode !== null || !isPreviewVisible()) return;
+
+    const pinId = state.phonePreviewPinId || state.highlightedPinId;
+    if (!pinId) return;
+
+    const pin = state.pins.find((item) => item.id === pinId);
+    if (!pin) return;
+
+    event.stopPropagation();
+    state.phonePreviewPinId = null;
+    openModal(pin);
+  });
 }

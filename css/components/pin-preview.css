@@ -160,3 +160,10 @@
   color: rgba(255, 255, 255, 0.55);
   line-height: 1;
 }
+
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  .preview-tooltip.is-visible .preview-tooltip__body {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+}

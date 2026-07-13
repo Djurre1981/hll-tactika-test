@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { canModifyPin, canEnterEditorMode } from "./helpers/permissions.js";
 import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
-import { hidePreviewImmediately, scheduleHidePreview } from "./ui/pin-preview.js";
+import { hidePreviewImmediately, scheduleHidePreview, initPreviewTooltip } from "./ui/pin-preview.js";
 import { isPhoneLayout } from "./helpers/layout.js";
 import {
   toggleEditMode,
@@ -279,5 +279,6 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   initAutoSave(autoSaveDeps);
   initPinMediaForm();
   initModalMediaNav();
+  initPreviewTooltip();
   initDraftPinDrag();
 }
