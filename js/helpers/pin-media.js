@@ -63,6 +63,8 @@ export function getPinMediaItems(pin) {
 }
 
 export function pinHasMedia(pin) {
+  if (pin?.hasMedia === true) return true;
+  if (pin?.hasMedia === false) return false;
   return getPinMediaItems(pin).length > 0;
 }
 

@@ -43,3 +43,7 @@ export async function updateManagedUserRole(steamId, role) {
   });
   return data.user;
 }
+
+export async function fetchFullPinsExport() {
+  return adminApiRequest("/api/admin/pins-full");
+}

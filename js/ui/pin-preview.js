@@ -1,3 +1,4 @@
+import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
 import { state } from "../state.js";
 import {
   createVideoElement,
@@ -69,6 +70,8 @@ export async function getPinPlayback(pin, mediaIndex = 0) {
 }
 
 const TOOLTIP_TRANSITION_MS = 320;
+const PREVIEW_DETAIL_DEBOUNCE_MS = 200;
+let previewDetailTimer = null;
 
 function getPreviewTooltip() {
   return document.getElementById("preview-tooltip");
@@ -165,6 +168,18 @@ export function showPreview(pin, event) {
 
   renderPreviewRequires(pin);
 
+  const markerThumbnail = String(pin.thumbnail || "").trim();
+  if (markerThumbnail && !pin.videoUrl && !pin.mediaItems?.length) {
+    getPreviewMedia().innerHTML = "";
+    const img = document.createElement("img");
+    img.src = markerThumbnail;
+    img.alt = `${pin.title} preview`;
+    getPreviewMedia().appendChild(img);
+    showPreviewTooltip();
+    movePreview(event);
+    return;
+  }
+
   const previewMediaItem = getPinThumbnailMediaItem(pin);
   if (!previewMediaItem) {
     getPreviewMedia().innerHTML = "";
@@ -178,7 +193,11 @@ export function showPreview(pin, event) {
   movePreview(event);
 
   const previewPinId = pin.id;
-  loadPreviewMedia(pin, previewPinId);
+  clearTimeout(previewDetailTimer);
+  previewDetailTimer = window.setTimeout(() => {
+    previewDetailTimer = null;
+    loadPreviewMedia(pin, previewPinId);
+  }, PREVIEW_DETAIL_DEBOUNCE_MS);
 }
 
 function renderPreviewPlayer(previewMedia, { playbackUrl, thumbnail, isImage }, pinTitle) {
@@ -225,8 +244,11 @@ function renderPreviewPlayer(previewMedia, { playbackUrl, thumbnail, isImage }, 
   }
 }
 
-export async function loadPreviewMedia(pin, previewPinId) {
+export async function loadPreviewMedia(marker, previewPinId) {
   try {
+    const pin = await resolvePinDetail(state.currentMapId, marker);
+    if (state.highlightedPinId !== previewPinId) return;
+
     const playback = await getPinPreviewPlayback(pin);
     if (state.highlightedPinId !== previewPinId) return;
 

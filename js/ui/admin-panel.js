@@ -1,5 +1,6 @@
 import {
   addManagedUser,
+  fetchFullPinsExport,
   fetchManagedUsers,
   removeManagedUser,
   updateManagedUserRole,
@@ -16,6 +17,8 @@ const els = {
   status: document.getElementById("admin-panel-status"),
   submitButton: document.getElementById("btn-admin-add-user"),
   headerNote: document.querySelector(".admin-panel__header p"),
+  exportSection: document.getElementById("admin-export-section"),
+  exportButton: document.getElementById("btn-admin-export-pins"),
 };
 
 const ROLE_ORDER = { owner: 0, admin: 1, assist: 2, editor: 3, viewer: 4 };
@@ -41,6 +44,8 @@ export function initAdminPanel() {
   if (currentUser.role === "owner" && els.headerNote) {
     els.headerNote.textContent =
       "Add or remove circle members. Owners can change roles and remove administrators.";
+    els.exportSection?.classList.remove("hidden");
+    els.exportButton?.addEventListener("click", onExportPins);
   }
 
   els.openButton?.classList.remove("hidden");
@@ -361,6 +366,29 @@ async function onRoleChange(user, newRole, picker) {
     setStatus(error.message || "Could not update role", true);
   } finally {
     picker?.classList.remove("is-disabled");
+  }
+}
+
+async function onExportPins() {
+  els.exportButton.disabled = true;
+  setStatus("Preparing backup…");
+
+  try {
+    const data = await fetchFullPinsExport();
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pins-backup-${date}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus("Backup downloaded.");
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Could not export pins", true);
+  } finally {
+    els.exportButton.disabled = false;
   }
 }
 

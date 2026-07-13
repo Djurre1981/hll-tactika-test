@@ -17,6 +17,48 @@ export function normalizePinFaction(faction) {
   return FACTIONS.has(value) ? value : "neutral";
 }
 
+export function pinHasStoredMedia(pin) {
+  if (!pin) return false;
+  if (String(pin.videoUrl || "").trim()) return true;
+  if (String(pin.thumbnail || "").trim()) return true;
+  if (Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0) return true;
+  return false;
+}
+
+export function toPinMarker(pin, detailToken) {
+  const marker = {
+    id: pin.id,
+    title: pin.title,
+    tag: pin.tag,
+    x: pin.x,
+    y: pin.y,
+    faction: pin.faction,
+    requires: pin.requires || {},
+    detailToken,
+    hasMedia: pinHasStoredMedia(pin),
+  };
+
+  const thumbnail = String(pin.thumbnail || "").trim();
+  if (thumbnail) {
+    marker.thumbnail = thumbnail;
+  }
+
+  if (pin.tag === "mg-spot") {
+    const dirX = Number(pin.dirX);
+    const dirY = Number(pin.dirY);
+    if (Number.isFinite(dirX) && Number.isFinite(dirY)) {
+      marker.dirX = dirX;
+      marker.dirY = dirY;
+    }
+  }
+
+  return marker;
+}
+
+export function toPinDetail(pin) {
+  return structuredClone(pin);
+}
+
 export function sanitizeRequires(requires) {
   if (!requires || typeof requires !== "object" || Array.isArray(requires)) {
     return {};

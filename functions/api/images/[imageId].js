@@ -1,4 +1,5 @@
 import { isAppImageId } from "../../lib/app-media.js";
+import { guardAccess } from "../../lib/access-guard.js";
 import { requireAuth } from "../../lib/auth-request.js";
 import { getR2ImageObject } from "../../lib/r2-media.js";
 import { errorResponse } from "../../lib/response.js";
@@ -7,6 +8,15 @@ export async function onRequestGet(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "media",
+    endpoint: "media.image",
+    steamId: auth.session.steamId,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   const imageId = String(context.params.imageId || "").trim();

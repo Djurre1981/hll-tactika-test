@@ -1,5 +1,6 @@
 # Copy to .dev.vars for local `npm run dev` (never commit .dev.vars).
 SESSION_SECRET=replace-with-a-long-random-string
+PIN_DETAIL_SECRET=replace-with-another-long-random-string
 OWNER_STEAM_IDS=76561198000000000
 ADMIN_STEAM_IDS=76561198000000000
 ASSIST_STEAM_IDS=

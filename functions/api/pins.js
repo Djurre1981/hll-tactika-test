@@ -1,13 +1,16 @@
+import { guardAccess } from "../lib/access-guard.js";
 import { requireAuth } from "../lib/auth-request.js";
 import { mirrorPinMedia } from "../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../lib/media-urls.js";
+import { createDetailToken, assertPinDetailSecretConfigured } from "../lib/pin-detail-token.js";
 import {
   normalizePinFaction,
   normalizePinTag,
   sanitizeRequires,
+  toPinMarker,
 } from "../lib/pin-fields.js";
 import { canEnterEditorMode } from "../lib/pin-permissions.js";
-import { enrichPinsData, resolveCreatorName } from "../lib/pin-creators.js";
+import { resolveCreatorName } from "../lib/pin-creators.js";
 import { loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { normalizePinTitle } from "../lib/pin-title.js";
 import { errorResponse, json } from "../lib/response.js";
@@ -75,9 +78,37 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
+  const mapId = new URL(context.request.url).searchParams.get("mapId");
+  if (!mapId) {
+    return errorResponse("Bulk pin export is not allowed. Request markers with ?mapId=.", 403);
+  }
+
+  assertPinDetailSecretConfigured(context.env);
+
+  const access = await guardAccess(context, {
+    bucket: "map",
+    endpoint: "pins.map",
+    steamId: auth.session.steamId,
+    mapId,
+  });
+  if (access.error) {
+    return access.error;
+  }
+
   const data = await loadPinsData(context.env);
-  const enriched = await enrichPinsData(data, context.env);
-  return json(enriched);
+  const mapPins = data.pins?.[mapId] || [];
+  const pins = await Promise.all(
+    mapPins.map(async (pin) => {
+      const detailToken = await createDetailToken(context.env, {
+        pinId: pin.id,
+        mapId,
+        steamId: auth.session.steamId,
+      });
+      return toPinMarker(pin, detailToken);
+    })
+  );
+
+  return json({ mapId, pins });
 }
 
 export async function onRequestPost(context) {

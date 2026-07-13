@@ -1,4 +1,4 @@
-import { initAuth, loadProtectedPins } from "./ui/auth-gate.js";
+import { initAuth, loadMapMarkers } from "./ui/auth-gate.js";
 import { applyMapBgFade } from "./ui/map-bg-fade.js";
 import { state, loadSelectedMapId, saveSelectedMapId } from "./state.js";
 import { initViewerPreferences, getViewerPreferences } from "./viewer-preferences.js";
@@ -53,7 +53,10 @@ async function init() {
   state.mapLabelsVisible = prefs.mapLabels;
   state.previewEnabled = prefs.preview;
 
-  const pinDataPromise = loadProtectedPins();
+  const initialMapId = loadSelectedMapId("SMDMV2");
+  const markersPromise = loadMapMarkers(initialMapId);
+  const markerLoads = new Map([[initialMapId, markersPromise]]);
+
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
   revealAppChrome();
@@ -76,6 +79,15 @@ async function init() {
     ],
     spawnData,
   ] = await Promise.all([mapModulesPromise, spawnPromise]);
+
+  async function ensureMapMarkers(mapId) {
+    if (state.pinCatalog[mapId]) return;
+    if (!markerLoads.has(mapId)) {
+      markerLoads.set(mapId, loadMapMarkers(mapId));
+    }
+    const data = await markerLoads.get(mapId);
+    state.pinCatalog[mapId] = data.pins || [];
+  }
 
   async function switchMap(mapId, { fit = false } = {}) {
     const map = state.mapCatalog.find((item) => item.id === mapId);
@@ -121,6 +133,7 @@ async function init() {
     }
 
     state.mapOverlays.setMapData(map);
+    await ensureMapMarkers(mapId);
     state.pins = (state.pinCatalog[mapId] || []).map(normalizePin);
     renderPins();
     renderPinList();
@@ -146,42 +159,28 @@ async function init() {
   state.mapCatalog = spawnData.maps || [];
   state.pinCatalog = {};
   state.pins = [];
-  state.currentMapId = loadSelectedMapId("SMDMV2");
+  state.currentMapId = initialMapId;
 
-  await switchMap(state.currentMapId, { fit: true });
-
-  let pinData;
   try {
-    pinData = await pinDataPromise;
+    await switchMap(initialMapId, { fit: true });
   } catch {
     revealMapViewport();
     return;
-  }
-
-  state.pinCatalog = pinData.pins || {};
-  const resolvedMapId = loadSelectedMapId(pinData.defaultMapId);
-  if (resolvedMapId !== state.currentMapId) {
-    state.currentMapId = resolvedMapId;
-    await switchMap(state.currentMapId, { fit: true });
-  } else {
-    state.pins = (state.pinCatalog[state.currentMapId] || []).map(normalizePin);
-    renderPins();
-    renderPinList();
   }
 
   revealMapViewport();
 
   const [
     _adminPanelModule,
-    { fetchPinsCatalog },
+    { fetchMapMarkers },
     { populateMapSelect },
     { initUndoRedoKeyboard },
     { bindUi },
   ] = await restModulesPromise;
 
   async function reloadPinsForMap(mapId = state.currentMapId) {
-    const data = await fetchPinsCatalog();
-    state.pinCatalog = data.pins || {};
+    const data = await fetchMapMarkers(mapId);
+    state.pinCatalog[mapId] = data.pins || [];
     state.pins = (state.pinCatalog[mapId] || []).map(normalizePin);
     renderPins();
     renderPinList();

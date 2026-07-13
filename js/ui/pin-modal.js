@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { isPhoneLayout } from "../helpers/layout.js";
-import { getPinPlayback } from "./pin-preview.js";
-import { hidePreviewImmediately } from "./pin-preview.js";
+import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
+import { getPinPlayback, hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
@@ -209,15 +209,15 @@ function renderModalImage(url, title) {
   setModalMediaFullscreenVisible(true);
 }
 
-export function openModal(pin) {
+export async function openModal(marker) {
   hidePreviewImmediately();
   cancelPendingModalClose();
-  state.modalPin = pin;
+  state.modalPin = marker;
   state.modalMediaIndex = 0;
-  getModalTitle().textContent = pin.title;
-  getModalDescription().textContent = pin.description || "";
+  getModalTitle().textContent = marker.title;
+  getModalDescription().textContent = "";
 
-  const faction = pin.faction || "neutral";
+  const faction = marker.faction || "neutral";
   const factionConfig = getFactionDisplay(faction);
   const modalFactionPart = getModalFactionPart();
   if (modalFactionPart) {
@@ -234,10 +234,10 @@ export function openModal(pin) {
 
   const tagEl = document.getElementById("modal-tag");
   const titleSepEl = document.getElementById("modal-title-sep");
-  const tagLabel = getPinTagLabel(pin.tag);
+  const tagLabel = getPinTagLabel(marker.tag);
   if (tagEl) {
     tagEl.textContent = tagLabel;
-    tagEl.className = `video-modal__tag video-modal__tag--${pin.tag}`;
+    tagEl.className = `video-modal__tag video-modal__tag--${marker.tag}`;
   }
   if (titleSepEl) {
     titleSepEl.textContent = " - ";
@@ -245,33 +245,50 @@ export function openModal(pin) {
 
   const modalPositionCode = getModalPositionCode();
   if (modalPositionCode) {
-    const posX = pin.tag === "mg-spot" && pin.dirX != null ? pin.dirX : pin.x;
-    const posY = pin.tag === "mg-spot" && pin.dirY != null ? pin.dirY : pin.y;
+    const posX = marker.tag === "mg-spot" && marker.dirX != null ? marker.dirX : marker.x;
+    const posY = marker.tag === "mg-spot" && marker.dirY != null ? marker.dirY : marker.y;
     modalPositionCode.textContent = generatePositionCode(posX, posY);
     modalPositionCode.classList.remove("hidden");
   }
 
-  const uploader = getPinUploaderLabel(pin);
   const modalUploader = getModalUploader();
-  if (uploader && modalUploader) {
-    modalUploader.textContent = `Added by ${uploader}`;
-    modalUploader.classList.remove("hidden");
-  } else if (modalUploader) {
+  if (modalUploader) {
     modalUploader.textContent = "";
     modalUploader.classList.add("hidden");
   }
 
-  renderModalRequires(pin);
-  updateModalMediaNav(pin);
+  renderModalRequires(marker);
+  updateModalMediaNav(marker);
   setModalMediaFullscreenVisible(false);
 
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   const modal = getModal();
   modal.classList.remove("is-closing");
   armModalDismissGuard();
-  loadModalPlayer(pin, state.modalMediaIndex);
   if (!modal.open) {
     modal.showModal();
+  }
+
+  const markerId = marker.id;
+  try {
+    const pin = await resolvePinDetail(state.currentMapId, marker);
+    if (state.modalPin?.id !== markerId) return;
+
+    state.modalPin = pin;
+    getModalDescription().textContent = pin.description || "";
+
+    const uploader = getPinUploaderLabel(pin);
+    if (uploader && modalUploader) {
+      modalUploader.textContent = `Added by ${uploader}`;
+      modalUploader.classList.remove("hidden");
+    }
+
+    updateModalMediaNav(pin);
+    loadModalPlayer(pin, state.modalMediaIndex);
+  } catch (error) {
+    console.error(error);
+    if (state.modalPin?.id !== markerId) return;
+    getModalPlayer().innerHTML = '<p class="preview-error">Could not load pin details.</p>';
   }
 }
 
