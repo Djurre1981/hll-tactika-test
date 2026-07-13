@@ -292,6 +292,7 @@ export function scheduleHidePreview() {
 
 export function hidePreviewImmediately() {
   clearTimeout(state.previewHideTimer);
+  state.phonePreviewPinId = null;
   hidePreviewTooltip();
   getPreviewMedia().innerHTML = "";
 }

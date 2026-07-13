@@ -12,6 +12,7 @@ export const state = {
   pendingCoords: null,
   pendingDirection: null,
   highlightedPinId: null,
+  phonePreviewPinId: null,
   contextMenuPin: null,
   currentFaction: "neutral",
   pendingFaction: "neutral",

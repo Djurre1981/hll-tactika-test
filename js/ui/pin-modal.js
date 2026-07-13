@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { isPhoneLayout } from "../helpers/layout.js";
 import { getPinPlayback } from "./pin-preview.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
@@ -82,8 +83,20 @@ function modalStageHasMedia() {
   return Boolean(getModalPlayer()?.querySelector("img, video, iframe"));
 }
 
+function isPhoneImmersiveActive() {
+  return getModalPlayerWrap()?.classList.contains("is-phone-immersive") ?? false;
+}
+
 function isModalStageFullscreen() {
-  return document.fullscreenElement === getModalPlayerWrap();
+  return document.fullscreenElement === getModalPlayerWrap() || isPhoneImmersiveActive();
+}
+
+function shouldShowModalFullscreenButton(player) {
+  if (!player) return false;
+  if (player instanceof HTMLVideoElement) return true;
+  if (player instanceof HTMLImageElement) return true;
+  if (player.tagName === "IFRAME") return !isPhoneLayout();
+  return true;
 }
 
 function getPinUploaderLabel(pin) {
@@ -131,7 +144,10 @@ function setModalMediaFullscreenVisible(visible) {
 }
 
 async function exitModalMediaFullscreen() {
-  if (isModalStageFullscreen()) {
+  const wrap = getModalPlayerWrap();
+  wrap?.classList.remove("is-phone-immersive");
+
+  if (document.fullscreenElement === wrap) {
     try {
       await document.exitFullscreen();
     } catch {
@@ -145,7 +161,33 @@ async function toggleModalMediaFullscreen() {
   const wrap = getModalPlayerWrap();
   if (!wrap || !modalStageHasMedia()) return;
 
+  const player = getModalPlayer();
+  const video = player?.querySelector("video");
+  const img = player?.querySelector("img");
+
   try {
+    if (video) {
+      if (isPhoneLayout()) {
+        if (typeof video.webkitEnterFullscreen === "function") {
+          video.webkitEnterFullscreen();
+        } else if (video.requestFullscreen) {
+          await video.requestFullscreen();
+        }
+      } else if (isModalStageFullscreen()) {
+        await document.exitFullscreen();
+      } else {
+        await wrap.requestFullscreen();
+      }
+      syncModalMediaFullscreenButton();
+      return;
+    }
+
+    if (img && isPhoneLayout()) {
+      wrap.classList.toggle("is-phone-immersive");
+      syncModalMediaFullscreenButton();
+      return;
+    }
+
     if (isModalStageFullscreen()) {
       await document.exitFullscreen();
     } else {
@@ -291,7 +333,7 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
       player.setAttribute("controlsList", "nofullscreen");
     }
     modalPlayer.appendChild(player);
-    setModalMediaFullscreenVisible(true);
+    setModalMediaFullscreenVisible(shouldShowModalFullscreenButton(player));
   } catch (error) {
     console.warn(error);
     if (state.modalPin?.id !== pin.id || state.modalMediaIndex !== mediaIndex) return;

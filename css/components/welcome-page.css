@@ -18,6 +18,11 @@
   pointer-events: none;
 }
 
+.welcome-page__video.scrub-video--awaiting-touch,
+.bye-page__video.scrub-video--awaiting-touch {
+  opacity: 0;
+}
+
 .welcome-page__gradient {
   position: absolute;
   inset: 0;

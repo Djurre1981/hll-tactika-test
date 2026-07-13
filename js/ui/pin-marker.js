@@ -10,7 +10,6 @@ import {
   showPreviewAtPin,
   movePreview,
   scheduleHidePreview,
-  isPreviewVisible,
 } from "./pin-preview.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
@@ -110,16 +109,16 @@ export function attachPinInteractions(element, pin) {
     armModalDismissGuard();
   });
   element.addEventListener("mouseenter", (event) => {
-    if (state.panelMode !== null) return;
+    if (isPhoneLayout() || state.panelMode !== null) return;
     highlightPin(pin.id);
     showPreview(pin, event);
   });
   element.addEventListener("mousemove", (event) => {
-    if (state.panelMode !== null) return;
+    if (isPhoneLayout() || state.panelMode !== null) return;
     movePreview(event);
   });
   element.addEventListener("mouseleave", () => {
-    if (state.panelMode !== null) return;
+    if (isPhoneLayout() || state.panelMode !== null) return;
     if (state.modalPin?.id === pin.id && document.getElementById("video-modal")?.open) return;
     scheduleHidePreview();
     highlightPin(null);
@@ -129,13 +128,15 @@ export function attachPinInteractions(element, pin) {
     if (state.panelMode !== null) return;
 
     if (isPhoneLayout()) {
-      const previewVisible = isPreviewVisible();
-      const samePin = state.highlightedPinId === pin.id;
-      if (!previewVisible || !samePin) {
-        highlightPin(pin.id);
-        showPreviewAtPin(pin);
+      if (state.phonePreviewPinId === pin.id) {
+        state.phonePreviewPinId = null;
+        openModal(pin);
         return;
       }
+      state.phonePreviewPinId = pin.id;
+      highlightPin(pin.id);
+      showPreviewAtPin(pin);
+      return;
     }
 
     openModal(pin);

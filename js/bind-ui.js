@@ -75,7 +75,8 @@ function onTagFiltersChanged() {
 function onViewportBackgroundTap(event) {
   if (!isPhoneLayout() || state.panelMode !== null) return;
   if (event.target.closest(".map-pin, .map-mg-spot, .map-pin__label")) return;
-  if (!state.highlightedPinId) return;
+  if (!state.highlightedPinId && !state.phonePreviewPinId) return;
+  state.phonePreviewPinId = null;
   scheduleHidePreview();
   highlightPin(null);
 }

@@ -5,8 +5,8 @@ const SNAP_THRESHOLD = 0.001;
 const SEEK_THROTTLE_MS = 30;
 const ACTIVATE_RETRY_MS = 500;
 const LOAD_TIMEOUT_MS = 15000;
-const PHONE_SCRUB_TIMEOUT_MS = 3000;
 const DEFAULT_VIDEO_SRC = "assets/welcome/welcome.mp4";
+const AWAITING_TOUCH_CLASS = "scrub-video--awaiting-touch";
 
 function resolveSourceUrl(sourceUrl) {
   return new URL(sourceUrl, window.location.href).href;
@@ -20,6 +20,7 @@ export function initWelcomeScrub(video) {
   const phoneLayout = isPhoneLayout();
   const sourceUrl = video.dataset.src || DEFAULT_VIDEO_SRC;
   const resolvedSourceUrl = resolveSourceUrl(sourceUrl);
+  const welcomePage = video.closest("#welcome-page, #bye-page");
 
   let videoDuration = 0;
   let videoReady = false;
@@ -37,8 +38,7 @@ export function initWelcomeScrub(video) {
   let blobUrl = null;
   let blobAbort = null;
   let phoneAutoplayMode = false;
-  let phoneScrubFallbackTimer = null;
-  let phoneScrubConfirmed = false;
+  let phonePlaybackStarted = false;
 
   video.muted = true;
   video.playsInline = true;
@@ -77,6 +77,10 @@ export function initWelcomeScrub(video) {
       }
       void activate();
     }, ACTIVATE_RETRY_MS);
+  }
+
+  function revealVideo() {
+    video.classList.remove(AWAITING_TOUCH_CLASS);
   }
 
   function startLoop() {
@@ -164,42 +168,23 @@ export function initWelcomeScrub(video) {
     return waitForFrameData();
   }
 
-  function clearPhoneScrubFallback() {
-    if (!phoneScrubFallbackTimer) return;
-    window.clearTimeout(phoneScrubFallbackTimer);
-    phoneScrubFallbackTimer = null;
-  }
-
   function removeTouchScrubListeners() {
     document.removeEventListener("touchstart", handleTouchMove);
     document.removeEventListener("touchmove", handleTouchMove);
   }
 
+  function removePhoneGestureListener() {
+    welcomePage?.removeEventListener("touchstart", handlePhoneGestureStart);
+  }
+
   function startAutoplayLoop() {
     if (destroyed || phoneAutoplayMode) return;
     phoneAutoplayMode = true;
-    clearPhoneScrubFallback();
+    revealVideo();
     stopLoop();
     removeTouchScrubListeners();
     video.loop = true;
     void video.play().catch(() => {});
-  }
-
-  function confirmPhoneScrub() {
-    if (!phoneLayout || phoneAutoplayMode || phoneScrubConfirmed) return;
-    phoneScrubConfirmed = true;
-    clearPhoneScrubFallback();
-  }
-
-  function schedulePhoneScrubFallback() {
-    if (!phoneLayout || phoneAutoplayMode || phoneScrubConfirmed) return;
-    clearPhoneScrubFallback();
-    phoneScrubFallbackTimer = window.setTimeout(() => {
-      phoneScrubFallbackTimer = null;
-      if (!destroyed && !phoneAutoplayMode && !phoneScrubConfirmed) {
-        startAutoplayLoop();
-      }
-    }, PHONE_SCRUB_TIMEOUT_MS);
   }
 
   async function primeDecoder() {
@@ -212,6 +197,28 @@ export function initWelcomeScrub(video) {
     } catch {
       return false;
     }
+  }
+
+  async function startPhonePlaybackFromGesture() {
+    if (!phoneLayout || destroyed || phonePlaybackStarted) return;
+    phonePlaybackStarted = true;
+    removePhoneGestureListener();
+    revealVideo();
+
+    const primed = await primeDecoder();
+    stopRetry();
+    videoReady = true;
+
+    if (primed && !reducedMotion) {
+      startLoop();
+      return;
+    }
+
+    startAutoplayLoop();
+  }
+
+  function handlePhoneGestureStart() {
+    void startPhonePlaybackFromGesture();
   }
 
   async function upgradeToBlob() {
@@ -269,23 +276,16 @@ export function initWelcomeScrub(video) {
       applySeek(currentDisplayTime);
 
       if (phoneLayout) {
-        schedulePhoneScrubFallback();
-        const primed = await primeDecoder();
-        if (!primed) {
-          startAutoplayLoop();
-          stopRetry();
-          videoReady = true;
-          return;
-        }
-        confirmPhoneScrub();
+        video.classList.add(AWAITING_TOUCH_CLASS);
+        welcomePage?.addEventListener("touchstart", handlePhoneGestureStart, { passive: true });
+        stopRetry();
+        return;
       }
 
       stopRetry();
       videoReady = true;
       if (!reducedMotion) startLoop();
-      if (!phoneLayout) {
-        void upgradeToBlob();
-      }
+      void upgradeToBlob();
     } finally {
       activating = false;
     }
@@ -307,7 +307,6 @@ export function initWelcomeScrub(video) {
     if (e.touches.length > 0) {
       mouseX = e.touches[0].clientX;
       updateTargetTime();
-      if (phoneLayout) confirmPhoneScrub();
     }
   }
 
@@ -354,9 +353,6 @@ export function initWelcomeScrub(video) {
     if (timestamp - lastSeekTimestamp >= SEEK_THROTTLE_MS) {
       applySeek(currentDisplayTime);
       lastSeekTimestamp = timestamp;
-      if (phoneLayout && video.videoWidth > 0) {
-        confirmPhoneScrub();
-      }
     }
   }
 
@@ -377,10 +373,11 @@ export function initWelcomeScrub(video) {
       destroyed = true;
       stopRetry();
       stopLoop();
-      clearPhoneScrubFallback();
+      removePhoneGestureListener();
       blobAbort?.abort();
       blobAbort = null;
       video.pause();
+      video.classList.remove(AWAITING_TOUCH_CLASS);
       if (blobUrl) {
         URL.revokeObjectURL(blobUrl);
         blobUrl = null;
