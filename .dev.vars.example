@@ -12,3 +12,6 @@ USER_STEAM_IDS=
 # ALLOWED_STEAM_IDS=
 # Optional: Steam Web API key (https://steamcommunity.com/dev/apikey). Falls back to public profile XML if omitted.
 # STEAM_API_KEY=
+# Optional: Discord webhook(s) for access-anomaly alerts (also set in Cloudflare Pages env for production).
+# Comma-separated for multiple channels: url1,url2
+# ALERT_DISCORD_WEBHOOK_URL=

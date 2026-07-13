@@ -14,6 +14,7 @@ export async function onRequestGet(context) {
     bucket: "media",
     endpoint: "media.image",
     steamId: auth.session.steamId,
+    steamName: auth.session.name,
   });
   if (access.error) {
     return access.error;

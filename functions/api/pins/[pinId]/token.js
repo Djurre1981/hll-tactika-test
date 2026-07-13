@@ -27,6 +27,7 @@ export async function onRequestPost(context) {
     bucket: "token",
     endpoint: "pins.token",
     steamId: auth.session.steamId,
+    steamName: auth.session.name,
     mapId,
     pinId,
   });

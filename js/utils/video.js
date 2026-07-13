@@ -130,12 +130,42 @@ export function toEmbedUrl(url, { autoplay = false, mute = false } = {}) {
   return url;
 }
 
-export function createVideoElement(url, { autoplay = false, muted = false, controls = true } = {}) {
+export function teardownMediaElement(el) {
+  if (!el) return;
+
+  if (el instanceof HTMLVideoElement) {
+    try {
+      el.pause();
+    } catch {
+      /* ignore */
+    }
+    el.removeAttribute("src");
+    el.src = "";
+    el.load();
+    return;
+  }
+
+  if (el instanceof HTMLIFrameElement) {
+    el.src = "about:blank";
+  }
+}
+
+export function clearMediaContainer(container) {
+  if (!container) return;
+  container.querySelectorAll("video, iframe").forEach((el) => teardownMediaElement(el));
+  container.innerHTML = "";
+}
+
+export function createVideoElement(
+  url,
+  { autoplay = false, muted = false, controls = true, preload = "metadata" } = {}
+) {
   if (isPlayableDirectUrl(url)) {
     const video = document.createElement("video");
     video.src = url;
     video.controls = controls;
     video.playsInline = true;
+    video.preload = preload;
     if (autoplay) video.autoplay = true;
     if (muted) video.muted = true;
     if (autoplay) video.play().catch(() => {});

@@ -67,7 +67,7 @@ async function init() {
         markerLoads.delete(mapId);
         console.error(`Failed to load markers for ${mapId}:`, error);
         state.pinCatalog[mapId] = [];
-        throw error;
+        return { mapId, pins: [], mapsWithPins: [], error: error.message };
       });
     markerLoads.set(mapId, tracked);
     return tracked;

@@ -90,7 +90,7 @@ On 429: return `Retry-After` header. Log for alert counters.
 | Distinct maps loaded | ≥ 15 | 15 min |
 | Consecutive 429 responses | ≥ 5 | 10 min |
 
-- Env: `ALERT_DISCORD_WEBHOOK_URL` (optional; alerts skipped if unset).
+- Env: `ALERT_DISCORD_WEBHOOK_URL` (optional; alerts skipped if unset). Comma-separated for multiple webhooks (same message to all).
 - Debounce duplicate alerts ~30 min per user per signal type.
 - Manual revoke via existing admin panel.
 
@@ -206,7 +206,7 @@ Add to Cloudflare Pages → Settings → Environment variables. Document in [`RE
 | `ALERT_MAP_WINDOW_MIN` | No | `15` | Window for map alert |
 | `ALERT_429_COUNT` | No | `5` | Consecutive 429 alert |
 | `ALERT_429_WINDOW_MIN` | No | `10` | Window for 429 alert |
-| `ALERT_DISCORD_WEBHOOK_URL` | No | — | Discord webhook |
+| `ALERT_DISCORD_WEBHOOK_URL` | No | — | Discord webhook(s); comma-separated OK |
 | `AUDIT_ENABLED` | No | `true` | Toggle audit log |
 | `AUDIT_MAX_EVENTS` | No | `500` | KV audit list cap |
 

@@ -90,6 +90,7 @@ export async function onRequestGet(context) {
       bucket: "map",
       endpoint: "pins.map",
       steamId: auth.session.steamId,
+      steamName: auth.session.name,
       mapId,
     });
     if (access.error) {

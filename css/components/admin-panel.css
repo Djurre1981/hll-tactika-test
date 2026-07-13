@@ -100,6 +100,13 @@
   color: var(--text-muted);
 }
 
+.admin-panel__export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
 .admin-panel__status--error {
   color: #f0a8a8;
 }

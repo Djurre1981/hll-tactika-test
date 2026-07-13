@@ -2,7 +2,7 @@ import { isMedalUrl } from "./video.js";
 
 const cache = new Map();
 
-export async function resolveMedalClip(url) {
+export async function resolveMedalClip(url, { signal } = {}) {
   if (!isMedalUrl(url)) {
     return null;
   }
@@ -13,6 +13,7 @@ export async function resolveMedalClip(url) {
 
   const response = await fetch(`/api/medal/resolve?url=${encodeURIComponent(url)}`, {
     credentials: "same-origin",
+    signal,
   });
 
   if (!response.ok) {

@@ -3,6 +3,7 @@ import {
   fetchFullPinsExport,
   fetchManagedUsers,
   removeManagedUser,
+  testDiscordAlert,
   updateManagedUserRole,
 } from "../api/admin.js";
 import { getCurrentUser } from "../api/auth.js";
@@ -19,6 +20,7 @@ const els = {
   headerNote: document.querySelector(".admin-panel__header p"),
   exportSection: document.getElementById("admin-export-section"),
   exportButton: document.getElementById("btn-admin-export-pins"),
+  alertTestButton: document.getElementById("btn-admin-alert-test"),
 };
 
 const ROLE_ORDER = { owner: 0, admin: 1, assist: 2, editor: 3, viewer: 4 };
@@ -46,6 +48,7 @@ export function initAdminPanel() {
       "Add or remove circle members. Owners can change roles and remove administrators.";
     els.exportSection?.classList.remove("hidden");
     els.exportButton?.addEventListener("click", onExportPins);
+    els.alertTestButton?.addEventListener("click", onAlertTest);
   }
 
   els.openButton?.classList.remove("hidden");
@@ -389,6 +392,34 @@ async function onExportPins() {
     setStatus(error.message || "Could not export pins", true);
   } finally {
     els.exportButton.disabled = false;
+  }
+}
+
+async function onAlertTest() {
+  if (!els.alertTestButton) return;
+  els.alertTestButton.disabled = true;
+  setStatus("Sending Discord probe…");
+
+  try {
+    const result = await testDiscordAlert();
+    if (result.ok) {
+      const count = result.sent || result.webhookCount || 1;
+      setStatus(
+        count > 1
+          ? `Discord probe sent to ${count} webhooks.`
+          : "Discord probe sent. Check your alert channel."
+      );
+    } else {
+      setStatus(
+        result.error || `Discord probe failed (${result.discordStatus ?? result.httpStatus})`,
+        true
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Alert test failed", true);
+  } finally {
+    els.alertTestButton.disabled = false;
   }
 }
 

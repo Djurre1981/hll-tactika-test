@@ -5,7 +5,7 @@ import { getPinPlayback, hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
-import { createVideoElement } from "../utils/video.js";
+import { createVideoElement, clearMediaContainer } from "../utils/video.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 
 export const REQUIRES_ICON_CONFIG = {
@@ -201,7 +201,7 @@ async function toggleModalMediaFullscreen() {
 
 function renderModalImage(url, title) {
   const modalPlayer = getModalPlayer();
-  modalPlayer.innerHTML = "";
+  clearMediaContainer(modalPlayer);
   const img = document.createElement("img");
   img.src = url;
   img.alt = `${title} image`;
@@ -261,6 +261,7 @@ export async function openModal(marker) {
   updateModalMediaNav(marker);
   setModalMediaFullscreenVisible(false);
 
+  clearMediaContainer(getModalPlayer());
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   const modal = getModal();
   modal.classList.remove("is-closing");
@@ -288,6 +289,7 @@ export async function openModal(marker) {
   } catch (error) {
     console.error(error);
     if (state.modalPin?.id !== markerId) return;
+    clearMediaContainer(getModalPlayer());
     getModalPlayer().innerHTML = '<p class="preview-error">Could not load pin details.</p>';
   }
 }
@@ -326,6 +328,7 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
   if (!mediaItem) {
     if (state.modalPin?.id !== pin.id) return;
     setModalMediaFullscreenVisible(false);
+    clearMediaContainer(getModalPlayer());
     getModalPlayer().innerHTML = '<p class="preview-error">No media attached to this pin.</p>';
     return;
   }
@@ -340,11 +343,12 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
     }
 
     const modalPlayer = getModalPlayer();
-    modalPlayer.innerHTML = "";
+    clearMediaContainer(modalPlayer);
     const player = createVideoElement(playbackUrl, {
       autoplay: true,
       muted: false,
       controls: true,
+      preload: "metadata",
     });
     if (player instanceof HTMLVideoElement) {
       player.setAttribute("controlsList", "nofullscreen");
@@ -356,6 +360,7 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
     if (state.modalPin?.id !== pin.id || state.modalMediaIndex !== mediaIndex) return;
     setModalMediaFullscreenVisible(false);
     const fallbackUrl = mediaItem.url;
+    clearMediaContainer(getModalPlayer());
     getModalPlayer().innerHTML = `
       <p class="preview-error">Could not load clip.</p>
       <p><a href="${escapeHtml(fallbackUrl)}" target="_blank" rel="noopener noreferrer">Open original link</a></p>
@@ -370,6 +375,7 @@ export function showPreviousModalMedia() {
   if (count <= 1) return;
   state.modalMediaIndex = (state.modalMediaIndex - 1 + count) % count;
   updateModalMediaNav(pin);
+  clearMediaContainer(getModalPlayer());
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   loadModalPlayer(pin, state.modalMediaIndex);
 }
@@ -381,6 +387,7 @@ export function showNextModalMedia() {
   if (count <= 1) return;
   state.modalMediaIndex = (state.modalMediaIndex + 1) % count;
   updateModalMediaNav(pin);
+  clearMediaContainer(getModalPlayer());
   getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   loadModalPlayer(pin, state.modalMediaIndex);
 }
@@ -509,7 +516,7 @@ export function handleModalCloseEvent() {
 
 export function clearModalPlayer() {
   void exitModalMediaFullscreen();
-  getModalPlayer().innerHTML = "";
+  clearMediaContainer(getModalPlayer());
   setModalMediaFullscreenVisible(false);
   state.modalPin = null;
   state.modalMediaIndex = 0;

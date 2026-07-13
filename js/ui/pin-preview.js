@@ -1,6 +1,7 @@
 import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
 import { state } from "../state.js";
 import {
+  clearMediaContainer,
   createVideoElement,
   isMedalUrl,
   isPlayableDirectUrl,
@@ -16,7 +17,7 @@ import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
 
-export async function getMediaPlayback(mediaItem) {
+export async function getMediaPlayback(mediaItem, { signal } = {}) {
   if (!mediaItem) {
     return { playbackUrl: null, thumbnail: null, isImage: false };
   }
@@ -29,7 +30,7 @@ export async function getMediaPlayback(mediaItem) {
   let thumbnail = youtubeThumbnail(playbackUrl);
 
   if (isMedalUrl(mediaItem.url)) {
-    const medal = await resolveMedalClip(mediaItem.url);
+    const medal = await resolveMedalClip(mediaItem.url, { signal });
     playbackUrl = medal.contentUrl;
     thumbnail = thumbnail || medal.thumbnailUrl;
   }
@@ -37,8 +38,8 @@ export async function getMediaPlayback(mediaItem) {
   return { playbackUrl, thumbnail, isImage: false, sourceUrl: mediaItem.url };
 }
 
-export async function getPinPreviewPlayback(pin) {
-  return getMediaPlayback(getPinThumbnailMediaItem(pin));
+export async function getPinPreviewPlayback(pin, signal) {
+  return getMediaPlayback(getPinThumbnailMediaItem(pin), { signal });
 }
 
 export function getPinThumbnailMediaItem(pin) {
@@ -69,9 +70,31 @@ export async function getPinPlayback(pin, mediaIndex = 0) {
   return getMediaPlayback(items[mediaIndex]);
 }
 
-const TOOLTIP_TRANSITION_MS = 320;
 const PREVIEW_DETAIL_DEBOUNCE_MS = 200;
+const PREVIEW_VIDEO_DWELL_MS = 2000;
 let previewDetailTimer = null;
+let previewVideoTimer = null;
+let previewLoadAbort = null;
+
+function beginPreviewLoad() {
+  previewLoadAbort?.abort();
+  previewLoadAbort = new AbortController();
+  return previewLoadAbort.signal;
+}
+
+function cancelPreviewTimers() {
+  clearTimeout(previewDetailTimer);
+  previewDetailTimer = null;
+  clearTimeout(previewVideoTimer);
+  previewVideoTimer = null;
+}
+
+function clearPreviewMedia() {
+  cancelPreviewTimers();
+  previewLoadAbort?.abort();
+  previewLoadAbort = null;
+  clearMediaContainer(getPreviewMedia());
+}
 
 function getPreviewTooltip() {
   return document.getElementById("preview-tooltip");
@@ -129,7 +152,11 @@ function renderPreviewRequires(pin) {
 }
 
 function schedulePreviewDetailLoad(pin, previewPinId) {
-  getPreviewMedia().innerHTML = '<p class="preview-loading">Loading clip…</p>';
+  const media = getPreviewMedia();
+  if (!media.querySelector("img, .preview-still-placeholder")) {
+    clearMediaContainer(media);
+    media.innerHTML = '<p class="preview-loading">Loading clip…</p>';
+  }
   clearTimeout(previewDetailTimer);
   previewDetailTimer = window.setTimeout(() => {
     previewDetailTimer = null;
@@ -137,10 +164,48 @@ function schedulePreviewDetailLoad(pin, previewPinId) {
   }, PREVIEW_DETAIL_DEBOUNCE_MS);
 }
 
+function resolvePreviewStillUrl(pin, playback) {
+  if (playback?.isImage && playback.playbackUrl) {
+    return playback.playbackUrl;
+  }
+  if (playback?.thumbnail && isDirectImageUrl(playback.thumbnail)) {
+    return playback.thumbnail;
+  }
+  const imageItem = getPinMediaItems(pin).find(
+    (item) => item.kind === "image" && isDirectImageUrl(item.url)
+  );
+  if (imageItem) {
+    return imageItem.url;
+  }
+  const markerThumb = String(pin.thumbnail || "").trim();
+  if (markerThumb && isDirectImageUrl(markerThumb)) {
+    return markerThumb;
+  }
+  return null;
+}
+
+function renderPreviewStill(previewMedia, stillUrl, pinTitle) {
+  clearMediaContainer(previewMedia);
+  if (stillUrl) {
+    const img = document.createElement("img");
+    img.src = stillUrl;
+    img.alt = `${pinTitle} preview`;
+    previewMedia.appendChild(img);
+    return;
+  }
+  const placeholder = document.createElement("div");
+  placeholder.className = "preview-still-placeholder";
+  placeholder.setAttribute("aria-hidden", "true");
+  previewMedia.appendChild(placeholder);
+}
+
 export function showPreview(pin, event) {
   if (!state.previewEnabled || state.panelMode !== null) return;
 
   clearTimeout(state.previewHideTimer);
+  cancelPreviewTimers();
+  previewLoadAbort?.abort();
+  previewLoadAbort = null;
 
   const faction = pin.faction || "neutral";
   const factionConfig = getFactionDisplay(faction);
@@ -183,25 +248,15 @@ export function showPreview(pin, event) {
     !pin.videoUrl && !(Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0);
 
   if (isMarkerOnly && markerThumbnail && isDirectImageUrl(markerThumbnail)) {
-    getPreviewMedia().innerHTML = "";
-    const img = document.createElement("img");
-    img.src = markerThumbnail;
-    img.alt = `${pin.title} preview`;
-    img.addEventListener(
-      "error",
-      () => {
-        if (state.highlightedPinId !== previewPinId) return;
-        schedulePreviewDetailLoad(pin, previewPinId);
-      },
-      { once: true }
-    );
-    getPreviewMedia().appendChild(img);
+    renderPreviewStill(getPreviewMedia(), markerThumbnail, pin.title);
     showPreviewTooltip();
     movePreview(event);
+    schedulePreviewDetailLoad(pin, previewPinId);
     return;
   }
 
   if (isMarkerOnly && (pin.hasMedia || markerThumbnail)) {
+    renderPreviewStill(getPreviewMedia(), null, pin.title);
     showPreviewTooltip();
     movePreview(event);
     schedulePreviewDetailLoad(pin, previewPinId);
@@ -210,73 +265,91 @@ export function showPreview(pin, event) {
 
   const previewMediaItem = getPinThumbnailMediaItem(pin);
   if (!previewMediaItem) {
-    getPreviewMedia().innerHTML = "";
+    clearPreviewMedia();
     showPreviewTooltip();
     movePreview(event);
     return;
   }
 
+  if (previewMediaItem.kind === "image" && isDirectImageUrl(previewMediaItem.url)) {
+    renderPreviewStill(getPreviewMedia(), previewMediaItem.url, pin.title);
+  } else {
+    const markerStill =
+      markerThumbnail && isDirectImageUrl(markerThumbnail) ? markerThumbnail : null;
+    renderPreviewStill(getPreviewMedia(), markerStill, pin.title);
+  }
   showPreviewTooltip();
   movePreview(event);
   schedulePreviewDetailLoad(pin, previewPinId);
 }
 
-function renderPreviewPlayer(previewMedia, { playbackUrl, thumbnail, isImage }, pinTitle) {
-  previewMedia.innerHTML = "";
+function schedulePreviewVideo(previewPinId, playback, pinTitle) {
+  clearTimeout(previewVideoTimer);
+  previewVideoTimer = window.setTimeout(() => {
+    previewVideoTimer = null;
+    if (state.highlightedPinId !== previewPinId) return;
+    startPreviewPlayback(getPreviewMedia(), playback, pinTitle);
+  }, PREVIEW_VIDEO_DWELL_MS);
+}
 
-  if (isImage) {
-    const img = document.createElement("img");
-    img.src = playbackUrl;
-    img.alt = `${pinTitle} preview`;
-    previewMedia.appendChild(img);
+function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
+  if (!playbackUrl || !previewMedia) return;
+
+  if (isPlayableDirectUrl(playbackUrl)) {
+    const still = previewMedia.querySelector("img, .preview-still-placeholder");
+    const video = createVideoElement(playbackUrl, {
+      autoplay: true,
+      muted: true,
+      controls: false,
+      preload: "metadata",
+    });
+    video.loop = true;
+    video.classList.add("preview-video--pending");
+    video.setAttribute("aria-label", `${pinTitle} preview`);
+    video.addEventListener(
+      "canplay",
+      () => {
+        video.classList.remove("preview-video--pending");
+        still?.remove();
+        video.play().catch(() => {});
+      },
+      { once: true }
+    );
+    previewMedia.appendChild(video);
     return;
   }
 
-  if (playbackUrl) {
-    if (isPlayableDirectUrl(playbackUrl)) {
-      const video = createVideoElement(playbackUrl, {
-        autoplay: true,
-        muted: true,
-        controls: false,
-      });
-      video.loop = true;
-      video.preload = "auto";
-      video.addEventListener(
-        "canplay",
-        () => {
-          video.play().catch(() => {});
-        },
-        { once: true }
-      );
-      previewMedia.appendChild(video);
-      return;
-    }
+  clearMediaContainer(previewMedia);
+  const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
+  previewMedia.appendChild(iframe);
+}
 
-    const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
-    previewMedia.appendChild(iframe);
+function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
+  const stillUrl = resolvePreviewStillUrl(pin, playback);
+  renderPreviewStill(previewMedia, stillUrl, pinTitle);
+
+  if (playback.isImage || !playback.playbackUrl) {
     return;
   }
 
-  if (thumbnail) {
-    const img = document.createElement("img");
-    img.src = thumbnail;
-    img.alt = `${pinTitle} preview`;
-    previewMedia.appendChild(img);
-  }
+  schedulePreviewVideo(pin.id, playback, pinTitle);
 }
 
 export async function loadPreviewMedia(marker, previewPinId) {
+  const signal = beginPreviewLoad();
   try {
     const pin = await resolvePinDetail(state.currentMapId, marker);
-    if (state.highlightedPinId !== previewPinId) return;
+    if (signal.aborted || state.highlightedPinId !== previewPinId) return;
 
-    const playback = await getPinPreviewPlayback(pin);
-    if (state.highlightedPinId !== previewPinId) return;
+    const playback = await getPinPreviewPlayback(pin, signal);
+    if (signal.aborted || state.highlightedPinId !== previewPinId) return;
 
-    renderPreviewPlayer(getPreviewMedia(), playback, pin.title);
+    renderPreviewPlayer(getPreviewMedia(), pin, playback, pin.title);
   } catch (error) {
+    if (signal.aborted || error?.name === "AbortError") return;
     console.warn(error);
     if (state.highlightedPinId !== previewPinId) return;
+    clearMediaContainer(getPreviewMedia());
     getPreviewMedia().innerHTML =
       '<p class="preview-error">Could not load preview. Click the pin to open the clip.</p>';
   }
@@ -327,11 +400,8 @@ export function scheduleHidePreview() {
   clearTimeout(state.previewHideTimer);
   state.previewHideTimer = setTimeout(() => {
     hidePreviewTooltip();
-    state.previewHideTimer = setTimeout(() => {
-      if (!getPreviewTooltip()?.classList.contains("is-visible")) {
-        getPreviewMedia().innerHTML = "";
-      }
-    }, TOOLTIP_TRANSITION_MS);
+    // Stop downloads immediately; do not wait for tooltip fade.
+    clearPreviewMedia();
   }, 120);
 }
 
@@ -339,7 +409,7 @@ export function hidePreviewImmediately() {
   clearTimeout(state.previewHideTimer);
   state.phonePreviewPinId = null;
   hidePreviewTooltip();
-  getPreviewMedia().innerHTML = "";
+  clearPreviewMedia();
 }
 
 export function initPreviewTooltip() {

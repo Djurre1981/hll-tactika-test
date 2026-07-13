@@ -28,6 +28,7 @@ export async function onRequestGet(context) {
     bucket: "detail",
     endpoint: "pins.detail",
     steamId: auth.session.steamId,
+    steamName: auth.session.name,
     mapId,
     pinId,
   });

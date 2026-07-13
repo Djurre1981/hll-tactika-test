@@ -80,7 +80,7 @@ Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Page
    - `EDITOR_STEAM_IDS`: Comp Advisor (optional)
    - `VIEWER_STEAM_IDS`: Comp Member (optional; `USER_STEAM_IDS` is a legacy alias)
    - `STEAM_API_KEY` (optional): [Steam Web API key](https://steamcommunity.com/dev/apikey) for display names/avatars
-   - `ALERT_DISCORD_WEBHOOK_URL` (optional): Discord webhook for access anomaly alerts
+   - `ALERT_DISCORD_WEBHOOK_URL` (optional): Discord webhook(s) for access anomaly alerts (comma-separated for multiple)
 3. Local dev: `npm run dev` → [http://localhost:8788](http://localhost:8788)
 4. Deploy: `npm run deploy` (or connect the GitHub repo in the Cloudflare Pages dashboard)
 

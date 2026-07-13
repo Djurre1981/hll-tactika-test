@@ -11,7 +11,28 @@ function readBool(value, fallback) {
   return fallback;
 }
 
+function readSecret(value) {
+  let text = String(value ?? "").trim();
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1).trim();
+  }
+  return text || null;
+}
+
+function readWebhookUrls(value) {
+  const raw = readSecret(value);
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 export function getSecurityConfig(env) {
+  const alertDiscordWebhookUrls = readWebhookUrls(env.ALERT_DISCORD_WEBHOOK_URL);
   return {
     detailTokenTtlSec: readInt(env.DETAIL_TOKEN_TTL_SEC, 1200),
     rateLimitMapPerMin: readInt(env.RATE_LIMIT_MAP_PER_MIN, 10),
@@ -24,7 +45,9 @@ export function getSecurityConfig(env) {
     alertMapWindowMin: readInt(env.ALERT_MAP_WINDOW_MIN, 15),
     alert429Count: readInt(env.ALERT_429_COUNT, 5),
     alert429WindowMin: readInt(env.ALERT_429_WINDOW_MIN, 10),
-    alertDiscordWebhookUrl: String(env.ALERT_DISCORD_WEBHOOK_URL || "").trim() || null,
+    alertDiscordWebhookUrls,
+    /** @deprecated Prefer alertDiscordWebhookUrls */
+    alertDiscordWebhookUrl: alertDiscordWebhookUrls[0] || null,
     auditEnabled: readBool(env.AUDIT_ENABLED, true),
     auditMaxEvents: readInt(env.AUDIT_MAX_EVENTS, 500),
   };

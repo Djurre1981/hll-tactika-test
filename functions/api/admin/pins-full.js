@@ -14,6 +14,7 @@ export async function onRequestGet(context) {
     bucket: "admin_export",
     endpoint: "admin.export",
     steamId: auth.session.steamId,
+    steamName: auth.session.name,
   });
   if (access.error) {
     return access.error;

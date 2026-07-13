@@ -7,6 +7,10 @@ function signalKey(kind, steamId) {
   return `alert:${kind}:${steamId}`;
 }
 
+function debounceKey(kind, steamId) {
+  return `alert:debounce:v2:${kind}:${steamId}`;
+}
+
 async function readSignal(env, key) {
   if (env.PINS_KV) {
     return (await env.PINS_KV.get(key, "json")) || null;
@@ -26,26 +30,144 @@ function pruneTimestamps(timestamps, windowStart) {
   return timestamps.filter((ts) => typeof ts === "number" && ts > windowStart);
 }
 
-async function shouldDebounce(env, kind, steamId) {
-  const key = `alert:debounce:${kind}:${steamId}`;
-  const last = await readSignal(env, key);
-  if (last?.sentAt && Date.now() - last.sentAt < DEBOUNCE_MS) {
-    return true;
-  }
-  await writeSignal(env, key, { sentAt: Date.now() }, Math.ceil(DEBOUNCE_MS / 1000) + 60);
-  return false;
+async function isAlertDebounced(env, kind, steamId) {
+  const last = await readSignal(env, debounceKey(kind, steamId));
+  return Boolean(last?.sentAt && Date.now() - last.sentAt < DEBOUNCE_MS);
 }
 
-async function postDiscordAlert(webhookUrl, content) {
+async function markAlertSent(env, kind, steamId) {
+  await writeSignal(
+    env,
+    debounceKey(kind, steamId),
+    { sentAt: Date.now() },
+    Math.ceil(DEBOUNCE_MS / 1000) + 60
+  );
+}
+
+function withWaitParam(webhookUrl) {
   try {
-    await fetch(webhookUrl, {
+    const url = new URL(webhookUrl);
+    if (!url.searchParams.has("wait")) {
+      url.searchParams.set("wait", "true");
+    }
+    return url.toString();
+  } catch {
+    return webhookUrl;
+  }
+}
+
+/**
+ * @returns {Promise<{ ok: boolean, status: number | null, body: string, error?: string, urlHost?: string }>}
+ */
+export async function postDiscordAlert(webhookUrl, content) {
+  let urlHost = null;
+  try {
+    urlHost = new URL(webhookUrl).host;
+  } catch {
+    return {
+      ok: false,
+      status: null,
+      body: "",
+      error: "Invalid webhook URL (check ALERT_DISCORD_WEBHOOK_URL quoting)",
+      urlHost: null,
+    };
+  }
+
+  try {
+    // Prefer wait=true for a clear status; fall back without it if Discord rejects.
+    let response = await fetch(withWaitParam(webhookUrl), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "HLL-Tactika-Alerts/1.0",
+      },
       body: JSON.stringify({ content }),
     });
+    let body = await response.text().catch(() => "");
+
+    if (!response.ok && (response.status === 400 || response.status === 405)) {
+      response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "HLL-Tactika-Alerts/1.0",
+        },
+        body: JSON.stringify({ content }),
+      });
+      body = await response.text().catch(() => "");
+    }
+
+    if (!response.ok) {
+      console.error(`Discord alert failed (${response.status}): ${body.slice(0, 300)}`);
+      return { ok: false, status: response.status, body: body.slice(0, 500), urlHost };
+    }
+    console.error(`Discord alert sent host=${urlHost} status=${response.status}`);
+    return { ok: true, status: response.status, body: body.slice(0, 500), urlHost };
   } catch (error) {
     console.error("Discord alert failed", error);
+    return {
+      ok: false,
+      status: null,
+      body: "",
+      error: error?.message || String(error),
+      urlHost,
+    };
   }
+}
+
+/**
+ * Post the same alert to every webhook URL.
+ * @returns {Promise<{ ok: boolean, sent: number, failed: number, results: object[] }>}
+ */
+export async function postDiscordAlerts(webhookUrls, content) {
+  const urls = Array.isArray(webhookUrls) ? webhookUrls.filter(Boolean) : [];
+  if (!urls.length) {
+    return { ok: false, sent: 0, failed: 0, results: [] };
+  }
+
+  const results = await Promise.all(urls.map((url) => postDiscordAlert(url, content)));
+  const sent = results.filter((result) => result.ok).length;
+  const failed = results.length - sent;
+  return {
+    ok: sent > 0,
+    sent,
+    failed,
+    results,
+  };
+}
+
+export function describeWebhookUrl(webhookUrl) {
+  if (!webhookUrl) {
+    return { webhookConfigured: false, webhookHost: null, webhookPathPrefix: null, webhookCount: 0 };
+  }
+  try {
+    const url = new URL(webhookUrl);
+    const parts = url.pathname.split("/").filter(Boolean);
+    // /api/webhooks/{id}/{token} → show path without token
+    const prefix =
+      parts.length >= 3 ? `/${parts.slice(0, 3).join("/")}/…` : url.pathname;
+    return {
+      webhookConfigured: true,
+      webhookHost: url.host,
+      webhookPathPrefix: prefix,
+      webhookCount: 1,
+    };
+  } catch {
+    return { webhookConfigured: true, webhookHost: null, webhookPathPrefix: null, webhookCount: 1 };
+  }
+}
+
+export function describeWebhookUrls(webhookUrls) {
+  const urls = Array.isArray(webhookUrls) ? webhookUrls.filter(Boolean) : [];
+  if (!urls.length) {
+    return { webhookConfigured: false, webhookHost: null, webhookPathPrefix: null, webhookCount: 0 };
+  }
+  const first = describeWebhookUrl(urls[0]);
+  return {
+    ...first,
+    webhookConfigured: true,
+    webhookCount: urls.length,
+  };
 }
 
 async function trackTimestamps(env, key, windowMs) {
@@ -59,24 +181,42 @@ async function trackTimestamps(env, key, windowMs) {
   return timestamps;
 }
 
-export async function recordDetailFetch(env, steamId) {
+function formatSteamActor(steamId, steamName = null) {
+  const id = String(steamId || "").trim() || "unknown";
+  const name = String(steamName || "").trim();
+  if (name) {
+    return `**${name}** (\`${id}\`)`;
+  }
+  return `Steam \`${id}\``;
+}
+
+export async function recordDetailFetch(env, steamId, steamName = null) {
   const config = getSecurityConfig(env);
-  if (!config.alertDiscordWebhookUrl) return;
+  if (!config.alertDiscordWebhookUrls?.length) return;
 
   const key = signalKey("detail", steamId);
   const timestamps = await trackTimestamps(env, key, 60 * 60 * 1000);
   if (timestamps.length <= config.alertDetailPerHour) return;
-  if (await shouldDebounce(env, "detail", steamId)) return;
+  if (await isAlertDebounced(env, "detail", steamId)) {
+    console.error("detail alert debounced");
+    return;
+  }
 
-  await postDiscordAlert(
-    config.alertDiscordWebhookUrl,
-    `⚠️ **Detail fetch alert** — Steam \`${steamId}\` loaded ${timestamps.length} pin details in the last hour (threshold: ${config.alertDetailPerHour}).`
+  const result = await postDiscordAlerts(
+    config.alertDiscordWebhookUrls,
+    `⚠️ **Detail fetch alert** — ${formatSteamActor(steamId, steamName)} loaded ${timestamps.length} pin details in the last hour (threshold: ${config.alertDetailPerHour}).`
   );
+  if (result.ok) await markAlertSent(env, "detail", steamId);
 }
 
-export async function recordMapLoad(env, steamId, mapId) {
+export async function recordMapLoad(env, steamId, mapId, steamName = null) {
   const config = getSecurityConfig(env);
-  if (!config.alertDiscordWebhookUrl || !mapId) return;
+  if (!config.alertDiscordWebhookUrls?.length || !mapId) {
+    console.error(
+      `recordMapLoad skip: mapId=${mapId || "none"} webhook=${Boolean(config.alertDiscordWebhookUrls?.length)}`
+    );
+    return;
+  }
 
   const key = signalKey("maps", steamId);
   const windowMs = config.alertMapWindowMin * 60 * 1000;
@@ -96,18 +236,25 @@ export async function recordMapLoad(env, steamId, mapId) {
   await writeSignal(env, key, { maps, timestamps }, ttlSec);
 
   const distinctMaps = Object.keys(maps).length;
-  if (distinctMaps < config.alertMapsInWindow) return;
-  if (await shouldDebounce(env, "maps", steamId)) return;
-
-  await postDiscordAlert(
-    config.alertDiscordWebhookUrl,
-    `⚠️ **Map sweep alert** — Steam \`${steamId}\` loaded ${distinctMaps} distinct maps in ${config.alertMapWindowMin} minutes (threshold: ${config.alertMapsInWindow}).`
+  console.error(
+    `recordMapLoad ${mapId}: distinct=${distinctMaps} threshold=${config.alertMapsInWindow}`
   );
+  if (distinctMaps < config.alertMapsInWindow) return;
+  if (await isAlertDebounced(env, "maps", steamId)) {
+    console.error("recordMapLoad debounced");
+    return;
+  }
+
+  const result = await postDiscordAlerts(
+    config.alertDiscordWebhookUrls,
+    `⚠️ **Map sweep alert** — ${formatSteamActor(steamId, steamName)} loaded ${distinctMaps} distinct maps in ${config.alertMapWindowMin} minutes (threshold: ${config.alertMapsInWindow}).`
+  );
+  if (result.ok) await markAlertSent(env, "maps", steamId);
 }
 
-export async function recordRateLimitHit(env, steamId) {
+export async function recordRateLimitHit(env, steamId, steamName = null) {
   const config = getSecurityConfig(env);
-  if (!config.alertDiscordWebhookUrl) return;
+  if (!config.alertDiscordWebhookUrls?.length) return;
 
   const key = signalKey("429", steamId);
   const windowMs = config.alert429WindowMin * 60 * 1000;
@@ -123,13 +270,18 @@ export async function recordRateLimitHit(env, steamId) {
   const ttlSec = Math.ceil(windowMs / 1000) + 120;
   await writeSignal(env, key, { consecutive, lastAt: now }, ttlSec);
 
+  console.error(`recordRateLimitHit consecutive=${consecutive} threshold=${config.alert429Count}`);
   if (consecutive < config.alert429Count) return;
-  if (await shouldDebounce(env, "429", steamId)) return;
+  if (await isAlertDebounced(env, "429", steamId)) {
+    console.error("429 alert debounced");
+    return;
+  }
 
-  await postDiscordAlert(
-    config.alertDiscordWebhookUrl,
-    `⚠️ **Rate limit alert** — Steam \`${steamId}\` hit ${consecutive} consecutive 429 responses (threshold: ${config.alert429Count} in ${config.alert429WindowMin} min).`
+  const result = await postDiscordAlerts(
+    config.alertDiscordWebhookUrls,
+    `⚠️ **Rate limit alert** — ${formatSteamActor(steamId, steamName)} hit ${consecutive} consecutive 429 responses (threshold: ${config.alert429Count} in ${config.alert429WindowMin} min).`
   );
+  if (result.ok) await markAlertSent(env, "429", steamId);
 }
 
 export async function resetRateLimitAlertCounter(env, steamId) {

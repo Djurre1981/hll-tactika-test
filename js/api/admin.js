@@ -47,3 +47,12 @@ export async function updateManagedUserRole(steamId, role) {
 export async function fetchFullPinsExport() {
   return adminApiRequest("/api/admin/pins-full");
 }
+
+export async function testDiscordAlert() {
+  const response = await fetch("/api/admin/alert-test", {
+    method: "POST",
+    credentials: "same-origin",
+  });
+  const data = await response.json().catch(() => ({}));
+  return { ...data, httpStatus: response.status };
+}

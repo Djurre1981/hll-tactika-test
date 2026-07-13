@@ -23,6 +23,7 @@ export async function guardAccess(context, {
   bucket,
   endpoint,
   steamId,
+  steamName = null,
   mapId = null,
   pinId = null,
   statusOnSuccess = 200,
@@ -39,7 +40,7 @@ export async function guardAccess(context, {
       pinId,
       status: 429,
     });
-    await recordRateLimitHit(context.env, steamId);
+    await recordRateLimitHit(context.env, steamId, steamName);
     return {
       error: rateLimitedResponse(check.retryAfterSec),
     };
@@ -60,10 +61,10 @@ export async function guardAccess(context, {
   }
 
   if (bucket === "map" && mapId) {
-    await recordMapLoad(context.env, steamId, mapId);
+    await recordMapLoad(context.env, steamId, mapId, steamName);
   }
   if (bucket === "detail") {
-    await recordDetailFetch(context.env, steamId);
+    await recordDetailFetch(context.env, steamId, steamName);
   }
 
   return { ok: true };
