@@ -83,32 +83,48 @@ export async function onRequestGet(context) {
     return errorResponse("Bulk pin export is not allowed. Request markers with ?mapId=.", 403);
   }
 
-  assertPinDetailSecretConfigured(context.env);
+  try {
+    assertPinDetailSecretConfigured(context.env);
 
-  const access = await guardAccess(context, {
-    bucket: "map",
-    endpoint: "pins.map",
-    steamId: auth.session.steamId,
-    mapId,
-  });
-  if (access.error) {
-    return access.error;
+    const access = await guardAccess(context, {
+      bucket: "map",
+      endpoint: "pins.map",
+      steamId: auth.session.steamId,
+      mapId,
+    });
+    if (access.error) {
+      return access.error;
+    }
+
+    const data = await loadPinsData(context.env);
+    const mapPins = data.pins?.[mapId] || [];
+    const mapsWithPins = Object.keys(data.pins || {}).filter(
+      (id) => Array.isArray(data.pins[id]) && data.pins[id].length > 0
+    );
+    const pins = await Promise.all(
+      mapPins.map(async (pin) => {
+        const detailToken = await createDetailToken(context.env, {
+          pinId: pin.id,
+          mapId,
+          steamId: auth.session.steamId,
+        });
+        return toPinMarker(pin, detailToken);
+      })
+    );
+
+    return json({
+      mapId,
+      pins,
+      defaultMapId: data.defaultMapId || null,
+      mapsWithPins,
+    });
+  } catch (error) {
+    console.error("GET /api/pins failed:", error);
+    if (String(error?.message || "").includes("PIN_DETAIL_SECRET")) {
+      return errorResponse(error.message, 503);
+    }
+    return errorResponse("Failed to load map markers", 500);
   }
-
-  const data = await loadPinsData(context.env);
-  const mapPins = data.pins?.[mapId] || [];
-  const pins = await Promise.all(
-    mapPins.map(async (pin) => {
-      const detailToken = await createDetailToken(context.env, {
-        pinId: pin.id,
-        mapId,
-        steamId: auth.session.steamId,
-      });
-      return toPinMarker(pin, detailToken);
-    })
-  );
-
-  return json({ mapId, pins });
 }
 
 export async function onRequestPost(context) {

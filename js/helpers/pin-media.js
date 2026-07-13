@@ -54,7 +54,9 @@ export function getPinMediaItems(pin) {
 
   const items = [];
   if (pin?.thumbnail) {
-    items.push({ kind: "image", url: String(pin.thumbnail).trim() });
+    const url = String(pin.thumbnail).trim();
+    const kind = detectMediaKind(url) === "video" ? "video" : "image";
+    items.push({ kind, url });
   }
   if (pin?.videoUrl) {
     items.push({ kind: "video", url: String(pin.videoUrl).trim() });

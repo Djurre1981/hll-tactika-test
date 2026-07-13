@@ -9,6 +9,7 @@ function waitForImage(image) {
   if (image.complete && image.naturalWidth) return Promise.resolve();
   return new Promise((resolve) => {
     image.addEventListener("load", resolve, { once: true });
+    image.addEventListener("error", resolve, { once: true });
   });
 }
 
@@ -54,8 +55,44 @@ async function init() {
   state.previewEnabled = prefs.preview;
 
   const initialMapId = loadSelectedMapId("SMDMV2");
-  const markersPromise = loadMapMarkers(initialMapId);
-  const markerLoads = new Map([[initialMapId, markersPromise]]);
+  const markerLoads = new Map();
+
+  function rememberMarkerLoad(mapId, promise) {
+    const tracked = promise
+      .then((data) => {
+        state.pinCatalog[mapId] = data.pins || [];
+        return data;
+      })
+      .catch((error) => {
+        markerLoads.delete(mapId);
+        console.error(`Failed to load markers for ${mapId}:`, error);
+        state.pinCatalog[mapId] = [];
+        throw error;
+      });
+    markerLoads.set(mapId, tracked);
+    return tracked;
+  }
+
+  async function ensureMapMarkers(mapId) {
+    if (!markerLoads.has(mapId)) {
+      rememberMarkerLoad(mapId, loadMapMarkers(mapId));
+    }
+    return markerLoads.get(mapId);
+  }
+
+  function resolveMapWithPins(requestedMapId, markerData) {
+    if (markerData.pins?.length) {
+      return requestedMapId;
+    }
+    const mapsWithPins = markerData.mapsWithPins || [];
+    if (!mapsWithPins.length) {
+      return requestedMapId;
+    }
+    if (mapsWithPins.includes(markerData.defaultMapId)) {
+      return markerData.defaultMapId;
+    }
+    return mapsWithPins[0];
+  }
 
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
@@ -79,15 +116,6 @@ async function init() {
     ],
     spawnData,
   ] = await Promise.all([mapModulesPromise, spawnPromise]);
-
-  async function ensureMapMarkers(mapId) {
-    if (state.pinCatalog[mapId]) return;
-    if (!markerLoads.has(mapId)) {
-      markerLoads.set(mapId, loadMapMarkers(mapId));
-    }
-    const data = await markerLoads.get(mapId);
-    state.pinCatalog[mapId] = data.pins || [];
-  }
 
   async function switchMap(mapId, { fit = false } = {}) {
     const map = state.mapCatalog.find((item) => item.id === mapId);
@@ -133,8 +161,33 @@ async function init() {
     }
 
     state.mapOverlays.setMapData(map);
-    await ensureMapMarkers(mapId);
-    state.pins = (state.pinCatalog[mapId] || []).map(normalizePin);
+    const markerData = await ensureMapMarkers(mapId);
+    let activeMapId = mapId;
+    const resolvedMapId = resolveMapWithPins(mapId, markerData);
+    if (resolvedMapId !== mapId) {
+      activeMapId = resolvedMapId;
+      state.currentMapId = activeMapId;
+      const resolvedMap = state.mapCatalog.find((item) => item.id === activeMapId);
+      if (resolvedMap) {
+        state.currentMap = resolvedMap;
+        saveSelectedMapId(activeMapId, resolvedMap.image);
+        setMapPickerValue(activeMapId);
+        const image = document.getElementById("map-image");
+        const nextSrc = resolveImageSrc(resolvedMap.image);
+        if (image.src !== nextSrc) {
+          image.src = resolvedMap.image;
+          await waitForImage(image);
+        }
+        image.alt = `${resolvedMap.name} tactical map`;
+        document.title = `HLL Tactika — ${resolvedMap.name}`;
+        state.mapOverlays.setMapData(resolvedMap);
+        if (state.mapOverlays.syncGridSize) {
+          state.mapOverlays.syncGridSize();
+        }
+      }
+      await ensureMapMarkers(activeMapId);
+    }
+    state.pins = (state.pinCatalog[activeMapId] || []).map(normalizePin);
     renderPins();
     renderPinList();
 
@@ -161,14 +214,9 @@ async function init() {
   state.pins = [];
   state.currentMapId = initialMapId;
 
-  try {
-    await switchMap(initialMapId, { fit: true });
-  } catch {
-    revealMapViewport();
-    return;
-  }
-
-  revealMapViewport();
+  const mapInitPromise = switchMap(initialMapId, { fit: true }).catch((error) => {
+    console.error("Failed to initialize map:", error);
+  });
 
   const [
     _adminPanelModule,
@@ -191,6 +239,11 @@ async function init() {
   applyFactionFiltersToUi();
   initUndoRedoKeyboard();
   bindUi({ reloadPinsForMap, switchMap });
+
+  document.getElementById("app-root")?.classList.remove("is-auth-pending");
+
+  await mapInitPromise;
+  revealMapViewport();
 }
 
 init();

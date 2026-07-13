@@ -442,8 +442,19 @@ export async function loadMapMarkers(mapId) {
     });
     throw new Error("forbidden");
   }
-  if (!response.ok) {
-    throw new Error("Failed to load map markers");
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 503 && data.error) {
+    openAuthDialog({
+      title: "Map data unavailable",
+      message: data.error,
+      showLogin: false,
+    });
+    throw new Error(data.error);
   }
-  return response.json();
+  if (!response.ok) {
+    const message = data.error || `Failed to load map markers (${response.status})`;
+    console.error(message);
+    throw new Error(message);
+  }
+  return data;
 }

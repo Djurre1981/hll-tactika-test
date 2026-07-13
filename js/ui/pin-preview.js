@@ -11,7 +11,7 @@ import { resolveMedalClip } from "../utils/medal.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
-import { detectMediaKind, getPinMediaItems } from "../helpers/pin-media.js";
+import { detectMediaKind, getPinMediaItems, isDirectImageUrl } from "../helpers/pin-media.js";
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
@@ -128,6 +128,15 @@ function renderPreviewRequires(pin) {
   }
 }
 
+function schedulePreviewDetailLoad(pin, previewPinId) {
+  getPreviewMedia().innerHTML = '<p class="preview-loading">Loading clip…</p>';
+  clearTimeout(previewDetailTimer);
+  previewDetailTimer = window.setTimeout(() => {
+    previewDetailTimer = null;
+    loadPreviewMedia(pin, previewPinId);
+  }, PREVIEW_DETAIL_DEBOUNCE_MS);
+}
+
 export function showPreview(pin, event) {
   if (!state.previewEnabled || state.panelMode !== null) return;
 
@@ -168,15 +177,34 @@ export function showPreview(pin, event) {
 
   renderPreviewRequires(pin);
 
+  const previewPinId = pin.id;
   const markerThumbnail = String(pin.thumbnail || "").trim();
-  if (markerThumbnail && !pin.videoUrl && !pin.mediaItems?.length) {
+  const isMarkerOnly =
+    !pin.videoUrl && !(Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0);
+
+  if (isMarkerOnly && markerThumbnail && isDirectImageUrl(markerThumbnail)) {
     getPreviewMedia().innerHTML = "";
     const img = document.createElement("img");
     img.src = markerThumbnail;
     img.alt = `${pin.title} preview`;
+    img.addEventListener(
+      "error",
+      () => {
+        if (state.highlightedPinId !== previewPinId) return;
+        schedulePreviewDetailLoad(pin, previewPinId);
+      },
+      { once: true }
+    );
     getPreviewMedia().appendChild(img);
     showPreviewTooltip();
     movePreview(event);
+    return;
+  }
+
+  if (isMarkerOnly && (pin.hasMedia || markerThumbnail)) {
+    showPreviewTooltip();
+    movePreview(event);
+    schedulePreviewDetailLoad(pin, previewPinId);
     return;
   }
 
@@ -188,16 +216,9 @@ export function showPreview(pin, event) {
     return;
   }
 
-  getPreviewMedia().innerHTML = '<p class="preview-loading">Loading clip…</p>';
   showPreviewTooltip();
   movePreview(event);
-
-  const previewPinId = pin.id;
-  clearTimeout(previewDetailTimer);
-  previewDetailTimer = window.setTimeout(() => {
-    previewDetailTimer = null;
-    loadPreviewMedia(pin, previewPinId);
-  }, PREVIEW_DETAIL_DEBOUNCE_MS);
+  schedulePreviewDetailLoad(pin, previewPinId);
 }
 
 function renderPreviewPlayer(previewMedia, { playbackUrl, thumbnail, isImage }, pinTitle) {
