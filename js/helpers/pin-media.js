@@ -21,11 +21,10 @@ export function isDirectImageUrl(url) {
   return isAppImagePath(url) || IMAGE_EXTENSION_RE.test(normalizeVideoUrl(url));
 }
 
-/** Stills usable in the hover preview (app images, file URLs, YouTube/Medal CDNs). */
-export function isPreviewStillUrl(url) {
+/** YouTube / Medal CDN stills are already compact. */
+export function isPlatformThumbnailUrl(url) {
   const normalized = normalizeVideoUrl(url);
   if (!normalized) return false;
-  if (isDirectImageUrl(normalized)) return true;
   try {
     const host = new URL(
       normalized.startsWith("/") ? normalized : normalized,
@@ -37,6 +36,43 @@ export function isPreviewStillUrl(url) {
     return false;
   }
   return false;
+}
+
+/** Stills usable in the hover preview (app images, file URLs, YouTube/Medal CDNs). */
+export function isPreviewStillUrl(url) {
+  const normalized = normalizeVideoUrl(url);
+  if (!normalized) return false;
+  if (isDirectImageUrl(normalized)) return true;
+  return isPlatformThumbnailUrl(normalized);
+}
+
+/**
+ * True when pin.thumbnail is a preview still that is not the same URL as any
+ * stored media item (full images reused as thumbnails count as non-compact).
+ * Markers without mediaItems treat an existing still as compact.
+ */
+export function pinHasCompactSilentThumbnail(pin) {
+  const thumb = String(pin?.thumbnail || "").trim();
+  if (!isPreviewStillUrl(thumb)) return false;
+  if (isPlatformThumbnailUrl(thumb)) return true;
+  const normalizedThumb = normalizeVideoUrl(thumb);
+
+  if (Array.isArray(pin?.mediaItems) && pin.mediaItems.length > 0) {
+    return !pin.mediaItems.some(
+      (item) => normalizeVideoUrl(String(item?.url || "").trim()) === normalizedThumb
+    );
+  }
+
+  const videoUrl = String(pin?.videoUrl || "").trim();
+  if (videoUrl && normalizeVideoUrl(videoUrl) === normalizedThumb) {
+    return false;
+  }
+
+  return true;
+}
+
+export function pinNeedsCompactStill(pin) {
+  return !pinHasCompactSilentThumbnail(pin);
 }
 
 export function detectMediaKind(url) {

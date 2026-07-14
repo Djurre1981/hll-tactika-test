@@ -19,7 +19,7 @@ Auth: HttpOnly cookie `hll-tactika-session` (7-day TTL), set after Steam OpenID.
 | `GET` | `/api/pins` (no `mapId`) | allowlisted | `403` — bulk export not allowed |
 | `GET` | `/api/pins/:pinId/details?mapId=&token=` | allowlisted + token | `200` `{ pin, mapId }` — full pin; `498` if token expired; `403` if invalid |
 | `POST` | `/api/pins/:pinId/token` | allowlisted | `200` `{ detailToken }` — body: `{ mapId }`; silent refresh for expired tokens |
-| `POST` | `/api/pins/:pinId/thumbnail` | allowlisted | multipart `mapId` + `file`, or JSON `{ mapId, thumbnailUrl }` — fill-if-empty still; `200` `{ thumbnail, pin, alreadySet }` |
+| `POST` | `/api/pins/:pinId/thumbnail` | allowlisted | multipart `mapId` + `file` (max 2MB), or JSON `{ mapId, thumbnailUrl }` — fill-if-empty compact still; **not rate-limited**; `200` `{ thumbnail, pin, alreadySet }` |
 | `GET` | `/api/admin/pins-full` | `owner` | `200` full catalogue + `exportedAt`, `exportedBy` |
 | `POST` | `/api/pins` | `editor`+ | `201` `{ pin, mapId }` — body: `{ mapId, pin }` |
 | `PUT` | `/api/pins/:pinId` | `editor`+ | `200` `{ pin, mapId }` — body: `{ mapId, pin: { …fields } }` (partial update) |
@@ -53,7 +53,7 @@ Stored in Cloudflare KV — see [data-schemas.md](data-schemas.md). `/data/pins.
 - **Markers** (`GET ?mapId=`) — `id`, coords, tag, faction, title, thumbnail, `detailToken`, `hasMedia`; no `description`, `videoUrl`, `mediaItems`, or creator fields.
 - **Details** (`GET …/details`) — HMAC token in query (`PIN_DETAIL_SECRET`, 20 min TTL). Expired token → **HTTP 498** (client refreshes via `POST …/token` and retries).
 - **Token refresh** (`POST …/token`) — body `{ mapId }` only; returns fresh `detailToken`.
-- **Thumbnail fill** (`POST …/thumbnail`) — multipart `mapId` + image `file`, or JSON `{ mapId, thumbnailUrl }` for YouTube/Medal CDN stills. Any member. Sets `pin.thumbnail` only when it is not already a usable still; silent (not shown as a media row in the editor).
+- **Thumbnail fill** (`POST …/thumbnail`) — multipart `mapId` + image `file` (max 2MB JPEG/still), or JSON `{ mapId, thumbnailUrl }` for YouTube/Medal CDN stills. Any signed-in member. Sets `pin.thumbnail` only when it is not already a **compact silent** still (platform CDN, or an image URL that is not also a `mediaItems` / `videoUrl` entry — full images reused as thumbnails can be replaced). Auth required; **does not consume upload/security rate limits**. Silent (not shown as a media row in the editor).
 - **POST** — `createdBy` / `createdByName` set server-side. `pin.id` optional (auto `pin-<uuid>`). Discord CDN attachment URLs in `mediaItems`, `videoUrl`, or `thumbnail` are **mirrored to R2 on save** and rewritten to `/api/videos/{attachmentId}` or `/api/images/{attachmentId}` before KV write (deduped by attachment ID).
 - **PUT** — only sent fields updated; non-`mg-spot` tag strips `dirX`/`dirY`. Same Discord mirroring as POST when media fields change.
 - **DELETE** — `mapId` query param required.

@@ -31,6 +31,15 @@ export function invalidatePinDetail(mapId, pinId) {
   detailCache.delete(cacheKey(mapId, pinId));
 }
 
+export function clearPinDetailCacheForMap(mapId) {
+  const prefix = `${mapId}:`;
+  for (const key of detailCache.keys()) {
+    if (key.startsWith(prefix)) {
+      detailCache.delete(key);
+    }
+  }
+}
+
 async function fetchDetailWithRefresh(mapId, marker) {
   const pinId = marker.id;
   let token = marker.detailToken;

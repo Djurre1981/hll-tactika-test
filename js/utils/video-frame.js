@@ -127,13 +127,74 @@ export function captureVideoFrame(
 /** Longest edge for JPEGs persisted to R2 (editor save + hover backfill). */
 export const PERSISTED_THUMB_MAX_EDGE = 720;
 
+export const PERSISTED_THUMB_QUALITY = 0.75;
+
+function canvasToJpegFile(canvas, filename, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Could not encode JPEG thumbnail"));
+          return;
+        }
+        resolve(new File([blob], filename, { type: blob.type || "image/jpeg" }));
+      },
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
 export async function fileFromVideoFrame(
   videoSource,
   filename = "preview.jpg",
-  { quality = 0.8, maxEdge = PERSISTED_THUMB_MAX_EDGE } = {}
+  { quality = PERSISTED_THUMB_QUALITY, maxEdge = PERSISTED_THUMB_MAX_EDGE } = {}
 ) {
   const blob = await captureVideoFrame(videoSource, { quality, maxEdge });
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
+/** Downscale an image URL / Blob / File to a compact JPEG for pin.thumbnail. */
+export async function fileFromImageSource(
+  imageSource,
+  filename = "preview.jpg",
+  { quality = PERSISTED_THUMB_QUALITY, maxEdge = PERSISTED_THUMB_MAX_EDGE } = {}
+) {
+  const img = new Image();
+  img.decoding = "async";
+  let objectUrl = null;
+
+  try {
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Could not load image for thumbnail"));
+      if (imageSource instanceof Blob) {
+        objectUrl = URL.createObjectURL(imageSource);
+        img.crossOrigin = "anonymous";
+        img.src = objectUrl;
+      } else {
+        img.crossOrigin = "anonymous";
+        img.src = String(imageSource);
+      }
+    });
+
+    const width = img.naturalWidth || img.width;
+    const height = img.naturalHeight || img.height;
+    if (!width || !height) {
+      throw new Error("Image has no readable dimensions");
+    }
+
+    const size = fitCanvasSize(width, height, maxEdge);
+    const canvas = document.createElement("canvas");
+    canvas.width = size.width;
+    canvas.height = size.height;
+    canvas.getContext("2d").drawImage(img, 0, 0, size.width, size.height);
+    return canvasToJpegFile(canvas, filename, quality);
+  } finally {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
 }
 
 export async function getVideoFrameObjectUrl(videoSource) {

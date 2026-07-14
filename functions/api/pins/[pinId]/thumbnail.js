@@ -1,16 +1,20 @@
-import { guardAccess } from "../../../lib/access-guard.js";
 import { requireAuth } from "../../../lib/auth-request.js";
+import { appendAuditEvent } from "../../../lib/audit-log.js";
 import {
   isDirectImageUrl,
   isPersistableThumbnailUrl,
+  pinHasCompactSilentThumbnail,
+  pinHasDirectImage,
   pinHasDirectPlayableVideo,
-  pinHasImageThumbnail,
   pinHasSupportedVideo,
 } from "../../../lib/media-urls.js";
 import { isValidMapId } from "../../../lib/pin-fields.js";
 import { findPin, loadPinsData, savePinsData } from "../../../lib/pins-store.js";
 import { putUploadedImage } from "../../../lib/r2-media.js";
 import { errorResponse, json } from "../../../lib/response.js";
+
+/** Compact JPEG stills only — not a path for full media uploads. */
+const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
 async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
   const fresh = await loadPinsData(env);
@@ -19,7 +23,7 @@ async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
     return { error: "Pin not found", status: 404 };
   }
 
-  if (pinHasImageThumbnail(latest.pin)) {
+  if (pinHasCompactSilentThumbnail(latest.pin)) {
     return {
       thumbnail: String(latest.pin.thumbnail).trim(),
       pin: latest.pin,
@@ -39,10 +43,10 @@ async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
 }
 
 /**
- * Fill-if-empty thumbnail backfill.
- * Any signed-in member may set a still when the pin has no image thumbnail yet:
- * - multipart `file` for captured frames from direct videos
- * - `thumbnailUrl` for YouTube/Medal (and other persistable image) CDN stills
+ * Fill-if-empty compact thumbnail backfill (not rate-limited).
+ * Any signed-in member may set a still when the pin has no compact silent thumbnail:
+ * - multipart `file` for captured/downscaled frames (images + direct videos)
+ * - `thumbnailUrl` for YouTube/Medal (and other persistable) CDN stills
  */
 export async function onRequestPost(context) {
   const auth = await requireAuth(context);
@@ -91,26 +95,27 @@ export async function onRequestPost(context) {
     return errorResponse("Invalid mapId", 400);
   }
 
-  const access = await guardAccess(context, {
-    bucket: "upload",
-    endpoint: "pins.thumbnail",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    pinId,
-    statusOnSuccess: 200,
-  });
-  if (access.error) {
-    return access.error;
-  }
-
   const data = await loadPinsData(context.env);
   const found = findPin(data, mapId, pinId);
   if (!found) {
+    await appendAuditEvent(context.env, {
+      steamId: auth.session.steamId,
+      endpoint: "pins.thumbnail",
+      mapId,
+      pinId,
+      status: 404,
+    });
     return errorResponse("Pin not found", 404);
   }
 
-  if (pinHasImageThumbnail(found.pin)) {
+  if (pinHasCompactSilentThumbnail(found.pin)) {
+    await appendAuditEvent(context.env, {
+      steamId: auth.session.steamId,
+      endpoint: "pins.thumbnail",
+      mapId,
+      pinId,
+      status: 200,
+    });
     return json({
       thumbnail: String(found.pin.thumbnail).trim(),
       pin: found.pin,
@@ -132,17 +137,37 @@ export async function onRequestPost(context) {
       thumbnailUrl
     );
     if (applied.error) {
+      await appendAuditEvent(context.env, {
+        steamId: auth.session.steamId,
+        endpoint: "pins.thumbnail",
+        mapId,
+        pinId,
+        status: applied.status || 400,
+      });
       return errorResponse(applied.error, applied.status || 400);
     }
+    await appendAuditEvent(context.env, {
+      steamId: auth.session.steamId,
+      endpoint: "pins.thumbnail",
+      mapId,
+      pinId,
+      status: 200,
+    });
     return json(applied);
   }
 
-  if (!pinHasDirectPlayableVideo(found.pin)) {
-    return errorResponse("Pin has no direct video to thumbnail", 400);
+  const canUploadStill =
+    pinHasDirectPlayableVideo(found.pin) || pinHasDirectImage(found.pin);
+  if (!canUploadStill) {
+    return errorResponse("Pin has no media to thumbnail", 400);
   }
 
   if (!file) {
-    return errorResponse('Provide file or thumbnailUrl', 400);
+    return errorResponse("Provide file or thumbnailUrl", 400);
+  }
+
+  if (typeof file.size === "number" && file.size > MAX_THUMBNAIL_BYTES) {
+    return errorResponse("Thumbnail file too large (max 2MB)", 400);
   }
 
   const result = await putUploadedImage(context.env, file);
@@ -161,7 +186,21 @@ export async function onRequestPost(context) {
     result.url
   );
   if (applied.error) {
+    await appendAuditEvent(context.env, {
+      steamId: auth.session.steamId,
+      endpoint: "pins.thumbnail",
+      mapId,
+      pinId,
+      status: applied.status || 400,
+    });
     return errorResponse(applied.error, applied.status || 400);
   }
+  await appendAuditEvent(context.env, {
+    steamId: auth.session.steamId,
+    endpoint: "pins.thumbnail",
+    mapId,
+    pinId,
+    status: 200,
+  });
   return json(applied);
 }

@@ -71,6 +71,67 @@ export function pinHasImageThumbnail(pin) {
   return isPersistableThumbnailUrl(String(pin?.thumbnail || "").trim());
 }
 
+/** YouTube / Medal CDN stills are already compact. */
+export function isPlatformThumbnailUrl(url) {
+  const normalized = String(url || "").trim();
+  if (!normalized || !isSafeHttpUrl(normalized)) {
+    return false;
+  }
+  const hostname = getHostname(normalized);
+  if (hostname === "img.youtube.com" || hostname === "i.ytimg.com") {
+    return true;
+  }
+  if (hostname === "cdn.medal.tv" || hostname.endsWith(".cdn.medal.tv")) {
+    return true;
+  }
+  return false;
+}
+
+function pinMediaUrls(pin) {
+  const urls = [];
+  if (Array.isArray(pin?.mediaItems)) {
+    for (const item of pin.mediaItems) {
+      const url = String(item?.url || "").trim();
+      if (url) urls.push(url);
+    }
+  }
+  const videoUrl = String(pin?.videoUrl || "").trim();
+  if (videoUrl) urls.push(videoUrl);
+  return urls;
+}
+
+/**
+ * True when pin.thumbnail is a persistable still that is not the same URL as
+ * any media item (full images reused as thumbnails count as non-compact).
+ */
+export function pinHasCompactSilentThumbnail(pin) {
+  const thumb = String(pin?.thumbnail || "").trim();
+  if (!isPersistableThumbnailUrl(thumb)) {
+    return false;
+  }
+  if (isPlatformThumbnailUrl(thumb)) {
+    return true;
+  }
+  return !pinMediaUrls(pin).some((url) => url === thumb);
+}
+
+export function pinHasSupportedMedia(pin) {
+  return pinHasSupportedVideo(pin) || pinHasDirectImage(pin);
+}
+
+export function pinHasDirectImage(pin) {
+  if (Array.isArray(pin?.mediaItems)) {
+    for (const item of pin.mediaItems) {
+      const url = String(item?.url || "").trim();
+      if (!url) continue;
+      if (item?.kind === "image" || isDirectImageUrl(url)) {
+        return true;
+      }
+    }
+  }
+  return isDirectImageUrl(String(pin?.thumbnail || "").trim());
+}
+
 export function pinHasSupportedVideo(pin) {
   const videoUrl = String(pin?.videoUrl || "").trim();
   if (videoUrl && isSupportedHostedVideoUrl(videoUrl)) {

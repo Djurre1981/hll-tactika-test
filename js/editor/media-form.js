@@ -1,12 +1,18 @@
 import { uploadPreviewImage, uploadVideo } from "../api/media.js";
 import { isMedalUrl, normalizeVideoUrl, youtubeThumbnail } from "../utils/video.js";
-import { canExtractVideoFrame, fileFromVideoFrame } from "../utils/video-frame.js";
+import {
+  canExtractVideoFrame,
+  fileFromImageSource,
+  fileFromVideoFrame,
+} from "../utils/video-frame.js";
 import { resolveMedalClip } from "../utils/medal.js";
 import {
   detectMediaKind,
   getUnsupportedMediaUrlMessage,
   isDirectImageUrl,
+  isPlatformThumbnailUrl,
   isPreviewStillUrl,
+  pinHasCompactSilentThumbnail,
 } from "../helpers/pin-media.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
 import { showEditorToast } from "../ui/editor-toast.js";
@@ -367,9 +373,21 @@ async function handleMediaFileUpload(file) {
       uploaded = await uploadPreviewImage(file);
       row.querySelector(".pin-media-row__url").value = uploaded.url;
 
-      if (!selectedThumbnailUrl) {
-        selectedThumbnailUrl = uploaded.url;
-        syncThumbnailUi();
+      // Silent compact still — not the full media image URL.
+      if (!selectedThumbnailUrl || selectedThumbnailUrl === uploaded.url) {
+        try {
+          setUploadBusy(row, "Thumbnail…");
+          const thumbFile = await fileFromImageSource(file, "preview.jpg");
+          const thumb = await uploadPreviewImage(thumbFile);
+          selectedThumbnailUrl = thumb.url;
+          syncThumbnailUi();
+        } catch (thumbError) {
+          console.warn("Could not create image thumbnail", thumbError);
+          if (!selectedThumbnailUrl) {
+            selectedThumbnailUrl = uploaded.url;
+            syncThumbnailUi();
+          }
+        }
       }
     }
 
@@ -570,54 +588,87 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
   return { valid: true, items, thumbnail: resolveFormThumbnail(items) };
 }
 
+function thumbnailMatchesMediaItem(thumbnailUrl, items) {
+  const normalizedThumb = normalizeVideoUrl(thumbnailUrl);
+  if (!normalizedThumb) return false;
+  return (items || []).some(
+    (item) => normalizeVideoUrl(String(item?.url || "").trim()) === normalizedThumb
+  );
+}
+
 /**
- * Ensure pin.thumbnail is a still URL (silent — not added as a media row).
- * YouTube/Medal → platform CDN URL; direct videos → captured frame upload.
+ * Ensure pin.thumbnail is a compact silent still (not added as a media row).
+ * YouTube/Medal → platform CDN; direct videos → frame; images → downscaled JPEG.
  */
 export async function ensureCapturedThumbnailForSave(items, thumbnailUrl = "") {
   const current = String(thumbnailUrl || "").trim();
-  if (isPreviewStillUrl(current)) {
+  if (
+    pinHasCompactSilentThumbnail({ thumbnail: current, mediaItems: items }) ||
+    isPlatformThumbnailUrl(current)
+  ) {
     return current;
   }
 
   const videoItem = (items || []).find((item) => item?.kind === "video" && item.url);
-  if (!videoItem) {
-    return current;
-  }
+  if (videoItem) {
+    const ytThumb = youtubeThumbnail(videoItem.url);
+    if (ytThumb) {
+      selectedThumbnailUrl = ytThumb;
+      syncThumbnailUi();
+      return ytThumb;
+    }
 
-  const ytThumb = youtubeThumbnail(videoItem.url);
-  if (ytThumb) {
-    selectedThumbnailUrl = ytThumb;
-    syncThumbnailUi();
-    return ytThumb;
-  }
-
-  if (isMedalUrl(videoItem.url)) {
-    try {
-      const medal = await resolveMedalClip(videoItem.url);
-      const medalThumb = String(medal?.thumbnailUrl || "").trim();
-      if (medalThumb) {
-        selectedThumbnailUrl = medalThumb;
-        syncThumbnailUi();
-        return medalThumb;
+    if (isMedalUrl(videoItem.url)) {
+      try {
+        const medal = await resolveMedalClip(videoItem.url);
+        const medalThumb = String(medal?.thumbnailUrl || "").trim();
+        if (medalThumb) {
+          selectedThumbnailUrl = medalThumb;
+          syncThumbnailUi();
+          return medalThumb;
+        }
+      } catch (error) {
+        console.warn("Could not resolve Medal thumbnail for save", error);
       }
-    } catch (error) {
-      console.warn("Could not resolve Medal thumbnail for save", error);
+    }
+
+    if (canExtractVideoFrame(videoItem.url)) {
+      try {
+        const thumbFile = await fileFromVideoFrame(videoItem.url, "preview.jpg");
+        const uploaded = await uploadPreviewImage(thumbFile);
+        selectedThumbnailUrl = uploaded.url;
+        syncThumbnailUi();
+        return uploaded.url;
+      } catch (error) {
+        console.warn("Could not capture video thumbnail for save", error);
+      }
     }
   }
 
-  if (!canExtractVideoFrame(videoItem.url)) {
+  const imageItem =
+    (items || []).find(
+      (item) =>
+        item?.kind === "image" &&
+        item.url &&
+        (!current || normalizeVideoUrl(item.url) === normalizeVideoUrl(current))
+    ) ||
+    (items || []).find((item) => item?.kind === "image" && isDirectImageUrl(item.url));
+
+  if (imageItem && isDirectImageUrl(imageItem.url)) {
+    try {
+      const thumbFile = await fileFromImageSource(imageItem.url, "preview.jpg");
+      const uploaded = await uploadPreviewImage(thumbFile);
+      selectedThumbnailUrl = uploaded.url;
+      syncThumbnailUi();
+      return uploaded.url;
+    } catch (error) {
+      console.warn("Could not create image thumbnail for save", error);
+    }
+  }
+
+  if (isPreviewStillUrl(current) && !thumbnailMatchesMediaItem(current, items)) {
     return current;
   }
 
-  try {
-    const thumbFile = await fileFromVideoFrame(videoItem.url, "preview.jpg");
-    const uploaded = await uploadPreviewImage(thumbFile);
-    selectedThumbnailUrl = uploaded.url;
-    syncThumbnailUi();
-    return uploaded.url;
-  } catch (error) {
-    console.warn("Could not capture video thumbnail for save", error);
-    return current;
-  }
+  return current;
 }

@@ -4,6 +4,10 @@ import { state, loadSelectedMapId, saveSelectedMapId } from "./state.js";
 import { initViewerPreferences, getViewerPreferences } from "./viewer-preferences.js";
 import { setMapPickerValue } from "./ui/map-picker.js";
 import { initPortraitPanelDefaults } from "./ui/chrome-panels.js";
+import {
+  dropMapThumbnailCache,
+  warmMapThumbnails,
+} from "./helpers/thumbnail-cache.js";
 
 function waitForImage(image) {
   if (image.complete && image.naturalWidth) return Promise.resolve();
@@ -127,6 +131,11 @@ async function init() {
     const map = state.mapCatalog.find((item) => item.id === mapId);
     if (!map) return;
 
+    const previousMapId = state.currentMapId;
+    if (previousMapId && previousMapId !== mapId) {
+      dropMapThumbnailCache(previousMapId);
+    }
+
     applyMapBgFade();
 
     if (state.appMode === "editor") {
@@ -175,6 +184,9 @@ async function init() {
       ? resolveMapWithPins(mapId, markerData)
       : mapId;
     if (resolvedMapId !== mapId) {
+      if (mapId !== resolvedMapId) {
+        dropMapThumbnailCache(mapId);
+      }
       activeMapId = resolvedMapId;
       state.currentMapId = activeMapId;
       const resolvedMap = state.mapCatalog.find((item) => item.id === activeMapId);
@@ -207,6 +219,8 @@ async function init() {
       state.mapViewer.clampTranslation();
       state.mapViewer.applyTransform();
     }
+
+    void warmMapThumbnails(activeMapId, state.pins);
   }
 
   function revealMapViewport() {
