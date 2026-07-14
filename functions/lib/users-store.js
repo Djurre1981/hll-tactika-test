@@ -132,6 +132,22 @@ export async function saveUsersData(env, data) {
   memoryStore = data;
 }
 
+export async function recordUserLastSignedIn(steamId, env) {
+  const id = String(steamId).trim();
+  if (!id) {
+    return;
+  }
+
+  const data = await loadUsersData(env);
+  const member = data.users.find((user) => String(user.steamId).trim() === id);
+  if (!member) {
+    return;
+  }
+
+  member.lastSignedInAt = new Date().toISOString();
+  await saveUsersData(env, data);
+}
+
 export function isValidSteamId64(steamId) {
   return /^7656119\d{10}$/.test(String(steamId).trim());
 }

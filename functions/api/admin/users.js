@@ -2,7 +2,7 @@ import { requireAdmin } from "../../lib/auth-request.js";
 import { guardAccess } from "../../lib/access-guard.js";
 import { addManagedUser, listAllMembers } from "../../lib/roles.js";
 import { fetchSteamProfile, fetchSteamProfiles } from "../../lib/steam.js";
-import { isValidSteamId64 } from "../../lib/users-store.js";
+import { isValidSteamId64, loadUsersData } from "../../lib/users-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 function resolveMemberName(member, profiles, session) {
@@ -16,19 +16,33 @@ function resolveMemberName(member, profiles, session) {
   return null;
 }
 
-async function enrichMembers(members, env, session = null) {
+async function enrichMembers(members, env, session = null, { includeLastSignedIn = false } = {}) {
   const profiles = await fetchSteamProfiles(
     members.map((member) => member.steamId),
     env
   );
 
-  return members.map((member) => ({
-    steamId: member.steamId,
-    name: resolveMemberName(member, profiles, session),
-    role: member.role,
-    removable: member.removable,
-    roleEditable: member.roleEditable,
-  }));
+  let lastSignedInById = null;
+  if (includeLastSignedIn) {
+    const data = await loadUsersData(env);
+    lastSignedInById = new Map(
+      data.users.map((user) => [String(user.steamId), user.lastSignedInAt || null])
+    );
+  }
+
+  return members.map((member) => {
+    const enriched = {
+      steamId: member.steamId,
+      name: resolveMemberName(member, profiles, session),
+      role: member.role,
+      removable: member.removable,
+      roleEditable: member.roleEditable,
+    };
+    if (includeLastSignedIn) {
+      enriched.lastSignedInAt = lastSignedInById.get(String(member.steamId)) || null;
+    }
+    return enriched;
+  });
 }
 
 export async function onRequestGet(context) {
@@ -49,7 +63,9 @@ export async function onRequestGet(context) {
     }
 
     const members = await listAllMembers(context.env, auth.role);
-    const users = await enrichMembers(members, context.env, auth.session);
+    const users = await enrichMembers(members, context.env, auth.session, {
+      includeLastSignedIn: auth.role === "owner",
+    });
     return json({ users });
   } catch (error) {
     console.error("GET /api/admin/users failed:", error);
