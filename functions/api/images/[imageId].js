@@ -10,7 +10,7 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
-  // Images double as pin thumbnails — no rate limit (unlike video GET).
+  // Images double as pin thumbnails — no bucket (rate limiting removed).
   const access = await guardAccess(context, {
     endpoint: "media.image",
     steamId: auth.session.steamId,

@@ -166,27 +166,6 @@ export function createVideoElement(
     video.controls = controls;
     video.playsInline = true;
     video.preload = preload;
-    if (isAppVideoPath(url)) {
-      video.addEventListener(
-        "error",
-        () => {
-          fetch(url, {
-            credentials: "same-origin",
-            headers: { Range: "bytes=0-0" },
-          })
-            .then(async (response) => {
-              if (response.status !== 429) return;
-              const data = await response.json().catch(() => ({}));
-              const { notifyRateLimited } = await import("../helpers/rate-limit-ui.js");
-              notifyRateLimited(
-                data.error || "Video playback limit reached. Try again shortly."
-              );
-            })
-            .catch(() => {});
-        },
-        { once: true }
-      );
-    }
     if (autoplay) video.autoplay = true;
     if (muted) video.muted = true;
     if (autoplay) {

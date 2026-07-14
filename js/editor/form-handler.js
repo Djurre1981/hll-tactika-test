@@ -6,7 +6,6 @@ import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
 import { isDiscordMediaUrl } from "../utils/video.js";
 import { showEditorToast } from "../ui/editor-toast.js";
-import { wasRateLimitNotified } from "../helpers/rate-limit-ui.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement, isMgSpotPlacement } from "./placement-mode.js";
 import { validatePinMediaForm, ensureCapturedThumbnailForSave } from "./media-form.js";
 import { pinHasCompactSilentThumbnail } from "../helpers/pin-media.js";
@@ -403,9 +402,7 @@ export async function savePin(
   } catch (error) {
     console.error(error);
     const message = error.message || "Could not save trick";
-    if (!wasRateLimitNotified(error)) {
-      showSaveError(message, { notifyUser });
-    }
+    showSaveError(message, { notifyUser });
     return { ok: false, reason: "save", message };
   } finally {
     state.pinSaveInFlight = false;
@@ -429,9 +426,7 @@ export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn })
         }
       } catch (error) {
         console.error(error);
-        if (!wasRateLimitNotified(error)) {
-          showEditorToast(error.message || "Could not delete trick");
-        }
+        showEditorToast(error.message || "Could not delete trick");
         return;
       }
     }
@@ -466,9 +461,7 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   } catch (error) {
     state.positionHistory.pop();
     console.error(error);
-    if (!wasRateLimitNotified(error)) {
-      showEditorToast(error.message || "Could not delete trick");
-    }
+    showEditorToast(error.message || "Could not delete trick");
   } finally {
     if (btnDeletePin) {
       btnDeletePin.disabled = false;

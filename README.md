@@ -214,7 +214,7 @@ Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Page
 
 Set the same secrets in Cloudflare: **Pages → your project → Settings → Environment variables**.
 
-Optional security tuning (defaults are sensible): `DETAIL_TOKEN_TTL_SEC`, `RATE_LIMIT_*`, `ALERT_*`, `AUDIT_ENABLED`, `AUDIT_MAX_EVENTS`. See [`docs/security-hybrid-plan.md`](docs/security-hybrid-plan.md).
+Optional security tuning: `DETAIL_TOKEN_TTL_SEC`, `ALERT_*`, `AUDIT_ENABLED`, `AUDIT_MAX_EVENTS`. See [`docs/security-plan.md`](docs/security-plan.md).
 
 ### Finding a Steam ID64
 

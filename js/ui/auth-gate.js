@@ -1,5 +1,4 @@
 import { fetchCurrentUser, logout, setCurrentUser } from "../api/auth.js";
-import { notifyRateLimited } from "../helpers/rate-limit-ui.js";
 import { initWelcomeTypewriter } from "./welcome-typewriter.js";
 
 const DEFAULT_AUTH = {
@@ -451,11 +450,6 @@ export async function loadMapMarkers(mapId) {
       showLogin: false,
     });
     throw new Error(data.error);
-  }
-  if (response.status === 429) {
-    const message = data.error || "Map loading limit reached. Try again shortly.";
-    notifyRateLimited(message);
-    throw new Error(message);
   }
   if (!response.ok) {
     const message = data.error || `Failed to load map markers (${response.status})`;

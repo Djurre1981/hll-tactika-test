@@ -1,5 +1,4 @@
 import { isMedalUrl } from "./video.js";
-import { throwIfRateLimited } from "../helpers/rate-limit-ui.js";
 
 const cache = new Map();
 const MAX_MEDAL_CACHE = 40;
@@ -22,7 +21,6 @@ export async function resolveMedalClip(url, { signal } = {}) {
   });
 
   const data = await response.json().catch(() => ({}));
-  throwIfRateLimited(response, data, "Medal lookup limit reached. Try again shortly.");
   if (!response.ok) {
     throw new Error(data.error || "Failed to resolve Medal.tv clip");
   }

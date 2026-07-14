@@ -5,7 +5,6 @@ import { roundCoord } from "./position-code.js";
 import { updatePinElementPosition } from "./proximity.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { showEditorToast } from "../ui/editor-toast.js";
-import { wasRateLimitNotified } from "./rate-limit-ui.js";
 
 const dirtyPinIds = new Set();
 
@@ -121,9 +120,7 @@ export async function flushDirtyPinPositions() {
     return { ok: true };
   } catch (error) {
     console.error(error);
-    if (!wasRateLimitNotified(error)) {
-      showEditorToast(error.message || "Could not save pin positions");
-    }
+    showEditorToast(error.message || "Could not save pin positions");
     return { ok: false, error };
   } finally {
     state.pinSaveInFlight = false;

@@ -35,21 +35,10 @@ export function getSecurityConfig(env) {
   const alertDiscordWebhookUrls = readWebhookUrls(env.ALERT_DISCORD_WEBHOOK_URL);
   return {
     detailTokenTtlSec: readInt(env.DETAIL_TOKEN_TTL_SEC, 1200),
-    rateLimitMapPerMin: readInt(env.RATE_LIMIT_MAP_PER_MIN, 20),
-    rateLimitDetailPerMin: readInt(env.RATE_LIMIT_DETAIL_PER_MIN, 30),
-    rateLimitTokenPerMin: readInt(env.RATE_LIMIT_TOKEN_PER_MIN, 30),
-    rateLimitMediaPerMin: readInt(env.RATE_LIMIT_MEDIA_PER_MIN, 10),
-    rateLimitAdminExportPerHour: readInt(env.RATE_LIMIT_ADMIN_EXPORT_PER_HOUR, 10),
-    rateLimitMedalPerMin: readInt(env.RATE_LIMIT_MEDAL_PER_MIN, 20),
-    rateLimitAuthPerMin: readInt(env.RATE_LIMIT_AUTH_PER_MIN, 20),
-    rateLimitAdminPerMin: readInt(env.RATE_LIMIT_ADMIN_PER_MIN, 30),
-    rateLimitPrefsPerMin: readInt(env.RATE_LIMIT_PREFS_PER_MIN, 30),
     alertDetailInWindow: readInt(env.ALERT_DETAIL_IN_WINDOW ?? env.ALERT_DETAIL_PER_HOUR, 100),
     alertDetailWindowMin: readInt(env.ALERT_DETAIL_WINDOW_MIN, 30),
     alertMapsInWindow: readInt(env.ALERT_MAPS_IN_WINDOW, 15),
     alertMapWindowMin: readInt(env.ALERT_MAP_WINDOW_MIN, 15),
-    alert429Count: readInt(env.ALERT_429_COUNT, 5),
-    alert429WindowMin: readInt(env.ALERT_429_WINDOW_MIN, 10),
     alertDiscordWebhookUrls,
     /** @deprecated Prefer alertDiscordWebhookUrls */
     alertDiscordWebhookUrl: alertDiscordWebhookUrls[0] || null,
