@@ -21,6 +21,24 @@ export function isDirectImageUrl(url) {
   return isAppImagePath(url) || IMAGE_EXTENSION_RE.test(normalizeVideoUrl(url));
 }
 
+/** Stills usable in the hover preview (app images, file URLs, YouTube/Medal CDNs). */
+export function isPreviewStillUrl(url) {
+  const normalized = normalizeVideoUrl(url);
+  if (!normalized) return false;
+  if (isDirectImageUrl(normalized)) return true;
+  try {
+    const host = new URL(
+      normalized.startsWith("/") ? normalized : normalized,
+      typeof window !== "undefined" ? window.location.origin : "https://localhost/"
+    ).hostname.replace(/^www\./, "");
+    if (host === "img.youtube.com" || host === "i.ytimg.com") return true;
+    if (host === "cdn.medal.tv" || host.endsWith(".cdn.medal.tv")) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 export function detectMediaKind(url) {
   const normalized = normalizeVideoUrl(url);
   if (!normalized || !isValidMediaUrl(normalized)) {

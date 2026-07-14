@@ -2,18 +2,47 @@ import { guardAccess } from "../../../lib/access-guard.js";
 import { requireAuth } from "../../../lib/auth-request.js";
 import {
   isDirectImageUrl,
+  isPersistableThumbnailUrl,
   pinHasDirectPlayableVideo,
   pinHasImageThumbnail,
+  pinHasSupportedVideo,
 } from "../../../lib/media-urls.js";
 import { isValidMapId } from "../../../lib/pin-fields.js";
 import { findPin, loadPinsData, savePinsData } from "../../../lib/pins-store.js";
 import { putUploadedImage } from "../../../lib/r2-media.js";
 import { errorResponse, json } from "../../../lib/response.js";
 
+async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
+  const fresh = await loadPinsData(env);
+  const latest = findPin(fresh, mapId, pinId);
+  if (!latest) {
+    return { error: "Pin not found", status: 404 };
+  }
+
+  if (pinHasImageThumbnail(latest.pin)) {
+    return {
+      thumbnail: String(latest.pin.thumbnail).trim(),
+      pin: latest.pin,
+      alreadySet: true,
+    };
+  }
+
+  latest.pin.thumbnail = thumbnailUrl;
+  try {
+    await savePinsData(env, fresh);
+  } catch (error) {
+    console.error(error);
+    return { error: "Pin storage is not configured", status: 503 };
+  }
+
+  return { thumbnail: thumbnailUrl, pin: latest.pin, alreadySet: false };
+}
+
 /**
- * Fill-if-empty thumbnail backfill for direct/playable videos.
- * Any signed-in member may upload a still when the pin has no image thumbnail yet.
- * Does not overwrite an existing image thumbnail or reopen full pin edit.
+ * Fill-if-empty thumbnail backfill.
+ * Any signed-in member may set a still when the pin has no image thumbnail yet:
+ * - multipart `file` for captured frames from direct videos
+ * - `thumbnailUrl` for YouTube/Medal (and other persistable image) CDN stills
  */
 export async function onRequestPost(context) {
   const auth = await requireAuth(context);
@@ -26,14 +55,35 @@ export async function onRequestPost(context) {
     return errorResponse("pinId is required", 400);
   }
 
-  let formData;
-  try {
-    formData = await context.request.formData();
-  } catch {
-    return errorResponse("Expected multipart form data", 400);
+  const contentType = context.request.headers.get("content-type") || "";
+  let mapId = "";
+  let file = null;
+  let thumbnailUrl = "";
+
+  if (contentType.includes("application/json")) {
+    let body;
+    try {
+      body = await context.request.json();
+    } catch {
+      return errorResponse("Invalid JSON body", 400);
+    }
+    mapId = String(body?.mapId || "").trim();
+    thumbnailUrl = String(body?.thumbnailUrl || "").trim();
+  } else {
+    let formData;
+    try {
+      formData = await context.request.formData();
+    } catch {
+      return errorResponse("Expected multipart form data or JSON", 400);
+    }
+    mapId = String(formData.get("mapId") || "").trim();
+    thumbnailUrl = String(formData.get("thumbnailUrl") || "").trim();
+    file = formData.get("file");
+    if (typeof file === "string") {
+      file = null;
+    }
   }
 
-  const mapId = String(formData.get("mapId") || "").trim();
   if (!mapId) {
     return errorResponse("mapId is required", 400);
   }
@@ -68,13 +118,31 @@ export async function onRequestPost(context) {
     });
   }
 
+  if (thumbnailUrl) {
+    if (!isPersistableThumbnailUrl(thumbnailUrl)) {
+      return errorResponse("Unsupported thumbnail URL", 400);
+    }
+    if (!pinHasSupportedVideo(found.pin)) {
+      return errorResponse("Pin has no video to thumbnail", 400);
+    }
+    const applied = await applyThumbnailIfEmpty(
+      context.env,
+      mapId,
+      pinId,
+      thumbnailUrl
+    );
+    if (applied.error) {
+      return errorResponse(applied.error, applied.status || 400);
+    }
+    return json(applied);
+  }
+
   if (!pinHasDirectPlayableVideo(found.pin)) {
     return errorResponse("Pin has no direct video to thumbnail", 400);
   }
 
-  const file = formData.get("file");
-  if (!file || typeof file === "string") {
-    return errorResponse('Missing file field "file"', 400);
+  if (!file) {
+    return errorResponse('Provide file or thumbnailUrl', 400);
   }
 
   const result = await putUploadedImage(context.env, file);
@@ -86,28 +154,14 @@ export async function onRequestPost(context) {
     return errorResponse("Uploaded file is not a usable thumbnail", 400);
   }
 
-  // Re-check after upload so concurrent fills stay idempotent.
-  const fresh = await loadPinsData(context.env);
-  const latest = findPin(fresh, mapId, pinId);
-  if (!latest) {
-    return errorResponse("Pin not found", 404);
+  const applied = await applyThumbnailIfEmpty(
+    context.env,
+    mapId,
+    pinId,
+    result.url
+  );
+  if (applied.error) {
+    return errorResponse(applied.error, applied.status || 400);
   }
-
-  if (pinHasImageThumbnail(latest.pin)) {
-    return json({
-      thumbnail: String(latest.pin.thumbnail).trim(),
-      pin: latest.pin,
-      alreadySet: true,
-    });
-  }
-
-  latest.pin.thumbnail = result.url;
-  try {
-    await savePinsData(context.env, fresh);
-  } catch (error) {
-    console.error(error);
-    return errorResponse("Pin storage is not configured", 503);
-  }
-
-  return json({ thumbnail: result.url, pin: latest.pin, alreadySet: false });
+  return json(applied);
 }

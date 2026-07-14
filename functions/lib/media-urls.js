@@ -45,8 +45,46 @@ export function pinHasDirectPlayableVideo(pin) {
   });
 }
 
+/** True for app images, extensioned URLs, and known YouTube/Medal thumbnail CDNs. */
+export function isPersistableThumbnailUrl(url) {
+  const normalized = String(url || "").trim();
+  if (!normalized) {
+    return false;
+  }
+  if (isDirectImageUrl(normalized)) {
+    return true;
+  }
+  if (!isSafeHttpUrl(normalized)) {
+    return false;
+  }
+  const hostname = getHostname(normalized);
+  if (hostname === "img.youtube.com" || hostname === "i.ytimg.com") {
+    return true;
+  }
+  if (hostname === "cdn.medal.tv" || hostname.endsWith(".cdn.medal.tv")) {
+    return true;
+  }
+  return false;
+}
+
 export function pinHasImageThumbnail(pin) {
-  return isDirectImageUrl(String(pin?.thumbnail || "").trim());
+  return isPersistableThumbnailUrl(String(pin?.thumbnail || "").trim());
+}
+
+export function pinHasSupportedVideo(pin) {
+  const videoUrl = String(pin?.videoUrl || "").trim();
+  if (videoUrl && isSupportedHostedVideoUrl(videoUrl)) {
+    return true;
+  }
+  if (!Array.isArray(pin?.mediaItems)) {
+    return false;
+  }
+  return pin.mediaItems.some((item) => {
+    const url = String(item?.url || "").trim();
+    if (!url) return false;
+    if (item?.kind === "image") return false;
+    return isSupportedHostedVideoUrl(url);
+  });
 }
 
 export function isSupportedHostedVideoUrl(url) {

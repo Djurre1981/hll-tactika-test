@@ -91,3 +91,12 @@ export async function fillPinThumbnail(mapId, pinId, file) {
   }
   return data;
 }
+
+/** Persist a YouTube/Medal (or other) CDN still when pin.thumbnail is empty. */
+export async function fillPinThumbnailUrl(mapId, pinId, thumbnailUrl) {
+  const data = await pinApiRequest(`/api/pins/${encodeURIComponent(pinId)}/thumbnail`, {
+    method: "POST",
+    body: JSON.stringify({ mapId, thumbnailUrl }),
+  });
+  return data;
+}

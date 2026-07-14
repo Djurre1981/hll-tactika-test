@@ -15,11 +15,16 @@ import {
   fileFromVideoFrame,
   getVideoFrameObjectUrl,
 } from "../utils/video-frame.js";
-import { fillPinThumbnail } from "../api/pins.js";
+import { fillPinThumbnail, fillPinThumbnailUrl } from "../api/pins.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
-import { detectMediaKind, getPinMediaItems, isDirectImageUrl } from "../helpers/pin-media.js";
+import {
+  detectMediaKind,
+  getPinMediaItems,
+  isDirectImageUrl,
+  isPreviewStillUrl,
+} from "../helpers/pin-media.js";
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
@@ -50,10 +55,14 @@ function applyLocalPinThumbnail(pinId, thumbnailUrl) {
   }
 }
 
-function persistMissingThumbnail(pin, playbackUrl) {
+function pinNeedsStillPersist(pin) {
+  return !isPreviewStillUrl(pin?.thumbnail);
+}
+
+function persistMissingThumbnailFile(pin, playbackUrl) {
   const pinId = pin?.id;
   if (!pinId || !canExtractVideoFrame(playbackUrl)) return;
-  if (isDirectImageUrl(pin.thumbnail)) return;
+  if (!pinNeedsStillPersist(pin)) return;
   if (thumbnailPersistAttempts.has(pinId)) return;
   thumbnailPersistAttempts.add(pinId);
 
@@ -67,6 +76,28 @@ function persistMissingThumbnail(pin, playbackUrl) {
       }
     } catch (error) {
       console.warn("Could not persist preview thumbnail", error);
+      thumbnailPersistAttempts.delete(pinId);
+    }
+  })();
+}
+
+function persistMissingThumbnailUrl(pin, thumbnailUrl) {
+  const pinId = pin?.id;
+  const thumb = String(thumbnailUrl || "").trim();
+  if (!pinId || !isPreviewStillUrl(thumb)) return;
+  if (!pinNeedsStillPersist(pin)) return;
+  if (thumbnailPersistAttempts.has(pinId)) return;
+  thumbnailPersistAttempts.add(pinId);
+
+  void (async () => {
+    try {
+      const result = await fillPinThumbnailUrl(state.currentMapId, pinId, thumb);
+      const saved = String(result?.thumbnail || "").trim();
+      if (saved) {
+        applyLocalPinThumbnail(pinId, saved);
+      }
+    } catch (error) {
+      console.warn("Could not persist platform thumbnail", error);
       thumbnailPersistAttempts.delete(pinId);
     }
   })();
@@ -223,7 +254,7 @@ function resolvePreviewStillUrl(pin, playback) {
   if (playback?.isImage && playback.playbackUrl) {
     return playback.playbackUrl;
   }
-  if (playback?.thumbnail && isDirectImageUrl(playback.thumbnail)) {
+  if (playback?.thumbnail && isPreviewStillUrl(playback.thumbnail)) {
     return playback.thumbnail;
   }
   const imageItem = getPinMediaItems(pin).find(
@@ -233,7 +264,7 @@ function resolvePreviewStillUrl(pin, playback) {
     return imageItem.url;
   }
   const markerThumb = String(pin.thumbnail || "").trim();
-  if (markerThumb && isDirectImageUrl(markerThumb)) {
+  if (markerThumb && isPreviewStillUrl(markerThumb)) {
     return markerThumb;
   }
   return null;
@@ -302,7 +333,7 @@ export function showPreview(pin, event) {
   const isMarkerOnly =
     !pin.videoUrl && !(Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0);
 
-  if (isMarkerOnly && markerThumbnail && isDirectImageUrl(markerThumbnail)) {
+  if (isMarkerOnly && markerThumbnail && isPreviewStillUrl(markerThumbnail)) {
     renderPreviewStill(getPreviewMedia(), markerThumbnail, pin.title);
     showPreviewTooltip();
     movePreview(event);
@@ -330,7 +361,7 @@ export function showPreview(pin, event) {
     renderPreviewStill(getPreviewMedia(), previewMediaItem.url, pin.title);
   } else {
     const markerStill =
-      markerThumbnail && isDirectImageUrl(markerThumbnail) ? markerThumbnail : null;
+      markerThumbnail && isPreviewStillUrl(markerThumbnail) ? markerThumbnail : null;
     renderPreviewStill(getPreviewMedia(), markerStill, pin.title);
   }
   showPreviewTooltip();
@@ -387,12 +418,16 @@ async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
     return;
   }
 
+  if (stillUrl && pinNeedsStillPersist(pin) && isPreviewStillUrl(stillUrl)) {
+    persistMissingThumbnailUrl(pin, stillUrl);
+  }
+
   if (!stillUrl && canExtractVideoFrame(playback.playbackUrl)) {
     try {
       stillUrl = await getVideoFrameObjectUrl(playback.playbackUrl);
       if (state.highlightedPinId !== pin.id) return;
       renderPreviewStill(previewMedia, stillUrl, pinTitle);
-      persistMissingThumbnail(pin, playback.playbackUrl);
+      persistMissingThumbnailFile(pin, playback.playbackUrl);
     } catch (error) {
       console.warn("Could not capture preview frame", error);
     }

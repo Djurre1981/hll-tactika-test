@@ -8,7 +8,7 @@ import { isDiscordMediaUrl } from "../utils/video.js";
 import { showEditorToast } from "../ui/editor-toast.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement, isMgSpotPlacement } from "./placement-mode.js";
 import { validatePinMediaForm, ensureCapturedThumbnailForSave } from "./media-form.js";
-import { isDirectImageUrl } from "../helpers/pin-media.js";
+import { isPreviewStillUrl } from "../helpers/pin-media.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
@@ -279,7 +279,7 @@ export async function onSavePin(
   }
 
   let thumbnail = mediaValidation.thumbnail || "";
-  if (!isDirectImageUrl(thumbnail)) {
+  if (!isPreviewStillUrl(thumbnail)) {
     try {
       thumbnail = await ensureCapturedThumbnailForSave(
         mediaValidation.items,
