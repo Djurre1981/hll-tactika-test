@@ -25,12 +25,31 @@ function revokeObjectUrl(url) {
   }
 }
 
-export function captureVideoFrame(videoSource, { seekTime = null, quality = 0.85 } = {}) {
+function fitCanvasSize(width, height, maxEdge) {
+  if (!maxEdge || maxEdge <= 0) {
+    return { width, height };
+  }
+  const longest = Math.max(width, height);
+  if (longest <= maxEdge) {
+    return { width, height };
+  }
+  const scale = maxEdge / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+export function captureVideoFrame(
+  videoSource,
+  { seekTime = null, quality = 0.85, maxEdge = null } = {}
+) {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.preload = "auto";
+    video.crossOrigin = "anonymous";
 
     let objectUrl = null;
     const cleanup = () => {
@@ -70,10 +89,11 @@ export function captureVideoFrame(videoSource, { seekTime = null, quality = 0.85
             return;
           }
 
+          const size = fitCanvasSize(width, height, maxEdge);
           const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext("2d").drawImage(video, 0, 0, width, height);
+          canvas.width = size.width;
+          canvas.height = size.height;
+          canvas.getContext("2d").drawImage(video, 0, 0, size.width, size.height);
           canvas.toBlob(
             (blob) => {
               cleanup();
@@ -104,8 +124,15 @@ export function captureVideoFrame(videoSource, { seekTime = null, quality = 0.85
   });
 }
 
-export async function fileFromVideoFrame(videoSource, filename = "preview.jpg") {
-  const blob = await captureVideoFrame(videoSource);
+/** Longest edge for JPEGs persisted to R2 (editor save + hover backfill). */
+export const PERSISTED_THUMB_MAX_EDGE = 720;
+
+export async function fileFromVideoFrame(
+  videoSource,
+  filename = "preview.jpg",
+  { quality = 0.8, maxEdge = PERSISTED_THUMB_MAX_EDGE } = {}
+) {
+  const blob = await captureVideoFrame(videoSource, { quality, maxEdge });
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
 }
 

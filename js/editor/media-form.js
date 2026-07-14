@@ -1,6 +1,6 @@
 import { uploadPreviewImage, uploadVideo } from "../api/media.js";
 import { normalizeVideoUrl } from "../utils/video.js";
-import { fileFromVideoFrame } from "../utils/video-frame.js";
+import { canExtractVideoFrame, fileFromVideoFrame } from "../utils/video-frame.js";
 import {
   detectMediaKind,
   getUnsupportedMediaUrlMessage,
@@ -180,13 +180,13 @@ function resolveFormThumbnail(items) {
       (item) => normalizeVideoUrl(item.url) === normalizeVideoUrl(selectedThumbnailUrl)
     );
     if (match) return match.url;
-    // Auto-captured stills are stored as /api/images/… without a media row.
+    // Auto-captured stills are stored as /api/images/… without a media row (silent).
     if (isDirectImageUrl(selectedThumbnailUrl)) {
       return selectedThumbnailUrl;
     }
   }
-  const firstImage = items.find((item) => item.kind === "image");
-  return firstImage?.url || items[0].url;
+  const firstImage = items.find((item) => item.kind === "image" && isDirectImageUrl(item.url));
+  return firstImage?.url || "";
 }
 
 function syncFirstRowAction() {
@@ -566,4 +566,33 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
   }
 
   return { valid: true, items, thumbnail: resolveFormThumbnail(items) };
+}
+
+/**
+ * Ensure pin.thumbnail is an image URL for direct videos (silent — not added as a media row).
+ * Prefers existing image thumbs; otherwise captures a frame and uploads.
+ */
+export async function ensureCapturedThumbnailForSave(items, thumbnailUrl = "") {
+  const current = String(thumbnailUrl || "").trim();
+  if (isDirectImageUrl(current)) {
+    return current;
+  }
+
+  const videoItem = (items || []).find(
+    (item) => item?.kind === "video" && canExtractVideoFrame(item.url)
+  );
+  if (!videoItem) {
+    return current;
+  }
+
+  try {
+    const thumbFile = await fileFromVideoFrame(videoItem.url, "preview.jpg");
+    const uploaded = await uploadPreviewImage(thumbFile);
+    selectedThumbnailUrl = uploaded.url;
+    syncThumbnailUi();
+    return uploaded.url;
+  } catch (error) {
+    console.warn("Could not capture video thumbnail for save", error);
+    return current;
+  }
 }

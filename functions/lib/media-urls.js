@@ -9,7 +9,7 @@ import {
 const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com"];
 const VIMEO_HOSTS = ["vimeo.com", "www.vimeo.com", "player.vimeo.com"];
 
-function isDirectVideoUrl(url) {
+export function isDirectVideoUrl(url) {
   if (isAppVideoPath(url)) {
     return true;
   }
@@ -19,7 +19,7 @@ function isDirectVideoUrl(url) {
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
 }
 
-function isDirectImageUrl(url) {
+export function isDirectImageUrl(url) {
   if (isAppImagePath(url)) {
     return true;
   }
@@ -27,6 +27,26 @@ function isDirectImageUrl(url) {
     return false;
   }
   return /\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
+}
+
+export function pinHasDirectPlayableVideo(pin) {
+  const videoUrl = String(pin?.videoUrl || "").trim();
+  if (videoUrl && isDirectVideoUrl(videoUrl)) {
+    return true;
+  }
+  if (!Array.isArray(pin?.mediaItems)) {
+    return false;
+  }
+  return pin.mediaItems.some((item) => {
+    const url = String(item?.url || "").trim();
+    if (!url) return false;
+    if (item?.kind === "image") return false;
+    return isDirectVideoUrl(url);
+  });
+}
+
+export function pinHasImageThumbnail(pin) {
+  return isDirectImageUrl(String(pin?.thumbnail || "").trim());
 }
 
 export function isSupportedHostedVideoUrl(url) {

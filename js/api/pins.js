@@ -70,3 +70,24 @@ export async function deletePin(mapId, pinId) {
     { method: "DELETE" }
   );
 }
+
+/** Upload a still and set pin.thumbnail only if still empty (any signed-in member). */
+export async function fillPinThumbnail(mapId, pinId, file) {
+  const formData = new FormData();
+  formData.append("mapId", mapId);
+  formData.append("file", file);
+
+  const response = await fetch(`/api/pins/${encodeURIComponent(pinId)}/thumbnail`, {
+    method: "POST",
+    credentials: "same-origin",
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error || `Request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}

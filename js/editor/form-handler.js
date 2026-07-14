@@ -7,7 +7,8 @@ import { isDirectionalPinTag } from "../pin-tags.js";
 import { isDiscordMediaUrl } from "../utils/video.js";
 import { showEditorToast } from "../ui/editor-toast.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement, isMgSpotPlacement } from "./placement-mode.js";
-import { validatePinMediaForm } from "./media-form.js";
+import { validatePinMediaForm, ensureCapturedThumbnailForSave } from "./media-form.js";
+import { isDirectImageUrl } from "../helpers/pin-media.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
@@ -276,9 +277,22 @@ export async function onSavePin(
     showSaveError(message, { notifyUser });
     return { ok: false, reason: "media", message };
   }
+
+  let thumbnail = mediaValidation.thumbnail || "";
+  if (!isDirectImageUrl(thumbnail)) {
+    try {
+      thumbnail = await ensureCapturedThumbnailForSave(
+        mediaValidation.items,
+        thumbnail
+      );
+    } catch (error) {
+      console.warn("Thumbnail capture skipped:", error);
+    }
+  }
+
   const mediaFields = deriveLegacyMediaFields(
     mediaValidation.items,
-    mediaValidation.thumbnail
+    thumbnail
   );
 
   const pinData = {

@@ -1,4 +1,4 @@
-import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
+import { resolvePinDetail, cachePinDetail, getCachedPinDetail } from "../helpers/pin-detail-cache.js";
 import { state } from "../state.js";
 import { isGuideInteractionAllowed } from "../helpers/app-mode.js";
 import {
@@ -12,8 +12,10 @@ import {
 import { resolveMedalClip } from "../utils/medal.js";
 import {
   canExtractVideoFrame,
+  fileFromVideoFrame,
   getVideoFrameObjectUrl,
 } from "../utils/video-frame.js";
+import { fillPinThumbnail } from "../api/pins.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
@@ -21,6 +23,54 @@ import { detectMediaKind, getPinMediaItems, isDirectImageUrl } from "../helpers/
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
+
+const thumbnailPersistAttempts = new Set();
+
+function applyLocalPinThumbnail(pinId, thumbnailUrl) {
+  const thumb = String(thumbnailUrl || "").trim();
+  if (!pinId || !thumb) return;
+
+  const marker = state.pins.find((item) => item.id === pinId);
+  if (marker) {
+    marker.thumbnail = thumb;
+  }
+
+  const catalog = state.pinCatalog[state.currentMapId];
+  if (Array.isArray(catalog)) {
+    const catalogMarker = catalog.find((item) => item.id === pinId);
+    if (catalogMarker) {
+      catalogMarker.thumbnail = thumb;
+    }
+  }
+
+  const cached = getCachedPinDetail(state.currentMapId, pinId);
+  if (cached) {
+    cached.thumbnail = thumb;
+    cachePinDetail(state.currentMapId, pinId, cached);
+  }
+}
+
+function persistMissingThumbnail(pin, playbackUrl) {
+  const pinId = pin?.id;
+  if (!pinId || !canExtractVideoFrame(playbackUrl)) return;
+  if (isDirectImageUrl(pin.thumbnail)) return;
+  if (thumbnailPersistAttempts.has(pinId)) return;
+  thumbnailPersistAttempts.add(pinId);
+
+  void (async () => {
+    try {
+      const file = await fileFromVideoFrame(playbackUrl, "preview.jpg");
+      const result = await fillPinThumbnail(state.currentMapId, pinId, file);
+      const thumb = String(result?.thumbnail || "").trim();
+      if (thumb) {
+        applyLocalPinThumbnail(pinId, thumb);
+      }
+    } catch (error) {
+      console.warn("Could not persist preview thumbnail", error);
+      thumbnailPersistAttempts.delete(pinId);
+    }
+  })();
+}
 
 export async function getMediaPlayback(mediaItem, { signal } = {}) {
   if (!mediaItem) {
@@ -342,6 +392,7 @@ async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
       stillUrl = await getVideoFrameObjectUrl(playback.playbackUrl);
       if (state.highlightedPinId !== pin.id) return;
       renderPreviewStill(previewMedia, stillUrl, pinTitle);
+      persistMissingThumbnail(pin, playback.playbackUrl);
     } catch (error) {
       console.warn("Could not capture preview frame", error);
     }
