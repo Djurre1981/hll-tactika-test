@@ -1,14 +1,18 @@
 import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
+import { cachePinDetail } from "../helpers/pin-detail-cache.js";
 import { pushPinCreateSnapshot, pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
 import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
-import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement } from "./placement-mode.js";
+import { isDiscordMediaUrl } from "../utils/video.js";
+import { showEditorToast } from "../ui/editor-toast.js";
+import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement, isMgSpotPlacement } from "./placement-mode.js";
 import { validatePinMediaForm } from "./media-form.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
 import { normalizePinTitle } from "../helpers/pin-title.js";
+import { ingestDiscordPinMedia } from "../helpers/discord-ingest-client.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Gate", icon: "fa-archway" },
@@ -19,6 +23,84 @@ const AUTO_SAVE_DELAY_MS = 450;
 let autoSaveTimer = null;
 let autoSaveDeps = null;
 let editUndoSnapshotPushed = false;
+let rerunSaveAfterCurrent = false;
+let lastNotifiedError = "";
+let lastNotifiedAt = 0;
+
+function showSaveError(message, { notifyUser = false } = {}) {
+  if (!notifyUser || !message) return;
+  const text = message || "Could not save trick";
+  const now = Date.now();
+  if (text === lastNotifiedError && now - lastNotifiedAt < 3000) return;
+  lastNotifiedError = text;
+  lastNotifiedAt = now;
+  showEditorToast(text, { durationMs: 5000 });
+}
+
+function shakePlacementField() {
+  const coordsEl = document.getElementById("pin-coords");
+  if (!coordsEl) return;
+  coordsEl.classList.remove("is-shake");
+  void coordsEl.offsetWidth;
+  coordsEl.classList.add("is-shake");
+  coordsEl.addEventListener(
+    "animationend",
+    () => coordsEl.classList.remove("is-shake"),
+    { once: true }
+  );
+}
+
+function getPlacementErrorMessage() {
+  if (state.mgCollapseHint) {
+    return "Separate the MG arrowhead and bar before saving.";
+  }
+  if (isMgSpotPlacement()) {
+    if (!state.pendingDirection) {
+      return "Click the map for the MG arrowhead, then for the bar.";
+    }
+    if (!state.pendingCoords) {
+      return "Click the map again to place the MG bar.";
+    }
+  }
+  return "Click the map to place the pin before saving.";
+}
+
+export function cancelPendingAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = null;
+}
+
+export async function waitForPinSaveComplete() {
+  while (state.pinSaveInFlight) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+export async function flushAndSavePin(deps = autoSaveDeps) {
+  if (!deps) {
+    return { ok: false, reason: "save", message: "Save is not configured" };
+  }
+
+  cancelPendingAutoSave();
+  await waitForPinSaveComplete();
+  rerunSaveAfterCurrent = false;
+
+  const saveOptions = { ...deps, autoSave: true, navigateOnSuccess: false, notifyUser: true };
+  let result = await onSavePin({ preventDefault() {} }, saveOptions);
+  if (!result.ok && result.reason === "busy") {
+    await waitForPinSaveComplete();
+    rerunSaveAfterCurrent = false;
+    result = await onSavePin({ preventDefault() {} }, saveOptions);
+  }
+  return result;
+}
+
+function pinDataHasDiscordMedia(pinData) {
+  if (isDiscordMediaUrl(pinData.videoUrl) || isDiscordMediaUrl(pinData.thumbnail)) {
+    return true;
+  }
+  return (pinData.mediaItems || []).some((item) => isDiscordMediaUrl(item?.url));
+}
 
 export function resetEditUndoSnapshot() {
   editUndoSnapshotPushed = false;
@@ -78,7 +160,7 @@ export function scheduleAutoSave() {
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
     if (!autoSaveDeps) return;
-    onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
+    void onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
   }, AUTO_SAVE_DELAY_MS);
 }
 
@@ -148,20 +230,56 @@ export function resetRequires() {
   });
 }
 
-export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave = false }) {
+export async function onSavePin(
+  event,
+  {
+    reloadPinsForMap,
+    backToEditorBrowse: backToEditorBrowseFn,
+    canModifyFn,
+    autoSave = false,
+    navigateOnSuccess = !autoSave,
+    notifyUser = false,
+  }
+) {
   event.preventDefault();
-  if (!canSavePlacement()) return;
+
+  if (!canSavePlacement()) {
+    const message = getPlacementErrorMessage();
+    if (notifyUser) {
+      shakePlacementField();
+      showSaveError(message, { notifyUser });
+    }
+    return { ok: false, reason: "placement", message };
+  }
 
   const title = normalizePinTitle(getPinTitle()?.value);
-  if (!title) return;
+  if (!title) {
+    const message = "Title is required";
+    if (notifyUser) {
+      getPinTitle()?.focus();
+      showSaveError(message, { notifyUser });
+    }
+    return { ok: false, reason: "title", message };
+  }
   getPinTitle().value = title;
 
   const tag = getPinFormTag();
-  if (!tag) return;
+  if (!tag) {
+    const message = "Pin type is required";
+    showSaveError(message, { notifyUser });
+    return { ok: false, reason: "tag", message };
+  }
 
-  const mediaValidation = validatePinMediaForm();
-  if (!mediaValidation.valid) return;
-  const mediaFields = deriveLegacyMediaFields(mediaValidation.items);
+  const mediaValidation = validatePinMediaForm({ showErrors: notifyUser });
+  if (!mediaValidation.valid) {
+    const message = mediaValidation.message || "Unsupported media URL";
+    showSaveError(message, { notifyUser });
+    return { ok: false, reason: "media", message };
+  }
+  const mediaFields = deriveLegacyMediaFields(
+    mediaValidation.items,
+    mediaValidation.thumbnail
+  );
 
   const pinData = {
     title,
@@ -184,39 +302,75 @@ export function onSavePin(event, { reloadPinsForMap, backToEditorBrowse: backToE
   const requires = getRequiresData();
   pinData.requires = Object.keys(requires).length > 0 ? requires : {};
 
-  void savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave });
+  return savePin(pinData, {
+    reloadPinsForMap,
+    backToEditorBrowse: backToEditorBrowseFn,
+    canModifyFn,
+    autoSave,
+    navigateOnSuccess,
+    notifyUser,
+  });
 }
 
-export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: backToEditorBrowseFn, canModifyFn, autoSave = false }) {
-  if (state.pinSaveInFlight) return;
+export async function savePin(
+  pinData,
+  {
+    reloadPinsForMap,
+    backToEditorBrowse: backToEditorBrowseFn,
+    canModifyFn,
+    autoSave = false,
+    navigateOnSuccess = !autoSave,
+    notifyUser = false,
+  }
+) {
+  if (state.pinSaveInFlight) {
+    rerunSaveAfterCurrent = true;
+    return { ok: false, reason: "busy" };
+  }
 
   state.pinSaveInFlight = true;
 
   try {
+    let payload = pinData;
+    if (notifyUser && pinDataHasDiscordMedia(pinData)) {
+      showEditorToast("Importing media from Discord…", { durationMs: 8000 });
+      try {
+        payload = await ingestDiscordPinMedia(pinData);
+      } catch (error) {
+        console.warn("Client Discord ingest failed, saving direct URL:", error);
+      }
+    }
+
     if (state.panelMode === "edit" && state.editingPinId) {
       const existing = state.pins.find((item) => item.id === state.editingPinId);
-      if (!existing || !canModifyFn(existing)) return;
+      if (!existing || !canModifyFn(existing)) {
+        const message = "You do not have permission to edit this pin";
+        showSaveError(message, { notifyUser });
+        return { ok: false, reason: "permission", message };
+      }
 
       if (!editUndoSnapshotPushed) {
         pushPinUpdateSnapshot(existing);
         editUndoSnapshotPushed = true;
       }
 
-      await updatePin(state.currentMapId, state.editingPinId, pinData);
+      const saved = await updatePin(state.currentMapId, state.editingPinId, payload);
+      cachePinDetail(state.currentMapId, state.editingPinId, saved);
       await reloadPinsForMap(state.currentMapId);
 
       if (autoSave) {
         renderPins();
         renderPinList();
         highlightPin(state.editingPinId);
-      } else {
+      } else if (navigateOnSuccess) {
         backToEditorBrowseFn({ preserveHistory: true });
       }
-      return;
+      return { ok: true };
     }
 
     if (state.panelMode === "add") {
-      const created = await createPin(state.currentMapId, pinData);
+      const created = await createPin(state.currentMapId, payload);
+      cachePinDetail(state.currentMapId, created.id, created);
       await reloadPinsForMap(state.currentMapId);
       pushPinCreateSnapshot(created.id);
       editUndoSnapshotPushed = true;
@@ -228,17 +382,24 @@ export async function savePin(pinData, { reloadPinsForMap, backToEditorBrowse: b
         renderPins();
         renderPinList();
         highlightPin(created.id);
-      } else {
+      } else if (navigateOnSuccess) {
         backToEditorBrowseFn({ preserveHistory: true });
       }
+      return { ok: true };
     }
+
+    return { ok: false, reason: "save", message: "Pin form is not open" };
   } catch (error) {
     console.error(error);
-    if (!autoSave) {
-      alert(error.message || "Could not save trick");
-    }
+    const message = error.message || "Could not save trick";
+    showSaveError(message, { notifyUser });
+    return { ok: false, reason: "save", message };
   } finally {
     state.pinSaveInFlight = false;
+    if (rerunSaveAfterCurrent && autoSaveDeps) {
+      rerunSaveAfterCurrent = false;
+      void onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
+    }
   }
 }
 
@@ -257,7 +418,7 @@ export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn })
         }
       } catch (error) {
         console.error(error);
-        alert(error.message || "Could not delete trick");
+        showEditorToast(error.message || "Could not delete trick");
         return;
       }
     }
@@ -291,7 +452,7 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   } catch (error) {
     state.positionHistory.pop();
     console.error(error);
-    alert(error.message || "Could not delete trick");
+    showEditorToast(error.message || "Could not delete trick");
   } finally {
     if (btnDeletePin) {
       btnDeletePin.disabled = false;

@@ -158,6 +158,10 @@ export async function getUserRole(steamId, env) {
     return "owner";
   }
 
+  if (member) {
+    return normalizeStoredRole(member.role);
+  }
+
   if (isRevokedId(data.revoked, id)) {
     return null;
   }
@@ -166,15 +170,7 @@ export async function getUserRole(steamId, env) {
     return "admin";
   }
 
-  if (member?.role === "admin") {
-    return "admin";
-  }
-
   if (isEnvAssist(id, env)) {
-    return "assist";
-  }
-
-  if (member?.role === "assist") {
     return "assist";
   }
 
@@ -182,16 +178,8 @@ export async function getUserRole(steamId, env) {
     return "editor";
   }
 
-  if (member?.role === "editor") {
-    return "editor";
-  }
-
   if (isEnvViewer(id, env)) {
     return "viewer";
-  }
-
-  if (member) {
-    return normalizeStoredRole(member.role);
   }
 
   return null;
@@ -216,56 +204,62 @@ export function isStaffRole(role) {
 
 export async function listAllMembers(env, actorRole) {
   const data = await loadUsersData(env);
-  const revoked = new Set(data.revoked || []);
+  const revoked = new Set((data.revoked || []).map(normalizeSteamId));
   const members = [];
   const seen = new Set();
   const actorIsOwner = actorRole === "owner";
 
   for (const steamId of getEnvOwnerSteamIds(env)) {
-    members.push(memberListEntry(steamId, "owner", actorIsOwner));
-    seen.add(steamId);
+    const id = normalizeSteamId(steamId);
+    members.push(memberListEntry(id, "owner", actorIsOwner));
+    seen.add(id);
   }
 
   for (const steamId of getEnvAdminSteamIds(env)) {
-    if (seen.has(steamId) || revoked.has(steamId)) {
+    const id = normalizeSteamId(steamId);
+    if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(steamId, "admin", actorIsOwner));
-    seen.add(steamId);
+    members.push(memberListEntry(id, "admin", actorIsOwner));
+    seen.add(id);
   }
 
   for (const steamId of getEnvAssistSteamIds(env)) {
-    if (seen.has(steamId) || revoked.has(steamId)) {
+    const id = normalizeSteamId(steamId);
+    if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(steamId, "assist", actorIsOwner));
-    seen.add(steamId);
+    members.push(memberListEntry(id, "assist", actorIsOwner));
+    seen.add(id);
   }
 
   for (const steamId of getEnvEditorSteamIds(env)) {
-    if (seen.has(steamId) || revoked.has(steamId)) {
+    const id = normalizeSteamId(steamId);
+    if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(steamId, "editor", actorIsOwner));
-    seen.add(steamId);
+    members.push(memberListEntry(id, "editor", actorIsOwner));
+    seen.add(id);
   }
 
   for (const steamId of getEnvViewerSteamIds(env)) {
-    if (seen.has(steamId) || revoked.has(steamId)) {
+    const id = normalizeSteamId(steamId);
+    if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(steamId, "viewer", actorIsOwner));
-    seen.add(steamId);
+    members.push(memberListEntry(id, "viewer", actorIsOwner));
+    seen.add(id);
   }
 
   for (const user of data.users) {
-    if (seen.has(user.steamId) || revoked.has(user.steamId)) {
+    const id = normalizeSteamId(user.steamId);
+    if (seen.has(id)) {
       continue;
     }
 
     const role = normalizeStoredRole(user.role);
-    members.push(memberListEntry(user.steamId, role, actorIsOwner));
-    seen.add(user.steamId);
+    members.push(memberListEntry(id, role, actorIsOwner));
+    seen.add(id);
   }
 
   return members;
@@ -278,22 +272,22 @@ function hasManagedAccess(data, id, env) {
   if (isEnvAssist(id, env) || isEnvEditor(id, env) || isEnvViewer(id, env)) {
     return true;
   }
-  return data.users.some((user) => user.steamId === id);
+  return data.users.some((user) => normalizeSteamId(user.steamId) === normalizeSteamId(id));
 }
 
 export async function addManagedUser(env, steamId) {
-  const id = String(steamId).trim();
+  const id = normalizeSteamId(steamId);
 
   if (isEnvOwner(id, env)) {
     return { error: "This Steam ID is already an owner" };
   }
 
   const data = await loadUsersData(env);
-  const revoked = (data.revoked || []).includes(id);
+  const revoked = isRevokedId(data.revoked, id);
 
   if (isEnvAdmin(id, env)) {
     if (revoked) {
-      data.revoked = data.revoked.filter((entry) => entry !== id);
+      data.revoked = (data.revoked || []).filter((entry) => normalizeSteamId(entry) !== id);
       await saveUsersData(env, data);
       return {
         member: { steamId: id, role: "admin", removable: true, roleEditable: true },
@@ -307,10 +301,10 @@ export async function addManagedUser(env, steamId) {
   }
 
   if (revoked) {
-    data.revoked = data.revoked.filter((entry) => entry !== id);
+    data.revoked = (data.revoked || []).filter((entry) => normalizeSteamId(entry) !== id);
   }
 
-  const existing = data.users.find((user) => user.steamId === id);
+  const existing = data.users.find((user) => normalizeSteamId(user.steamId) === id);
   if (existing) {
     existing.role = "viewer";
   } else {

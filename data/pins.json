@@ -1,38 +1,4 @@
 {
   "defaultMapId": "SMDMV2",
-  "pins": {
-    "Carentan": [
-      {
-        "id": "carentan-chicken-house",
-        "title": "Chicken House Scaffold Climb",
-        "description": "Either climb from the rubble pile or use the scaffold at the back of the chicken house when pushed back.",
-        "tag": "climb",
-        "x": 55.0,
-        "y": 46.0,
-        "videoUrl": "https://www.youtube.com/watch?v=dFtEDj8F7Ns"
-      }
-    ],
-    "Omaha": [
-      {
-        "id": "omaha-b10-deathclimb",
-        "title": "B10 East — Deathclimb",
-        "description": "Bush climb on the east side of B10. Use the foliage to get up the bluff without exposing yourself on the beach.",
-        "tag": "climb",
-        "x": 17.5,
-        "y": 92.0,
-        "videoUrl": "https://www.youtube.com/watch?v=EZmOkq7RwZE"
-      }
-    ],
-    "SMDMV2": [
-      {
-        "id": "smdm-bushes-1",
-        "title": "SMDM Hedgerow Bush Climb",
-        "description": "Use the dense bushes along the hedgerow to climb over without being seen from the road.",
-        "tag": "climb",
-        "x": 38.5,
-        "y": 52.0,
-        "videoUrl": "https://www.youtube.com/watch?v=-i_u3McjEHc"
-      }
-    ]
-  }
+  "pins": {}
 }

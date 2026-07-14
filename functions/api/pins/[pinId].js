@@ -1,11 +1,14 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import { mirrorPinMedia } from "../../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../../lib/media-urls.js";
 import {
+  isValidMapId,
   normalizePinFaction,
   normalizePinTag,
   sanitizeRequires,
 } from "../../lib/pin-fields.js";
 import { canEnterEditorMode, canModifyPin } from "../../lib/pin-permissions.js";
+import { guardAccess } from "../../lib/access-guard.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { normalizePinTitle } from "../../lib/pin-title.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -92,11 +95,6 @@ function applyPinUpdates(existing, pin) {
     return { error: "Valid pin coordinates are required" };
   }
 
-  const mediaError = validatePinMediaFields(updated);
-  if (mediaError) {
-    return mediaError;
-  }
-
   return { pin: updated };
 }
 
@@ -122,6 +120,21 @@ export async function onRequestPut(context) {
   if (!mapId) {
     return errorResponse("mapId is required", 400);
   }
+  if (!isValidMapId(mapId)) {
+    return errorResponse("Invalid mapId", 400);
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "pin_write",
+    endpoint: "pins.update",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    mapId,
+    pinId,
+  });
+  if (access.error) {
+    return access.error;
+  }
 
   const data = await loadPinsData(context.env);
   const found = findPin(data, mapId, pinId);
@@ -138,7 +151,17 @@ export async function onRequestPut(context) {
     return errorResponse(built.error, 400);
   }
 
-  found.pins[found.index] = built.pin;
+  const mirrored = await mirrorPinMedia(context.env, built.pin);
+  if (mirrored.error) {
+    return errorResponse(mirrored.error, mirrored.status || 400);
+  }
+
+  const mediaError = validatePinMediaFields(mirrored.pin);
+  if (mediaError) {
+    return errorResponse(mediaError.error, 400);
+  }
+
+  found.pins[found.index] = mirrored.pin;
 
   try {
     await savePinsData(context.env, data);
@@ -147,7 +170,7 @@ export async function onRequestPut(context) {
     return errorResponse("Pin storage is not configured", 503);
   }
 
-  return json({ pin: built.pin, mapId });
+  return json({ pin: mirrored.pin, mapId });
 }
 
 export async function onRequestDelete(context) {
@@ -164,6 +187,21 @@ export async function onRequestDelete(context) {
   const mapId = new URL(context.request.url).searchParams.get("mapId");
   if (!mapId) {
     return errorResponse("mapId query parameter is required", 400);
+  }
+  if (!isValidMapId(mapId)) {
+    return errorResponse("Invalid mapId", 400);
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "pin_write",
+    endpoint: "pins.delete",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    mapId,
+    pinId,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   const data = await loadPinsData(context.env);

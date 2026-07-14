@@ -4,8 +4,14 @@ import { isGuideInteractionAllowed, isStratsAppMode } from "../helpers/app-mode.
 import { getPinTag } from "../pin-tags.js";
 import { hasPinDirection, renderMgSpotGroup } from "./mg-spot-arrows.js";
 import { positionPins, highlightPin } from "../helpers/proximity.js";
+import { isPhoneLayout } from "../helpers/layout.js";
 import { updatePinCount } from "./sidebar.js";
-import { showPreview, movePreview, scheduleHidePreview } from "./pin-preview.js";
+import {
+  showPreview,
+  showPreviewAtPin,
+  movePreview,
+  scheduleHidePreview,
+} from "./pin-preview.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
 import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
@@ -109,16 +115,16 @@ export function attachPinInteractions(element, pin) {
     armModalDismissGuard();
   });
   element.addEventListener("mouseenter", (event) => {
-    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || isPhoneLayout() || state.panelMode !== null) return;
     highlightPin(pin.id);
     showPreview(pin, event);
   });
   element.addEventListener("mousemove", (event) => {
-    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || isPhoneLayout() || state.panelMode !== null) return;
     movePreview(event);
   });
   element.addEventListener("mouseleave", () => {
-    if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
+    if (!isGuideInteractionAllowed() || isPhoneLayout() || state.panelMode !== null) return;
     if (state.modalPin?.id === pin.id && document.getElementById("video-modal")?.open) return;
     scheduleHidePreview();
     highlightPin(null);
@@ -126,6 +132,19 @@ export function attachPinInteractions(element, pin) {
   element.addEventListener("click", (event) => {
     event.stopPropagation();
     if (!isGuideInteractionAllowed() || state.panelMode !== null) return;
+
+    if (isPhoneLayout()) {
+      if (state.phonePreviewPinId === pin.id) {
+        state.phonePreviewPinId = null;
+        openModal(pin);
+        return;
+      }
+      state.phonePreviewPinId = pin.id;
+      highlightPin(pin.id);
+      showPreviewAtPin(pin);
+      return;
+    }
+
     openModal(pin);
   });
   element.addEventListener("contextmenu", (event) => {

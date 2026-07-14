@@ -1,7 +1,8 @@
 import { state } from "./state.js";
 import { canModifyPin, canEnterEditorMode } from "./helpers/permissions.js";
 import { persistToggles, persistBgHue, persistBgRandom, setMapLabelsVisible } from "./ui/toggles.js";
-import { hidePreviewImmediately } from "./ui/pin-preview.js";
+import { hidePreviewImmediately, scheduleHidePreview, initPreviewTooltip } from "./ui/pin-preview.js";
+import { isPhoneLayout } from "./helpers/layout.js";
 import {
   backToEditorBrowse,
   tryBackToEditorBrowse,
@@ -71,6 +72,15 @@ function onTagFiltersChanged() {
   renderPinList();
 }
 
+function onViewportBackgroundTap(event) {
+  if (!isPhoneLayout() || state.panelMode !== null) return;
+  if (event.target.closest(".map-pin, .map-mg-spot, .map-pin__label")) return;
+  if (!state.highlightedPinId && !state.phonePreviewPinId) return;
+  state.phonePreviewPinId = null;
+  scheduleHidePreview();
+  highlightPin(null);
+}
+
 export function bindUi({ reloadPinsForMap, switchMap }) {
   suppressNativeContextMenu([
     document.getElementById("map-viewport"),
@@ -121,7 +131,16 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));
   document.getElementById("btn-add-climb")?.addEventListener("click", () => openAddPinForm("climb"));
-  document.getElementById("btn-edit-panel-back").addEventListener("click", () => tryBackToEditorBrowse());
+  document.getElementById("btn-edit-panel-back")?.addEventListener("click", async () => {
+    const backBtn = document.getElementById("btn-edit-panel-back");
+    if (backBtn?.disabled) return;
+    if (backBtn) backBtn.disabled = true;
+    try {
+      await tryBackToEditorBrowse();
+    } finally {
+      if (backBtn) backBtn.disabled = false;
+    }
+  });
 
   document.addEventListener("pin-list-edit", (event) => {
     const pin = state.pins.find((item) => item.id === event.detail?.pinId);
@@ -176,7 +195,10 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   });
 
   const viewport = document.getElementById("map-viewport");
-  viewport.addEventListener("click", onViewportClick);
+  viewport.addEventListener("click", (event) => {
+    onViewportBackgroundTap(event);
+    onViewportClick(event);
+  });
   viewport.addEventListener("contextmenu", (event) => {
     if (handleEditorPlacementContextMenu(event)) return;
     onViewportContextMenu(event);
@@ -261,5 +283,6 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   initAutoSave(autoSaveDeps);
   initPinMediaForm();
   initModalMediaNav();
+  initPreviewTooltip();
   initDraftPinDrag();
 }

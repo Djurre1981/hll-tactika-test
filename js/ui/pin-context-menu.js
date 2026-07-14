@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { deletePin as apiDeletePin } from "../api/pins.js";
 import { pushPinDeleteSnapshot } from "../editor/undo-redo.js";
-import { isMgSpotPlacement } from "../editor/placement-mode.js";
+import { showEditorToast } from "./editor-toast.js";
 
 function getPinContextMenu() {
   return document.getElementById("pin-context-menu");
@@ -108,7 +108,7 @@ export function onPinContextMenuAction(event, {
       } catch (error) {
         state.positionHistory.pop();
         console.error(error);
-        alert(error.message || "Could not delete trick");
+        showEditorToast(error.message || "Could not delete trick");
       }
     })();
   }

@@ -1,3 +1,5 @@
+import { canEnterEditorMode } from "../../lib/pin-permissions.js";
+import { guardAccess } from "../../lib/access-guard.js";
 import { requireAuth } from "../../lib/auth-request.js";
 import { putUploadedVideo } from "../../lib/r2-media.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -6,6 +8,21 @@ export async function onRequestPost(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
+  }
+
+  const access = await guardAccess(context, {
+    bucket: "upload",
+    endpoint: "upload.video",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    statusOnSuccess: 201,
+  });
+  if (access.error) {
+    return access.error;
   }
 
   let formData;

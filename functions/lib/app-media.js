@@ -18,7 +18,7 @@ export const IMAGE_EXTENSIONS = {
 };
 
 export const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
 export function isUploadMediaId(id) {
   return UPLOAD_MEDIA_ID.test(String(id || "").trim());
@@ -34,7 +34,8 @@ export function isAppVideoId(videoId) {
 }
 
 export function isAppImageId(imageId) {
-  return isUploadMediaId(imageId);
+  const id = String(imageId || "").trim();
+  return isUploadMediaId(id) || isDiscordVideoId(id);
 }
 
 export function appVideoUrl(videoId) {
@@ -57,13 +58,32 @@ export function r2ImageKey(imageId) {
   return `images/${String(imageId).trim()}`;
 }
 
+export function discordVideoR2Key(attachmentId) {
+  return `discord/${String(attachmentId).trim()}`;
+}
+
+export function discordImageR2Key(attachmentId) {
+  return `discord-images/${String(attachmentId).trim()}`;
+}
+
 export function videoR2LookupKeys(videoId) {
   const id = String(videoId || "").trim();
   if (isDiscordVideoId(id)) {
-    return [legacyDiscordR2VideoKey(id)];
+    return [discordVideoR2Key(id), legacyDiscordR2VideoKey(id)];
   }
   if (isUploadMediaId(id)) {
     return [r2UploadedVideoKey(id)];
+  }
+  return [];
+}
+
+export function imageR2LookupKeys(imageId) {
+  const id = String(imageId || "").trim();
+  if (isDiscordVideoId(id)) {
+    return [discordImageR2Key(id)];
+  }
+  if (isUploadMediaId(id)) {
+    return [r2ImageKey(id)];
   }
   return [];
 }
@@ -122,7 +142,7 @@ export function resolveImageUpload(file) {
     };
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return { error: "Image is too large (max 8 MB)." };
+    return { error: "Image is too large (max 12 MB)." };
   }
   return { extension, contentType };
 }
@@ -130,3 +150,5 @@ export function resolveImageUpload(file) {
 export function newUploadMediaId() {
   return crypto.randomUUID();
 }
+
+export { extractDiscordAttachmentId, isDiscordMediaUrl } from "./discord-url.js";

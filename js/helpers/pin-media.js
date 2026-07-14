@@ -5,7 +5,7 @@ import {
 } from "../utils/video.js";
 
 const IMAGE_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|$)/i;
-const APP_IMAGE_PATH_RE = /^\/api\/images\/[0-9a-f-]{36}$/i;
+const APP_IMAGE_PATH_RE = /^\/api\/images\/(\d{17,20}|[0-9a-f-]{36})$/i;
 
 export function isAppImagePath(url) {
   if (!url) return false;
@@ -54,7 +54,9 @@ export function getPinMediaItems(pin) {
 
   const items = [];
   if (pin?.thumbnail) {
-    items.push({ kind: "image", url: String(pin.thumbnail).trim() });
+    const url = String(pin.thumbnail).trim();
+    const kind = detectMediaKind(url) === "video" ? "video" : "image";
+    items.push({ kind, url });
   }
   if (pin?.videoUrl) {
     items.push({ kind: "video", url: String(pin.videoUrl).trim() });
@@ -63,15 +65,28 @@ export function getPinMediaItems(pin) {
 }
 
 export function pinHasMedia(pin) {
+  if (pin?.hasMedia === true) return true;
+  if (pin?.hasMedia === false) return false;
   return getPinMediaItems(pin).length > 0;
 }
 
-export function deriveLegacyMediaFields(mediaItems) {
+export function deriveLegacyMediaFields(mediaItems, thumbnailUrl = "") {
   const firstVideo = mediaItems.find((item) => item.kind === "video");
   const firstImage = mediaItems.find((item) => item.kind === "image");
+  const explicitThumbnail = String(thumbnailUrl || "").trim();
+  let thumbnail;
+  if (explicitThumbnail) {
+    const normalizedThumb = normalizeVideoUrl(explicitThumbnail);
+    const match = mediaItems.find(
+      (item) => normalizeVideoUrl(item.url) === normalizedThumb
+    );
+    thumbnail = match?.url || explicitThumbnail;
+  } else {
+    thumbnail = firstImage?.url || undefined;
+  }
   return {
     videoUrl: firstVideo?.url || "",
-    thumbnail: firstImage?.url || undefined,
+    thumbnail,
     mediaItems,
   };
 }
@@ -82,15 +97,13 @@ export function isValidMediaUrl(url) {
   if (isAppImagePath(normalized) || isAppVideoPath(normalized)) {
     return true;
   }
+  if (normalized.startsWith("/") && !normalized.startsWith("//")) {
+    return false;
+  }
   try {
-    new URL(normalized);
-    return true;
+    const parsed = new URL(normalized);
+    return parsed.protocol === "https:";
   } catch {
-    try {
-      new URL(normalized, window.location.origin);
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }

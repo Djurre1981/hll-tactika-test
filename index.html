@@ -1,15 +1,36 @@
 <!DOCTYPE html>
-<html lang="en" class="welcome-boot">
+<html lang="en" class="app-boot">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HLL Tactika</title>
+  <title>HLL-Tactika</title>
+  <meta name="description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hll-tactika.pages.dev/" />
+  <meta property="og:title" content="HLL-Tactika" />
+  <meta property="og:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="HLL-Tactika" />
+  <meta name="twitter:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta name="twitter:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
   <script>
     (function () {
       try {
-        if (localStorage.getItem("hll-tactika-authed") !== "1") return;
-        document.documentElement.classList.remove("welcome-boot");
-        document.documentElement.classList.add("app-boot");
+        var authed = localStorage.getItem("hll-tactika-authed") === "1";
+        if (!authed) {
+          var params = new URLSearchParams(window.location.search);
+          var isForbidden = params.get("auth") === "forbidden";
+          var videoPreload = document.createElement("link");
+          videoPreload.rel = "preload";
+          videoPreload.as = "video";
+          videoPreload.href = isForbidden
+            ? "assets/welcome/bye.mp4"
+            : "assets/welcome/welcome.mp4";
+          videoPreload.type = "video/mp4";
+          document.head.appendChild(videoPreload);
+          return;
+        }
         var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
         if (!mapImage) {
           var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
@@ -32,6 +53,10 @@
     html.app-boot #welcome-page,
     html.app-boot #bye-page { display: none !important; }
     html.app-boot #app-root.hidden { display: block !important; }
+    html.app-boot #app-root.is-auth-pending .sidebar-shell,
+    html.app-boot #app-root.is-auth-pending .map-toolbar-shell {
+      display: none !important;
+    }
   </style>
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/layout.css" />
@@ -66,6 +91,7 @@
       data-src="assets/welcome/welcome.mp4"
       muted
       playsinline
+      webkit-playsinline
       disablePictureInPicture
       disableRemotePlayback
     ></video>
@@ -101,6 +127,7 @@
       data-src="assets/welcome/bye.mp4"
       muted
       playsinline
+      webkit-playsinline
       disablePictureInPicture
       disableRemotePlayback
     ></video>
@@ -153,7 +180,7 @@
     </div>
   </dialog>
 
-  <div id="app-root" class="hidden">
+  <div id="app-root" class="hidden is-auth-pending">
   <main class="layout">
     <div class="mode-switch hidden" id="mode-switch">
       <div class="mode-switch__surface glass-surface" role="tablist" aria-label="Application mode">
@@ -198,7 +225,7 @@
         </div>
         <div class="sidebar__map-toggles">
           <label class="toggle-pill" title="Grid">
-            <input type="checkbox" id="toggle-grid" />
+            <input type="checkbox" id="toggle-grid" checked />
             <span>Grid</span>
           </label>
           <label class="toggle-pill" title="Strongpoints">
@@ -488,20 +515,14 @@
             Description
             <textarea id="pin-description" class="glass-input pin-form__description" rows="3" placeholder="Short note about the trick"></textarea>
           </label>
-          <fieldset class="pin-form__media">
+          <fieldset class="pin-form__media" tabindex="-1">
             <legend>Images &amp; Videos</legend>
-            <div class="pin-media-toolbar">
-              <button type="button" id="btn-upload-media" class="glass-btn pin-media-upload" title="Upload file">
-                <i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i>
-                <span>Upload</span>
-              </button>
-              <input
-                type="file"
-                id="pin-media-file"
-                class="pin-media-file hidden"
-                accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.ogg,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-              />
-            </div>
+            <input
+              type="file"
+              id="pin-media-file"
+              class="pin-media-file hidden"
+              accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.ogg,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+            />
             <div class="pin-media-list" id="pin-media-list"></div>
           </fieldset>
           <div class="pin-form__coords-label">Coordinates</div>
@@ -917,6 +938,11 @@
       </form>
 
       <p class="admin-panel__status" id="admin-panel-status" aria-live="polite"></p>
+
+      <div class="admin-panel__export hidden" id="admin-export-section">
+        <button type="button" class="btn btn--secondary" id="btn-admin-export-pins">Export full pin backup</button>
+        <button type="button" class="btn btn--secondary" id="btn-admin-alert-test">Test Discord alert</button>
+      </div>
 
       <div class="admin-panel__table-wrap">
         <table class="admin-panel__table">

@@ -45,6 +45,7 @@ Your role decides what you can do. In short:
 - Use the **sidebar pin list** to jump to a trick; clicking a row focuses that pin on the map.
 - **Filter by tag** — show only climbs or only MG spots.
 - **Filter by faction** — Axis, Allies, or Neutral (mainly affects MG spot arrows; see colours below).
+- **Search** — matches pin **title**, **tag**, and **position code** only (description text is not searchable).
 
 ## Pin colours — read the map at a glance
 
@@ -69,7 +70,7 @@ A healthy map should be mostly **green** and **red/blue/dark arrows**, with **ye
 - **Short descriptions** — how to do it, what to watch for.
 - **Correct faction** on MG spots so Axis and Allies see the right colour.
 - **One trick per pin** — if a spot has two unrelated climbs, split them.
-- **Stable video URLs** — YouTube and Medal.tv links age better than one-off Discord uploads when possible.
+- **Stable video URLs** — YouTube and Medal.tv links age well. Discord attachment links work too: on save the site copies them to cloud storage automatically so they do not expire after ~24 hours.
 
 ---
 
@@ -96,7 +97,7 @@ Set the correct **faction** (Axis / Allies / Neutral) so the arrow shows the rig
 
 ### Supported video links
 
-YouTube, Vimeo, direct `.mp4` / `.webm` files, Discord attachment links, and Medal.tv clips all work. When adding pins, prefer stable links the whole team can rely on.
+YouTube, Vimeo, direct `.mp4` / `.webm` files, Discord attachment links, and Medal.tv clips all work. **Discord attachments** are archived to the app’s cloud storage when you save the pin (you can paste the CDN link as usual). Prefer YouTube or Medal.tv when you already have a stable public link.
 
 ---
 

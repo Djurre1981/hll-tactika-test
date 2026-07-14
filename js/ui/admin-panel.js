@@ -1,7 +1,9 @@
 import {
   addManagedUser,
+  fetchFullPinsExport,
   fetchManagedUsers,
   removeManagedUser,
+  testDiscordAlert,
   updateManagedUserRole,
 } from "../api/admin.js";
 import { getCurrentUser } from "../api/auth.js";
@@ -16,6 +18,9 @@ const els = {
   status: document.getElementById("admin-panel-status"),
   submitButton: document.getElementById("btn-admin-add-user"),
   headerNote: document.querySelector(".admin-panel__header p"),
+  exportSection: document.getElementById("admin-export-section"),
+  exportButton: document.getElementById("btn-admin-export-pins"),
+  alertTestButton: document.getElementById("btn-admin-alert-test"),
 };
 
 const ROLE_ORDER = { owner: 0, admin: 1, assist: 2, editor: 3, viewer: 4 };
@@ -30,6 +35,8 @@ const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
 
 let users = [];
 let currentUser = null;
+let openRolePicker = null;
+let rolePickerDismissAbort = null;
 
 export function initAdminPanel() {
   currentUser = getCurrentUser();
@@ -40,6 +47,9 @@ export function initAdminPanel() {
   if (currentUser.role === "owner" && els.headerNote) {
     els.headerNote.textContent =
       "Add or remove circle members. Owners can change roles and remove administrators.";
+    els.exportSection?.classList.remove("hidden");
+    els.exportButton?.addEventListener("click", onExportPins);
+    els.alertTestButton?.addEventListener("click", onAlertTest);
   }
 
   els.openButton?.classList.remove("hidden");
@@ -59,6 +69,198 @@ export function initAdminPanel() {
   els.form?.addEventListener("submit", onAddUser);
 }
 
+function closeRolePicker(picker = openRolePicker) {
+  if (!picker) return;
+
+  const wrap = picker.querySelector(".admin-role-picker__list-wrap")
+    || picker._rolePickerListWrap;
+  picker.classList.remove("is-open");
+  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "false");
+  if (wrap) {
+    wrap.classList.remove("is-open");
+    wrap.style.top = "";
+    wrap.style.left = "";
+    wrap.style.width = "";
+    if (wrap.parentElement === els.panel) {
+      picker.appendChild(wrap);
+    }
+    delete picker._rolePickerListWrap;
+  }
+  if (openRolePicker === picker) {
+    openRolePicker = null;
+  }
+}
+
+function getRolePickerListWrap(picker) {
+  return picker._rolePickerListWrap || picker.querySelector(".admin-role-picker__list-wrap");
+}
+
+function positionRolePickerList(picker) {
+  const wrap = getRolePickerListWrap(picker);
+  if (!wrap || !els.panel) return;
+
+  const dialogRect = els.panel.getBoundingClientRect();
+  const rect = picker.getBoundingClientRect();
+  const listHeight = wrap.offsetHeight;
+  const spaceBelow = dialogRect.bottom - rect.bottom - 8;
+  const spaceAbove = rect.top - dialogRect.top - 8;
+  const openBelow = spaceBelow >= listHeight || spaceBelow >= spaceAbove;
+
+  wrap.style.width = `${rect.width}px`;
+  wrap.style.left = `${rect.left - dialogRect.left}px`;
+  wrap.style.top = openBelow
+    ? `${rect.bottom - dialogRect.top + 4}px`
+    : `${rect.top - dialogRect.top - listHeight - 4}px`;
+}
+
+function bindRolePickerDismiss() {
+  rolePickerDismissAbort?.abort();
+  rolePickerDismissAbort = new AbortController();
+  const { signal } = rolePickerDismissAbort;
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!openRolePicker) return;
+
+      const wrap = getRolePickerListWrap(openRolePicker);
+      const clickedInsidePicker = openRolePicker.contains(event.target);
+      const clickedInsideList = wrap?.contains(event.target);
+      if (!clickedInsidePicker && !clickedInsideList) {
+        closeRolePicker();
+      }
+    },
+    { signal }
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") {
+        closeRolePicker();
+      }
+    },
+    { signal }
+  );
+
+  window.addEventListener(
+    "resize",
+    () => {
+      if (openRolePicker) {
+        positionRolePickerList(openRolePicker);
+      }
+    },
+    { signal }
+  );
+
+  const tableBody = els.panel?.querySelector(".admin-panel__table tbody");
+  tableBody?.addEventListener(
+    "scroll",
+    () => {
+      if (openRolePicker) {
+        positionRolePickerList(openRolePicker);
+      }
+    },
+    { signal }
+  );
+}
+
+function unbindRolePickerDismiss() {
+  rolePickerDismissAbort?.abort();
+  rolePickerDismissAbort = null;
+}
+
+function openRolePickerMenu(picker) {
+  if (openRolePicker && openRolePicker !== picker) {
+    closeRolePicker();
+  }
+
+  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
+  if (!wrap) return;
+
+  els.panel.appendChild(wrap);
+  picker._rolePickerListWrap = wrap;
+
+  picker.classList.add("is-open");
+  wrap.classList.add("is-open");
+  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "true");
+  positionRolePickerList(picker);
+  openRolePicker = picker;
+}
+
+function toggleRolePicker(picker) {
+  if (picker.classList.contains("is-open")) {
+    closeRolePicker(picker);
+  } else {
+    openRolePickerMenu(picker);
+  }
+}
+
+function setRolePickerValue(picker, role) {
+  const label = picker.querySelector(".admin-role-picker__label");
+  if (label) {
+    label.textContent = ROLE_LABELS[role] || role;
+  }
+
+  picker.querySelectorAll(".admin-role-picker__option").forEach((option) => {
+    const isSelected = option.dataset.value === role;
+    option.classList.toggle("is-selected", isSelected);
+    option.setAttribute("aria-selected", isSelected ? "true" : "false");
+  });
+}
+
+function createRolePicker(user) {
+  const picker = document.createElement("div");
+  picker.className = "admin-role-picker";
+  picker.innerHTML = `
+    <button type="button" class="admin-role-picker__chevron" aria-label="Change role" aria-expanded="false"></button>
+    <div class="admin-role-picker__summary" tabindex="0" role="button" aria-haspopup="listbox">
+      <span class="admin-role-picker__label"></span>
+    </div>
+    <div class="admin-role-picker__list-wrap">
+      <ul class="admin-role-picker__list" role="listbox"></ul>
+    </div>
+  `;
+
+  const list = picker.querySelector(".admin-role-picker__list");
+  for (const role of ASSIGNABLE_ROLES) {
+    const option = document.createElement("li");
+    option.className = "admin-role-picker__option";
+    option.role = "option";
+    option.dataset.value = role;
+    option.textContent = ROLE_LABELS[role];
+    option.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (role === user.role) {
+        closeRolePicker(picker);
+        return;
+      }
+      closeRolePicker(picker);
+      void onRoleChange(user, role, picker);
+    });
+    list.appendChild(option);
+  }
+
+  const chevron = picker.querySelector(".admin-role-picker__chevron");
+  const summary = picker.querySelector(".admin-role-picker__summary");
+
+  chevron?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleRolePicker(picker);
+  });
+
+  summary?.addEventListener("click", () => openRolePickerMenu(picker));
+  summary?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleRolePicker(picker);
+    }
+  });
+
+  setRolePickerValue(picker, user.role);
+  return picker;
+}
+
 function dismissUserMenu() {
   const wrap = els.openButton?.closest(".user-cluster__avatar-wrap");
   wrap?.classList.add("is-menu-dismissed");
@@ -67,12 +269,15 @@ function dismissUserMenu() {
 
 function openPanel() {
   dismissUserMenu();
+  bindRolePickerDismiss();
   els.panel?.showModal();
   setStatus("");
   void loadUsers();
 }
 
 function closePanel() {
+  closeRolePicker();
+  unbindRolePickerDismiss();
   els.panel?.close();
 }
 
@@ -103,20 +308,7 @@ async function loadUsers() {
 
 function renderRoleCell(user) {
   if (user.roleEditable) {
-    const select = document.createElement("select");
-    select.className = "admin-panel__role-select";
-    select.setAttribute("aria-label", `Role for ${user.name || user.steamId}`);
-
-    for (const role of ASSIGNABLE_ROLES) {
-      const option = document.createElement("option");
-      option.value = role;
-      option.textContent = ROLE_LABELS[role];
-      option.selected = user.role === role;
-      select.appendChild(option);
-    }
-
-    select.addEventListener("change", () => void onRoleChange(user, select));
-    return select;
+    return createRolePicker(user);
   }
 
   const roleBadge = document.createElement("span");
@@ -125,15 +317,24 @@ function renderRoleCell(user) {
   return roleBadge;
 }
 
+function syncTableScrollHeight(rowCount = users.length) {
+  const tableWrap = els.panel?.querySelector(".admin-panel__table-wrap");
+  if (!tableWrap) return;
+  const visibleRows = Math.min(Math.max(rowCount, 1), 10);
+  tableWrap.style.setProperty("--admin-table-visible-rows", String(visibleRows));
+}
+
 function renderUsers() {
   if (!els.usersBody) return;
 
+  closeRolePicker();
   els.usersBody.innerHTML = "";
 
   if (users.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="4" class="admin-panel__empty">No members yet.</td>`;
     els.usersBody.appendChild(row);
+    syncTableScrollHeight(1);
     return;
   }
 
@@ -141,7 +342,7 @@ function renderUsers() {
     const row = document.createElement("tr");
 
     const nameCell = document.createElement("td");
-    nameCell.textContent = user.name || "Unknown";
+    nameCell.textContent = user.name || "—";
 
     const steamIdCell = document.createElement("td");
     steamIdCell.className = "admin-panel__steam-id";
@@ -166,17 +367,18 @@ function renderUsers() {
     row.append(nameCell, steamIdCell, roleCell, actionsCell);
     els.usersBody.appendChild(row);
   }
+
+  syncTableScrollHeight(users.length);
 }
 
-async function onRoleChange(user, select) {
-  const newRole = select.value;
+async function onRoleChange(user, newRole, picker) {
   if (newRole === user.role) {
     return;
   }
 
   const label = user.name || user.steamId;
   const previousRole = user.role;
-  select.disabled = true;
+  picker?.classList.add("is-disabled");
   setStatus(`Updating role for ${label}…`);
 
   try {
@@ -185,14 +387,66 @@ async function onRoleChange(user, select) {
     user.removable = updated.removable;
     user.roleEditable = updated.roleEditable;
     user.name = updated.name || user.name;
+    setRolePickerValue(picker, updated.role);
     await loadUsers();
     setStatus(`Updated ${label} to ${ROLE_LABELS[newRole]}.`);
   } catch (error) {
     console.error(error);
-    select.value = previousRole;
+    setRolePickerValue(picker, previousRole);
     setStatus(error.message || "Could not update role", true);
   } finally {
-    select.disabled = false;
+    picker?.classList.remove("is-disabled");
+  }
+}
+
+async function onExportPins() {
+  els.exportButton.disabled = true;
+  setStatus("Preparing backup…");
+
+  try {
+    const data = await fetchFullPinsExport();
+    const date = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pins-backup-${date}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus("Backup downloaded.");
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Could not export pins", true);
+  } finally {
+    els.exportButton.disabled = false;
+  }
+}
+
+async function onAlertTest() {
+  if (!els.alertTestButton) return;
+  els.alertTestButton.disabled = true;
+  setStatus("Sending Discord probe…");
+
+  try {
+    const result = await testDiscordAlert();
+    if (result.ok) {
+      const count = result.sent || result.webhookCount || 1;
+      setStatus(
+        count > 1
+          ? `Discord probe sent to ${count} webhooks.`
+          : "Discord probe sent. Check your alert channel."
+      );
+    } else {
+      setStatus(
+        result.error || `Discord probe failed (${result.discordStatus ?? result.httpStatus})`,
+        true
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    setStatus(error.message || "Alert test failed", true);
+  } finally {
+    els.alertTestButton.disabled = false;
   }
 }
 

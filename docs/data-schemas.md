@@ -127,11 +127,24 @@ Pins without `mediaItems`, `videoUrl`, or `thumbnail` render **yellow** on the m
 KV key `"users"`:
 
 ```json
-{ "users": [{ "steamId": "7656119…", "role": "viewer" }], "revoked": ["7656119…"] }
+{ "users": [{ "steamId": "7656119…", "role": "viewer", "preferences": { "grid": true } }], "revoked": ["7656119…"] }
 ```
 
 - `users[].role` — `viewer`, `editor`, `assist`, `admin`, or `owner`
+- `users[].preferences` — optional per-user viewer UI settings (sidebar toggles, toolbar filters, map color). Omitted until the user changes a control; see below.
 - `revoked` — Steam IDs removed from env-granted roles
+
+### Viewer preferences (`users[].preferences`)
+
+Saved via `PATCH /api/auth/preferences`. When absent, the client applies these defaults:
+
+| Field | Default |
+|-------|---------|
+| `grid`, `strongpoints`, `preview`, `bgColor`, `mapLabels` | `true` |
+| `bgRandom` | `true` |
+| `bgHue` | `null` |
+| `tagFilters` | `{ "mg-spot": true, "climb": true }` |
+| `faction` | `"neutral"` |
 
 Env bootstrap and role resolution: [roles.md](roles.md). Admin API: [api.md](api.md).
 
