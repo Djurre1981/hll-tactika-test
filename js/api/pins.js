@@ -68,6 +68,15 @@ export async function updatePin(mapId, pinId, pin) {
   return data.pin;
 }
 
+/** Apply many pin field updates in one request / one KV write. */
+export async function batchUpdatePins(mapId, pins) {
+  const data = await pinApiRequest("/api/pins", {
+    method: "PATCH",
+    body: JSON.stringify({ mapId, pins }),
+  });
+  return data.pins || [];
+}
+
 export async function deletePin(mapId, pinId) {
   await pinApiRequest(
     `/api/pins/${encodeURIComponent(pinId)}?mapId=${encodeURIComponent(mapId)}`,

@@ -9,7 +9,6 @@ import { isPlacementComplete, updatePlacementUi } from "./placement-mode.js";
 import { updateDraftMarker } from "./draft-renderer.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 import { showEditorToast } from "../ui/editor-toast.js";
-import { wasRateLimitNotified } from "../helpers/rate-limit-ui.js";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -282,25 +281,7 @@ function startClimbPinDrag(event, pin, element) {
       const coords = endMapDrag(element, label, dragState);
       pinRef.x = coords.x;
       pinRef.y = coords.y;
-      updatePinElementPosition(pinRef.id);
-
-      try {
-        await persistPinPosition(pinRef);
-      } catch (error) {
-        console.error(error);
-        if (beforeDrag) {
-          pinRef.x = beforeDrag.x;
-          pinRef.y = beforeDrag.y;
-          if (beforeDrag.dirX != null) {
-            pinRef.dirX = beforeDrag.dirX;
-            pinRef.dirY = beforeDrag.dirY;
-          }
-          updatePinElementPosition(pinRef.id);
-        }
-        if (!wasRateLimitNotified(error)) {
-          showEditorToast(error.message || "Could not save pin position");
-        }
-      }
+      persistPinPosition(pinRef);
     },
   });
 }
@@ -427,22 +408,7 @@ function startMgSpotDrag(event, pin, group, handle) {
         showEditorToast("Head and bar were too close — position adjusted");
       }
 
-      try {
-        await persistPinPosition(pinRef);
-      } catch (error) {
-        console.error(error);
-        if (beforeDrag) {
-          pinRef.x = beforeDrag.x;
-          pinRef.y = beforeDrag.y;
-          pinRef.dirX = beforeDrag.dirX;
-          pinRef.dirY = beforeDrag.dirY;
-          refreshMgSpotGroup(group, pinRef);
-          updatePinElementPosition(pinRef.id);
-        }
-        if (!wasRateLimitNotified(error)) {
-          showEditorToast(error.message || "Could not save pin position");
-        }
-      }
+      persistPinPosition(pinRef);
     },
   });
 }

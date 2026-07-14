@@ -1,23 +1,15 @@
+/** Per-isolate memory only — zero KV reads/writes (free-tier friendly). */
 const memoryBuckets = new Map();
 
 function bucketKey(bucket, steamId) {
   return `rl:${bucket}:${steamId}`;
 }
 
-async function readTimestamps(env, key) {
-  if (env.PINS_KV) {
-    const stored = await env.PINS_KV.get(key, "json");
-    return Array.isArray(stored) ? stored : [];
-  }
+function readTimestamps(key) {
   return memoryBuckets.get(key) || [];
 }
 
-async function writeTimestamps(env, key, timestamps, windowMs) {
-  const ttlSec = Math.ceil(windowMs / 1000) + 120;
-  if (env.PINS_KV) {
-    await env.PINS_KV.put(key, JSON.stringify(timestamps), { expirationTtl: ttlSec });
-    return;
-  }
+function writeTimestamps(key, timestamps) {
   memoryBuckets.set(key, timestamps);
 }
 
@@ -31,11 +23,11 @@ function retryAfterSec(timestamps, windowMs, now) {
   return Math.max(1, Math.ceil((oldest + windowMs - now) / 1000));
 }
 
-export async function checkRateLimit(env, bucket, steamId, limit, windowMs) {
+export async function checkRateLimit(_env, bucket, steamId, limit, windowMs) {
   const key = bucketKey(bucket, steamId);
   const now = Date.now();
   const windowStart = now - windowMs;
-  const timestamps = pruneTimestamps(await readTimestamps(env, key), windowStart);
+  const timestamps = pruneTimestamps(readTimestamps(key), windowStart);
 
   if (timestamps.length >= limit) {
     return {
@@ -48,7 +40,7 @@ export async function checkRateLimit(env, bucket, steamId, limit, windowMs) {
   return { allowed: true, timestamps };
 }
 
-export async function incrementRateLimit(env, bucket, steamId, limit, windowMs, existingTimestamps) {
+export async function incrementRateLimit(_env, bucket, steamId, limit, windowMs, existingTimestamps) {
   const key = bucketKey(bucket, steamId);
   const now = Date.now();
   const windowStart = now - windowMs;
@@ -57,7 +49,7 @@ export async function incrementRateLimit(env, bucket, steamId, limit, windowMs, 
   if (timestamps.length > limit * 2) {
     timestamps = timestamps.slice(-limit);
   }
-  await writeTimestamps(env, key, timestamps, windowMs);
+  writeTimestamps(key, timestamps);
   return timestamps;
 }
 

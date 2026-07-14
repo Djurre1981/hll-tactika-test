@@ -1,13 +1,14 @@
 import { state } from "../state.js";
-import { createPin, deletePin, updatePin } from "../api/pins.js";
+import { createPin, deletePin } from "../api/pins.js";
 import { normalizePin } from "../ui/filter-bar.js";
 import { updatePlacementUi } from "./placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "./draft-renderer.js";
 import { updatePinElementPosition } from "../helpers/proximity.js";
-import { persistPinPosition } from "../helpers/pin-persist.js";
+import { persistPinPosition, markPinDirty } from "../helpers/pin-persist.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { showEditorToast } from "../ui/editor-toast.js";
+import { renderPinList } from "../ui/sidebar.js";
 
 const MAX_EDIT_HISTORY = 30;
 
@@ -133,10 +134,7 @@ function applyPinMoveSnapshot(snapshot) {
       refreshMgSpotGroup(group, pin);
     }
   }
-  void persistPinPosition(pin).catch((error) => {
-    console.error(error);
-    showEditorToast(error.message || "Could not save pin position");
-  });
+  persistPinPosition(pin);
   return true;
 }
 
@@ -201,15 +199,19 @@ function replacePinInState(mapId, pinId, pin) {
 }
 
 async function applyPinUpdateSnapshot(snapshot) {
-  try {
-    const updated = await updatePin(snapshot.mapId, snapshot.pinId, snapshot.pin);
-    replacePinInState(snapshot.mapId, snapshot.pinId, updated);
-    return true;
-  } catch (error) {
-    console.error(error);
-    showEditorToast(error.message || "Could not revert trick changes");
-    return false;
+  // Local revert — flush with dirty batch / form save (no immediate KV write).
+  replacePinInState(snapshot.mapId, snapshot.pinId, snapshot.pin);
+  markPinDirty(snapshot.pinId);
+  if (state.editingPinId === snapshot.pinId && state.panelMode === "edit") {
+    const pin = snapshot.pin;
+    const titleEl = document.getElementById("pin-title");
+    const descEl = document.getElementById("pin-description");
+    if (titleEl) titleEl.value = pin.title || "";
+    if (descEl) descEl.value = pin.description || "";
   }
+  renderPins();
+  renderPinList();
+  return true;
 }
 
 async function applyPinRestoreSnapshot(snapshot) {

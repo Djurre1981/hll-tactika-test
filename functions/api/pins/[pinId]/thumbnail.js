@@ -1,5 +1,4 @@
 import { requireAuth } from "../../../lib/auth-request.js";
-import { appendAuditEvent } from "../../../lib/audit-log.js";
 import {
   isDirectImageUrl,
   isPersistableThumbnailUrl,
@@ -43,10 +42,8 @@ async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
 }
 
 /**
- * Fill-if-empty compact thumbnail backfill (not rate-limited).
- * Any signed-in member may set a still when the pin has no compact silent thumbnail:
- * - multipart `file` for captured/downscaled frames (images + direct videos)
- * - `thumbnailUrl` for YouTube/Medal (and other persistable) CDN stills
+ * Fill-if-empty compact thumbnail (editor/explicit use).
+ * Browse preview should not call this — keep KV writes off the navigate path.
  */
 export async function onRequestPost(context) {
   const auth = await requireAuth(context);
@@ -98,24 +95,10 @@ export async function onRequestPost(context) {
   const data = await loadPinsData(context.env);
   const found = findPin(data, mapId, pinId);
   if (!found) {
-    await appendAuditEvent(context.env, {
-      steamId: auth.session.steamId,
-      endpoint: "pins.thumbnail",
-      mapId,
-      pinId,
-      status: 404,
-    });
     return errorResponse("Pin not found", 404);
   }
 
   if (pinHasCompactSilentThumbnail(found.pin)) {
-    await appendAuditEvent(context.env, {
-      steamId: auth.session.steamId,
-      endpoint: "pins.thumbnail",
-      mapId,
-      pinId,
-      status: 200,
-    });
     return json({
       thumbnail: String(found.pin.thumbnail).trim(),
       pin: found.pin,
@@ -137,22 +120,8 @@ export async function onRequestPost(context) {
       thumbnailUrl
     );
     if (applied.error) {
-      await appendAuditEvent(context.env, {
-        steamId: auth.session.steamId,
-        endpoint: "pins.thumbnail",
-        mapId,
-        pinId,
-        status: applied.status || 400,
-      });
       return errorResponse(applied.error, applied.status || 400);
     }
-    await appendAuditEvent(context.env, {
-      steamId: auth.session.steamId,
-      endpoint: "pins.thumbnail",
-      mapId,
-      pinId,
-      status: 200,
-    });
     return json(applied);
   }
 
@@ -186,21 +155,7 @@ export async function onRequestPost(context) {
     result.url
   );
   if (applied.error) {
-    await appendAuditEvent(context.env, {
-      steamId: auth.session.steamId,
-      endpoint: "pins.thumbnail",
-      mapId,
-      pinId,
-      status: applied.status || 400,
-    });
     return errorResponse(applied.error, applied.status || 400);
   }
-  await appendAuditEvent(context.env, {
-    steamId: auth.session.steamId,
-    endpoint: "pins.thumbnail",
-    mapId,
-    pinId,
-    status: 200,
-  });
   return json(applied);
 }

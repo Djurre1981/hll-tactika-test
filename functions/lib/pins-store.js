@@ -47,9 +47,8 @@ async function loadAndMigratePinsData(env) {
     data = memoryStore;
   }
 
-  if (migratePinTitles(data)) {
-    await savePinsData(env, data);
-  }
+  // Normalize in memory only — persist on the next intentional pin save.
+  migratePinTitles(data);
   return data;
 }
 

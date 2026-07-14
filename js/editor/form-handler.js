@@ -15,6 +15,7 @@ import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
 import { normalizePinTitle } from "../helpers/pin-title.js";
 import { ingestDiscordPinMedia } from "../helpers/discord-ingest-client.js";
+import { clearPinDirty } from "../helpers/pin-persist.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Gate", icon: "fa-archway" },
@@ -108,6 +109,10 @@ export function resetEditUndoSnapshot() {
   editUndoSnapshotPushed = false;
 }
 
+export function markEditUndoBaselinePushed() {
+  editUndoSnapshotPushed = true;
+}
+
 function getRequiresOptions() {
   return document.getElementById("pin-requires-options");
 }
@@ -142,28 +147,12 @@ export function initRequiresCheckboxes() {
   });
 }
 
-export function initAutoSave(deps) {
-  autoSaveDeps = deps;
-
-  getPinTitle()?.addEventListener("input", scheduleAutoSave);
-  getPinDescription()?.addEventListener("input", scheduleAutoSave);
-
-  document.getElementById("pin-media-list")?.addEventListener("input", (event) => {
-    if (event.target.matches(".pin-media-row__url")) {
-      scheduleAutoSave();
-    }
-  });
-
-  document.addEventListener("pin-form-changed", scheduleAutoSave);
+export function scheduleAutoSave() {
+  // Intentionally no-op: pin edits flush once on back arrow (KV free-tier).
 }
 
-export function scheduleAutoSave() {
-  if (state.panelMode !== "add" && state.panelMode !== "edit") return;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => {
-    if (!autoSaveDeps) return;
-    void onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
-  }, AUTO_SAVE_DELAY_MS);
+export function initAutoSave(deps) {
+  autoSaveDeps = deps;
 }
 
 export function updateFactionRequires(faction) {
@@ -376,6 +365,7 @@ export async function savePin(
 
       const saved = await updatePin(state.currentMapId, state.editingPinId, payload);
       cachePinDetail(state.currentMapId, state.editingPinId, saved);
+      clearPinDirty(state.editingPinId);
       await reloadPinsForMap(state.currentMapId);
 
       if (autoSave) {
@@ -391,6 +381,7 @@ export async function savePin(
     if (state.panelMode === "add") {
       const created = await createPin(state.currentMapId, payload);
       cachePinDetail(state.currentMapId, created.id, created);
+      clearPinDirty(created.id);
       await reloadPinsForMap(state.currentMapId);
       pushPinCreateSnapshot(created.id);
       editUndoSnapshotPushed = true;
@@ -418,10 +409,7 @@ export async function savePin(
     return { ok: false, reason: "save", message };
   } finally {
     state.pinSaveInFlight = false;
-    if (rerunSaveAfterCurrent && autoSaveDeps) {
-      rerunSaveAfterCurrent = false;
-      void onSavePin({ preventDefault() {} }, { ...autoSaveDeps, autoSave: true });
-    }
+    rerunSaveAfterCurrent = false;
   }
 }
 
@@ -433,6 +421,7 @@ export async function onDeleteAddPinPlacement({ reloadPinsForMap, canModifyFn })
     if (existing && canModifyFn(existing)) {
       try {
         await deletePin(state.currentMapId, state.editingPinId);
+        clearPinDirty(state.editingPinId);
         await reloadPinsForMap(state.currentMapId);
         const last = state.positionHistory[state.positionHistory.length - 1];
         if (last?.mode === "pin-remove" && last.pinId === state.editingPinId) {
@@ -471,6 +460,7 @@ export async function onDeletePin({ reloadPinsForMap, backToEditorBrowse: backTo
   try {
     pushPinDeleteSnapshot(existing);
     await deletePin(state.currentMapId, state.editingPinId);
+    clearPinDirty(state.editingPinId);
     await reloadPinsForMap(state.currentMapId);
     backToEditorBrowseFn({ preserveHistory: true });
   } catch (error) {

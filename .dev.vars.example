@@ -14,9 +14,10 @@ USER_STEAM_IDS=
 
 # Optional
 # STEAM_API_KEY=your-steam-web-api-key
+# Admin alert-test only (browse traffic no longer posts Discord abuse alerts)
 ALERT_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...,https://discord.com/api/webhooks/...
 
-# Optional alert thresholds (defaults apply if omitted)
+# Optional legacy alert threshold envs (no longer used for per-request KV alerts)
 # ALERT_DETAIL_IN_WINDOW=100
 # ALERT_DETAIL_WINDOW_MIN=30
 # ALERT_MAPS_IN_WINDOW=15

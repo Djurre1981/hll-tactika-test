@@ -10,13 +10,11 @@ import {
   startEditPin,
 } from "./ui/pin-editor.js";
 import {
-  onSavePin,
   onDeletePin,
   onDeleteAddPinPlacement,
   initRequiresCheckboxes,
   initAutoSave,
   updateFactionRequires,
-  scheduleAutoSave,
 } from "./editor/form-handler.js";
 import { initPinMediaForm } from "./editor/media-form.js";
 import {
@@ -118,15 +116,15 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   const modeSwitch = document.getElementById("mode-switch");
   modeSwitch?.querySelector('[data-mode="viewer"]')?.addEventListener("click", () => {
-    setAppMode("viewer");
+    void setAppMode("viewer");
   });
   modeSwitch?.querySelector('[data-mode="editor"]')?.addEventListener("click", () => {
     if (!canEnterEditorMode()) return;
-    setAppMode("editor");
+    void setAppMode("editor");
   });
   modeSwitch?.querySelector('[data-mode="strats"]')?.addEventListener("click", () => {
     if (!canEnterStratsMode()) return;
-    setAppMode("strats");
+    void setAppMode("strats");
   });
 
   document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));
@@ -186,12 +184,6 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
   const pinForm = document.getElementById("pin-form");
   pinForm?.addEventListener("submit", (event) => {
     event.preventDefault();
-    onSavePin(event, {
-      reloadPinsForMap,
-      backToEditorBrowse,
-      canModifyFn: canModifyPin,
-      autoSave: true,
-    });
   });
 
   const viewport = document.getElementById("map-viewport");
@@ -271,7 +263,6 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
       applyEditorFactionToUi();
       updateFactionRequires(faction);
       updateDraftMarker();
-      scheduleAutoSave();
     });
   });
 

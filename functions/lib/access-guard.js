@@ -1,10 +1,3 @@
-import {
-  recordDetailFetch,
-  recordMapLoad,
-  recordRateLimitHit,
-  resetRateLimitAlertCounter,
-} from "./alert-notify.js";
-import { appendAuditEvent } from "./audit-log.js";
 import { getSecurityConfig } from "./security-config.js";
 import { checkRateLimit, incrementRateLimit, rateLimitedResponse } from "./rate-limit.js";
 
@@ -37,113 +30,52 @@ const BUCKET_WINDOWS = {
   }),
 };
 
-/** Side effects must not take down the request (KV blips, Discord latency, etc.). */
-async function safeSideEffect(label, fn) {
-  try {
-    await fn();
-  } catch (error) {
-    console.error(`guardAccess side effect failed (${label}):`, error);
-  }
-}
-
 /**
  * @param {object} opts
- * @param {string|null} [opts.bucket] Rate-limit bucket; omit/null to audit only (no limit).
+ * @param {string|null} [opts.bucket] Rate-limit bucket; omit/null to skip limiting.
  */
 export async function guardAccess(context, {
   bucket = null,
-  endpoint,
+  endpoint: _endpoint,
   steamId,
-  steamName = null,
-  mapId = null,
-  pinId = null,
-  statusOnSuccess = 200,
+  steamName: _steamName = null,
+  mapId: _mapId = null,
+  pinId: _pinId = null,
+  statusOnSuccess: _statusOnSuccess = 200,
 }) {
   const config = getSecurityConfig(context.env);
 
-  if (bucket) {
-    const windowFn = BUCKET_WINDOWS[bucket];
-    if (!windowFn) {
-      throw new Error(`Unknown rate-limit bucket: ${bucket}`);
-    }
-    const { limit, windowMs } = windowFn(config);
-
-    let check;
-    try {
-      check = await checkRateLimit(context.env, bucket, steamId, limit, windowMs);
-    } catch (error) {
-      console.error(`guardAccess rate-limit check failed (${bucket}):`, error);
-      check = { allowed: true, timestamps: [] };
-    }
-
-    if (!check.allowed) {
-      await safeSideEffect("audit.429", () =>
-        appendAuditEvent(context.env, {
-          steamId,
-          endpoint,
-          mapId,
-          pinId,
-          status: 429,
-        })
-      );
-      await safeSideEffect("alert.429", () =>
-        recordRateLimitHit(context.env, steamId, steamName)
-      );
-      return {
-        error: rateLimitedResponse(
-          check.retryAfterSec,
-          RATE_LIMIT_MESSAGES[bucket] || "Request limit reached. Try again shortly."
-        ),
-      };
-    }
-
-    try {
-      await incrementRateLimit(context.env, bucket, steamId, limit, windowMs, check.timestamps);
-    } catch (error) {
-      console.error(`guardAccess rate-limit increment failed (${bucket}):`, error);
-    }
+  if (!bucket) {
+    return { ok: true };
   }
 
-  await safeSideEffect("audit", () =>
-    appendAuditEvent(context.env, {
-      steamId,
-      endpoint,
-      mapId,
-      pinId,
-      status: statusOnSuccess,
-    })
-  );
+  const windowFn = BUCKET_WINDOWS[bucket];
+  if (!windowFn) {
+    throw new Error(`Unknown rate-limit bucket: ${bucket}`);
+  }
+  const { limit, windowMs } = windowFn(config);
 
-  if (statusOnSuccess >= 200 && statusOnSuccess < 300) {
-    await safeSideEffect("alert.reset429", () =>
-      resetRateLimitAlertCounter(context.env, steamId)
-    );
+  let check;
+  try {
+    check = await checkRateLimit(context.env, bucket, steamId, limit, windowMs);
+  } catch (error) {
+    console.error(`guardAccess rate-limit check failed (${bucket}):`, error);
+    check = { allowed: true, timestamps: [] };
   }
 
-  if (bucket === "map" && mapId) {
-    // Fire-and-forget: Discord wait=true must not block / time out map loads.
-    context.waitUntil?.(
-      recordMapLoad(context.env, steamId, mapId, steamName).catch((error) => {
-        console.error("guardAccess side effect failed (alert.map):", error);
-      })
-    );
-    if (!context.waitUntil) {
-      await safeSideEffect("alert.map", () =>
-        recordMapLoad(context.env, steamId, mapId, steamName)
-      );
-    }
+  if (!check.allowed) {
+    return {
+      error: rateLimitedResponse(
+        check.retryAfterSec,
+        RATE_LIMIT_MESSAGES[bucket] || "Request limit reached. Try again shortly."
+      ),
+    };
   }
-  if (bucket === "detail") {
-    context.waitUntil?.(
-      recordDetailFetch(context.env, steamId, steamName).catch((error) => {
-        console.error("guardAccess side effect failed (alert.detail):", error);
-      })
-    );
-    if (!context.waitUntil) {
-      await safeSideEffect("alert.detail", () =>
-        recordDetailFetch(context.env, steamId, steamName)
-      );
-    }
+
+  try {
+    await incrementRateLimit(context.env, bucket, steamId, limit, windowMs, check.timestamps);
+  } catch (error) {
+    console.error(`guardAccess rate-limit increment failed (${bucket}):`, error);
   }
 
   return { ok: true };

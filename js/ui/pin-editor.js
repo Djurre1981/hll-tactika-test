@@ -9,13 +9,15 @@ import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, updatePlacementUi, syncViewportFormClasses, isPlacementComplete } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
-import { updateFactionRequires, setRequiresData, resetRequires, resetEditUndoSnapshot, flushAndSavePin } from "../editor/form-handler.js";
+import { updateFactionRequires, setRequiresData, resetRequires, resetEditUndoSnapshot, flushAndSavePin, markEditUndoBaselinePushed } from "../editor/form-handler.js";
 import { resetPinMediaForm, setPinMediaFormItems, isMediaUploadInProgress } from "../editor/media-form.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { hidePinContextMenu } from "./pin-context-menu.js";
 import { showEditorToast } from "./editor-toast.js";
+import { flushDirtyPinPositions, clearAllDirtyPins } from "../helpers/pin-persist.js";
+import { pushPinUpdateSnapshot } from "../editor/undo-redo.js";
 
 function getEditPanel() {
   return document.getElementById("edit-panel");
@@ -90,13 +92,13 @@ export function updateZoomLabel() {
   zoomLabel.textContent = `${state.mapViewer.getZoomPercent()}%`;
 }
 
-export function toggleEditMode() {
+export async function toggleEditMode() {
   if (!canEnterEditorMode()) {
     return;
   }
 
   if (isInEditorMode()) {
-    exitEditorMode();
+    await exitEditorMode();
     return;
   }
 
@@ -242,7 +244,12 @@ function shakeTitleField() {
   );
 }
 
-export function exitEditorMode() {
+export async function exitEditorMode() {
+  const flush = await flushDirtyPinPositions();
+  if (!flush.ok) {
+    return false;
+  }
+
   state.addPinSession = false;
   transitionEditorMode({
     panelMode: null,
@@ -251,6 +258,8 @@ export function exitEditorMode() {
     resetPinForm: true,
     headerButtonsBeforeHighlight: true,
   });
+  clearAllDirtyPins();
+  return true;
 }
 
 export function setSidebarDefaultVisible(visible) {
@@ -360,12 +369,14 @@ export async function startEditPin(marker, { focus = false } = {}) {
     const pin = await resolvePinDetail(state.currentMapId, marker);
     if (state.editingPinId !== marker.id) return;
     if (!canModifyPin(pin)) {
-      exitEditorMode();
+      void exitEditorMode();
       return;
     }
     getPinDescription().value = pin.description || "";
     setPinMediaFormItems(getPinMediaItems(pin), pin.thumbnail);
     cachePinDetail(state.currentMapId, pin.id, pin);
+    pushPinUpdateSnapshot(pin);
+    markEditUndoBaselinePushed();
     if (editPanelHint) editPanelHint.textContent = "";
   } catch (error) {
     console.error(error);

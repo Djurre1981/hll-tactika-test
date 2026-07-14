@@ -10,9 +10,10 @@ import {
   isValidMapId,
   toPinMarker,
 } from "../lib/pin-fields.js";
-import { canEnterEditorMode } from "../lib/pin-permissions.js";
+import { canEnterEditorMode, canModifyPin } from "../lib/pin-permissions.js";
 import { resolveCreatorName } from "../lib/pin-creators.js";
-import { loadPinsData, savePinsData } from "../lib/pins-store.js";
+import { applyPinUpdates } from "../lib/pin-mutate.js";
+import { findPin, loadPinsData, savePinsData } from "../lib/pins-store.js";
 import { normalizePinTitle } from "../lib/pin-title.js";
 import { errorResponse, json } from "../lib/response.js";
 
@@ -212,4 +213,90 @@ export async function onRequestPost(context) {
   }
 
   return json({ pin: newPin, mapId }, { status: 201 });
+}
+
+/** Batch-update pins on one map in a single KV write. Body: `{ mapId, pins: [{ id, ...fields }] }`. */
+export async function onRequestPatch(context) {
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return errorResponse("Editor access required", 403);
+  }
+
+  let body;
+  try {
+    body = await context.request.json();
+  } catch {
+    return errorResponse("Invalid JSON body", 400);
+  }
+
+  const mapId = body.mapId;
+  const pinUpdates = Array.isArray(body.pins) ? body.pins : null;
+  if (!mapId || !pinUpdates) {
+    return errorResponse("mapId and pins[] are required", 400);
+  }
+  if (!isValidMapId(mapId)) {
+    return errorResponse("Invalid mapId", 400);
+  }
+  if (pinUpdates.length === 0) {
+    return json({ mapId, pins: [] });
+  }
+  if (pinUpdates.length > 200) {
+    return errorResponse("Too many pins in one batch (max 200)", 400);
+  }
+
+  const access = await guardAccess(context, {
+    endpoint: "pins.batch",
+    steamId: auth.session.steamId,
+    steamName: auth.session.name,
+    mapId,
+  });
+  if (access.error) {
+    return access.error;
+  }
+
+  const data = await loadPinsData(context.env);
+  const updatedPins = [];
+
+  for (const entry of pinUpdates) {
+    const pinId = String(entry?.id || "").trim();
+    if (!pinId) {
+      return errorResponse("Each pin update requires id", 400);
+    }
+
+    const found = findPin(data, mapId, pinId);
+    if (!found) {
+      return errorResponse(`Pin not found: ${pinId}`, 404);
+    }
+
+    if (!canModifyPin(found.pin, auth.session.steamId, auth.role)) {
+      return errorResponse(`Not allowed to edit trick ${pinId}`, 403);
+    }
+
+    const { id: _ignoreId, ...fields } = entry;
+    const built = applyPinUpdates(found.pin, fields);
+    if (built.error) {
+      return errorResponse(`${pinId}: ${built.error}`, 400);
+    }
+
+    const mediaError = validatePinMediaFields(built.pin);
+    if (mediaError) {
+      return errorResponse(`${pinId}: ${mediaError.error}`, 400);
+    }
+
+    found.pins[found.index] = built.pin;
+    updatedPins.push(built.pin);
+  }
+
+  try {
+    await savePinsData(context.env, data);
+  } catch (error) {
+    console.error(error);
+    return errorResponse("Pin storage is not configured", 503);
+  }
+
+  return json({ mapId, pins: updatedPins });
 }

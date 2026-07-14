@@ -138,8 +138,12 @@ async function init() {
 
     applyMapBgFade();
 
+    const exited = await exitEditorMode();
+    if (exited === false) {
+      return;
+    }
     if (state.appMode === "editor") {
-      setAppMode("viewer");
+      await setAppMode("viewer");
     }
 
     state.searchQuery = "";

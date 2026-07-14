@@ -58,21 +58,24 @@ export function syncAppModeChrome() {
   state.mapViewer?.setEditorMode(mode === "editor" && state.panelMode !== null);
 }
 
-export function setAppMode(mode) {
+export async function setAppMode(mode) {
   if (state.appMode === mode) {
-    return;
+    return true;
   }
 
   const leavingStrats = state.appMode === "strats" && mode !== "strats";
   if (leavingStrats) {
     if (!confirmStratsUnsavedAction("Discard unsaved strat changes and leave Strats mode?")) {
-      return;
+      return false;
     }
     discardStratsUnsavedChanges();
   }
 
   if (mode !== "editor" && state.panelMode !== null) {
-    exitEditorMode();
+    const exited = await exitEditorMode();
+    if (exited === false) {
+      return false;
+    }
   }
 
   if (mode === "strats") {
@@ -94,4 +97,5 @@ export function setAppMode(mode) {
   renderPins();
   renderPinList();
   state.mapViewer?.followSidebarLayout();
+  return true;
 }
