@@ -72,26 +72,28 @@ These are final product/security choices. All numeric values remain **env-config
 
 | Endpoint | Limit | Window |
 |----------|-------|--------|
-| Map markers `GET /api/pins?mapId=` | 10 | 1 min |
-| Pin details `GET /api/pins/:id/details` | 20 | 1 min |
+| Map markers `GET /api/pins?mapId=` | 20 | 1 min |
+| Pin details `GET /api/pins/:id/details` | 30 | 1 min |
 | Silent refresh `POST /api/pins/:id/token` | 30 | 1 min |
-| Media `GET /api/videos/*`, `GET /api/images/*` | 60 | 1 hour |
-| Owner export `GET /api/admin/pins-full` | 5 | 1 hour |
+| Media `GET /api/videos/*` | 10 | 1 min |
+| Images / thumbnails `GET /api/images/*` | — | not rate-limited |
+| Owner export `GET /api/admin/pins-full` | 10 | 1 hour |
 
 On 429: return `Retry-After` header. Log for alert counters.
 
-**Validated use case:** “Streamer scenario” — 20 detail views in 2–3 minutes uses ≤ 50% of the detail limit (20/min). Long sessions with occasional token refreshes stay well under refresh limit (30/min).
+**Validated use case:** “Streamer scenario” — 20 detail views in 2–3 minutes stays well under the detail limit (30/min). Long sessions with occasional token refreshes stay well under refresh limit (30/min).
 
 ### Alert thresholds (Discord webhook; notify only, no auto-revoke)
 
 | Signal | Threshold | Window |
 |--------|-----------|----------|
-| Detail fetches | > 100 | 1 hour |
+| Detail fetches | > 100 | 30 min |
 | Distinct maps loaded | ≥ 15 | 15 min |
 | Consecutive 429 responses | ≥ 5 | 10 min |
 
 - Env: `ALERT_DISCORD_WEBHOOK_URL` (optional; alerts skipped if unset). Comma-separated for multiple webhooks (same message to all).
 - Debounce duplicate alerts ~30 min per user per signal type.
+- **Owners never trigger** these Discord alerts (detail / map sweep / 429).
 - Manual revoke via existing admin panel.
 
 ### Token security
@@ -196,12 +198,13 @@ Add to Cloudflare Pages → Settings → Environment variables. Document in [`RE
 |----------|----------|---------|---------|
 | `PIN_DETAIL_SECRET` | **Yes** (prod) | — | HMAC signing for detail tokens |
 | `DETAIL_TOKEN_TTL_SEC` | No | `1200` (20 min) | Token lifetime |
-| `RATE_LIMIT_MAP_PER_MIN` | No | `10` | Map marker GET |
-| `RATE_LIMIT_DETAIL_PER_MIN` | No | `20` | Detail GET |
+| `RATE_LIMIT_MAP_PER_MIN` | No | `20` | Map marker GET |
+| `RATE_LIMIT_DETAIL_PER_MIN` | No | `30` | Detail GET |
 | `RATE_LIMIT_TOKEN_PER_MIN` | No | `30` | Silent token POST |
-| `RATE_LIMIT_MEDIA_PER_HOUR` | No | `60` | Video/image GET |
-| `RATE_LIMIT_ADMIN_EXPORT_PER_HOUR` | No | `5` | Owner full export |
-| `ALERT_DETAIL_PER_HOUR` | No | `100` | Discord alert threshold |
+| `RATE_LIMIT_MEDIA_PER_MIN` | No | `10` | Video GET (`/api/images/*` not limited) |
+| `RATE_LIMIT_ADMIN_EXPORT_PER_HOUR` | No | `10` | Owner full export |
+| `ALERT_DETAIL_IN_WINDOW` | No | `100` | Discord alert threshold for detail fetches |
+| `ALERT_DETAIL_WINDOW_MIN` | No | `30` | Window for detail-fetch alert |
 | `ALERT_MAPS_IN_WINDOW` | No | `15` | Map sweep alert |
 | `ALERT_MAP_WINDOW_MIN` | No | `15` | Window for map alert |
 | `ALERT_429_COUNT` | No | `5` | Consecutive 429 alert |

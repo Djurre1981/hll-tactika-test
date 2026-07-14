@@ -16,6 +16,7 @@ import {
 } from "../helpers/pin-media.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
 import { showEditorToast } from "../ui/editor-toast.js";
+import { wasRateLimitNotified } from "../helpers/rate-limit-ui.js";
 
 const UPLOAD_BUTTON_HTML =
   '<i class="fa-solid fa-image" aria-hidden="true"></i>';
@@ -394,7 +395,9 @@ async function handleMediaFileUpload(file) {
     notifyFormChanged();
   } catch (error) {
     console.error(error);
-    showEditorToast(error.message || "Upload failed");
+    if (!wasRateLimitNotified(error)) {
+      showEditorToast(error.message || "Upload failed");
+    }
   } finally {
     resetUploadButton(row);
     activeUploadRow = null;

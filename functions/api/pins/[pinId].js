@@ -125,7 +125,6 @@ export async function onRequestPut(context) {
   }
 
   const access = await guardAccess(context, {
-    bucket: "pin_write",
     endpoint: "pins.update",
     steamId: auth.session.steamId,
     steamName: auth.session.name,
@@ -193,7 +192,6 @@ export async function onRequestDelete(context) {
   }
 
   const access = await guardAccess(context, {
-    bucket: "pin_write",
     endpoint: "pins.delete",
     steamId: auth.session.steamId,
     steamName: auth.session.name,

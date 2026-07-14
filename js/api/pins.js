@@ -1,3 +1,5 @@
+import { throwIfRateLimited } from "../helpers/rate-limit-ui.js";
+
 async function pinApiRequest(url, options = {}) {
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("Content-Type")) {
@@ -11,6 +13,7 @@ async function pinApiRequest(url, options = {}) {
   });
 
   const data = await response.json().catch(() => ({}));
+  throwIfRateLimited(response, data);
   if (!response.ok) {
     const error = new Error(data.error || `Request failed (${response.status})`);
     error.status = response.status;
@@ -32,6 +35,7 @@ export async function fetchPinDetail(mapId, pinId, detailToken) {
     error.status = 498;
     throw error;
   }
+  throwIfRateLimited(response, data, "Pin details limit reached. Try again shortly.");
   if (!response.ok) {
     const error = new Error(data.error || `Request failed (${response.status})`);
     error.status = response.status;

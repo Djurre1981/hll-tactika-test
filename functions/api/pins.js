@@ -159,7 +159,6 @@ export async function onRequestPost(context) {
   }
 
   const access = await guardAccess(context, {
-    bucket: "pin_write",
     endpoint: "pins.create",
     steamId: auth.session.steamId,
     steamName: auth.session.name,

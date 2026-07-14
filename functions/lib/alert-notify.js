@@ -1,4 +1,5 @@
 import { getSecurityConfig } from "./security-config.js";
+import { isOwner } from "./roles.js";
 
 const DEBOUNCE_MS = 30 * 60 * 1000;
 const memorySignals = new Map();
@@ -193,10 +194,12 @@ function formatSteamActor(steamId, steamName = null) {
 export async function recordDetailFetch(env, steamId, steamName = null) {
   const config = getSecurityConfig(env);
   if (!config.alertDiscordWebhookUrls?.length) return;
+  if (await isOwner(steamId, env)) return;
 
   const key = signalKey("detail", steamId);
-  const timestamps = await trackTimestamps(env, key, 60 * 60 * 1000);
-  if (timestamps.length <= config.alertDetailPerHour) return;
+  const windowMs = config.alertDetailWindowMin * 60 * 1000;
+  const timestamps = await trackTimestamps(env, key, windowMs);
+  if (timestamps.length <= config.alertDetailInWindow) return;
   if (await isAlertDebounced(env, "detail", steamId)) {
     console.error("detail alert debounced");
     return;
@@ -204,7 +207,7 @@ export async function recordDetailFetch(env, steamId, steamName = null) {
 
   const result = await postDiscordAlerts(
     config.alertDiscordWebhookUrls,
-    `⚠️ **Detail fetch alert** — ${formatSteamActor(steamId, steamName)} loaded ${timestamps.length} pin details in the last hour (threshold: ${config.alertDetailPerHour}).`
+    `⚠️ **Detail fetch alert** — ${formatSteamActor(steamId, steamName)} loaded ${timestamps.length} pin details in the last ${config.alertDetailWindowMin} minutes (threshold: ${config.alertDetailInWindow}).`
   );
   if (result.ok) await markAlertSent(env, "detail", steamId);
 }
@@ -217,6 +220,7 @@ export async function recordMapLoad(env, steamId, mapId, steamName = null) {
     );
     return;
   }
+  if (await isOwner(steamId, env)) return;
 
   const key = signalKey("maps", steamId);
   const windowMs = config.alertMapWindowMin * 60 * 1000;
@@ -255,6 +259,7 @@ export async function recordMapLoad(env, steamId, mapId, steamName = null) {
 export async function recordRateLimitHit(env, steamId, steamName = null) {
   const config = getSecurityConfig(env);
   if (!config.alertDiscordWebhookUrls?.length) return;
+  if (await isOwner(steamId, env)) return;
 
   const key = signalKey("429", steamId);
   const windowMs = config.alert429WindowMin * 60 * 1000;

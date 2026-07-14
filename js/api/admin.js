@@ -1,3 +1,5 @@
+import { throwIfRateLimited } from "../helpers/rate-limit-ui.js";
+
 async function adminApiRequest(url, options = {}) {
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("Content-Type")) {
@@ -11,6 +13,7 @@ async function adminApiRequest(url, options = {}) {
   });
 
   const data = await response.json().catch(() => ({}));
+  throwIfRateLimited(response, data);
   if (!response.ok) {
     throw new Error(data.error || `Request failed (${response.status})`);
   }
@@ -54,5 +57,6 @@ export async function testDiscordAlert() {
     credentials: "same-origin",
   });
   const data = await response.json().catch(() => ({}));
+  throwIfRateLimited(response, data);
   return { ...data, httpStatus: response.status };
 }

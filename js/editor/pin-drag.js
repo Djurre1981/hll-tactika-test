@@ -9,6 +9,7 @@ import { isPlacementComplete, updatePlacementUi } from "./placement-mode.js";
 import { updateDraftMarker } from "./draft-renderer.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 import { showEditorToast } from "../ui/editor-toast.js";
+import { wasRateLimitNotified } from "../helpers/rate-limit-ui.js";
 
 const DRAG_THRESHOLD_PX = 4;
 
@@ -296,7 +297,9 @@ function startClimbPinDrag(event, pin, element) {
           }
           updatePinElementPosition(pinRef.id);
         }
-        showEditorToast(error.message || "Could not save pin position");
+        if (!wasRateLimitNotified(error)) {
+          showEditorToast(error.message || "Could not save pin position");
+        }
       }
     },
   });
@@ -436,7 +439,9 @@ function startMgSpotDrag(event, pin, group, handle) {
           refreshMgSpotGroup(group, pinRef);
           updatePinElementPosition(pinRef.id);
         }
-        showEditorToast(error.message || "Could not save pin position");
+        if (!wasRateLimitNotified(error)) {
+          showEditorToast(error.message || "Could not save pin position");
+        }
       }
     },
   });

@@ -1,3 +1,5 @@
+import { throwIfRateLimited } from "../helpers/rate-limit-ui.js";
+
 async function uploadFormRequest(url, file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -9,6 +11,7 @@ async function uploadFormRequest(url, file) {
   });
 
   const data = await response.json().catch(() => ({}));
+  throwIfRateLimited(response, data);
   if (!response.ok) {
     throw new Error(data.error || `Upload failed (${response.status})`);
   }

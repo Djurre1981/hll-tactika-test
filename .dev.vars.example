@@ -1,17 +1,25 @@
-# Copy to .dev.vars for local `npm run dev` (never commit .dev.vars).
-SESSION_SECRET=replace-with-a-long-random-string
-PIN_DETAIL_SECRET=replace-with-another-long-random-string
-OWNER_STEAM_IDS=76561198000000000
-ADMIN_STEAM_IDS=76561198000000000
+# Required
+SESSION_SECRET=some-long-random-session-secret-here
+PIN_DETAIL_SECRET=a-different-long-random-pin-detail-secret
+
+# Role allowlists (comma-separated SteamIDs if several)
+OWNER_STEAM_IDS=76561198062852642
+ADMIN_STEAM_IDS=76561198062852642
 ASSIST_STEAM_IDS=
 EDITOR_STEAM_IDS=
 VIEWER_STEAM_IDS=
-# Legacy alias for VIEWER_STEAM_IDS (Comp Member):
+
+# Legacy alias for VIEWER_STEAM_IDS (optional; can leave empty if you use VIEWER_STEAM_IDS)
 USER_STEAM_IDS=
-# Legacy fallback: if ADMIN_STEAM_IDS is empty, ALLOWED_STEAM_IDS is treated as admins.
-# ALLOWED_STEAM_IDS=
-# Optional: Steam Web API key (https://steamcommunity.com/dev/apikey). Falls back to public profile XML if omitted.
-# STEAM_API_KEY=
-# Optional: Discord webhook(s) for access-anomaly alerts (also set in Cloudflare Pages env for production).
-# Comma-separated for multiple channels: url1,url2
-# ALERT_DISCORD_WEBHOOK_URL=
+
+# Optional
+# STEAM_API_KEY=your-steam-web-api-key
+ALERT_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...,https://discord.com/api/webhooks/...
+
+# Optional alert thresholds (defaults apply if omitted)
+# ALERT_DETAIL_IN_WINDOW=100
+# ALERT_DETAIL_WINDOW_MIN=30
+# ALERT_MAPS_IN_WINDOW=15
+# ALERT_MAP_WINDOW_MIN=15
+# ALERT_429_COUNT=5
+# ALERT_429_WINDOW_MIN=10

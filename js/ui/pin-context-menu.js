@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { deletePin as apiDeletePin } from "../api/pins.js";
 import { pushPinDeleteSnapshot } from "../editor/undo-redo.js";
 import { showEditorToast } from "./editor-toast.js";
+import { wasRateLimitNotified } from "../helpers/rate-limit-ui.js";
 
 function getPinContextMenu() {
   return document.getElementById("pin-context-menu");
@@ -108,7 +109,9 @@ export function onPinContextMenuAction(event, {
       } catch (error) {
         state.positionHistory.pop();
         console.error(error);
-        showEditorToast(error.message || "Could not delete trick");
+        if (!wasRateLimitNotified(error)) {
+          showEditorToast(error.message || "Could not delete trick");
+        }
       }
     })();
   }

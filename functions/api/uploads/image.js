@@ -15,7 +15,6 @@ export async function onRequestPost(context) {
   }
 
   const access = await guardAccess(context, {
-    bucket: "upload",
     endpoint: "upload.image",
     steamId: auth.session.steamId,
     steamName: auth.session.name,
