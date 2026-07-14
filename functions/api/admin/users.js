@@ -37,19 +37,24 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
-  const access = await guardAccess(context, {
-    bucket: "admin",
-    endpoint: "admin.users.list",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return access.error;
-  }
+  try {
+    const access = await guardAccess(context, {
+      bucket: "admin",
+      endpoint: "admin.users.list",
+      steamId: auth.session.steamId,
+      steamName: auth.session.name,
+    });
+    if (access.error) {
+      return access.error;
+    }
 
-  const members = await listAllMembers(context.env, auth.role);
-  const users = await enrichMembers(members, context.env, auth.session);
-  return json({ users });
+    const members = await listAllMembers(context.env, auth.role);
+    const users = await enrichMembers(members, context.env, auth.session);
+    return json({ users });
+  } catch (error) {
+    console.error("GET /api/admin/users failed:", error);
+    return errorResponse("Failed to load users", 500);
+  }
 }
 
 export async function onRequestPost(context) {

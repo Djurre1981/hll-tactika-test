@@ -37,6 +37,15 @@ const BUCKET_WINDOWS = {
   }),
 };
 
+/** Side effects must not take down the request (KV blips, Discord latency, etc.). */
+async function safeSideEffect(label, fn) {
+  try {
+    await fn();
+  } catch (error) {
+    console.error(`guardAccess side effect failed (${label}):`, error);
+  }
+}
+
 /**
  * @param {object} opts
  * @param {string|null} [opts.bucket] Rate-limit bucket; omit/null to audit only (no limit).
@@ -58,17 +67,28 @@ export async function guardAccess(context, {
       throw new Error(`Unknown rate-limit bucket: ${bucket}`);
     }
     const { limit, windowMs } = windowFn(config);
-    const check = await checkRateLimit(context.env, bucket, steamId, limit, windowMs);
+
+    let check;
+    try {
+      check = await checkRateLimit(context.env, bucket, steamId, limit, windowMs);
+    } catch (error) {
+      console.error(`guardAccess rate-limit check failed (${bucket}):`, error);
+      check = { allowed: true, timestamps: [] };
+    }
 
     if (!check.allowed) {
-      await appendAuditEvent(context.env, {
-        steamId,
-        endpoint,
-        mapId,
-        pinId,
-        status: 429,
-      });
-      await recordRateLimitHit(context.env, steamId, steamName);
+      await safeSideEffect("audit.429", () =>
+        appendAuditEvent(context.env, {
+          steamId,
+          endpoint,
+          mapId,
+          pinId,
+          status: 429,
+        })
+      );
+      await safeSideEffect("alert.429", () =>
+        recordRateLimitHit(context.env, steamId, steamName)
+      );
       return {
         error: rateLimitedResponse(
           check.retryAfterSec,
@@ -77,26 +97,53 @@ export async function guardAccess(context, {
       };
     }
 
-    await incrementRateLimit(context.env, bucket, steamId, limit, windowMs, check.timestamps);
+    try {
+      await incrementRateLimit(context.env, bucket, steamId, limit, windowMs, check.timestamps);
+    } catch (error) {
+      console.error(`guardAccess rate-limit increment failed (${bucket}):`, error);
+    }
   }
 
-  await appendAuditEvent(context.env, {
-    steamId,
-    endpoint,
-    mapId,
-    pinId,
-    status: statusOnSuccess,
-  });
+  await safeSideEffect("audit", () =>
+    appendAuditEvent(context.env, {
+      steamId,
+      endpoint,
+      mapId,
+      pinId,
+      status: statusOnSuccess,
+    })
+  );
 
   if (statusOnSuccess >= 200 && statusOnSuccess < 300) {
-    await resetRateLimitAlertCounter(context.env, steamId);
+    await safeSideEffect("alert.reset429", () =>
+      resetRateLimitAlertCounter(context.env, steamId)
+    );
   }
 
   if (bucket === "map" && mapId) {
-    await recordMapLoad(context.env, steamId, mapId, steamName);
+    // Fire-and-forget: Discord wait=true must not block / time out map loads.
+    context.waitUntil?.(
+      recordMapLoad(context.env, steamId, mapId, steamName).catch((error) => {
+        console.error("guardAccess side effect failed (alert.map):", error);
+      })
+    );
+    if (!context.waitUntil) {
+      await safeSideEffect("alert.map", () =>
+        recordMapLoad(context.env, steamId, mapId, steamName)
+      );
+    }
   }
   if (bucket === "detail") {
-    await recordDetailFetch(context.env, steamId, steamName);
+    context.waitUntil?.(
+      recordDetailFetch(context.env, steamId, steamName).catch((error) => {
+        console.error("guardAccess side effect failed (alert.detail):", error);
+      })
+    );
+    if (!context.waitUntil) {
+      await safeSideEffect("alert.detail", () =>
+        recordDetailFetch(context.env, steamId, steamName)
+      );
+    }
   }
 
   return { ok: true };
