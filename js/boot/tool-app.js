@@ -1,4 +1,4 @@
-import { enterApp, initToolAuth, loadMapMarkers } from "../ui/auth-gate.js";
+import { enterApp, initToolAuth } from "../ui/auth-gate.js";
 import { markAppBootstrapped, setEnterAppModeHandler } from "../ui/dashboard.js";
 import { applyMapBgFade } from "../ui/map-bg-fade.js";
 import { state, loadSelectedMapId, saveSelectedMapId } from "../state.js";
@@ -11,26 +11,8 @@ import {
 } from "../helpers/thumbnail-cache.js";
 import { assetUrl } from "../helpers/asset-url.js";
 import { go, ROUTES } from "../ui/router.js";
+import { waitForImage, resolveImageSrc, ensureMapMarkers, resolveMapWithPins } from "./map-loader.js";
 
-function waitForImage(image) {
-  if (image.complete && image.naturalWidth) return Promise.resolve();
-  return new Promise((resolve) => {
-    image.addEventListener("load", resolve, { once: true });
-    image.addEventListener("error", resolve, { once: true });
-  });
-}
-
-function resolveImageSrc(imagePath) {
-  const path = assetUrl(imagePath);
-  if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
-  return new URL(path, window.location.origin).href;
-}
-
-/**
- * Shared map tool bootstrap for climbing-guide and stratmaker pages.
- * @param {{ tool: "climbing-guide" | "stratmaker", loadStrats?: boolean }} options
- */
 export async function bootToolApp({ tool, loadStrats = false }) {
   const mapsModulePromise = import("../api/maps.js");
   const mapModulesPromise = Promise.all([
@@ -73,44 +55,6 @@ export async function bootToolApp({ tool, loadStrats = false }) {
   enterApp(enterMode);
 
   const initialMapId = loadSelectedMapId("SMDMV2");
-  const markerLoads = new Map();
-
-  function rememberMarkerLoad(mapId, promise) {
-    const tracked = promise
-      .then((data) => {
-        state.pinCatalog[mapId] = data.pins || [];
-        return data;
-      })
-      .catch((error) => {
-        markerLoads.delete(mapId);
-        console.error(`Failed to load markers for ${mapId}:`, error);
-        state.pinCatalog[mapId] = [];
-        return { mapId, pins: [], mapsWithPins: [], error: error.message };
-      });
-    markerLoads.set(mapId, tracked);
-    return tracked;
-  }
-
-  async function ensureMapMarkers(mapId) {
-    if (!markerLoads.has(mapId)) {
-      rememberMarkerLoad(mapId, loadMapMarkers(mapId));
-    }
-    return markerLoads.get(mapId);
-  }
-
-  function resolveMapWithPins(requestedMapId, markerData) {
-    if (markerData.pins?.length) {
-      return requestedMapId;
-    }
-    const mapsWithPins = markerData.mapsWithPins || [];
-    if (!mapsWithPins.length) {
-      return requestedMapId;
-    }
-    if (mapsWithPins.includes(markerData.defaultMapId)) {
-      return markerData.defaultMapId;
-    }
-    return mapsWithPins[0];
-  }
 
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
@@ -232,7 +176,6 @@ export async function bootToolApp({ tool, loadStrats = false }) {
       state.mapViewer.applyTransform();
     }
 
-    // Warm only after map + pins are on screen; keep Image refs alive for instant hover.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         void warmMapThumbnails(activeMapId, state.pins);

@@ -1,59 +1,16 @@
 import { state } from "../state.js";
 import { canModifyPin } from "../helpers/permissions.js";
-import { applyLabelPosition, highlightPin, updatePinElementPosition } from "../helpers/proximity.js";
+import { applyLabelPosition, highlightPin } from "../helpers/proximity.js";
 import { persistPinPosition } from "../helpers/pin-persist.js";
 import { roundCoord } from "../helpers/position-code.js";
-import { enforceMgHandleSeparation, mgHandlesCollapsed } from "../helpers/mg-placement.js";
 import { pushPinMoveSnapshot, pushPositionSnapshot } from "./undo-redo.js";
 import { isPlacementComplete, updatePlacementUi } from "./placement-mode.js";
 import { updateDraftMarker } from "./draft-renderer.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
-import { showEditorToast } from "../ui/editor-toast.js";
+import { getViewport, getImage, getPinLabel, getImageSize, screenToMapPx, mapPxToPercent } from "./pin-drag-coords.js";
+import { beginMgHandleDrag, moveMgSpotDrag, syncDraftMgCollapseHint } from "./pin-drag-mg-spot.js";
 
 const DRAG_THRESHOLD_PX = 4;
-
-function getViewport() {
-  return document.getElementById("map-viewport");
-}
-
-function getImage() {
-  return document.getElementById("map-image");
-}
-
-function getPinLabel(pinId) {
-  return document.querySelector(`.map-pin__label[data-id="${pinId}"]`);
-}
-
-function clampMapCoord(value) {
-  return Math.min(100, Math.max(0, value));
-}
-
-function getImageSize() {
-  const image = getImage();
-  return {
-    width: image.naturalWidth || image.width,
-    height: image.naturalHeight || image.height,
-  };
-}
-
-// Convert a client (viewport) point to map pixel coordinates. This stays inside
-// the same coordinate space #map-pins uses (the stage is sized to the image's
-// natural pixel dimensions), so it works regardless of the current pan/zoom.
-function screenToMapPx(clientX, clientY) {
-  const { width, height } = getImageSize();
-  const percent = state.mapViewer.screenToMapPercent(clientX, clientY);
-  return {
-    x: (percent.x / 100) * width,
-    y: (percent.y / 100) * height,
-  };
-}
-
-function mapPxToPercent(px, py, imgW, imgH) {
-  return {
-    x: clampMapCoord((px / imgW) * 100),
-    y: clampMapCoord((py / imgH) * 100),
-  };
-}
 
 function clearDragStyles(element, label) {
   element.classList.remove("map-pin--dragging");
@@ -67,10 +24,6 @@ function clearDragStyles(element, label) {
   }
 }
 
-// Begin an in-place drag: the pin never leaves #map-pins, so it keeps riding
-// the stage's pan/zoom transform (no reparent, no position:fixed, no size
-// mismatch). The grab offset is computed in map-pixel space so the pin stays
-// glued under the pointer exactly where it was grabbed.
 function hasExceededDragThreshold(dx, dy) {
   return Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX;
 }
@@ -92,7 +45,7 @@ function createGrabDragState(anchor, clientX, clientY) {
   };
 }
 
-function runPointerDragSession(event, { captureElement, onDragStart, onDragMove, onDragEnd, onTap, onTeardown }) {
+export function runPointerDragSession(event, { captureElement, onDragStart, onDragMove, onDragEnd, onTap, onTeardown }) {
   event.preventDefault();
   event.stopPropagation();
 
@@ -281,133 +234,6 @@ function startClimbPinDrag(event, pin, element) {
       const coords = endMapDrag(element, label, dragState);
       pinRef.x = coords.x;
       pinRef.y = coords.y;
-      persistPinPosition(pinRef);
-    },
-  });
-}
-
-// MG spot drag: same in-map, no-reparent pattern as climb pins, but the
-// "element" being dragged is a handle (arrowhead or tail bar) inside the SVG
-// group. Dragging the head only moves dirX/dirY (bar stays put); dragging the
-// bar only moves x/y (head stays put). The dotted stem is never a handle - it
-// is simply redrawn to follow whichever end moved via refreshMgSpotGroup().
-function beginMgHandleDrag(anchor, clientX, clientY) {
-  const dragState = createGrabDragState(anchor, clientX, clientY);
-  delete dragState.anchorPx;
-  dragState.lastX = anchor.x;
-  dragState.lastY = anchor.y;
-  dragState.hadSeparationIssue = false;
-  return dragState;
-}
-
-function beginMgSpotDrag(pinRef, handle, clientX, clientY) {
-  const anchorX = handle === "head" ? pinRef.dirX : pinRef.x;
-  const anchorY = handle === "head" ? pinRef.dirY : pinRef.y;
-  return beginMgHandleDrag({ x: anchorX, y: anchorY }, clientX, clientY);
-}
-
-function moveMgSpotDrag(clientX, clientY, dragState, fixedAnchor = null) {
-  const pointerPx = screenToMapPx(clientX, clientY);
-  const px = Math.min(dragState.imgW, Math.max(0, pointerPx.x + dragState.grabOffsetX));
-  const py = Math.min(dragState.imgH, Math.max(0, pointerPx.y + dragState.grabOffsetY));
-  let coords = mapPxToPercent(px, py, dragState.imgW, dragState.imgH);
-
-  if (fixedAnchor) {
-    const enforced = enforceMgHandleSeparation(fixedAnchor.x, fixedAnchor.y, coords.x, coords.y);
-    coords = { x: enforced.x, y: enforced.y };
-    dragState.hadSeparationIssue = dragState.hadSeparationIssue || enforced.wasCollapsed;
-  }
-
-  dragState.lastX = coords.x;
-  dragState.lastY = coords.y;
-  return coords;
-}
-
-function applyMgHeadLabel(pinRef, label, dirX, dirY) {
-  if (!label) return;
-  applyLabelPosition({ ...pinRef, dirX, dirY }, label, { x: dirX, y: dirY, unit: "percent" });
-}
-
-function syncDraftMgCollapseHint(barX, barY, headX, headY) {
-  state.mgCollapseHint = mgHandlesCollapsed(barX, barY, headX, headY);
-}
-
-export function attachMgSpotDrag(group, pin) {
-  const headEl = group.querySelector(".mg-spot-head");
-  const baseEl = group.querySelector(".mg-spot-base");
-
-  headEl?.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    if (!canDragPinInEditor(pin)) return;
-    startMgSpotDrag(event, pin, group, "head");
-  });
-
-  baseEl?.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
-    if (!canDragPinInEditor(pin)) return;
-    startMgSpotDrag(event, pin, group, "bar");
-  });
-}
-
-function startMgSpotDrag(event, pin, group, handle) {
-  if (state.pinSaveInFlight) return;
-
-  const pinRef = state.pins.find((item) => item.id === pin.id);
-  if (!pinRef) return;
-
-  const label = getPinLabel(pin.id);
-  const handleEl = event.currentTarget;
-  let beforeDrag = null;
-
-  runPointerDragSession(event, {
-    captureElement: handleEl,
-    onDragStart({ startClient }) {
-      beforeDrag = { x: pinRef.x, y: pinRef.y, dirX: pinRef.dirX, dirY: pinRef.dirY };
-      pushPinMoveSnapshot(pinRef);
-      state.pinDragSession = { pinId: pinRef.id, type: "mg-spot", handle };
-      group.classList.add("map-mg-spot--dragging");
-      group.parentNode?.appendChild(group);
-      return beginMgSpotDrag(pinRef, handle, startClient.x, startClient.y);
-    },
-    onDragMove(clientX, clientY, dragState) {
-      const coords = moveMgSpotDrag(
-        clientX,
-        clientY,
-        dragState,
-        handle === "head" ? { x: pinRef.x, y: pinRef.y } : { x: pinRef.dirX, y: pinRef.dirY }
-      );
-
-      if (handle === "head") {
-        refreshMgSpotGroup(group, { x: pinRef.x, y: pinRef.y, dirX: coords.x, dirY: coords.y });
-        applyMgHeadLabel(pinRef, label, coords.x, coords.y);
-      } else {
-        refreshMgSpotGroup(group, { x: coords.x, y: coords.y, dirX: pinRef.dirX, dirY: pinRef.dirY });
-      }
-    },
-    onTap() {
-      if (state.panelMode === "browse") {
-        highlightPin(pinRef.id);
-      }
-    },
-    onTeardown() {
-      group.classList.remove("map-mg-spot--dragging");
-    },
-    async onDragEnd(dragState) {
-      if (handle === "head") {
-        pinRef.dirX = dragState.lastX;
-        pinRef.dirY = dragState.lastY;
-      } else {
-        pinRef.x = dragState.lastX;
-        pinRef.y = dragState.lastY;
-      }
-
-      refreshMgSpotGroup(group, pinRef);
-      updatePinElementPosition(pinRef.id);
-
-      if (dragState.hadSeparationIssue) {
-        showEditorToast("Head and bar were too close — position adjusted");
-      }
-
       persistPinPosition(pinRef);
     },
   });
