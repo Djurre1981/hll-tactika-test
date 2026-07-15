@@ -44,6 +44,8 @@ const HOME_CSS = cssLinks([
   "/css/components/bye-page.css",
   "/css/components/mode-switch.css",
   "/css/components/dashboard.css",
+  "/css/components/dashboard-header.css",
+  "/css/components/dashboard-content.css",
   "/css/components/user-menu.css",
 ]);
 
@@ -59,11 +61,16 @@ const MAP_CHROME_CSS = [
   "/css/components/map-viewer.css",
   "/css/components/map-overlays.css",
   "/css/components/sidebar.css",
+  "/css/components/sidebar-map-picker.css",
+  "/css/components/sidebar-color-control.css",
+  "/css/components/sidebar-pin-list.css",
   "/css/components/filter-bar.css",
   "/css/components/pin-marker.css",
   "/css/components/pin-preview.css",
   "/css/components/pin-modal.css",
   "/css/components/pin-editor.css",
+  "/css/components/pin-editor-media.css",
+  "/css/components/pin-editor-faction.css",
   "/css/components/context-menu.css",
   "/css/components/mg-spot-arrows.css",
   "/css/components/admin-panel.css",
@@ -71,7 +78,15 @@ const MAP_CHROME_CSS = [
 ];
 
 const CLIMB_CSS = cssLinks(MAP_CHROME_CSS);
-const STRAT_CSS = cssLinks([...MAP_CHROME_CSS, "/css/components/strats-panel.css"]);
+const STRAT_CSS = cssLinks([...MAP_CHROME_CSS,
+  "/css/components/strats-panel.css",
+  "/css/components/strats-picker.css",
+  "/css/components/strats-slides.css",
+  "/css/components/strats-editor.css",
+  "/css/components/strats-dialogs.css",
+  "/css/components/strats-draw.css",
+  "/css/components/strats-tools.css",
+]);
 
 function sliceTo(startMarker, nextMarker) {
   const start = body.indexOf(startMarker);
