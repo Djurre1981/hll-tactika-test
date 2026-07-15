@@ -1,0 +1,131 @@
+.pin-form__section-faction {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pin-form__section-faction legend {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+}
+
+.edit-faction-bar {
+  --edit-faction-segment: calc((100% - 0.5rem) / 3);
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding: 0.25rem;
+  border-radius: var(--glass-radius-pill);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.edit-faction-bar__thumb {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: var(--edit-faction-segment);
+  border-radius: var(--glass-radius-pill);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  transition:
+    transform 0.4s var(--ease-smooth),
+    background 0.35s var(--ease-smooth),
+    border-color 0.35s var(--ease-smooth);
+}
+
+.edit-faction-bar[data-current-faction="axis"] .edit-faction-bar__thumb {
+  transform: translateX(0);
+  background: rgba(120, 58, 58, 0.42);
+  border-color: rgba(155, 85, 85, 0.32);
+}
+
+.edit-faction-bar[data-current-faction="neutral"] .edit-faction-bar__thumb {
+  transform: translateX(100%);
+  background: rgba(70, 70, 70, 0.58);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.edit-faction-bar[data-current-faction="allies"] .edit-faction-bar__thumb {
+  transform: translateX(200%);
+  background: rgba(62, 82, 108, 0.42);
+  border-color: rgba(95, 115, 145, 0.32);
+}
+
+.edit-faction-bar__btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 3.25rem;
+  padding: 0.4rem 0.35rem;
+  border: none;
+  border-radius: var(--glass-radius-pill);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.25s var(--ease-smooth);
+}
+
+.edit-faction-bar__btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.edit-faction-bar__btn.is-active {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.edit-faction-bar__icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+  pointer-events: none;
+  transition:
+    opacity 0.35s var(--ease-smooth),
+    filter 0.35s var(--ease-smooth);
+}
+
+.edit-faction-bar__btn[data-faction="axis"] .edit-faction-bar__icon {
+  opacity: 0.72;
+  filter: brightness(0) saturate(85%) invert(26%) sepia(50%) saturate(650%) hue-rotate(330deg) brightness(0.96);
+}
+
+.edit-faction-bar__btn[data-faction="neutral"] .edit-faction-bar__icon {
+  opacity: 0.58;
+  filter: brightness(0) invert(0.82);
+}
+
+.edit-faction-bar__btn[data-faction="allies"] .edit-faction-bar__icon {
+  opacity: 0.72;
+  filter: brightness(0) saturate(85%) invert(40%) sepia(32%) saturate(520%) hue-rotate(182deg) brightness(0.97);
+}
+
+.edit-faction-bar__btn.is-active[data-faction="axis"] .edit-faction-bar__icon {
+  opacity: 0.95;
+  filter: brightness(0) saturate(95%) invert(22%) sepia(75%) saturate(950%) hue-rotate(330deg) brightness(1.02);
+}
+
+.edit-faction-bar__btn.is-active[data-faction="neutral"] .edit-faction-bar__icon {
+  opacity: 0.88;
+  filter: brightness(0) invert(0.95);
+}
+
+.edit-faction-bar__btn.is-active[data-faction="allies"] .edit-faction-bar__icon {
+  opacity: 0.95;
+  filter: brightness(0) saturate(95%) invert(38%) sepia(42%) saturate(720%) hue-rotate(182deg) brightness(1.02);
+}

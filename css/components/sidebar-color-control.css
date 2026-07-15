@@ -1,0 +1,179 @@
+.map-color-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.map-color-control__picker {
+  position: relative;
+  display: inline-flex;
+}
+
+.map-color-control__hue-btn {
+  min-width: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+  border-color: transparent;
+  background: transparent;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-smooth),
+    width 0.2s var(--ease-smooth),
+    min-width 0.2s var(--ease-smooth),
+    padding 0.2s var(--ease-smooth),
+    border-color 0.2s var(--ease-smooth),
+    background 0.2s var(--ease-smooth);
+}
+
+.map-color-control:hover .map-color-control__hue-btn,
+.map-color-control.is-open .map-color-control__hue-btn {
+  min-width: 2.5rem;
+  width: auto;
+  padding: 0 0.55rem;
+  opacity: 1;
+  pointer-events: auto;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.map-color-control.is-open .map-color-control__hue-btn,
+.map-color-control__hue-btn:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.map-color-control__swatch {
+  display: block;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.map-color-picker {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  left: auto;
+  z-index: 20;
+  width: 11.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--glass-radius);
+  background: rgba(12, 12, 12, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.map-color-picker__row {
+  --map-color-track: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.map-color-picker__random {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--map-color-track);
+  height: var(--map-color-track);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background 0.2s var(--ease-smooth),
+    border-color 0.2s var(--ease-smooth),
+    box-shadow 0.2s var(--ease-smooth);
+}
+
+.map-color-picker__wheel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background 0.2s var(--ease-smooth);
+}
+
+.map-color-picker__random:hover .map-color-picker__wheel {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.map-color-picker__random.is-active {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.map-color-picker__random.is-active .map-color-picker__wheel {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.map-color-picker__hue {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  height: var(--map-color-track);
+  margin: 0;
+  border: none;
+  border-radius: var(--glass-radius-pill);
+  background: linear-gradient(
+    to right,
+    #ff0000 0%,
+    #ffff00 17%,
+    #00ff00 33%,
+    #00ffff 50%,
+    #0000ff 67%,
+    #ff00ff 83%,
+    #ff0000 100%
+  );
+  cursor: pointer;
+}
+
+.map-color-picker__hue::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.map-color-picker__hue::-moz-range-thumb {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.map-color-picker__hue::-moz-range-track {
+  height: var(--map-color-track);
+  border: none;
+  border-radius: var(--glass-radius-pill);
+  background: linear-gradient(
+    to right,
+    #ff0000 0%,
+    #ffff00 17%,
+    #00ff00 33%,
+    #00ffff 50%,
+    #0000ff 67%,
+    #ff00ff 83%,
+    #ff0000 100%
+  );
+}
