@@ -147,3 +147,19 @@ export async function getR2ImageObject(env, imageId) {
 
   return null;
 }
+
+/** Delete every known R2 key for an app image id. Returns number of keys removed. */
+export async function deleteR2ImageObject(env, imageId) {
+  if (!env.VIDEOS_R2) {
+    return 0;
+  }
+
+  let deleted = 0;
+  for (const key of imageR2LookupKeys(imageId)) {
+    const existing = await env.VIDEOS_R2.head(key);
+    if (!existing) continue;
+    await env.VIDEOS_R2.delete(key);
+    deleted += 1;
+  }
+  return deleted;
+}

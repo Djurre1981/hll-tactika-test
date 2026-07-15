@@ -185,22 +185,41 @@ export function createVideoElement(
   return iframe;
 }
 
-export function youtubeThumbnail(url) {
+/** Extract a YouTube video id from watch/embed/short/live URLs or CDN stills. */
+export function youtubeVideoId(url) {
   try {
     const parsed = parseMediaUrl(url);
     if (!parsed) return null;
-    let videoId = parsed.searchParams.get("v");
-    if (!videoId && parsed.hostname.includes("youtu.be")) {
-      videoId = parsed.pathname.replace("/", "");
+    const host = parsed.hostname.replace(/^www\./, "");
+
+    if (host === "img.youtube.com" || host === "i.ytimg.com") {
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const viIdx = parts.findIndex((part) => part === "vi" || part === "vi_webp");
+      if (viIdx >= 0 && parts[viIdx + 1]) return parts[viIdx + 1];
+      return null;
     }
-    if (!videoId && parsed.pathname.startsWith("/embed/")) {
-      videoId = parsed.pathname.split("/embed/")[1]?.split("/")[0];
+
+    if (host === "youtu.be") {
+      return parsed.pathname.replace(/^\//, "").split("/")[0] || null;
     }
-    if (videoId) {
-      return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+    if (host.includes("youtube.com")) {
+      const fromQuery = parsed.searchParams.get("v");
+      if (fromQuery) return fromQuery;
+      for (const prefix of ["/embed/", "/shorts/", "/live/"]) {
+        if (parsed.pathname.startsWith(prefix)) {
+          return parsed.pathname.slice(prefix.length).split("/")[0] || null;
+        }
+      }
     }
   } catch {
     return null;
   }
   return null;
+}
+
+export function youtubeThumbnail(url) {
+  const videoId = youtubeVideoId(url);
+  if (!videoId) return null;
+  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
 }

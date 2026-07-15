@@ -2,6 +2,8 @@ import {
   isAppVideoPath,
   isSupportedVideoUrl,
   normalizeVideoUrl,
+  youtubeThumbnail,
+  youtubeVideoId,
 } from "../utils/video.js";
 
 const IMAGE_EXTENSION_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg)(\?|$)/i;
@@ -44,6 +46,59 @@ export function isPreviewStillUrl(url) {
   if (!normalized) return false;
   if (isDirectImageUrl(normalized)) return true;
   return isPlatformThumbnailUrl(normalized);
+}
+
+/**
+ * True when a media row URL is the selected preview: exact match, or a YouTube
+ * video whose CDN still is stored as pin.thumbnail (silent platform thumb).
+ */
+export function mediaUrlMatchesThumbnail(mediaUrl, thumbnailUrl) {
+  const media = normalizeVideoUrl(mediaUrl);
+  const thumb = normalizeVideoUrl(thumbnailUrl);
+  if (!media || !thumb) return false;
+  if (media === thumb) return true;
+
+  const mediaYt = youtubeVideoId(media);
+  const thumbYt = youtubeVideoId(thumb);
+  if (mediaYt && thumbYt && mediaYt === thumbYt) return true;
+
+  const derivedYt = youtubeThumbnail(media);
+  if (derivedYt && normalizeVideoUrl(derivedYt) === thumb) return true;
+
+  return false;
+}
+
+/**
+ * Which media item owns pin.thumbnail. YouTube stills match by video id;
+ * other silent platform CDNs (e.g. Medal) fall back to the sole video item.
+ * Silent app stills attribute when ownership is unambiguous (sole item / sole video).
+ */
+export function findMediaItemForThumbnail(items, thumbnailUrl) {
+  const list = Array.isArray(items) ? items.filter((item) => item?.url) : [];
+  const thumb = String(thumbnailUrl || "").trim();
+  if (!list.length || !thumb) return null;
+
+  const direct = list.find((item) => mediaUrlMatchesThumbnail(item.url, thumb));
+  if (direct) return direct;
+
+  if (isPlatformThumbnailUrl(thumb) && !youtubeVideoId(thumb)) {
+    const videos = list.filter((item) => item.kind === "video");
+    if (videos.length === 1) return videos[0];
+  }
+
+  const normalizedThumb = normalizeVideoUrl(thumb);
+  const thumbIsSilentStill =
+    isPreviewStillUrl(thumb) &&
+    !list.some((item) => normalizeVideoUrl(item.url) === normalizedThumb);
+
+  if (thumbIsSilentStill) {
+    if (list.length === 1) return list[0];
+    const videos = list.filter((item) => item.kind === "video");
+    const images = list.filter((item) => item.kind === "image");
+    if (videos.length === 1 && images.length === 0) return videos[0];
+  }
+
+  return null;
 }
 
 /**

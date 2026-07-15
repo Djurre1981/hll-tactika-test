@@ -125,7 +125,7 @@ export function captureVideoFrame(
 }
 
 /** Longest edge for JPEGs persisted to R2 (editor save + hover backfill). */
-export const PERSISTED_THUMB_MAX_EDGE = 720;
+export const PERSISTED_THUMB_MAX_EDGE = 360;
 
 export const PERSISTED_THUMB_QUALITY = 0.75;
 

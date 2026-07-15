@@ -43,11 +43,21 @@
   width: 100%;
   height: 100%;
   border: 0;
-  background: #000;
+  background: transparent;
   object-fit: cover;
 }
 
-.preview-tooltip__media video.preview-video--pending {
+.preview-tooltip__media img.preview-still--loading {
+  opacity: 0;
+}
+
+.preview-tooltip__media video,
+.preview-tooltip__media iframe {
+  background: #000;
+}
+
+.preview-tooltip__media video.preview-video--pending,
+.preview-tooltip__media iframe.preview-video--pending {
   position: absolute;
   inset: 0;
   opacity: 0;

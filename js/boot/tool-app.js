@@ -232,7 +232,12 @@ export async function bootToolApp({ tool, loadStrats = false }) {
       state.mapViewer.applyTransform();
     }
 
-    void warmMapThumbnails(activeMapId, state.pins);
+    // Warm only after map + pins are on screen; keep Image refs alive for instant hover.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void warmMapThumbnails(activeMapId, state.pins);
+      });
+    });
   }
 
   function revealMapViewport() {

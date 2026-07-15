@@ -149,11 +149,6 @@ export function attachPinInteractions(element, pin) {
   });
   element.addEventListener("contextmenu", (event) => {
     if (!isGuideInteractionAllowed() || state.panelMode === null) return;
-    if (state.panelMode === "add" || state.panelMode === "edit") {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
     event.preventDefault();
     event.stopPropagation();
     hidePinContextMenu();

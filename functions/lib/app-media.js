@@ -112,6 +112,13 @@ export function isAppImagePath(url) {
   return Boolean(match && isAppImageId(match[1]));
 }
 
+export function appImageIdFromUrl(url) {
+  if (!url) return null;
+  const match = toPathname(String(url).trim()).match(/^\/api\/images\/([^/]+)$/);
+  if (!match || !isAppImageId(match[1])) return null;
+  return match[1];
+}
+
 export function extensionFromFilename(name) {
   const match = String(name || "")
     .toLowerCase()

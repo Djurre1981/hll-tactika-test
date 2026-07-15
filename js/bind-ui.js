@@ -143,7 +143,7 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   document.addEventListener("pin-list-edit", (event) => {
     const pin = state.pins.find((item) => item.id === event.detail?.pinId);
-    if (pin) startEditPin(pin);
+    if (pin) void startEditPin(pin);
   });
 
   const pinContextMenu = document.getElementById("pin-context-menu");

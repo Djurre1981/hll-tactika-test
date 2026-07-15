@@ -1,4 +1,4 @@
-import { resolvePinDetail, cachePinDetail } from "../helpers/pin-detail-cache.js";
+import { resolvePinDetail, cachePinDetail, getCachedPinDetail } from "../helpers/pin-detail-cache.js";
 import { state } from "../state.js";
 import { isGuideInteractionAllowed } from "../helpers/app-mode.js";
 import {
@@ -12,13 +12,16 @@ import {
 import { resolveMedalClip } from "../utils/medal.js";
 import {
   canExtractVideoFrame,
+  fileFromImageSource,
+  fileFromVideoFrame,
   getVideoFrameObjectUrl,
 } from "../utils/video-frame.js";
+import { fillPinThumbnail, fillPinThumbnailUrl } from "../api/pins.js";
 import { getRequiresDisplayConfig } from "./pin-modal.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import {
-  detectMediaKind,
+  findMediaItemForThumbnail,
   getPinMediaItems,
   isDirectImageUrl,
   isPlatformThumbnailUrl,
@@ -28,6 +31,12 @@ import {
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { openModal, armModalDismissGuard } from "./pin-modal.js";
+import {
+  absoluteThumbUrl,
+  ensureWarmedThumbnail,
+  getWarmedThumbnail,
+  rememberWarmedThumbnail,
+} from "../helpers/thumbnail-cache.js";
 
 export async function getMediaPlayback(mediaItem, { signal } = {}) {
   if (!mediaItem) {
@@ -60,18 +69,8 @@ export function getPinThumbnailMediaItem(pin) {
 
   const thumb = String(pin.thumbnail || "").trim();
   if (thumb) {
-    const normalizedThumb = normalizeVideoUrl(thumb);
-    const matches = items.filter(
-      (item) => normalizeVideoUrl(item.url) === normalizedThumb
-    );
-    if (matches.length > 0) {
-      const preferredKind = detectMediaKind(thumb);
-      if (preferredKind) {
-        const kindMatch = matches.find((item) => item.kind === preferredKind);
-        if (kindMatch) return kindMatch;
-      }
-      return matches[0];
-    }
+    const owner = findMediaItemForThumbnail(items, thumb);
+    if (owner) return owner;
   }
 
   return items[0];
@@ -86,7 +85,10 @@ const PREVIEW_DETAIL_DEBOUNCE_MS = 200;
 const PREVIEW_VIDEO_DWELL_MS = 1600;
 let previewDetailTimer = null;
 let previewVideoTimer = null;
+let previewIframeRevealTimer = null;
 let previewLoadAbort = null;
+/** @type {Set<string>} */
+const thumbnailPersistInflight = new Set();
 
 function beginPreviewLoad() {
   previewLoadAbort?.abort();
@@ -99,6 +101,77 @@ function cancelPreviewTimers() {
   previewDetailTimer = null;
   clearTimeout(previewVideoTimer);
   previewVideoTimer = null;
+  clearTimeout(previewIframeRevealTimer);
+  previewIframeRevealTimer = null;
+}
+
+function patchLocalPinThumbnail(mapId, pinId, thumbnail) {
+  const thumb = String(thumbnail || "").trim();
+  if (!mapId || !pinId || !thumb) return;
+
+  const catalog = state.pinCatalog[mapId];
+  if (Array.isArray(catalog)) {
+    const marker = catalog.find((item) => item.id === pinId);
+    if (marker) marker.thumbnail = thumb;
+  }
+
+  const live = state.pins.find((item) => item.id === pinId);
+  if (live) live.thumbnail = thumb;
+
+  const cached = getCachedPinDetail(mapId, pinId);
+  if (cached) {
+    cachePinDetail(mapId, pinId, { ...cached, thumbnail: thumb });
+  }
+
+  void ensureWarmedThumbnail(mapId, thumb);
+}
+
+/**
+ * Fill-if-empty compact pin.thumbnail after hover resolves a still.
+ * Updates local markers immediately so later hovers / warm picks it up.
+ */
+async function maybePersistHoverThumbnail(pin, stillUrl, playback) {
+  if (!pin?.id || !pinNeedsCompactStill(pin)) return;
+  const mapId = state.currentMapId;
+  if (!mapId) return;
+
+  const key = `${mapId}:${pin.id}`;
+  if (thumbnailPersistInflight.has(key)) return;
+  thumbnailPersistInflight.add(key);
+
+  try {
+    const platformStill =
+      (stillUrl && isPlatformThumbnailUrl(stillUrl) && String(stillUrl).trim()) ||
+      (playback?.thumbnail &&
+        isPlatformThumbnailUrl(playback.thumbnail) &&
+        String(playback.thumbnail).trim()) ||
+      "";
+
+    let result = null;
+    if (platformStill) {
+      patchLocalPinThumbnail(mapId, pin.id, platformStill);
+      result = await fillPinThumbnailUrl(mapId, pin.id, platformStill);
+    } else if (playback?.playbackUrl && canExtractVideoFrame(playback.playbackUrl)) {
+      const file = await fileFromVideoFrame(playback.playbackUrl, "preview.jpg");
+      result = await fillPinThumbnail(mapId, pin.id, file);
+    } else {
+      const imageItem = getPinMediaItems(pin).find(
+        (item) => item.kind === "image" && isDirectImageUrl(item.url)
+      );
+      if (!imageItem) return;
+      const file = await fileFromImageSource(imageItem.url, "preview.jpg");
+      result = await fillPinThumbnail(mapId, pin.id, file);
+    }
+
+    const saved = String(result?.thumbnail || "").trim();
+    if (saved) {
+      patchLocalPinThumbnail(mapId, pin.id, saved);
+    }
+  } catch (error) {
+    console.warn("Hover thumbnail persist skipped", error);
+  } finally {
+    thumbnailPersistInflight.delete(key);
+  }
 }
 
 function clearPreviewMedia() {
@@ -202,19 +275,100 @@ function resolvePreviewStillUrl(pin, playback) {
   return null;
 }
 
+function absoluteStillUrl(url) {
+  return absoluteThumbUrl(url);
+}
+
+function currentPreviewStillUrl(previewMedia) {
+  const img = previewMedia?.querySelector("img.preview-still");
+  if (!img) return "";
+  return absoluteStillUrl(img.dataset.thumbUrl || img.currentSrc || img.src);
+}
+
 function renderPreviewStill(previewMedia, stillUrl, pinTitle) {
+  if (!previewMedia) return;
+
+  const nextUrl = absoluteStillUrl(stillUrl);
+  if (!nextUrl) {
+    const hasPlaceholder = previewMedia.querySelector(".preview-still-placeholder");
+    if (hasPlaceholder && !previewMedia.querySelector("img, video, iframe")) return;
+    clearMediaContainer(previewMedia);
+    const placeholder = document.createElement("div");
+    placeholder.className = "preview-still-placeholder";
+    placeholder.setAttribute("aria-hidden", "true");
+    previewMedia.appendChild(placeholder);
+    return;
+  }
+
+  const existing = previewMedia.querySelector("img.preview-still");
+  if (existing && currentPreviewStillUrl(previewMedia) === nextUrl) {
+    existing.alt = `${pinTitle} preview`;
+    if (existing.complete && existing.naturalWidth > 0) {
+      existing.classList.remove("preview-still--loading");
+    }
+    previewMedia.querySelectorAll("video, iframe").forEach((el) => el.remove());
+    return;
+  }
+
   clearMediaContainer(previewMedia);
-  if (stillUrl) {
+
+  const warmed = getWarmedThumbnail(state.currentMapId, nextUrl);
+  if (warmed?.img?.complete && warmed.img.naturalWidth > 0) {
+    // Paint from the in-memory blob/CDN warm entry — no network, tiny decode.
     const img = document.createElement("img");
-    img.src = stillUrl;
+    img.className = "preview-still";
     img.alt = `${pinTitle} preview`;
+    img.dataset.thumbUrl = nextUrl;
+    img.decoding = "sync";
+    img.src = warmed.displayUrl;
     previewMedia.appendChild(img);
     return;
   }
-  const placeholder = document.createElement("div");
-  placeholder.className = "preview-still-placeholder";
-  placeholder.setAttribute("aria-hidden", "true");
-  previewMedia.appendChild(placeholder);
+
+  const img = document.createElement("img");
+  img.className = "preview-still preview-still--loading";
+  img.alt = `${pinTitle} preview`;
+  img.dataset.thumbUrl = nextUrl;
+  img.decoding = "async";
+
+  const reveal = () => {
+    img.classList.remove("preview-still--loading");
+    rememberWarmedThumbnail(state.currentMapId, nextUrl);
+  };
+  if (img.decode) {
+    img.addEventListener(
+      "load",
+      () => {
+        img.decode().then(reveal).catch(reveal);
+      },
+      { once: true }
+    );
+  } else {
+    img.addEventListener("load", reveal, { once: true });
+  }
+  img.addEventListener("error", () => img.classList.remove("preview-still--loading"), {
+    once: true,
+  });
+  img.src = nextUrl;
+  if (img.complete && img.naturalWidth > 0) {
+    reveal();
+  }
+  previewMedia.appendChild(img);
+
+  // Dense maps may still be warming — swap to blob/CDN warm entry when ready.
+  if (!nextUrl.startsWith("blob:")) {
+    void ensureWarmedThumbnail(state.currentMapId, nextUrl).then((entry) => {
+      if (!entry?.displayUrl) return;
+      const current = previewMedia.querySelector("img.preview-still");
+      if (!current || current.dataset.thumbUrl !== nextUrl) return;
+      if (current.getAttribute("src") === entry.displayUrl) {
+        current.classList.remove("preview-still--loading");
+        return;
+      }
+      current.src = entry.displayUrl;
+      current.classList.remove("preview-still--loading");
+    });
+  }
 }
 
 export function showPreview(pin, event) {
@@ -317,8 +471,9 @@ function schedulePreviewVideo(previewPinId, playback, pinTitle, dwellMs = PREVIE
 function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
   if (!playbackUrl || !previewMedia) return;
 
+  const still = previewMedia.querySelector("img, .preview-still-placeholder");
+
   if (isPlayableDirectUrl(playbackUrl)) {
-    const still = previewMedia.querySelector("img, .preview-still-placeholder");
     const video = createVideoElement(playbackUrl, {
       autoplay: true,
       muted: true,
@@ -341,14 +496,40 @@ function startPreviewPlayback(previewMedia, { playbackUrl }, pinTitle) {
     return;
   }
 
-  clearMediaContainer(previewMedia);
+  // Keep the still visible under the embed until it paints (YouTube/Medal iframe).
   const iframe = createVideoElement(playbackUrl, { autoplay: true, muted: true });
+  iframe.classList.add("preview-video--pending");
+  iframe.setAttribute("aria-label", `${pinTitle} preview`);
+  let revealed = false;
+  const reveal = () => {
+    if (revealed || !previewMedia.contains(iframe)) return;
+    revealed = true;
+    clearTimeout(previewIframeRevealTimer);
+    previewIframeRevealTimer = null;
+    iframe.classList.remove("preview-video--pending");
+    still?.remove();
+  };
+  iframe.addEventListener("load", reveal, { once: true });
+  // Embeds can sit on load forever; don't leave thumb forever if reveal never fires.
+  clearTimeout(previewIframeRevealTimer);
+  previewIframeRevealTimer = window.setTimeout(reveal, 2500);
   previewMedia.appendChild(iframe);
 }
 
 async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
   let stillUrl = resolvePreviewStillUrl(pin, playback);
-  renderPreviewStill(previewMedia, stillUrl, pinTitle);
+  const nextStill = absoluteStillUrl(stillUrl);
+  const currentStill = absoluteStillUrl(currentPreviewStillUrl(previewMedia));
+  // Avoid clearing a painted warm still while pin detail resolves.
+  if (nextStill && nextStill !== currentStill) {
+    renderPreviewStill(previewMedia, stillUrl, pinTitle);
+  } else if (!nextStill && !previewMedia.querySelector("img.preview-still")) {
+    renderPreviewStill(previewMedia, stillUrl, pinTitle);
+  } else if (nextStill && nextStill === currentStill) {
+    previewMedia
+      .querySelector("img.preview-still")
+      ?.classList.remove("preview-still--loading");
+  }
 
   if (playback.isImage) {
     return;
@@ -377,6 +558,8 @@ async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
     pinTitle,
     stillUrl ? PREVIEW_VIDEO_DWELL_MS : 0
   );
+
+  void maybePersistHoverThumbnail(pin, stillUrl, playback);
 }
 
 export async function loadPreviewMedia(marker, previewPinId) {

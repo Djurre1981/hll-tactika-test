@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
 import { cachePinDetail } from "../helpers/pin-detail-cache.js";
 import { pushPinCreateSnapshot, pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
-import { deriveLegacyMediaFields } from "../helpers/pin-media.js";
+import { deriveLegacyMediaFields, normalizeMediaItem } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
 import { isDiscordMediaUrl } from "../utils/video.js";
 import { showEditorToast } from "../ui/editor-toast.js";
@@ -15,6 +15,7 @@ import { highlightPin } from "../helpers/proximity.js";
 import { normalizePinTitle } from "../helpers/pin-title.js";
 import { ingestDiscordPinMedia } from "../helpers/discord-ingest-client.js";
 import { clearPinDirty } from "../helpers/pin-persist.js";
+import { roundCoord } from "../helpers/position-code.js";
 
 const REQUIRES_FACTION_CONFIG = {
   axis: { label: "Gate", icon: "fa-archway" },
@@ -28,6 +29,112 @@ let editUndoSnapshotPushed = false;
 let rerunSaveAfterCurrent = false;
 let lastNotifiedError = "";
 let lastNotifiedAt = 0;
+/** Normalized snapshot of the pin when the edit form finished loading (null = not ready). */
+let editFormBaseline = null;
+
+function normalizeRequiresForCompare(requires) {
+  const source = requires && typeof requires === "object" ? requires : {};
+  const keys = Object.keys(source).sort();
+  const normalized = {};
+  for (const key of keys) {
+    const value = source[key];
+    if (value === undefined || value === false || value === null) continue;
+    normalized[key] = value === true ? true : value;
+  }
+  return normalized;
+}
+
+function normalizeMediaItemsForCompare(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => normalizeMediaItem(item))
+    .filter(Boolean)
+    .map((item) => ({ kind: item.kind, url: item.url }));
+}
+
+function normalizePinPayloadForCompare(payload) {
+  const requires = normalizeRequiresForCompare(payload?.requires);
+  const mediaItems = normalizeMediaItemsForCompare(payload?.mediaItems);
+  const normalized = {
+    title: normalizePinTitle(payload?.title || ""),
+    description: String(payload?.description || "").trim(),
+    tag: payload?.tag || "",
+    x: roundCoord(Number(payload?.x)),
+    y: roundCoord(Number(payload?.y)),
+    videoUrl: String(payload?.videoUrl || "").trim(),
+    thumbnail: String(payload?.thumbnail || "").trim(),
+    mediaItems,
+    faction: payload?.faction || "neutral",
+    requires,
+  };
+  if (payload?.dirX != null && payload?.dirY != null) {
+    normalized.dirX = roundCoord(Number(payload.dirX));
+    normalized.dirY = roundCoord(Number(payload.dirY));
+  }
+  return normalized;
+}
+
+function pinPayloadEquals(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export function clearEditFormBaseline() {
+  editFormBaseline = null;
+}
+
+export function isEditFormBaselineReady() {
+  return editFormBaseline != null;
+}
+
+function buildPinDataFromForm(mediaItems, thumbnail) {
+  const title = normalizePinTitle(getPinTitle()?.value);
+  const tag = getPinFormTag();
+  if (!title || !tag || !state.pendingCoords) return null;
+
+  const mediaFields = deriveLegacyMediaFields(mediaItems, thumbnail);
+  const pinData = {
+    title,
+    description: getPinDescription()?.value.trim() || "",
+    videoUrl: mediaFields.videoUrl,
+    thumbnail: mediaFields.thumbnail || "",
+    mediaItems: mediaFields.mediaItems,
+    tag,
+    x: state.pendingCoords.x,
+    y: state.pendingCoords.y,
+    faction: state.pendingFaction,
+  };
+
+  if (isDirectionalPinTag(tag)) {
+    if (!state.pendingDirection) return null;
+    pinData.dirX = state.pendingDirection.x;
+    pinData.dirY = state.pendingDirection.y;
+  }
+
+  const requires = getRequiresData();
+  pinData.requires = Object.keys(requires).length > 0 ? requires : {};
+  return pinData;
+}
+
+/** Snapshot the loaded edit form so unchanged backs/switches skip KV writes. */
+export function captureEditFormBaselineFromForm() {
+  const mediaValidation = validatePinMediaForm({ showErrors: false });
+  if (!mediaValidation.valid) {
+    editFormBaseline = null;
+    return;
+  }
+  const pinData = buildPinDataFromForm(
+    mediaValidation.items,
+    mediaValidation.thumbnail || ""
+  );
+  editFormBaseline = pinData ? normalizePinPayloadForCompare(pinData) : null;
+}
+
+function isUnchangedEditPayload(pinData) {
+  if (!editFormBaseline || state.panelMode !== "edit" || !state.editingPinId) {
+    return false;
+  }
+  return pinPayloadEquals(normalizePinPayloadForCompare(pinData), editFormBaseline);
+}
 
 function showSaveError(message, { notifyUser = false } = {}) {
   if (!notifyUser || !message) return;
@@ -267,6 +374,15 @@ export async function onSavePin(
     return { ok: false, reason: "media", message };
   }
 
+  const unchangedProbe = buildPinDataFromForm(
+    mediaValidation.items,
+    mediaValidation.thumbnail || ""
+  );
+  if (unchangedProbe && isUnchangedEditPayload(unchangedProbe)) {
+    clearPinDirty(state.editingPinId);
+    return { ok: true, skipped: true };
+  }
+
   let thumbnail = mediaValidation.thumbnail || "";
   if (
     !pinHasCompactSilentThumbnail({
@@ -284,31 +400,12 @@ export async function onSavePin(
     }
   }
 
-  const mediaFields = deriveLegacyMediaFields(
-    mediaValidation.items,
-    thumbnail
-  );
-
-  const pinData = {
-    title,
-    description: getPinDescription().value.trim(),
-    videoUrl: mediaFields.videoUrl,
-    thumbnail: mediaFields.thumbnail || "",
-    mediaItems: mediaFields.mediaItems,
-    tag,
-    x: state.pendingCoords.x,
-    y: state.pendingCoords.y,
-  };
-
-  if (isDirectionalPinTag(tag)) {
-    pinData.dirX = state.pendingDirection.x;
-    pinData.dirY = state.pendingDirection.y;
+  const pinData = buildPinDataFromForm(mediaValidation.items, thumbnail);
+  if (!pinData) {
+    const message = getPlacementErrorMessage();
+    showSaveError(message, { notifyUser });
+    return { ok: false, reason: "placement", message };
   }
-
-  pinData.faction = state.pendingFaction;
-
-  const requires = getRequiresData();
-  pinData.requires = Object.keys(requires).length > 0 ? requires : {};
 
   return savePin(pinData, {
     reloadPinsForMap,
@@ -365,6 +462,7 @@ export async function savePin(
       const saved = await updatePin(state.currentMapId, state.editingPinId, payload);
       cachePinDetail(state.currentMapId, state.editingPinId, saved);
       clearPinDirty(state.editingPinId);
+      captureEditFormBaselineFromForm();
       await reloadPinsForMap(state.currentMapId);
 
       if (autoSave) {
@@ -386,6 +484,7 @@ export async function savePin(
       editUndoSnapshotPushed = true;
       state.editingPinId = created.id;
       state.panelMode = "edit";
+      captureEditFormBaselineFromForm();
       syncViewportFormClasses();
 
       if (autoSave) {

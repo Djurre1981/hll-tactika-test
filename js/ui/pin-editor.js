@@ -9,7 +9,17 @@ import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, updatePlacementUi, syncViewportFormClasses, isPlacementComplete } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
-import { updateFactionRequires, setRequiresData, resetRequires, resetEditUndoSnapshot, flushAndSavePin, markEditUndoBaselinePushed } from "../editor/form-handler.js";
+import {
+  updateFactionRequires,
+  setRequiresData,
+  resetRequires,
+  resetEditUndoSnapshot,
+  flushAndSavePin,
+  markEditUndoBaselinePushed,
+  clearEditFormBaseline,
+  captureEditFormBaselineFromForm,
+  isEditFormBaselineReady,
+} from "../editor/form-handler.js";
 import { resetPinMediaForm, setPinMediaFormItems, isMediaUploadInProgress } from "../editor/media-form.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 import { renderPins } from "./pin-marker.js";
@@ -193,6 +203,7 @@ export function backToEditorBrowse({ preserveHistory = true } = {}) {
   if (!isInEditorMode()) return;
 
   state.addPinSession = false;
+  clearEditFormBaseline();
   transitionEditorMode({
     panelMode: "browse",
     resetPositionHistory: !preserveHistory,
@@ -202,30 +213,41 @@ export function backToEditorBrowse({ preserveHistory = true } = {}) {
   });
 }
 
-export async function tryBackToEditorBrowse(options = {}) {
-  if (isFormOpen()) {
-    const canLeaveWithoutTitle = state.panelMode === "add" && !isPlacementComplete();
-    if (!canLeaveWithoutTitle) {
-      const title = getPinTitle()?.value.trim();
-      if (!title) {
-        shakeTitleField();
-        return false;
-      }
+/** Flush the open add/edit form if needed. Skips KV when edit form is unchanged. */
+export async function flushOpenPinForm() {
+  if (!isFormOpen()) return true;
 
-      if (isMediaUploadInProgress()) {
-        showEditorToast("Wait for the upload to finish", { durationMs: 3000 });
-        return false;
-      }
+  const canLeaveWithoutTitle = state.panelMode === "add" && !isPlacementComplete();
+  if (canLeaveWithoutTitle) return true;
 
-      const result = await flushAndSavePin();
-      if (!result.ok) {
-        if (result.reason === "title") {
-          shakeTitleField();
-        }
-        return false;
-      }
-    }
+  const title = getPinTitle()?.value.trim();
+  if (!title) {
+    shakeTitleField();
+    return false;
   }
+
+  if (isMediaUploadInProgress()) {
+    showEditorToast("Wait for the upload to finish", { durationMs: 3000 });
+    return false;
+  }
+
+  if (state.panelMode === "edit" && !isEditFormBaselineReady()) {
+    showEditorToast("Still loading pin details…", { durationMs: 3000 });
+    return false;
+  }
+
+  const result = await flushAndSavePin();
+  if (!result.ok) {
+    if (result.reason === "title") {
+      shakeTitleField();
+    }
+    return false;
+  }
+  return true;
+}
+
+export async function tryBackToEditorBrowse(options = {}) {
+  if (!(await flushOpenPinForm())) return false;
   backToEditorBrowse(options);
   return true;
 }
@@ -251,6 +273,7 @@ export async function exitEditorMode() {
   }
 
   state.addPinSession = false;
+  clearEditFormBaseline();
   transitionEditorMode({
     panelMode: null,
     resetPositionHistory: true,
@@ -299,6 +322,7 @@ export function openAddPinForm(tag = DEFAULT_PIN_TAG) {
   }
 
   resetEditUndoSnapshot();
+  clearEditFormBaseline();
   state.addPinSession = true;
   state.panelMode = "add";
   state.editingPinId = null;
@@ -322,6 +346,12 @@ export function openAddPinForm(tag = DEFAULT_PIN_TAG) {
 export async function startEditPin(marker, { focus = false } = {}) {
   if (!marker || !canModifyPin(marker)) return;
 
+  if (state.panelMode === "edit" && state.editingPinId === marker.id) return;
+
+  if (isFormOpen()) {
+    if (!(await flushOpenPinForm())) return;
+  }
+
   if (!isInEditorMode()) {
     enterEditorMode();
   }
@@ -329,6 +359,7 @@ export async function startEditPin(marker, { focus = false } = {}) {
   hidePreviewImmediately();
   closeModal();
   resetEditUndoSnapshot();
+  clearEditFormBaseline();
   state.addPinSession = false;
   state.panelMode = "edit";
   state.editingPinId = marker.id;
@@ -374,9 +405,14 @@ export async function startEditPin(marker, { focus = false } = {}) {
     }
     getPinDescription().value = pin.description || "";
     setPinMediaFormItems(getPinMediaItems(pin), pin.thumbnail);
+    setRequiresData(pin.requires);
+    state.pendingFaction = pin.faction || "neutral";
+    applyEditorFactionToUi();
+    updateFactionRequires(state.pendingFaction);
     cachePinDetail(state.currentMapId, pin.id, pin);
     pushPinUpdateSnapshot(pin);
     markEditUndoBaselinePushed();
+    captureEditFormBaselineFromForm();
     if (editPanelHint) editPanelHint.textContent = "";
   } catch (error) {
     console.error(error);
@@ -388,7 +424,12 @@ export async function startEditPin(marker, { focus = false } = {}) {
 export function updateEditorHeaderButtons({ animate = false } = {}) {
   const inEditor = isInEditorMode();
   const formOpen = isFormOpen();
+  const modeSwitch = getModeSwitch();
   const editToolButtons = getEditToolButtons();
+
+  modeSwitch?.classList.toggle("is-editor", inEditor);
+  modeSwitch?.querySelector('[data-mode="viewer"]')?.setAttribute("aria-selected", String(!inEditor));
+  modeSwitch?.querySelector('[data-mode="editor"]')?.setAttribute("aria-selected", String(inEditor));
 
   document.getElementById("sidebar-edit-tools")?.classList.toggle("hidden", !inEditor || formOpen);
 

@@ -97,7 +97,7 @@ export function onPinContextMenuAction(event, {
 
   if (!pin) return;
   if (action === "edit") {
-    if (canModifyFn(pin)) startEditPinFn(pin);
+    if (canModifyFn(pin)) void startEditPinFn(pin);
   } else if (action === "delete") {
     if (!canModifyFn(pin)) return;
     pushPinDeleteSnapshot(pin);
