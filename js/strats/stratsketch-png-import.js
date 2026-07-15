@@ -1,4 +1,5 @@
 import { uploadPreviewImage } from "../api/media.js";
+import { assetUrl } from "../helpers/asset-url.js";
 import { convertStratSketchBriefing } from "./stratsketch-convert.js";
 import { renderStratSlideOverlaySvg } from "./strat-draw-render.js";
 import { compositeSlideToImageBlob, getSlideImageUploadMeta } from "./stratsketch-slide-png.js";
@@ -6,7 +7,9 @@ import { compositeSlideToImageBlob, getSlideImageUploadMeta } from "./stratsketc
 function resolveMapImageSrc(mapId, mapCatalog) {
   const imagePath = mapCatalog.find((map) => map.id === mapId)?.image;
   if (!imagePath) return "";
-  return new URL(imagePath, window.location.href).href;
+  const path = assetUrl(imagePath);
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, window.location.origin).href;
 }
 
 async function uploadSlideImage(imageBlob, slideName, index) {

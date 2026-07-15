@@ -8,7 +8,7 @@ export async function loadMapMidpoints() {
     return midpointsByMap;
   }
 
-  const response = await fetch("data/map-midpoints.json");
+  const response = await fetch("/data/map-midpoints.json");
   if (!response.ok) {
     throw new Error("Failed to load map midpoints");
   }

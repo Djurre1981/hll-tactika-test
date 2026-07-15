@@ -47,7 +47,6 @@ import { initDraftPinDrag } from "./editor/pin-drag.js";
 import { initMapColorControl } from "./ui/map-bg-fade.js";
 import { setShellCollapsed } from "./ui/chrome-panels.js";
 import { setAppMode } from "./ui/app-mode.js";
-import { canEnterStratsMode } from "./helpers/app-mode.js";
 
 function suppressNativeContextMenu(elements) {
   for (const element of elements) {
@@ -116,15 +115,17 @@ export function bindUi({ reloadPinsForMap, switchMap }) {
 
   const modeSwitch = document.getElementById("mode-switch");
   modeSwitch?.querySelector('[data-mode="viewer"]')?.addEventListener("click", () => {
+    if (state.toolRoute === "stratmaker") return;
     void setAppMode("viewer");
   });
   modeSwitch?.querySelector('[data-mode="editor"]')?.addEventListener("click", () => {
+    if (state.toolRoute === "stratmaker") return;
     if (!canEnterEditorMode()) return;
     void setAppMode("editor");
   });
   modeSwitch?.querySelector('[data-mode="strats"]')?.addEventListener("click", () => {
-    if (!canEnterStratsMode()) return;
-    void setAppMode("strats");
+    // Strats lives on /tool/stratmaker; guide page keeps Viewer/Editor only.
+    return;
   });
 
   document.getElementById("btn-add-mg")?.addEventListener("click", () => openAddPinForm("mg-spot"));

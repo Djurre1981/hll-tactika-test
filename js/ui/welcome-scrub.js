@@ -5,11 +5,14 @@ const SNAP_THRESHOLD = 0.001;
 const SEEK_THROTTLE_MS = 30;
 const ACTIVATE_RETRY_MS = 500;
 const LOAD_TIMEOUT_MS = 15000;
-const DEFAULT_VIDEO_SRC = "assets/welcome/welcome.mp4";
+const DEFAULT_VIDEO_SRC = "/assets/welcome/welcome.mp4";
 const TAP_TO_PLAY_CLASS = "scrub-video--tap-to-play";
 
 function resolveSourceUrl(sourceUrl) {
-  return new URL(sourceUrl, window.location.href).href;
+  if (!sourceUrl) return "";
+  if (/^https?:\/\//i.test(sourceUrl)) return sourceUrl;
+  const path = sourceUrl.startsWith("/") ? sourceUrl : `/${sourceUrl}`;
+  return new URL(path, window.location.origin).href;
 }
 
 export function initWelcomeScrub(video) {

@@ -66,6 +66,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use. Stop the other process or re-run \`npm run dev\`.`);
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, HOST, () => {
   console.log(`StratSketch dev import sidecar on http://${HOST}:${PORT}`);
 });

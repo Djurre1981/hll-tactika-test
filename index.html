@@ -31,6 +31,8 @@
           document.head.appendChild(videoPreload);
           return;
         }
+        document.documentElement.classList.remove("app-boot");
+        document.documentElement.classList.add("dashboard-boot");
         var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
         if (!mapImage) {
           var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
@@ -44,43 +46,55 @@
       } catch (_) {}
     })();
   </script>
-  <link rel="modulepreload" href="js/app.js" />
+  <link rel="modulepreload" href="/js/app.js" />
   <style>
     html.welcome-boot #app-root,
-    html.welcome-boot #bye-page { display: none !important; }
+    html.welcome-boot #bye-page,
+    html.welcome-boot #dashboard-page,
+    html.welcome-boot #hub-chrome,
+    html.welcome-boot #user-cluster { display: none !important; }
     html.bye-boot #app-root,
-    html.bye-boot #welcome-page { display: none !important; }
+    html.bye-boot #welcome-page,
+    html.bye-boot #dashboard-page,
+    html.bye-boot #hub-chrome,
+    html.bye-boot #user-cluster { display: none !important; }
+    html.dashboard-boot #welcome-page,
+    html.dashboard-boot #bye-page,
+    html.dashboard-boot #app-root { display: none !important; }
     html.app-boot #welcome-page,
-    html.app-boot #bye-page { display: none !important; }
+    html.app-boot #bye-page,
+    html.app-boot #dashboard-page { display: none !important; }
+    html.app-boot #hub-chrome { display: none !important; }
     html.app-boot #app-root.hidden { display: block !important; }
     html.app-boot #app-root.is-auth-pending .sidebar-shell,
     html.app-boot #app-root.is-auth-pending .map-toolbar-shell {
       display: none !important;
     }
   </style>
-  <link rel="stylesheet" href="css/base.css" />
-  <link rel="stylesheet" href="css/layout.css" />
-  <link rel="stylesheet" href="css/utilities.css" />
-  <link rel="stylesheet" href="css/fonts/texta.css" />
-  <link rel="stylesheet" href="css/components/glass.css" />
-  <link rel="stylesheet" href="css/components/auth-gate.css" />
-  <link rel="stylesheet" href="css/components/welcome-page.css" />
-  <link rel="stylesheet" href="css/components/bye-page.css" />
-  <link rel="stylesheet" href="css/components/mode-switch.css" />
-  <link rel="stylesheet" href="css/components/strats-panel.css" />
-  <link rel="stylesheet" href="css/components/user-menu.css" />
-  <link rel="stylesheet" href="css/components/map-viewer.css" />
-  <link rel="stylesheet" href="css/components/map-overlays.css" />
-  <link rel="stylesheet" href="css/components/sidebar.css" />
-  <link rel="stylesheet" href="css/components/filter-bar.css" />
-  <link rel="stylesheet" href="css/components/pin-marker.css" />
-  <link rel="stylesheet" href="css/components/pin-preview.css" />
-  <link rel="stylesheet" href="css/components/pin-modal.css" />
-  <link rel="stylesheet" href="css/components/pin-editor.css" />
-  <link rel="stylesheet" href="css/components/context-menu.css" />
-  <link rel="stylesheet" href="css/components/mg-spot-arrows.css" />
-  <link rel="stylesheet" href="css/components/admin-panel.css" />
-  <link rel="stylesheet" href="css/editor/editor.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/utilities.css" />
+  <link rel="stylesheet" href="/css/fonts/texta.css" />
+  <link rel="stylesheet" href="/css/components/glass.css" />
+  <link rel="stylesheet" href="/css/components/auth-gate.css" />
+  <link rel="stylesheet" href="/css/components/welcome-page.css" />
+  <link rel="stylesheet" href="/css/components/bye-page.css" />
+  <link rel="stylesheet" href="/css/components/mode-switch.css" />
+  <link rel="stylesheet" href="/css/components/dashboard.css" />
+  <link rel="stylesheet" href="/css/components/strats-panel.css" />
+  <link rel="stylesheet" href="/css/components/user-menu.css" />
+  <link rel="stylesheet" href="/css/components/map-viewer.css" />
+  <link rel="stylesheet" href="/css/components/map-overlays.css" />
+  <link rel="stylesheet" href="/css/components/sidebar.css" />
+  <link rel="stylesheet" href="/css/components/filter-bar.css" />
+  <link rel="stylesheet" href="/css/components/pin-marker.css" />
+  <link rel="stylesheet" href="/css/components/pin-preview.css" />
+  <link rel="stylesheet" href="/css/components/pin-modal.css" />
+  <link rel="stylesheet" href="/css/components/pin-editor.css" />
+  <link rel="stylesheet" href="/css/components/context-menu.css" />
+  <link rel="stylesheet" href="/css/components/mg-spot-arrows.css" />
+  <link rel="stylesheet" href="/css/components/admin-panel.css" />
+  <link rel="stylesheet" href="/css/editor/editor.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </head>
 <body>
@@ -88,7 +102,7 @@
     <video
       id="welcome-scrub-video"
       class="welcome-page__video"
-      data-src="assets/welcome/welcome.mp4"
+      data-src="/assets/welcome/welcome.mp4"
       muted
       playsinline
       webkit-playsinline
@@ -111,7 +125,7 @@
       <div class="welcome-page__logo-wrap">
         <img
           class="welcome-page__logo"
-          src="assets/logos/tactika-full-logo.svg"
+          src="/assets/logos/tactika-full-logo.svg"
           alt="HLL Tactika"
           width="840"
           height="186"
@@ -124,7 +138,7 @@
     <video
       id="bye-scrub-video"
       class="bye-page__video"
-      data-src="assets/welcome/bye.mp4"
+      data-src="/assets/welcome/bye.mp4"
       muted
       playsinline
       webkit-playsinline
@@ -136,7 +150,7 @@
       <div class="bye-page__logo-wrap">
         <img
           class="bye-page__logo"
-          src="assets/logos/tactika-full-logo.svg"
+          src="/assets/logos/tactika-full-logo.svg"
           alt="HLL Tactika"
           width="840"
           height="186"
@@ -180,6 +194,97 @@
     </div>
   </dialog>
 
+  <div id="hub-chrome" class="hub-chrome hidden">
+    <button type="button" class="hub-chrome__logo" id="hub-logo" aria-label="Tactika dashboard">
+      <img src="/assets/logos/tactika-rectangle-logo.svg" alt="" width="44" height="44" />
+    </button>
+    <div class="hub-nav mode-switch" id="hub-nav">
+      <div class="mode-switch__surface glass-surface hub-nav__surface" role="tablist" aria-label="Hub navigation">
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="dashboard" aria-selected="true">Dashboard</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="strats" aria-selected="false" data-placeholder="1">My Strats</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="management" aria-selected="false" data-placeholder="1">Management</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="calendar" aria-selected="false" data-placeholder="1">Calendar</button>
+        <span class="mode-switch__thumb hub-nav__thumb" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="user-cluster hidden" id="user-cluster">
+    <div class="user-cluster__avatar-wrap">
+      <div class="user-cluster__menu" role="menu">
+        <button id="btn-dashboard-home" class="user-cluster__signout" type="button" role="menuitem">Dashboard</button>
+        <button id="btn-admin-panel" class="user-cluster__admin hidden" type="button" role="menuitem">Admin Panel</button>
+        <button id="btn-logout" class="user-cluster__signout" type="button" role="menuitem">Sign out</button>
+      </div>
+      <button type="button" class="user-cluster__avatar-btn" id="header-user-trigger" aria-label="Account">
+        <img id="user-avatar" class="user-cluster__avatar hidden" alt="" width="40" height="40" />
+      </button>
+    </div>
+    <span id="user-name" class="user-cluster__name"></span>
+  </div>
+
+  <div id="dashboard-page" class="dashboard-page hidden" aria-label="Dashboard">
+    <div class="dashboard-page__bg" aria-hidden="true"></div>
+    <div class="dashboard-page__shell glass-panel">
+      <header class="dashboard-page__header">
+        <h1 class="dashboard-page__greeting" id="dashboard-greeting">Welcome back</h1>
+        <p class="dashboard-page__tagline">Your Circle command hub — prep, climb intel, and strats in one place.</p>
+      </header>
+      <div class="dashboard-page__grid">
+        <section class="dashboard-hero glass-surface" aria-labelledby="dashboard-hero-title">
+          <p class="dashboard-hero__eyebrow">Overview</p>
+          <h2 class="dashboard-hero__title" id="dashboard-hero-title">Circle operations</h2>
+          <p class="dashboard-hero__body">
+            Jump into the climbing guide for pin intel, or open Stratmaker to plan the next match.
+            More Circle tools will land here as they come online.
+          </p>
+        </section>
+        <aside class="dashboard-upcoming glass-surface" aria-labelledby="dashboard-upcoming-title">
+          <h2 class="dashboard-upcoming__title" id="dashboard-upcoming-title">Upcoming games</h2>
+          <div class="dashboard-upcoming__list" id="dashboard-upcoming-list">
+            <article class="dashboard-upcoming__card">
+              <p class="dashboard-upcoming__card-meta">Schedule</p>
+              <p class="dashboard-upcoming__card-title">No matches listed</p>
+              <p class="dashboard-upcoming__card-sub">Fixture sync is coming soon.</p>
+            </article>
+            <article class="dashboard-upcoming__card dashboard-upcoming__card--muted">
+              <p class="dashboard-upcoming__card-meta">Scrim</p>
+              <p class="dashboard-upcoming__card-title">TBD</p>
+              <p class="dashboard-upcoming__card-sub">Placeholder slot</p>
+            </article>
+            <article class="dashboard-upcoming__card dashboard-upcoming__card--muted">
+              <p class="dashboard-upcoming__card-meta">Comp</p>
+              <p class="dashboard-upcoming__card-title">TBD</p>
+              <p class="dashboard-upcoming__card-sub">Placeholder slot</p>
+            </article>
+          </div>
+        </aside>
+        <section class="dashboard-tools" aria-labelledby="dashboard-tools-title">
+          <h2 class="dashboard-tools__title" id="dashboard-tools-title">The Circle Tools</h2>
+          <div class="dashboard-tools__grid">
+            <button type="button" class="dashboard-tool glass-surface" data-tool="strats" id="tool-stratmaker">
+              <span class="dashboard-tool__title">Circle Stratmaker</span>
+              <span class="dashboard-tool__desc">Draw and share ops on the tactical map.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface" data-tool="micro-prep" data-placeholder="1" id="tool-micro-prep">
+              <span class="dashboard-tool__title">Micro Prep</span>
+              <span class="dashboard-tool__desc">Match-day drills and checklists — coming soon.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface dashboard-tool--climb" data-tool="viewer" id="tool-climbing-guide">
+              <span class="dashboard-tool__title">Climbing Guide</span>
+              <span class="dashboard-tool__desc">Interactive climb and MG spot map.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface" data-tool="records" data-placeholder="1" id="tool-records">
+              <span class="dashboard-tool__title">HLL Records</span>
+              <span class="dashboard-tool__desc">VODs and result history — coming soon.</span>
+            </button>
+          </div>
+        </section>
+      </div>
+      <p class="dashboard-toast" id="dashboard-toast" role="status" aria-live="polite" hidden></p>
+    </div>
+  </div>
+
   <div id="app-root" class="hidden is-auth-pending">
   <main class="layout">
     <div class="mode-switch hidden" id="mode-switch">
@@ -190,24 +295,12 @@
         <span class="mode-switch__thumb" aria-hidden="true"></span>
       </div>
     </div>
-    <div class="user-cluster hidden" id="user-cluster">
-      <div class="user-cluster__avatar-wrap">
-        <div class="user-cluster__menu" role="menu">
-          <button id="btn-admin-panel" class="user-cluster__admin hidden" type="button" role="menuitem">Admin Panel</button>
-          <button id="btn-logout" class="user-cluster__signout" type="button" role="menuitem">Sign out</button>
-        </div>
-        <button type="button" class="user-cluster__avatar-btn" id="header-user-trigger" aria-label="Account">
-          <img id="user-avatar" class="user-cluster__avatar hidden" alt="" width="40" height="40" />
-        </button>
-      </div>
-      <span id="user-name" class="user-cluster__name"></span>
-    </div>
     <div class="sidebar-shell" id="sidebar-shell">
     <aside class="sidebar glass-panel" id="sidebar">
       <div class="sidebar__brand">
-        <div class="sidebar__logo">
-          <img src="assets/logos/tactika-full-logo.svg" alt="HLL Tactika" width="246" height="62" />
-        </div>
+        <button type="button" class="sidebar__logo sidebar__logo--btn" id="sidebar-logo-home" aria-label="Back to dashboard">
+          <img src="/assets/logos/tactika-full-logo.svg" alt="HLL Tactika" width="246" height="62" />
+        </button>
       </div>
       <div class="sidebar__divider" role="presentation"></div>
       <div class="sidebar__body">
@@ -473,15 +566,15 @@
             <div class="edit-faction-bar" id="edit-faction-bar" role="radiogroup" aria-label="Faction" data-current-faction="neutral">
               <span class="edit-faction-bar__thumb" aria-hidden="true"></span>
               <button type="button" class="edit-faction-bar__btn" data-faction="axis" aria-pressed="false" title="Axis">
-                <img class="edit-faction-bar__icon" src="assets/logos/axis.svg" alt="" width="18" height="18" />
+                <img class="edit-faction-bar__icon" src="/assets/logos/axis.svg" alt="" width="18" height="18" />
                 <span>Axis</span>
               </button>
               <button type="button" class="edit-faction-bar__btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
-                <img class="edit-faction-bar__icon" src="assets/logos/neutral.svg" alt="" width="18" height="18" />
+                <img class="edit-faction-bar__icon" src="/assets/logos/neutral.svg" alt="" width="18" height="18" />
                 <span>Neutral</span>
               </button>
               <button type="button" class="edit-faction-bar__btn" data-faction="allies" aria-pressed="false" title="Allies">
-                <img class="edit-faction-bar__icon" src="assets/logos/allies.svg" alt="" width="18" height="18" />
+                <img class="edit-faction-bar__icon" src="/assets/logos/allies.svg" alt="" width="18" height="18" />
                 <span>Allies</span>
               </button>
             </div>
@@ -562,15 +655,15 @@
         <div class="faction-slider" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
           <span class="faction-slider__thumb" aria-hidden="true"></span>
           <button type="button" class="faction-slider__btn" data-faction="axis" aria-pressed="false" title="Axis">
-            <img class="faction-slider__icon" src="assets/logos/axis.svg" alt="" width="15" height="15" />
+            <img class="faction-slider__icon" src="/assets/logos/axis.svg" alt="" width="15" height="15" />
             <span>Axis</span>
           </button>
           <button type="button" class="faction-slider__btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
-            <img class="faction-slider__icon" src="assets/logos/neutral.svg" alt="" width="15" height="15" />
+            <img class="faction-slider__icon" src="/assets/logos/neutral.svg" alt="" width="15" height="15" />
             <span>Neutral</span>
           </button>
           <button type="button" class="faction-slider__btn" data-faction="allies" aria-pressed="false" title="Allies">
-            <img class="faction-slider__icon" src="assets/logos/allies.svg" alt="" width="15" height="15" />
+            <img class="faction-slider__icon" src="/assets/logos/allies.svg" alt="" width="15" height="15" />
             <span>Allies</span>
           </button>
         </div>
@@ -600,7 +693,7 @@
           <img
             id="map-image"
             class="map-image"
-            src="maps/no-grid/SMDMV2_NoGrid.webp"
+            src="/maps/no-grid/SMDMV2_NoGrid.webp"
             alt="Hell Let Loose tactical map"
             draggable="false"
           />
@@ -1012,6 +1105,6 @@
     </div>
   </dialog>
 
-  <script src="js/app.js" type="module"></script>
+  <script src="/js/app.js" type="module"></script>
 </body>
 </html>

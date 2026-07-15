@@ -15,6 +15,22 @@ function getModeSwitch() {
   return document.getElementById("mode-switch");
 }
 
+export function syncToolChrome(tool = state.toolRoute) {
+  const modeSwitch = getModeSwitch();
+  const stratsTab = modeSwitch?.querySelector('[data-mode="strats"]');
+  if (tool) state.toolRoute = tool;
+
+  if (state.toolRoute === "stratmaker") {
+    modeSwitch?.classList.add("hidden");
+    stratsTab?.classList.add("hidden");
+    return;
+  }
+
+  if (state.toolRoute === "climbing-guide") {
+    stratsTab?.classList.add("hidden");
+  }
+}
+
 export function syncAppModeChrome() {
   const mode = state.appMode;
   const layout = getLayout();
@@ -25,10 +41,13 @@ export function syncAppModeChrome() {
 
   modeSwitch?.classList.toggle("is-editor", mode === "editor");
   modeSwitch?.classList.toggle("is-strats", mode === "strats");
+  modeSwitch?.classList.toggle("is-guide-tool", state.toolRoute === "climbing-guide");
 
   modeSwitch?.querySelector('[data-mode="viewer"]')?.setAttribute("aria-selected", String(mode === "viewer"));
   modeSwitch?.querySelector('[data-mode="editor"]')?.setAttribute("aria-selected", String(mode === "editor"));
   modeSwitch?.querySelector('[data-mode="strats"]')?.setAttribute("aria-selected", String(mode === "strats"));
+
+  syncToolChrome(state.toolRoute);
 
   document.getElementById("sidebar-default")?.classList.toggle("hidden", mode === "strats");
   document.getElementById("strats-sidebar")?.classList.toggle("hidden", mode !== "strats");

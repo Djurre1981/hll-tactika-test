@@ -80,6 +80,34 @@
   transform: translateX(200%);
 }
 
+.mode-switch.is-guide-tool {
+  min-width: 15.0rem;
+}
+
+.mode-switch.is-guide-tool .mode-switch__surface {
+  grid-template-columns: 1fr 1fr;
+}
+
+.mode-switch.is-guide-tool .mode-switch__tab[data-mode="strats"] {
+  display: none;
+}
+
+.mode-switch.is-guide-tool .mode-switch__tab {
+  padding: 0.5rem 1.25rem;
+}
+
+.mode-switch.is-guide-tool .mode-switch__thumb {
+  width: calc(50% - 0.2rem);
+}
+
+.mode-switch.is-guide-tool.is-editor .mode-switch__thumb {
+  transform: translateX(100%);
+}
+
+.mode-switch.is-guide-tool.is-strats .mode-switch__thumb {
+  transform: translateX(0);
+}
+
 @media (max-width: 900px) {
   .mode-switch {
     left: 50%;

@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { assetUrl } from "../helpers/asset-url.js";
 import {
   createStrat,
   createSlide,
@@ -384,7 +385,10 @@ export function setStratsPanelView(view) {
 }
 
 function resolveImageSrc(imagePath) {
-  return new URL(imagePath, window.location.href).href;
+  const path = assetUrl(imagePath);
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, window.location.origin).href;
 }
 
 function getSlideMapImage(mapId) {
@@ -422,7 +426,7 @@ async function syncStratSlideMapImage(slide, { fit = false } = {}) {
     if (map) {
       const nextSrc = resolveImageSrc(map.image);
       if (image.src !== nextSrc) {
-        image.src = map.image;
+        image.src = assetUrl(map.image);
         await waitForMapImage(image);
       }
       image.alt = `${map.name} tactical map`;
@@ -507,7 +511,7 @@ export async function exitStratEditorSession() {
     if (map && image) {
       const nextSrc = resolveImageSrc(map.image);
       if (image.src !== nextSrc) {
-        image.src = map.image;
+        image.src = assetUrl(map.image);
         await waitForMapImage(image);
       }
       image.alt = `${map.name} tactical map`;

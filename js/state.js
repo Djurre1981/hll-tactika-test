@@ -2,6 +2,7 @@ import { createDefaultToolSettings } from "./helpers/strat-defaults.js";
 
 export const state = {
   appMode: "viewer",
+  toolRoute: null,
   pins: [],
   pinCatalog: {},
   mapCatalog: [],
@@ -75,7 +76,7 @@ export function loadSelectedMapImage(fallbackId) {
   const stored = safeGetItem(MAP_IMAGE_STORAGE_KEY);
   if (stored) return stored;
   const mapId = loadSelectedMapId(fallbackId);
-  return `maps/no-grid/${mapId}_NoGrid.webp`;
+  return `/maps/no-grid/${mapId}_NoGrid.webp`;
 }
 
 export function saveSelectedMapId(mapId, mapImage) {

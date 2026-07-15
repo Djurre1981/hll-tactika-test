@@ -1,3 +1,5 @@
+import { assetUrl } from "../helpers/asset-url.js";
+
 const MAP_SIZE = 1920;
 
 export class MapOverlays {
@@ -21,7 +23,7 @@ export class MapOverlays {
 
     this.gridImage = document.createElement("img");
     this.gridImage.className = "map-grid-image";
-    this.gridImage.src = "maps/plain-grid.png";
+    this.gridImage.src = assetUrl("maps/plain-grid.png");
     this.gridImage.alt = "";
     this.gridImage.draggable = false;
     this.gridLayer.appendChild(this.gridImage);
@@ -33,7 +35,7 @@ export class MapOverlays {
 
   async loadStrongpointNames() {
     try {
-      const response = await fetch("data/strongpoint-names.json");
+      const response = await fetch("/data/strongpoint-names.json");
       if (response.ok) {
         this.strongpointNames = await response.json();
         this.renderStrongpoints();
@@ -76,7 +78,7 @@ export class MapOverlays {
 
     const img = new Image();
     img.decoding = "async";
-    img.src = `maps/points/${mapId}_SP_NoMap2.png`;
+    img.src = assetUrl(`maps/points/${mapId}_SP_NoMap2.png`);
     img.onload = () => {
       if (this.spImageMapId !== mapId) return;
       this.spImage = img;
@@ -186,7 +188,7 @@ export class MapOverlays {
     for (const label of Object.values(labels)) {
       const marker = document.createElement("img");
       marker.className = "overlay-strongpoint-label";
-      marker.src = label.image;
+      marker.src = assetUrl(label.image);
       marker.alt = "";
       marker.draggable = false;
       marker.style.left = `${label.left}%`;

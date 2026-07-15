@@ -1,4 +1,11 @@
-import { initAuth, loadMapMarkers } from "./ui/auth-gate.js";
+import { getCurrentUser } from "./api/auth.js";
+import { enterApp, initAuth, loadMapMarkers, returnToDashboard, setRouteHandler } from "./ui/auth-gate.js";
+import {
+  markAppBootstrapped,
+  setEnterAppModeHandler,
+  showComingSoon,
+  waitForEnterApp,
+} from "./ui/dashboard.js";
 import { applyMapBgFade } from "./ui/map-bg-fade.js";
 import { state, loadSelectedMapId, saveSelectedMapId } from "./state.js";
 import { initViewerPreferences, getViewerPreferences } from "./viewer-preferences.js";
@@ -8,6 +15,8 @@ import {
   dropMapThumbnailCache,
   warmMapThumbnails,
 } from "./helpers/thumbnail-cache.js";
+import { assetUrl } from "./helpers/asset-url.js";
+import { navigate, ROUTES } from "./ui/router.js";
 
 function waitForImage(image) {
   if (image.complete && image.naturalWidth) return Promise.resolve();
@@ -18,12 +27,10 @@ function waitForImage(image) {
 }
 
 function resolveImageSrc(imagePath) {
-  return new URL(imagePath, window.location.href).href;
-}
-
-function revealAppChrome() {
-  document.getElementById("mode-switch")?.classList.remove("hidden");
-  document.getElementById("user-cluster")?.classList.remove("hidden");
+  const path = assetUrl(imagePath);
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, window.location.origin).href;
 }
 
 async function init() {
@@ -62,6 +69,9 @@ async function init() {
   state.currentFaction = prefs.faction;
   state.mapLabelsVisible = prefs.mapLabels;
   state.previewEnabled = prefs.preview;
+
+  const enterMode = (await waitForEnterApp()) || "viewer";
+  document.getElementById("app-root")?.classList.add("is-auth-pending");
 
   const initialMapId = loadSelectedMapId("SMDMV2");
   const markerLoads = new Map();
@@ -105,7 +115,6 @@ async function init() {
 
   const { initAdminPanel } = await adminPanelPromise;
   initAdminPanel();
-  revealAppChrome();
   initPortraitPanelDefaults();
 
   const [
@@ -159,7 +168,7 @@ async function init() {
     const image = document.getElementById("map-image");
     const nextSrc = resolveImageSrc(map.image);
     if (image.src !== nextSrc) {
-      image.src = map.image;
+      image.src = assetUrl(map.image);
       await waitForImage(image);
     } else if (!image.complete || !image.naturalWidth) {
       await waitForImage(image);
@@ -201,7 +210,7 @@ async function init() {
         const image = document.getElementById("map-image");
         const nextSrc = resolveImageSrc(resolvedMap.image);
         if (image.src !== nextSrc) {
-          image.src = resolvedMap.image;
+          image.src = assetUrl(resolvedMap.image);
           await waitForImage(image);
         }
         image.alt = `${resolvedMap.name} tactical map`;
@@ -268,6 +277,7 @@ async function init() {
   applyTagFiltersToUi();
   applyFactionFiltersToUi();
   initUndoRedoKeyboard();
+  state.toolRoute = enterMode === "strats" ? "stratmaker" : "climbing-guide";
   syncAppModeChrome();
   bindUi({ reloadPinsForMap, switchMap });
 
@@ -278,7 +288,58 @@ async function init() {
     console.error("Strats UI failed to load:", error);
   }
 
+  await setAppMode(enterMode === "strats" ? "strats" : "viewer");
+
   document.getElementById("app-root")?.classList.remove("is-auth-pending");
+  document.getElementById("app-root")?.setAttribute("data-ready", "1");
+  markAppBootstrapped();
+
+  setEnterAppModeHandler(async (mode) => {
+    enterApp(mode);
+    await setAppMode(mode === "strats" ? "strats" : "viewer");
+  });
+
+  setRouteHandler(async (route) => {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    if (route.name === "stratmaker" && user.role === "viewer") {
+      showComingSoon("Circle Stratmaker is not available for your role");
+      navigate(ROUTES.HOME, { replace: true, notify: false });
+      await returnToDashboard();
+      return;
+    }
+
+    if (route.name === "home") {
+      if (state.appMode === "strats") {
+        const left = await setAppMode("viewer");
+        if (!left) {
+          navigate(ROUTES.STRATMAKER, { replace: true, notify: false });
+          return;
+        }
+      }
+      await returnToDashboard();
+      return;
+    }
+
+    if (route.name !== "climbing-guide" && route.name !== "stratmaker") {
+      navigate(ROUTES.HOME, { replace: true });
+      return;
+    }
+
+    const keepEditor =
+      route.name === "climbing-guide" &&
+      state.toolRoute === "climbing-guide" &&
+      state.appMode === "editor";
+    const targetMode = route.name === "stratmaker" ? "strats" : keepEditor ? "editor" : "viewer";
+    const ok = await setAppMode(targetMode);
+    if (!ok) {
+      const fallback = state.appMode === "strats" ? ROUTES.STRATMAKER : ROUTES.CLIMBING_GUIDE;
+      navigate(fallback, { replace: true, notify: false });
+      return;
+    }
+    enterApp(route.name === "stratmaker" ? "strats" : "viewer");
+  });
 
   await mapInitPromise;
   revealMapViewport();
