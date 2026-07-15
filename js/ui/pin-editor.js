@@ -18,9 +18,54 @@ import { hidePinContextMenu } from "./pin-context-menu.js";
 import { showEditorToast } from "./editor-toast.js";
 import { flushDirtyPinPositions, clearAllDirtyPins } from "../helpers/pin-persist.js";
 import { openAddPinForm, startEditPin } from "./pin-editor-form.js";
+import { getPinPositionCode, generatePositionCode } from "../helpers/position-code.js";
 
 export function getEditPanel() {
   return document.getElementById("edit-panel");
+}
+
+function getEditPanelBackBtn() {
+  return document.getElementById("btn-edit-panel-back");
+}
+
+const EDIT_BACK_DEFAULT_HTML =
+  '<i class="fa-solid fa-arrow-left" aria-hidden="true"></i>';
+
+function getSavingPositionCode() {
+  const fromForm = document.getElementById("pin-position-code")?.textContent?.trim();
+  if (fromForm) return fromForm;
+  if (state.pendingCoords) {
+    const x =
+      state.pendingDirection?.x != null ? state.pendingDirection.x : state.pendingCoords.x;
+    const y =
+      state.pendingDirection?.y != null ? state.pendingDirection.y : state.pendingCoords.y;
+    return generatePositionCode(x, y);
+  }
+  const pin = state.pins.find((item) => item.id === state.editingPinId);
+  return pin ? getPinPositionCode(pin) : "";
+}
+
+export function setEditBackSaving(code = getSavingPositionCode()) {
+  const backBtn = getEditPanelBackBtn();
+  if (!backBtn) return;
+  const label = code ? `saving ${code} pin` : "saving pin";
+  backBtn.classList.remove("btn--icon");
+  backBtn.classList.add("is-saving");
+  backBtn.disabled = true;
+  backBtn.setAttribute("aria-busy", "true");
+  backBtn.setAttribute("aria-label", label);
+  backBtn.textContent = label;
+}
+
+export function clearEditBackSaving() {
+  const backBtn = getEditPanelBackBtn();
+  if (!backBtn) return;
+  backBtn.classList.add("btn--icon");
+  backBtn.classList.remove("is-saving");
+  backBtn.disabled = false;
+  backBtn.removeAttribute("aria-busy");
+  backBtn.setAttribute("aria-label", "Back to spot list");
+  backBtn.innerHTML = EDIT_BACK_DEFAULT_HTML;
 }
 
 function getSidebarDefault() {
@@ -225,14 +270,22 @@ export async function flushOpenPinForm() {
     return false;
   }
 
-  const result = await flushAndSavePin();
-  if (!result.ok) {
-    if (result.reason === "title") {
-      shakeTitleField();
+  setEditBackSaving();
+  // Let the saving label paint before network / thumbnail work.
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  try {
+    const result = await flushAndSavePin();
+    if (!result.ok) {
+      if (result.reason === "title") {
+        shakeTitleField();
+      }
+      return false;
     }
-    return false;
+    return true;
+  } finally {
+    clearEditBackSaving();
   }
-  return true;
 }
 
 export async function tryBackToEditorBrowse(options = {}) {

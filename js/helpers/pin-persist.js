@@ -1,10 +1,11 @@
 import { state } from "../state.js";
-import { deriveLegacyMediaFields, getPinMediaItems } from "../helpers/pin-media.js";
+import { deriveLegacyMediaFields, getPinMediaItems, pinHasMedia } from "../helpers/pin-media.js";
 import { batchUpdatePins, updatePin } from "../api/pins.js";
 import { roundCoord } from "./position-code.js";
 import { updatePinElementPosition } from "./proximity.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { showEditorToast } from "../ui/editor-toast.js";
+import { normalizePin } from "../ui/filter-bar.js";
 
 const dirtyPinIds = new Set();
 
@@ -37,6 +38,50 @@ export function syncPinInCatalog(pin) {
   if (index >= 0) {
     list[index] = { ...list[index], ...pin };
   }
+}
+
+/** Build a map-marker shape from a saved full pin without reloading the map. */
+export function toLocalPinMarker(fullPin, existingMarker = null) {
+  const marker = {
+    id: fullPin.id,
+    title: fullPin.title,
+    tag: fullPin.tag,
+    x: fullPin.x,
+    y: fullPin.y,
+    faction: fullPin.faction,
+    requires: fullPin.requires || {},
+    createdBy: fullPin.createdBy ?? existingMarker?.createdBy ?? null,
+    detailToken: existingMarker?.detailToken,
+    hasMedia: pinHasMedia(fullPin),
+  };
+  const thumbnail = String(fullPin.thumbnail || "").trim();
+  if (thumbnail) marker.thumbnail = thumbnail;
+  if (fullPin.tag === "mg-spot" && fullPin.dirX != null && fullPin.dirY != null) {
+    marker.dirX = fullPin.dirX;
+    marker.dirY = fullPin.dirY;
+  }
+  return normalizePin(marker);
+}
+
+/** Upsert one saved pin into local list + catalog (skips full map reload). */
+export function upsertLocalPinMarker(fullPin, mapId = state.currentMapId) {
+  if (!fullPin?.id) return null;
+  const catalog = state.pinCatalog[mapId] || (state.pinCatalog[mapId] = []);
+  const existing =
+    state.pins.find((item) => item.id === fullPin.id) ||
+    catalog.find((item) => item.id === fullPin.id) ||
+    null;
+  const marker = toLocalPinMarker(fullPin, existing);
+
+  const pinIndex = state.pins.findIndex((item) => item.id === marker.id);
+  if (pinIndex >= 0) state.pins[pinIndex] = { ...state.pins[pinIndex], ...marker };
+  else if (mapId === state.currentMapId) state.pins.push(marker);
+
+  const catalogIndex = catalog.findIndex((item) => item.id === marker.id);
+  if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...marker };
+  else catalog.push(marker);
+
+  return marker;
 }
 
 export function normalizePinCoords(pin) {

@@ -13,7 +13,7 @@ import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
 import { normalizePinTitle } from "../helpers/pin-title.js";
 import { ingestDiscordPinMedia } from "../helpers/discord-ingest-client.js";
-import { clearPinDirty } from "../helpers/pin-persist.js";
+import { clearPinDirty, upsertLocalPinMarker } from "../helpers/pin-persist.js";
 import { roundCoord } from "../helpers/position-code.js";
 import {
   buildPinDataFromForm,
@@ -209,7 +209,6 @@ export async function onSavePin(
   }
 
   return savePin(pinData, {
-    reloadPinsForMap,
     backToEditorBrowse: backToEditorBrowseFn,
     canModifyFn,
     autoSave,
@@ -218,10 +217,17 @@ export async function onSavePin(
   });
 }
 
+function schedulePinUiRefresh({ highlightId = null } = {}) {
+  requestAnimationFrame(() => {
+    renderPins();
+    renderPinList();
+    if (highlightId) highlightPin(highlightId);
+  });
+}
+
 export async function savePin(
   pinData,
   {
-    reloadPinsForMap,
     backToEditorBrowse: backToEditorBrowseFn,
     canModifyFn,
     autoSave = false,
@@ -264,14 +270,13 @@ export async function savePin(
       cachePinDetail(state.currentMapId, state.editingPinId, saved);
       clearPinDirty(state.editingPinId);
       captureEditFormBaselineFromForm();
-      await reloadPinsForMap(state.currentMapId);
+      upsertLocalPinMarker(saved);
 
       if (autoSave) {
-        renderPins();
-        renderPinList();
-        highlightPin(state.editingPinId);
+        schedulePinUiRefresh({ highlightId: state.editingPinId });
       } else if (navigateOnSuccess) {
         backToEditorBrowseFn({ preserveHistory: true });
+        schedulePinUiRefresh();
       }
       return { ok: true };
     }
@@ -280,7 +285,7 @@ export async function savePin(
       const created = await createPin(state.currentMapId, payload);
       cachePinDetail(state.currentMapId, created.id, created);
       clearPinDirty(created.id);
-      await reloadPinsForMap(state.currentMapId);
+      upsertLocalPinMarker(created);
       pushPinCreateSnapshot(created.id);
       editUndoSnapshotPushed = true;
       state.editingPinId = created.id;
@@ -289,11 +294,10 @@ export async function savePin(
       syncViewportFormClasses();
 
       if (autoSave) {
-        renderPins();
-        renderPinList();
-        highlightPin(created.id);
+        schedulePinUiRefresh({ highlightId: created.id });
       } else if (navigateOnSuccess) {
         backToEditorBrowseFn({ preserveHistory: true });
+        schedulePinUiRefresh();
       }
       return { ok: true };
     }

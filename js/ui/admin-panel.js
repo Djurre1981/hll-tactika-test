@@ -117,11 +117,24 @@ function renderRoleCell(user) {
   return roleBadge;
 }
 
+function formatLastLoginLabel(iso) {
+  if (!iso) return "Last login: unknown";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Last login: unknown";
+  return `Last login: ${date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })}`;
+}
+
 function syncTableScrollHeight(rowCount = users.length) {
   const tableWrap = els.panel?.querySelector(".admin-panel__table-wrap");
   if (!tableWrap) return;
   const visibleRows = Math.min(Math.max(rowCount, 1), 10);
   tableWrap.style.setProperty("--admin-table-visible-rows", String(visibleRows));
+  if (currentUser?.role === "owner") {
+    tableWrap.style.setProperty("--admin-table-row-height", "3.55rem");
+  }
 }
 
 function renderUsers() {
@@ -146,7 +159,17 @@ function renderUsers() {
 
     const steamIdCell = document.createElement("td");
     steamIdCell.className = "admin-panel__steam-id";
-    steamIdCell.textContent = user.steamId;
+    const steamIdValue = document.createElement("div");
+    steamIdValue.className = "admin-panel__steam-id-value";
+    steamIdValue.textContent = user.steamId;
+    steamIdCell.appendChild(steamIdValue);
+    // Owner-only: API only includes lastSignedInAt for owners
+    if (currentUser?.role === "owner") {
+      const lastLogin = document.createElement("div");
+      lastLogin.className = "admin-panel__last-login";
+      lastLogin.textContent = formatLastLoginLabel(user.lastSignedInAt);
+      steamIdCell.appendChild(lastLogin);
+    }
 
     const roleCell = document.createElement("td");
     roleCell.appendChild(renderRoleCell(user));

@@ -4,6 +4,7 @@ export const REQUIRES_KEYS = new Set([
   "truck",
   "repair-station",
   "barricade",
+  "depot",
   "faction-specific",
 ]);
 

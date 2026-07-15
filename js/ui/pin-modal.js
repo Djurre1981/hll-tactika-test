@@ -24,6 +24,7 @@ export const REQUIRES_ICON_CONFIG = {
   truck: { icon: "fa-solid fa-truck", label: "Transport Truck" },
   "repair-station": { icon: "fa-solid fa-screwdriver-wrench", label: "Repair Station" },
   barricade: { icon: "fa-solid fa-road-barrier", label: "Build Barricade" },
+  depot: { icon: "fa-solid fa-warehouse", label: "Depot" },
 };
 
 const REQUIRES_FACTION_CONFIG = {

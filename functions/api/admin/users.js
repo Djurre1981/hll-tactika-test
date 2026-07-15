@@ -26,7 +26,10 @@ async function enrichMembers(members, env, session = null, { includeLastSignedIn
   if (includeLastSignedIn) {
     const data = await loadUsersData(env);
     lastSignedInById = new Map(
-      data.users.map((user) => [String(user.steamId), user.lastSignedInAt || null])
+      data.users.map((user) => [
+        String(user.steamId).trim(),
+        user.lastSignedInAt || null,
+      ])
     );
   }
 
