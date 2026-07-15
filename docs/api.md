@@ -50,7 +50,7 @@ Role capabilities: [roles.md](roles.md). Pin field shapes: [data-schemas.md](dat
 
 Stored in Cloudflare KV — see [data-schemas.md](data-schemas.md). `/data/pins.json` returns `404`.
 
-- **Markers** (`GET ?mapId=`) — `id`, coords, tag, faction, title, thumbnail, `detailToken`, `hasMedia`; no `description`, `videoUrl`, `mediaItems`, or creator fields.
+- **Markers** (`GET ?mapId=`) — `id`, coords, tag, faction, title, thumbnail, `createdBy`, `detailToken`, `hasMedia`; no `description`, `videoUrl`, `mediaItems`, or `createdByName`.
 - **Details** (`GET …/details`) — HMAC token in query (`PIN_DETAIL_SECRET`, 20 min TTL). Expired token → **HTTP 498** (client refreshes via `POST …/token` and retries).
 - **Token refresh** (`POST …/token`) — body `{ mapId }` only; returns fresh `detailToken`.
 - **Thumbnail fill** (`POST …/thumbnail`) — multipart `mapId` + image `file` (max 2MB JPEG/still), or JSON `{ mapId, thumbnailUrl }` for YouTube/Medal CDN stills. Any signed-in member. Sets `pin.thumbnail` only when it is not already a **compact silent** still (platform CDN, or an image URL that is not also a `mediaItems` / `videoUrl` entry — full images reused as thumbnails can be replaced). Auth required. Silent (not shown as a media row in the editor).

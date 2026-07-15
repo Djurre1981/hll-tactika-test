@@ -12,6 +12,7 @@ export function canModifyPin(pin, steamId, role) {
   if (ANY_PIN_ROLES.includes(role)) {
     return true;
   }
-  // Orphan legacy pins (missing createdBy) are assist/admin/owner only
-  return Boolean(steamId) && pin?.createdBy === steamId;
+  // Orphan/seed pins (missing createdBy) are assist/admin/owner only
+  if (!pin?.createdBy || !steamId) return false;
+  return String(pin.createdBy) === String(steamId);
 }

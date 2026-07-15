@@ -13,5 +13,7 @@ export function canModifyPin(pin) {
   if (!user || !pin) return false;
   if (!canEnterEditorMode()) return false;
   if (ANY_PIN_ROLES.includes(user.role)) return true;
-  return pin.createdBy === user.steamId;
+  // editor (Comp Advisor): own pins only; seed/orphan (null/missing) stay assist+
+  if (!pin.createdBy || !user.steamId) return false;
+  return String(pin.createdBy) === String(user.steamId);
 }

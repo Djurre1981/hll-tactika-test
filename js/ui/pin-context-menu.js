@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { deletePin as apiDeletePin } from "../api/pins.js";
+import { canModifyPin } from "../helpers/permissions.js";
 import { pushPinDeleteSnapshot } from "../editor/undo-redo.js";
 import { showEditorToast } from "./editor-toast.js";
 
@@ -17,6 +18,11 @@ let deleteOnlyMenuKind = null;
 export function showPinContextMenu(clientX, clientY) {
   const menu = getPinContextMenu();
   if (!menu || !state.contextMenuPin || state.panelMode === null) return;
+  // Comp Advisor must not see edit/delete on others' or seed pins
+  if (!canModifyPin(state.contextMenuPin)) {
+    state.contextMenuPin = null;
+    return;
+  }
   deleteOnlyMenuKind = null;
   getEditMenuButton()?.classList.remove("hidden");
   menu.style.left = clientX + "px";

@@ -40,6 +40,8 @@ export function toPinMarker(pin, detailToken) {
     y: pin.y,
     faction: pin.faction,
     requires: pin.requires || {},
+    // Needed client-side so Comp Advisor (editor) can edit/delete own pins
+    createdBy: pin.createdBy ?? null,
     detailToken,
     hasMedia: pinHasStoredMedia(pin),
   };
