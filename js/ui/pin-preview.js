@@ -532,6 +532,21 @@ async function renderPreviewPlayer(previewMedia, pin, playback, pinTitle) {
   }
 
   if (playback.isImage) {
+    // Image selected as thumbnail: keep the still, but autoplay the first video after dwell.
+    const firstVideo = getPinMediaItems(pin).find((item) => item.kind === "video");
+    if (!firstVideo) return;
+
+    try {
+      const videoPlayback = await getMediaPlayback(firstVideo, {
+        signal: previewLoadAbort?.signal,
+      });
+      if (state.highlightedPinId !== pin.id) return;
+      if (!videoPlayback.playbackUrl) return;
+      schedulePreviewVideo(pin.id, videoPlayback, pinTitle, PREVIEW_VIDEO_DWELL_MS);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      console.warn("Could not resolve hover preview video", error);
+    }
     return;
   }
 

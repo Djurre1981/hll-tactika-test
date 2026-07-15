@@ -6,7 +6,7 @@ import { escapeHtml, safeUrlAttr } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { createVideoElement, clearMediaContainer } from "../utils/video.js";
-import { getPinMediaItems } from "../helpers/pin-media.js";
+import { getPinMediaItems, getPinThumbnailMediaIndex } from "../helpers/pin-media.js";
 
 export const REQUIRES_ICON_CONFIG = {
   truck: { icon: "fa-solid fa-truck", label: "Transport Truck" },
@@ -213,7 +213,7 @@ export async function openModal(marker) {
   hidePreviewImmediately();
   cancelPendingModalClose();
   state.modalPin = marker;
-  state.modalMediaIndex = 0;
+  state.modalMediaIndex = getPinThumbnailMediaIndex(marker);
   getModalTitle().textContent = marker.title;
   getModalDescription().textContent = "";
 
@@ -276,6 +276,7 @@ export async function openModal(marker) {
     if (state.modalPin?.id !== markerId) return;
 
     state.modalPin = pin;
+    state.modalMediaIndex = getPinThumbnailMediaIndex(pin);
     getModalDescription().textContent = pin.description || "";
 
     const uploader = getPinUploaderLabel(pin);

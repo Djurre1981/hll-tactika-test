@@ -173,6 +173,18 @@ export function getPinMediaItems(pin) {
   return items;
 }
 
+/** Index of the thumbnail-selected media item (0 when unset / unknown). */
+export function getPinThumbnailMediaIndex(pin) {
+  const items = getPinMediaItems(pin);
+  if (!items.length) return 0;
+  const thumb = String(pin?.thumbnail || "").trim();
+  if (!thumb) return 0;
+  const owner = findMediaItemForThumbnail(items, thumb);
+  if (!owner) return 0;
+  const index = items.indexOf(owner);
+  return index >= 0 ? index : 0;
+}
+
 export function pinHasMedia(pin) {
   if (pin?.hasMedia === true) return true;
   if (pin?.hasMedia === false) return false;
