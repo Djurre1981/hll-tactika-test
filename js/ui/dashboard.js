@@ -1,4 +1,4 @@
-import { navigate, pathForMode, ROUTES } from "./router.js";
+import { go, pathForMode, ROUTES } from "./router.js";
 
 const HUB_TABS = ["dashboard", "strats", "management", "calendar"];
 
@@ -144,15 +144,15 @@ export function bindDashboardUi() {
   const els = getEls();
 
   els.hubLogo?.addEventListener("click", () => {
-    navigate(ROUTES.HOME);
+    go(ROUTES.HOME);
   });
 
   els.btnDashboardHome?.addEventListener("click", () => {
-    navigate(ROUTES.HOME);
+    go(ROUTES.HOME);
   });
 
   els.sidebarLogoHome?.addEventListener("click", () => {
-    navigate(ROUTES.HOME);
+    go(ROUTES.HOME);
   });
 
   els.hubNav?.addEventListener("click", (event) => {
@@ -177,7 +177,7 @@ export function bindDashboardUi() {
 
     if (hub === "dashboard") {
       setHubIndex(0);
-      navigate(ROUTES.HOME);
+      go(ROUTES.HOME);
     }
   });
 
@@ -195,7 +195,20 @@ export function bindDashboardUi() {
 
     const mode = tool.getAttribute("data-tool");
     if (mode === "viewer" || mode === "strats") {
-      navigate(pathForMode(mode));
+      go(pathForMode(mode));
     }
+  });
+}
+
+/** Bind dashboard/home links that exist on tool pages (no hub). */
+export function bindToolChromeNav() {
+  if (bound) return;
+  bound = true;
+  const els = getEls();
+  els.btnDashboardHome?.addEventListener("click", () => {
+    go(ROUTES.HOME);
+  });
+  els.sidebarLogoHome?.addEventListener("click", () => {
+    go(ROUTES.HOME);
   });
 }

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" class="welcome-boot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HLL-Tactika</title>
+  <meta name="description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hll-tactika.pages.dev/" />
+  <meta property="og:title" content="HLL-Tactika" />
+  <meta property="og:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="HLL-Tactika" />
+  <meta name="twitter:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta name="twitter:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/layout.css" />
+  <link rel="stylesheet" href="/css/utilities.css" />
+  <link rel="stylesheet" href="/css/fonts/texta.css" />
+  <link rel="stylesheet" href="/css/components/glass.css" />
+  <link rel="stylesheet" href="/css/components/auth-gate.css" />
+  <link rel="stylesheet" href="/css/components/welcome-page.css" />
+  <link rel="stylesheet" href="/css/components/bye-page.css" />
+  <link rel="stylesheet" href="/css/components/mode-switch.css" />
+  <link rel="stylesheet" href="/css/components/dashboard.css" />
+  <link rel="stylesheet" href="/css/components/user-menu.css" />
+  <script>
+    (function () {
+      try {
+        var authed = localStorage.getItem("hll-tactika-authed") === "1";
+        if (!authed) {
+          var params = new URLSearchParams(window.location.search);
+          var isForbidden = params.get("auth") === "forbidden";
+          var videoPreload = document.createElement("link");
+          videoPreload.rel = "preload";
+          videoPreload.as = "video";
+          videoPreload.href = isForbidden
+            ? "/assets/welcome/bye.mp4"
+            : "/assets/welcome/welcome.mp4";
+          videoPreload.type = "video/mp4";
+          document.head.appendChild(videoPreload);
+          document.documentElement.classList.remove("dashboard-boot");
+          document.documentElement.classList.add("welcome-boot");
+          return;
+        }
+        document.documentElement.classList.remove("welcome-boot");
+        document.documentElement.classList.add("dashboard-boot");
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    html.welcome-boot #dashboard-page,
+    html.welcome-boot #hub-chrome,
+    html.welcome-boot #user-cluster,
+    html.welcome-boot #bye-page { display: none !important; }
+    html.bye-boot #welcome-page,
+    html.bye-boot #dashboard-page,
+    html.bye-boot #hub-chrome,
+    html.bye-boot #user-cluster { display: none !important; }
+    html.dashboard-boot #welcome-page,
+    html.dashboard-boot #bye-page { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="welcome-page" id="welcome-page">
+    <video
+      id="welcome-scrub-video"
+      class="welcome-page__video"
+      data-src="/assets/welcome/welcome.mp4"
+      muted
+      playsinline
+      webkit-playsinline
+      disablePictureInPicture
+      disableRemotePlayback
+    ></video>
+    <div class="welcome-page__gradient" aria-hidden="true"></div>
+    <nav class="welcome-page__nav" aria-label="Welcome">
+      <button type="button" class="welcome-page__nav-link" id="btn-welcome-sign-in">Sign in</button>
+      <span class="welcome-page__nav-sep" aria-hidden="true"></span>
+      <a
+        class="welcome-page__nav-link"
+        href="https://discord.gg/kDaK9wpr8y"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Join us</a>
+    </nav>
+    <div class="welcome-page__brand">
+      <p class="welcome-page__intro" id="welcome-intro" aria-live="polite"></p>
+      <div class="welcome-page__logo-wrap">
+        <img
+          class="welcome-page__logo"
+          src="/assets/logos/tactika-full-logo.svg"
+          alt="HLL Tactika"
+          width="840"
+          height="186"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="bye-page is-hidden" id="bye-page">
+    <video
+      id="bye-scrub-video"
+      class="bye-page__video"
+      data-src="/assets/welcome/bye.mp4"
+      muted
+      playsinline
+      webkit-playsinline
+      disablePictureInPicture
+      disableRemotePlayback
+    ></video>
+    <div class="bye-page__gradient" aria-hidden="true"></div>
+    <div class="bye-page__brand">
+      <div class="bye-page__logo-wrap">
+        <img
+          class="bye-page__logo"
+          src="/assets/logos/tactika-full-logo.svg"
+          alt="HLL Tactika"
+          width="840"
+          height="186"
+        />
+      </div>
+    </div>
+    <div class="bye-page__footer">
+      <div class="bye-page__actions" id="bye-actions" hidden>
+        <a
+          class="bye-page__action"
+          href="https://discord.gg/kDaK9wpr8y"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Join us</a>
+        <button type="button" class="bye-page__action" id="btn-bye-give-up">Give up</button>
+      </div>
+      <p
+        class="bye-page__intro"
+        id="bye-intro"
+        aria-live="polite"
+        data-typewriter-text="Your credentials are non-compliant. But you've seen the room we kept locked from everyone. That either makes you an asset or a liability. The choice is binary..."
+      ></p>
+    </div>
+  </div>
+
+  <dialog class="auth-gate" id="auth-gate">
+    <div class="auth-gate__card">
+      <button type="button" class="auth-gate__close" id="btn-auth-close" aria-label="Close">&times;</button>
+      <h2 id="auth-gate-title">CIRCLE COMP LOGIN</h2>
+      <p id="auth-gate-message" class="auth-gate__message">
+        Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.
+      </p>
+      <a href="/api/auth/steam" class="btn btn--steam" id="btn-steam-login">
+        <span class="btn--steam__icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 2.64.85 5.08 2.29 7.07L.1 24l5.08-1.33A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12S18.63 0 12 0zm6.49 7.38l-1.81 5.25-5.31-.09-4.12 3.81-.64-3.88 4.43-3.52 6-3.07z"/>
+          </svg>
+        </span>
+        <span class="btn--steam__label">Sign in with Steam</span>
+      </a>
+    </div>
+  </dialog>
+
+  <div id="hub-chrome" class="hub-chrome hidden">
+    <button type="button" class="hub-chrome__logo" id="hub-logo" aria-label="Tactika dashboard">
+      <img src="/assets/logos/tactika-rectangle-logo.svg" alt="" width="44" height="44" />
+    </button>
+    <div class="hub-nav mode-switch" id="hub-nav">
+      <div class="mode-switch__surface glass-surface hub-nav__surface" role="tablist" aria-label="Hub navigation">
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="dashboard" aria-selected="true">Dashboard</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="strats" aria-selected="false" data-placeholder="1">My Strats</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="management" aria-selected="false" data-placeholder="1">Management</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-hub="calendar" aria-selected="false" data-placeholder="1">Calendar</button>
+        <span class="mode-switch__thumb hub-nav__thumb" aria-hidden="true"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="user-cluster hidden" id="user-cluster">
+    <div class="user-cluster__avatar-wrap">
+      <div class="user-cluster__menu" role="menu">
+        <button id="btn-dashboard-home" class="user-cluster__signout" type="button" role="menuitem">Dashboard</button>
+        <button id="btn-admin-panel" class="user-cluster__admin hidden" type="button" role="menuitem">Admin Panel</button>
+        <button id="btn-logout" class="user-cluster__signout" type="button" role="menuitem">Sign out</button>
+      </div>
+      <button type="button" class="user-cluster__avatar-btn" id="header-user-trigger" aria-label="Account">
+        <img id="user-avatar" class="user-cluster__avatar hidden" alt="" width="40" height="40" />
+      </button>
+    </div>
+    <span id="user-name" class="user-cluster__name"></span>
+  </div>
+
+  <div id="dashboard-page" class="dashboard-page hidden" aria-label="Dashboard">
+    <div class="dashboard-page__bg" aria-hidden="true"></div>
+    <div class="dashboard-page__shell glass-panel">
+      <header class="dashboard-page__header">
+        <h1 class="dashboard-page__greeting" id="dashboard-greeting">Welcome back</h1>
+        <p class="dashboard-page__tagline">Your Circle command hub — prep, climb intel, and strats in one place.</p>
+      </header>
+      <div class="dashboard-page__grid">
+        <section class="dashboard-hero glass-surface" aria-labelledby="dashboard-hero-title">
+          <p class="dashboard-hero__eyebrow">Overview</p>
+          <h2 class="dashboard-hero__title" id="dashboard-hero-title">Circle operations</h2>
+          <p class="dashboard-hero__body">
+            Jump into the climbing guide for pin intel, or open Stratmaker to plan the next match.
+            More Circle tools will land here as they come online.
+          </p>
+        </section>
+        <aside class="dashboard-upcoming glass-surface" aria-labelledby="dashboard-upcoming-title">
+          <h2 class="dashboard-upcoming__title" id="dashboard-upcoming-title">Upcoming games</h2>
+          <div class="dashboard-upcoming__list" id="dashboard-upcoming-list">
+            <article class="dashboard-upcoming__card">
+              <p class="dashboard-upcoming__card-meta">Schedule</p>
+              <p class="dashboard-upcoming__card-title">No matches listed</p>
+              <p class="dashboard-upcoming__card-sub">Fixture sync is coming soon.</p>
+            </article>
+            <article class="dashboard-upcoming__card dashboard-upcoming__card--muted">
+              <p class="dashboard-upcoming__card-meta">Scrim</p>
+              <p class="dashboard-upcoming__card-title">TBD</p>
+              <p class="dashboard-upcoming__card-sub">Placeholder slot</p>
+            </article>
+            <article class="dashboard-upcoming__card dashboard-upcoming__card--muted">
+              <p class="dashboard-upcoming__card-meta">Comp</p>
+              <p class="dashboard-upcoming__card-title">TBD</p>
+              <p class="dashboard-upcoming__card-sub">Placeholder slot</p>
+            </article>
+          </div>
+        </aside>
+        <section class="dashboard-tools" aria-labelledby="dashboard-tools-title">
+          <h2 class="dashboard-tools__title" id="dashboard-tools-title">The Circle Tools</h2>
+          <div class="dashboard-tools__grid">
+            <button type="button" class="dashboard-tool glass-surface" data-tool="strats" id="tool-stratmaker">
+              <span class="dashboard-tool__title">Circle Stratmaker</span>
+              <span class="dashboard-tool__desc">Draw and share ops on the tactical map.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface" data-tool="micro-prep" data-placeholder="1" id="tool-micro-prep">
+              <span class="dashboard-tool__title">Micro Prep</span>
+              <span class="dashboard-tool__desc">Match-day drills and checklists — coming soon.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface dashboard-tool--climb" data-tool="viewer" id="tool-climbing-guide">
+              <span class="dashboard-tool__title">Climbing Guide</span>
+              <span class="dashboard-tool__desc">Interactive climb and MG spot map.</span>
+            </button>
+            <button type="button" class="dashboard-tool glass-surface" data-tool="records" data-placeholder="1" id="tool-records">
+              <span class="dashboard-tool__title">HLL Records</span>
+              <span class="dashboard-tool__desc">VODs and result history — coming soon.</span>
+            </button>
+          </div>
+        </section>
+      </div>
+      <p class="dashboard-toast" id="dashboard-toast" role="status" aria-live="polite" hidden></p>
+    </div>
+  </div>
+
+  <script type="module" src="/js/entries/home.js"></script>
+</body>
+</html>

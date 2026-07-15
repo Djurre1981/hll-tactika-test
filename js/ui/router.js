@@ -4,9 +4,6 @@ export const ROUTES = {
   STRATMAKER: "/tool/stratmaker",
 };
 
-let onRouteChange = null;
-let silent = false;
-
 function normalizePathname(pathname) {
   if (!pathname || pathname === "/") return "/";
   return pathname.replace(/\/+$/, "") || "/";
@@ -46,55 +43,21 @@ export function getRoute() {
   return parseRoute();
 }
 
-function notify() {
-  if (silent || typeof onRouteChange !== "function") return;
-  onRouteChange(parseRoute());
-}
-
-export function navigate(path, { replace = false, notify: shouldNotify = true } = {}) {
+/** Full navigation between MPA pages (and same-document assign). */
+export function go(path, { replace = false } = {}) {
   const url = new URL(path, window.location.origin);
   const next = url.pathname + url.search + url.hash;
   const current = window.location.pathname + window.location.search + window.location.hash;
-  if (next === current) {
-    if (shouldNotify) notify();
-    return parseRoute(url.pathname);
-  }
+  if (next === current) return parseRoute(url.pathname);
   if (replace) {
-    window.history.replaceState({}, "", next);
+    window.location.replace(next);
   } else {
-    window.history.pushState({}, "", next);
+    window.location.assign(next);
   }
-  if (shouldNotify) notify();
   return parseRoute(url.pathname);
 }
 
-export function setRouteChangeHandler(handler) {
-  onRouteChange = handler;
-}
-
-/** Normalize `/` and unknown paths to `/home` before the first paint of the route. */
-export function initRouter({ onRouteChange: handler } = {}) {
-  if (handler) onRouteChange = handler;
-
-  const route = parseRoute();
-  const search = window.location.search;
-  const hash = window.location.hash;
-  const pathname = normalizePathname(window.location.pathname);
-
-  if (pathname === "/" || route.name === "unknown") {
-    silent = true;
-    window.history.replaceState({}, "", ROUTES.HOME + search + hash);
-    silent = false;
-  }
-
-  window.addEventListener("popstate", () => {
-    const next = parseRoute();
-    if (next.name === "unknown") {
-      navigate(ROUTES.HOME, { replace: true });
-      return;
-    }
-    notify();
-  });
-
-  return parseRoute();
+/** @deprecated Use go() — soft History routing is no longer used across pages. */
+export function navigate(path, { replace = false } = {}) {
+  return go(path, { replace });
 }

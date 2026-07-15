@@ -4,10 +4,12 @@ import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SIDECAR_PORT = 8790;
+const API_PORT = 8788;
+const VITE_PORT = 5173;
 const children = [];
 let shuttingDown = false;
 
-/** Kill whatever is still bound to the StratSketch sidecar port (common after a hung exit). */
+/** Kill whatever is still bound to a local port (common after a hung exit). */
 function freePort(port) {
   try {
     if (process.platform === "win32") {
@@ -64,16 +66,26 @@ function run(command, args, name) {
     if (shuttingDown) return;
     const exitCode = code ?? (signal ? 1 : 0);
     if (exitCode !== 0) console.error(`${name} exited with code ${exitCode}`);
-    // Either child stopping (incl. wrangler [x]) should tear everything down.
     shutdown(exitCode);
   });
   return child;
 }
 
 freePort(SIDECAR_PORT);
+freePort(API_PORT);
+freePort(VITE_PORT);
+
+// Open Vite directly — wrangler.toml pages_build_output_dir=dist would otherwise
+// serve a stale production build on :8788 without HMR.
+console.log(`Dev: http://127.0.0.1:${VITE_PORT}/home/  (API → wrangler :${API_PORT})`);
 
 run("node", ["scripts/stratsketch-dev-import-server.mjs"], "import-sidecar");
-run("npx", ["wrangler", "pages", "dev", ".", "--compatibility-date=2024-01-01"], "wrangler");
+run(
+  "npx",
+  ["wrangler", "pages", "dev", "dist", "--port", String(API_PORT), "--compatibility-date=2024-01-01"],
+  "wrangler"
+);
+run("npx", ["vite", "--port", String(VITE_PORT), "--strictPort"], "vite");
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));

@@ -3,13 +3,13 @@ import { state } from "../state.js";
 import { initWelcomeTypewriter } from "./welcome-typewriter.js";
 import {
   bindDashboardUi,
+  bindToolChromeNav,
   hideDashboardView,
   populateDashboard,
-  resolveEnterApp,
   showComingSoon,
   showDashboardView,
 } from "./dashboard.js";
-import { getRoute, initRouter, navigate, ROUTES, setRouteChangeHandler } from "./router.js";
+import { go, ROUTES } from "./router.js";
 
 function applyToolChrome(tool) {
   const modeSwitch = document.getElementById("mode-switch");
@@ -33,8 +33,12 @@ const DEFAULT_AUTH = {
 
 const AUTH_CLOSE_MS = 500;
 const AUTH_BOOT_KEY = "hll-tactika-authed";
-const WELCOME_SCRUB_MODULE = new URL("./welcome-scrub.js", import.meta.url);
 const BYE_VIDEO_SRC = "/assets/welcome/bye.mp4";
+
+function loadWelcomeScrub() {
+  // String dynamic import so Vite bundles the module graph (not a raw asset URL).
+  return import("./welcome-scrub.js");
+}
 
 function preloadVideoAsset(href) {
   if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
@@ -226,7 +230,7 @@ function showAuthPending() {
 
   scrubController = els.scrubVideo?.__welcomeScrub ?? null;
   if (els.scrubVideo && !scrubController) {
-    void import(WELCOME_SCRUB_MODULE).then(({ initWelcomeScrub }) => {
+    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
       scrubController = initWelcomeScrub(els.scrubVideo);
     });
   }
@@ -250,7 +254,7 @@ function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) 
 
   scrubController = els.scrubVideo?.__welcomeScrub ?? null;
   if (els.scrubVideo && !scrubController) {
-    void import(WELCOME_SCRUB_MODULE).then(({ initWelcomeScrub }) => {
+    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
       scrubController = initWelcomeScrub(els.scrubVideo);
     });
   }
@@ -339,7 +343,7 @@ function showBye() {
 
   byeScrubController = els.byeScrubVideo?.__welcomeScrub ?? null;
   if (els.byeScrubVideo && !byeScrubController) {
-    void import(WELCOME_SCRUB_MODULE).then(({ initWelcomeScrub }) => {
+    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
       byeScrubController = initWelcomeScrub(els.byeScrubVideo);
     });
   }
@@ -402,58 +406,21 @@ export function enterApp(mode = "viewer") {
   return mode;
 }
 
+/** Full page navigation back to the dashboard (MPA). */
 export async function returnToDashboard() {
-  const els = getAuthEls();
-  const user = getCurrentUser();
-  if (!user) {
-    showWelcome({ openDialog: false });
-    return;
-  }
-  document.documentElement.classList.remove("app-boot", "welcome-boot", "bye-boot");
-  document.documentElement.classList.add("dashboard-boot");
-  els.appRoot?.classList.add("hidden");
-  els.modeSwitch?.classList.add("hidden");
-  state.toolRoute = null;
-  applyUserCluster(user);
-  populateDashboard(user);
-  showDashboardView();
-  document.title = "HLL-Tactika";
+  go(ROUTES.HOME);
 }
 
-let routeHandler = null;
-
-export function setRouteHandler(handler) {
-  routeHandler = handler;
-}
-
-async function handleRouteChange(route) {
-  if (typeof routeHandler === "function") {
-    await routeHandler(route);
-    return;
-  }
-  await defaultRouteHandler(route);
-}
-
-async function defaultRouteHandler(route) {
-  const user = getCurrentUser();
-  if (!user) return;
-
-  if (route.name === "stratmaker" && user.role === "viewer") {
+function consumeHomeNotice() {
+  const params = new URLSearchParams(window.location.search);
+  const notice = params.get("notice");
+  if (!notice) return;
+  if (notice === "stratmaker-locked") {
     showComingSoon("Circle Stratmaker is not available for your role");
-    navigate(ROUTES.HOME, { replace: true, notify: false });
-    showDashboard(user);
-    return;
   }
-
-  if (route.name === "home") {
-    await returnToDashboard();
-    return;
-  }
-
-  if (route.name === "climbing-guide" || route.name === "stratmaker") {
-    enterApp(route.mode);
-    resolveEnterApp(route.mode);
-  }
+  params.delete("notice");
+  const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
+  window.history.replaceState({}, "", next);
 }
 
 function bindSteamButtonMirror(btn) {
@@ -512,17 +479,22 @@ function bindWelcomeUi() {
   });
 }
 
-export async function initAuth() {
-  const els = getAuthEls();
+function bindLogout() {
+  getAuthEls().btnLogout?.addEventListener("click", async () => {
+    setStoredAuthSession(false);
+    await logout();
+    go(ROUTES.HOME, { replace: true });
+  });
+}
+
+/** Home page: welcome / bye / dashboard only. */
+export async function initHomeAuth() {
   const authResult = getAuthErrorFromUrl();
   clearAuthQuery();
 
   bindWelcomeUi();
   bindByeUi();
-  setRouteChangeHandler((route) => {
-    void handleRouteChange(route);
-  });
-  initRouter();
+  bindLogout();
 
   if (authResult?.type === "forbidden") {
     showBye();
@@ -530,12 +502,6 @@ export async function initAuth() {
   }
 
   showAuthPending();
-
-  els.btnLogout?.addEventListener("click", async () => {
-    setStoredAuthSession(false);
-    await logout();
-    window.location.reload();
-  });
 
   try {
     const user = await fetchCurrentUser();
@@ -557,22 +523,8 @@ export async function initAuth() {
     }
 
     bindDashboardUi();
-    const route = getRoute();
-    if (route.name === "stratmaker" && user.role === "viewer") {
-      showComingSoon("Circle Stratmaker is not available for your role");
-      navigate(ROUTES.HOME, { replace: true, notify: false });
-      showDashboard(user);
-      return { ok: true, user };
-    }
-
-    if (route.name === "climbing-guide" || route.name === "stratmaker") {
-      establishSession(user);
-      enterApp(route.mode);
-      resolveEnterApp(route.mode);
-      return { ok: true, user };
-    }
-
     showDashboard(user);
+    consumeHomeNotice();
     return { ok: true, user };
   } catch (error) {
     console.error(error);
@@ -587,31 +539,55 @@ export async function initAuth() {
   }
 }
 
+/**
+ * Tool page auth. Unauthenticated users are sent to /home.
+ * @param {{ tool: "climbing-guide" | "stratmaker", enterMode: string }} options
+ */
+export async function initToolAuth({ tool, enterMode }) {
+  bindLogout();
+  bindToolChromeNav();
+
+  try {
+    const user = await fetchCurrentUser();
+    if (!user) {
+      setStoredAuthSession(false);
+      go(ROUTES.HOME, { replace: true });
+      return { ok: false, reason: "unauthenticated" };
+    }
+
+    if (tool === "stratmaker" && user.role === "viewer") {
+      go(`${ROUTES.HOME}?notice=stratmaker-locked`, { replace: true });
+      return { ok: false, reason: "forbidden-role" };
+    }
+
+    establishSession(user);
+    state.toolRoute = tool;
+    enterApp(enterMode);
+    return { ok: true, user };
+  } catch (error) {
+    console.error(error);
+    go(ROUTES.HOME, { replace: true });
+    return { ok: false, reason: "offline" };
+  }
+}
+
+/** @deprecated Prefer initHomeAuth / initToolAuth */
+export async function initAuth() {
+  return initHomeAuth();
+}
+
 export async function loadMapMarkers(mapId) {
   const response = await fetch(`/api/pins?mapId=${encodeURIComponent(mapId)}`, {
     credentials: "same-origin",
   });
   if (response.status === 401) {
-    showWelcome({
-      openDialog: true,
-      dialogContent: {
-        title: DEFAULT_AUTH.title,
-        message: DEFAULT_AUTH.message,
-        showLogin: true,
-      },
-    });
+    setStoredAuthSession(false);
+    go(ROUTES.HOME, { replace: true });
     throw new Error("unauthenticated");
   }
   if (response.status === 403) {
-    showWelcome({
-      openDialog: true,
-      dialogContent: {
-        title: "Access not granted",
-        message:
-          "You signed in with Steam, but your account is not on the member list yet. Ask an admin to add your Steam ID to the users list.",
-        showLogin: false,
-      },
-    });
+    setStoredAuthSession(false);
+    go(`${ROUTES.HOME}?auth=forbidden`, { replace: true });
     throw new Error("forbidden");
   }
   const data = await response.json().catch(() => ({}));

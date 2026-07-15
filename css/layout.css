@@ -135,6 +135,40 @@
   transform: translateY(-0.35rem);
 }
 
+/* Tool pages load layout.css but not dashboard.css — keep button chrome here. */
+.sidebar__logo--btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  grid-row: 2;
+  line-height: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sidebar__logo--btn:hover,
+.sidebar__logo--btn:focus-visible {
+  background: transparent;
+  opacity: 0.88;
+}
+
+.sidebar__logo--btn img {
+  display: block;
+  width: 100%;
+  max-width: 14rem;
+  height: auto;
+  opacity: 0.92;
+  transform: translateY(-0.35rem);
+}
+
 .sidebar__divider {
   flex-shrink: 0;
   height: 0;
