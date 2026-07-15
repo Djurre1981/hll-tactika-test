@@ -7,6 +7,16 @@ import {
   updateManagedUserRole,
 } from "../api/admin.js";
 import { getCurrentUser } from "../api/auth.js";
+import {
+  ROLE_ORDER,
+  ROLE_LABELS,
+  closeRolePicker,
+  bindRolePickerDismiss,
+  unbindRolePickerDismiss,
+  createRolePicker,
+  setRolePickerValue,
+  dismissUserMenu,
+} from "./role-picker.js";
 
 const els = {
   panel: document.getElementById("admin-panel"),
@@ -23,20 +33,8 @@ const els = {
   alertTestButton: document.getElementById("btn-admin-alert-test"),
 };
 
-const ROLE_ORDER = { owner: 0, admin: 1, assist: 2, editor: 3, viewer: 4 };
-const ROLE_LABELS = {
-  owner: "Owner",
-  admin: "Comp Admin",
-  assist: "Comp Assist",
-  editor: "Comp Advisor",
-  viewer: "Comp Member",
-};
-const ASSIGNABLE_ROLES = ["viewer", "editor", "assist", "admin"];
-
 let users = [];
 let currentUser = null;
-let openRolePicker = null;
-let rolePickerDismissAbort = null;
 
 export function initAdminPanel() {
   currentUser = getCurrentUser();
@@ -69,207 +67,9 @@ export function initAdminPanel() {
   els.form?.addEventListener("submit", onAddUser);
 }
 
-function closeRolePicker(picker = openRolePicker) {
-  if (!picker) return;
-
-  const wrap = picker.querySelector(".admin-role-picker__list-wrap")
-    || picker._rolePickerListWrap;
-  picker.classList.remove("is-open");
-  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "false");
-  if (wrap) {
-    wrap.classList.remove("is-open");
-    wrap.style.top = "";
-    wrap.style.left = "";
-    wrap.style.width = "";
-    if (wrap.parentElement === els.panel) {
-      picker.appendChild(wrap);
-    }
-    delete picker._rolePickerListWrap;
-  }
-  if (openRolePicker === picker) {
-    openRolePicker = null;
-  }
-}
-
-function getRolePickerListWrap(picker) {
-  return picker._rolePickerListWrap || picker.querySelector(".admin-role-picker__list-wrap");
-}
-
-function positionRolePickerList(picker) {
-  const wrap = getRolePickerListWrap(picker);
-  if (!wrap || !els.panel) return;
-
-  const dialogRect = els.panel.getBoundingClientRect();
-  const rect = picker.getBoundingClientRect();
-  const listHeight = wrap.offsetHeight;
-  const spaceBelow = dialogRect.bottom - rect.bottom - 8;
-  const spaceAbove = rect.top - dialogRect.top - 8;
-  const openBelow = spaceBelow >= listHeight || spaceBelow >= spaceAbove;
-
-  wrap.style.width = `${rect.width}px`;
-  wrap.style.left = `${rect.left - dialogRect.left}px`;
-  wrap.style.top = openBelow
-    ? `${rect.bottom - dialogRect.top + 4}px`
-    : `${rect.top - dialogRect.top - listHeight - 4}px`;
-}
-
-function bindRolePickerDismiss() {
-  rolePickerDismissAbort?.abort();
-  rolePickerDismissAbort = new AbortController();
-  const { signal } = rolePickerDismissAbort;
-
-  document.addEventListener(
-    "click",
-    (event) => {
-      if (!openRolePicker) return;
-
-      const wrap = getRolePickerListWrap(openRolePicker);
-      const clickedInsidePicker = openRolePicker.contains(event.target);
-      const clickedInsideList = wrap?.contains(event.target);
-      if (!clickedInsidePicker && !clickedInsideList) {
-        closeRolePicker();
-      }
-    },
-    { signal }
-  );
-
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (event.key === "Escape") {
-        closeRolePicker();
-      }
-    },
-    { signal }
-  );
-
-  window.addEventListener(
-    "resize",
-    () => {
-      if (openRolePicker) {
-        positionRolePickerList(openRolePicker);
-      }
-    },
-    { signal }
-  );
-
-  const tableBody = els.panel?.querySelector(".admin-panel__table tbody");
-  tableBody?.addEventListener(
-    "scroll",
-    () => {
-      if (openRolePicker) {
-        positionRolePickerList(openRolePicker);
-      }
-    },
-    { signal }
-  );
-}
-
-function unbindRolePickerDismiss() {
-  rolePickerDismissAbort?.abort();
-  rolePickerDismissAbort = null;
-}
-
-function openRolePickerMenu(picker) {
-  if (openRolePicker && openRolePicker !== picker) {
-    closeRolePicker();
-  }
-
-  const wrap = picker.querySelector(".admin-role-picker__list-wrap");
-  if (!wrap) return;
-
-  els.panel.appendChild(wrap);
-  picker._rolePickerListWrap = wrap;
-
-  picker.classList.add("is-open");
-  wrap.classList.add("is-open");
-  picker.querySelector(".admin-role-picker__chevron")?.setAttribute("aria-expanded", "true");
-  positionRolePickerList(picker);
-  openRolePicker = picker;
-}
-
-function toggleRolePicker(picker) {
-  if (picker.classList.contains("is-open")) {
-    closeRolePicker(picker);
-  } else {
-    openRolePickerMenu(picker);
-  }
-}
-
-function setRolePickerValue(picker, role) {
-  const label = picker.querySelector(".admin-role-picker__label");
-  if (label) {
-    label.textContent = ROLE_LABELS[role] || role;
-  }
-
-  picker.querySelectorAll(".admin-role-picker__option").forEach((option) => {
-    const isSelected = option.dataset.value === role;
-    option.classList.toggle("is-selected", isSelected);
-    option.setAttribute("aria-selected", isSelected ? "true" : "false");
-  });
-}
-
-function createRolePicker(user) {
-  const picker = document.createElement("div");
-  picker.className = "admin-role-picker";
-  picker.innerHTML = `
-    <button type="button" class="admin-role-picker__chevron" aria-label="Change role" aria-expanded="false"></button>
-    <div class="admin-role-picker__summary" tabindex="0" role="button" aria-haspopup="listbox">
-      <span class="admin-role-picker__label"></span>
-    </div>
-    <div class="admin-role-picker__list-wrap">
-      <ul class="admin-role-picker__list" role="listbox"></ul>
-    </div>
-  `;
-
-  const list = picker.querySelector(".admin-role-picker__list");
-  for (const role of ASSIGNABLE_ROLES) {
-    const option = document.createElement("li");
-    option.className = "admin-role-picker__option";
-    option.role = "option";
-    option.dataset.value = role;
-    option.textContent = ROLE_LABELS[role];
-    option.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (role === user.role) {
-        closeRolePicker(picker);
-        return;
-      }
-      closeRolePicker(picker);
-      void onRoleChange(user, role, picker);
-    });
-    list.appendChild(option);
-  }
-
-  const chevron = picker.querySelector(".admin-role-picker__chevron");
-  const summary = picker.querySelector(".admin-role-picker__summary");
-
-  chevron?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    toggleRolePicker(picker);
-  });
-
-  summary?.addEventListener("click", () => openRolePickerMenu(picker));
-  summary?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      toggleRolePicker(picker);
-    }
-  });
-
-  setRolePickerValue(picker, user.role);
-  return picker;
-}
-
-function dismissUserMenu() {
-  const wrap = els.openButton?.closest(".user-cluster__avatar-wrap");
-  wrap?.classList.add("is-menu-dismissed");
-  document.activeElement?.blur();
-}
-
 function openPanel() {
-  dismissUserMenu();
-  bindRolePickerDismiss();
+  dismissUserMenu(els.openButton);
+  bindRolePickerDismiss(els.panel);
   els.panel?.showModal();
   setStatus("");
   void loadUsers();
@@ -308,7 +108,7 @@ async function loadUsers() {
 
 function renderRoleCell(user) {
   if (user.roleEditable) {
-    return createRolePicker(user);
+    return createRolePicker(user, els.panel, onRoleChange);
   }
 
   const roleBadge = document.createElement("span");
