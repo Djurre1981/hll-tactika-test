@@ -1,11 +1,4 @@
-import { uploadPreviewImage, uploadVideo } from "../api/media.js";
-import { isMedalUrl, normalizeVideoUrl, youtubeThumbnail } from "../utils/video.js";
-import {
-  canExtractVideoFrame,
-  fileFromImageSource,
-  fileFromVideoFrame,
-} from "../utils/video-frame.js";
-import { resolveMedalClip } from "../utils/medal.js";
+import { normalizeVideoUrl, youtubeThumbnail } from "../utils/video.js";
 import {
   detectMediaKind,
   applyMediaThumbnailFlag,
@@ -15,25 +8,38 @@ import {
   isPlatformThumbnailUrl,
   isPreviewStillUrl,
   mediaUrlMatchesThumbnail,
-  pinHasCompactSilentThumbnail,
 } from "../helpers/pin-media.js";
 import { escapeHtml } from "../helpers/sanitizer.js";
-import { showEditorToast } from "../ui/editor-toast.js";
+import {
+  resolveUploadTargetRow,
+  getDropFile,
+  clearDragoverState,
+  setDragoverTarget,
+  startMediaUpload,
+  getRowUploadButton,
+  notifyFormChanged,
+  clearUploadSizeError,
+  showMediaRowValidationError,
+  isMediaUploadInProgress,
+  setActiveUploadRow,
+} from "./media-form-upload.js";
+import {
+  captureStillFromVideo,
+  captureStillFromImage,
+  ensureCapturedThumbnailForSave,
+  captureSetThumbnailUrl,
+  captureGetThumbnailUrl,
+  captureGetThumbnailOwnerUrl,
+} from "./media-form-capture.js";
 
-const UPLOAD_BUTTON_HTML =
+export const UPLOAD_BUTTON_HTML =
   '<i class="fa-solid fa-image" aria-hidden="true"></i>';
 
-const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-const UPLOAD_SIZE_ERROR_MS = 2200;
+export const MAX_VIDEO_BYTES = 80 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+export const UPLOAD_SIZE_ERROR_MS = 2200;
 
-let uploadSizeErrorTimer = null;
-let activeUploadRow = null;
-let selectedThumbnailUrl = null;
-/** Media row URL that owns the current preview still (survives silent re-capture). */
-let selectedThumbnailOwnerUrl = null;
-
-function getMediaList() {
+export function getMediaList() {
   return document.getElementById("pin-media-list");
 }
 
@@ -48,54 +54,6 @@ function getMediaFieldset() {
 function isPinFormOpen() {
   const panel = document.getElementById("edit-panel");
   return Boolean(panel && !panel.classList.contains("hidden"));
-}
-
-function resolveUploadTargetRow(preferredRow = null) {
-  if (preferredRow) return preferredRow;
-  const rows = [...getMediaList()?.querySelectorAll(".pin-media-row") || []];
-  const empty = rows.find((row) => !row.querySelector(".pin-media-row__url")?.value.trim());
-  return empty || rows[0] || null;
-}
-
-function getDropFile(dataTransfer) {
-  const files = dataTransfer?.files;
-  if (!files?.length) return null;
-  for (const file of files) {
-    if (isVideoFile(file) || isImageFile(file)) return file;
-  }
-  return files[0];
-}
-
-function clearDragoverState(fieldset) {
-  fieldset?.classList.remove("is-dragover");
-  fieldset?.querySelectorAll(".pin-media-row__url-wrap.is-dragover").forEach((el) => {
-    el.classList.remove("is-dragover");
-  });
-}
-
-function setDragoverTarget(fieldset, wrap) {
-  clearDragoverState(fieldset);
-  if (wrap) {
-    wrap.classList.add("is-dragover");
-  } else {
-    fieldset?.classList.add("is-dragover");
-  }
-}
-
-async function startMediaUpload(file, preferredRow = null) {
-  if (isMediaUploadInProgress()) return;
-  const row = resolveUploadTargetRow(preferredRow);
-  if (!row) return;
-  activeUploadRow = row;
-  await handleMediaFileUpload(file);
-}
-
-function getRowUploadButton(row) {
-  return row?.querySelector(".pin-media-row__upload") || null;
-}
-
-function notifyFormChanged() {
-  document.dispatchEvent(new CustomEvent("pin-form-changed"));
 }
 
 function createMediaRow({ url = "", isFirst = false, isThumbnail = false } = {}) {
@@ -134,7 +92,7 @@ function createMediaRow({ url = "", isFirst = false, isThumbnail = false } = {})
   const uploadBtn = row.querySelector(".pin-media-row__upload");
   uploadBtn?.addEventListener("click", () => {
     if (uploadBtn.disabled) return;
-    activeUploadRow = resolveUploadTargetRow(row);
+    setActiveUploadRow(resolveUploadTargetRow(row));
     getMediaFileInput()?.click();
   });
 
@@ -145,9 +103,10 @@ function createMediaRow({ url = "", isFirst = false, isThumbnail = false } = {})
       parsed?.invalidInput?.reportValidity();
       return;
     }
-    // Prefer silent YouTube CDN stills so highlight survives reload and stays compact.
-    selectedThumbnailOwnerUrl = parsed.url;
-    selectedThumbnailUrl = youtubeThumbnail(parsed.url) || parsed.url;
+    captureSetThumbnailUrl(
+      youtubeThumbnail(parsed.url) || parsed.url,
+      parsed.url
+    );
     syncThumbnailUi();
     notifyFormChanged();
   });
@@ -161,8 +120,7 @@ function createMediaRow({ url = "", isFirst = false, isThumbnail = false } = {})
   } else {
     actionBtn.addEventListener("click", () => {
       if (isRowThumbnail(row)) {
-        selectedThumbnailUrl = null;
-        selectedThumbnailOwnerUrl = null;
+        captureSetThumbnailUrl(null, null);
       }
       row.remove();
       syncFirstRowAction();
@@ -178,18 +136,18 @@ function isRowThumbnail(row) {
   const parsed = parseMediaRow(row);
   if (!parsed || parsed.invalidInput) return false;
   if (
-    selectedThumbnailOwnerUrl &&
-    normalizeVideoUrl(parsed.url) === normalizeVideoUrl(selectedThumbnailOwnerUrl)
+    captureGetThumbnailOwnerUrl() &&
+    normalizeVideoUrl(parsed.url) === normalizeVideoUrl(captureGetThumbnailOwnerUrl())
   ) {
     return true;
   }
-  if (!selectedThumbnailUrl) return false;
-  if (mediaUrlMatchesThumbnail(parsed.url, selectedThumbnailUrl)) return true;
-  const owner = findMediaItemForThumbnail(getPinMediaFormItems(), selectedThumbnailUrl);
+  if (!captureGetThumbnailUrl()) return false;
+  if (mediaUrlMatchesThumbnail(parsed.url, captureGetThumbnailUrl())) return true;
+  const owner = findMediaItemForThumbnail(getPinMediaFormItems(), captureGetThumbnailUrl());
   return Boolean(owner && normalizeVideoUrl(owner.url) === normalizeVideoUrl(parsed.url));
 }
 
-function syncThumbnailUi() {
+export function syncThumbnailUi() {
   getMediaList()?.querySelectorAll(".pin-media-row").forEach((row) => {
     const btn = row.querySelector(".pin-media-row__thumbnail");
     const active = isRowThumbnail(row);
@@ -200,13 +158,12 @@ function syncThumbnailUi() {
 
 function resolveFormThumbnail(items) {
   if (items.length === 0) return "";
-  if (selectedThumbnailUrl) {
-    // Compact/platform stills are stored separately from media rows.
-    if (isPreviewStillUrl(selectedThumbnailUrl)) {
-      return selectedThumbnailUrl;
+  if (captureGetThumbnailUrl()) {
+    if (isPreviewStillUrl(captureGetThumbnailUrl())) {
+      return captureGetThumbnailUrl();
     }
     const match = items.find((item) =>
-      mediaUrlMatchesThumbnail(item.url, selectedThumbnailUrl)
+      mediaUrlMatchesThumbnail(item.url, captureGetThumbnailUrl())
     );
     if (match) {
       return youtubeThumbnail(match.url) || match.url;
@@ -239,188 +196,6 @@ function syncFirstRowAction() {
     });
     row.replaceWith(replacement);
   });
-}
-
-function isVideoFile(file) {
-  return (
-    /^video\//.test(file.type) ||
-    /\.(mp4|webm|mov|ogg)$/i.test(file.name)
-  );
-}
-
-function isImageFile(file) {
-  return (
-    /^image\/(jpeg|png|webp|gif)$/i.test(file.type) ||
-    /\.(jpe?g|png|webp|gif)$/i.test(file.name)
-  );
-}
-
-function setUploadBusy(row, label) {
-  const btn = getRowUploadButton(row);
-  if (!btn) return;
-  btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>`;
-  if (label) btn.title = label;
-}
-
-function resetUploadButton(row) {
-  const btn = getRowUploadButton(row);
-  if (!btn) return;
-  btn.disabled = false;
-  btn.innerHTML = UPLOAD_BUTTON_HTML;
-  btn.title = "Upload file";
-}
-
-function clearUploadSizeError() {
-  if (uploadSizeErrorTimer) {
-    clearTimeout(uploadSizeErrorTimer);
-    uploadSizeErrorTimer = null;
-  }
-
-  getMediaList()?.querySelectorAll(".pin-media-row").forEach((row) => {
-    const wrap = row.querySelector(".pin-media-row__url-wrap");
-    const input = row.querySelector(".pin-media-row__url");
-    if (input) {
-      input.classList.remove("is-error");
-      if (input.dataset.mediaPlaceholder) {
-        input.placeholder = input.dataset.mediaPlaceholder;
-        delete input.dataset.mediaPlaceholder;
-      }
-    }
-    wrap?.classList.remove("is-showing-error");
-    const error = row.querySelector(".pin-media-row__error");
-    if (error) {
-      error.hidden = true;
-    }
-  });
-}
-
-export function isMediaUploadInProgress() {
-  if (!activeUploadRow) return false;
-  const btn = getRowUploadButton(activeUploadRow);
-  return Boolean(btn?.disabled);
-}
-
-export function showMediaRowValidationError(row, message, { autoClearMs = null } = {}) {
-  if (!row) return;
-
-  const wrap = row.querySelector(".pin-media-row__url-wrap");
-  const input = row.querySelector(".pin-media-row__url");
-  const error = row.querySelector(".pin-media-row__error");
-  if (input) {
-    if (!input.dataset.mediaPlaceholder) {
-      input.dataset.mediaPlaceholder = input.placeholder || "https://...";
-    }
-    input.placeholder = "";
-    input.classList.add("is-error");
-    input.focus();
-  }
-  wrap?.classList.add("is-showing-error");
-  if (error) {
-    error.textContent = message;
-    error.hidden = false;
-  }
-
-  if (autoClearMs != null) {
-    if (uploadSizeErrorTimer) clearTimeout(uploadSizeErrorTimer);
-    uploadSizeErrorTimer = setTimeout(() => {
-      clearUploadSizeError();
-    }, autoClearMs);
-  }
-}
-
-function showUploadSizeError(message, row = activeUploadRow) {
-  clearUploadSizeError();
-
-  const btn = getRowUploadButton(row);
-  if (btn) {
-    btn.classList.remove("is-shake");
-    void btn.offsetWidth;
-    btn.classList.add("is-shake");
-    btn.addEventListener(
-      "animationend",
-      () => btn.classList.remove("is-shake"),
-      { once: true }
-    );
-  }
-
-  showMediaRowValidationError(row, message, { autoClearMs: UPLOAD_SIZE_ERROR_MS });
-}
-
-async function handleMediaFileUpload(file) {
-  const row = activeUploadRow;
-  if (!row) return;
-
-  if (!isVideoFile(file) && !isImageFile(file)) {
-    showEditorToast("Unsupported file type. Use MP4, WebM, MOV, OGG, JPEG, PNG, WebP, or GIF.");
-    return;
-  }
-
-  if (isVideoFile(file) && file.size > MAX_VIDEO_BYTES) {
-    showUploadSizeError("max 80mb", row);
-    return;
-  }
-
-  if (isImageFile(file) && file.size > MAX_IMAGE_BYTES) {
-    showUploadSizeError("max 12mb", row);
-    return;
-  }
-
-  clearUploadSizeError();
-
-  try {
-    let uploaded;
-    if (isVideoFile(file)) {
-      setUploadBusy(row, "Uploading…");
-      uploaded = await uploadVideo(file);
-      row.querySelector(".pin-media-row__url").value = uploaded.url;
-
-      // Video URLs are not displayable as <img>; capture a still for hover previews.
-      if (!selectedThumbnailUrl || !isDirectImageUrl(selectedThumbnailUrl)) {
-        try {
-          setUploadBusy(row, "Thumbnail…");
-          const thumbFile = await fileFromVideoFrame(file, "preview.jpg");
-          const thumb = await uploadPreviewImage(thumbFile);
-          selectedThumbnailOwnerUrl = uploaded.url;
-          selectedThumbnailUrl = thumb.url;
-          syncThumbnailUi();
-        } catch (thumbError) {
-          console.warn("Could not capture video thumbnail", thumbError);
-        }
-      }
-    } else {
-      setUploadBusy(row, "Uploading…");
-      uploaded = await uploadPreviewImage(file);
-      row.querySelector(".pin-media-row__url").value = uploaded.url;
-
-      // Silent compact still — not the full media image URL.
-      if (!selectedThumbnailUrl || selectedThumbnailUrl === uploaded.url) {
-        try {
-          setUploadBusy(row, "Thumbnail…");
-          const thumbFile = await fileFromImageSource(file, "preview.jpg");
-          const thumb = await uploadPreviewImage(thumbFile);
-          selectedThumbnailOwnerUrl = uploaded.url;
-          selectedThumbnailUrl = thumb.url;
-          syncThumbnailUi();
-        } catch (thumbError) {
-          console.warn("Could not create image thumbnail", thumbError);
-          if (!selectedThumbnailUrl) {
-            selectedThumbnailOwnerUrl = uploaded.url;
-            selectedThumbnailUrl = uploaded.url;
-            syncThumbnailUi();
-          }
-        }
-      }
-    }
-
-    notifyFormChanged();
-  } catch (error) {
-    console.error(error);
-    showEditorToast(error.message || "Upload failed");
-  } finally {
-    resetUploadButton(row);
-    activeUploadRow = null;
-  }
 }
 
 function initMediaDropAndPaste() {
@@ -489,7 +264,11 @@ export function initPinMediaForm() {
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    await startMediaUpload(file, activeUploadRow);
+    const row = resolveUploadTargetRow();
+    if (row) {
+      setActiveUploadRow(row);
+    }
+    await startMediaUpload(file, row);
   });
 
   getMediaList()?.addEventListener("input", (event) => {
@@ -499,11 +278,12 @@ export function initPinMediaForm() {
       if (row?.querySelector(".pin-media-row__thumbnail.is-active")) {
         const parsed = parseMediaRow(row);
         if (parsed && !parsed.invalidInput) {
-          selectedThumbnailOwnerUrl = parsed.url;
-          selectedThumbnailUrl = youtubeThumbnail(parsed.url) || parsed.url;
+          captureSetThumbnailUrl(
+            youtubeThumbnail(parsed.url) || parsed.url,
+            parsed.url
+          );
         } else {
-          selectedThumbnailOwnerUrl = null;
-          selectedThumbnailUrl = null;
+          captureSetThumbnailUrl(null, null);
         }
       }
       syncThumbnailUi();
@@ -516,8 +296,7 @@ export function initPinMediaForm() {
 export function resetPinMediaForm() {
   const list = getMediaList();
   if (!list) return;
-  selectedThumbnailUrl = null;
-  selectedThumbnailOwnerUrl = null;
+  captureSetThumbnailUrl(null, null);
   list.innerHTML = "";
   list.appendChild(createMediaRow({ isFirst: true }));
   clearUploadSizeError();
@@ -530,35 +309,38 @@ export function setPinMediaFormItems(items, thumbnailUrl = null) {
   const normalized = Array.isArray(items) ? items.filter((item) => item?.url) : [];
   const thumb = String(thumbnailUrl || "").trim();
   if (normalized.length === 0) {
-    selectedThumbnailUrl = null;
-    selectedThumbnailOwnerUrl = null;
+    captureSetThumbnailUrl(null, null);
     list.appendChild(createMediaRow({ isFirst: true }));
     return;
   }
   const flaggedOwner = findMediaItemForThumbnail(normalized, thumb);
   if (thumb) {
     if (isPreviewStillUrl(thumb)) {
-      selectedThumbnailUrl = thumb;
+      captureSetThumbnailUrl(thumb, null);
     } else {
-      selectedThumbnailUrl =
+      captureSetThumbnailUrl(
         youtubeThumbnail(flaggedOwner?.url || thumb) ||
-        flaggedOwner?.url ||
-        thumb;
+          flaggedOwner?.url ||
+          thumb,
+        flaggedOwner?.url || null
+      );
     }
   } else if (flaggedOwner) {
-    selectedThumbnailUrl =
-      youtubeThumbnail(flaggedOwner.url) || flaggedOwner.url;
+    captureSetThumbnailUrl(
+      youtubeThumbnail(flaggedOwner.url) || flaggedOwner.url,
+      flaggedOwner.url
+    );
   } else {
     const first = normalized[0];
-    selectedThumbnailUrl = youtubeThumbnail(first.url) || first.url;
+    captureSetThumbnailUrl(youtubeThumbnail(first.url) || first.url, first.url);
   }
   const owner =
-    flaggedOwner || findMediaItemForThumbnail(normalized, selectedThumbnailUrl);
-  selectedThumbnailOwnerUrl = owner?.url || null;
+    flaggedOwner || findMediaItemForThumbnail(normalized, captureGetThumbnailUrl());
+  captureSetThumbnailUrl(captureGetThumbnailUrl(), owner?.url || null);
   normalized.forEach((item, index) => {
     const isThumbnail = owner
       ? normalizeVideoUrl(owner.url) === normalizeVideoUrl(item.url)
-      : mediaUrlMatchesThumbnail(item.url, selectedThumbnailUrl);
+      : mediaUrlMatchesThumbnail(item.url, captureGetThumbnailUrl());
     list.appendChild(createMediaRow({ url: item.url, isFirst: index === 0, isThumbnail }));
   });
 }
@@ -629,8 +411,8 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
   }
 
   const owner =
-    selectedThumbnailOwnerUrl ||
-    findMediaItemForThumbnail(items, selectedThumbnailUrl)?.url ||
+    captureGetThumbnailOwnerUrl() ||
+    findMediaItemForThumbnail(items, captureGetThumbnailUrl())?.url ||
     null;
   return {
     valid: true,
@@ -639,93 +421,9 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
   };
 }
 
-function thumbnailMatchesMediaItem(thumbnailUrl, items) {
-  return (items || []).some((item) =>
-    mediaUrlMatchesThumbnail(String(item?.url || "").trim(), thumbnailUrl)
-  );
-}
-
-async function captureStillFromVideo(videoItem) {
-  if (!videoItem?.url) return null;
-  const ytThumb = youtubeThumbnail(videoItem.url);
-  if (ytThumb) return ytThumb;
-  if (isMedalUrl(videoItem.url)) {
-    try {
-      const medal = await resolveMedalClip(videoItem.url);
-      const medalThumb = String(medal?.thumbnailUrl || "").trim();
-      if (medalThumb) return medalThumb;
-    } catch (error) {
-      console.warn("Could not resolve Medal thumbnail for save", error);
-    }
-  }
-  if (canExtractVideoFrame(videoItem.url)) {
-    try {
-      const thumbFile = await fileFromVideoFrame(videoItem.url, "preview.jpg");
-      const uploaded = await uploadPreviewImage(thumbFile);
-      return uploaded.url;
-    } catch (error) {
-      console.warn("Could not capture video thumbnail for save", error);
-    }
-  }
-  return null;
-}
-
-async function captureStillFromImage(imageItem) {
-  if (!imageItem?.url || !isDirectImageUrl(imageItem.url)) return null;
-  try {
-    const thumbFile = await fileFromImageSource(imageItem.url, "preview.jpg");
-    const uploaded = await uploadPreviewImage(thumbFile);
-    return uploaded.url;
-  } catch (error) {
-    console.warn("Could not create image thumbnail for save", error);
-    return null;
-  }
-}
-
-export async function ensureCapturedThumbnailForSave(items, thumbnailUrl = "") {
-  const current = String(thumbnailUrl || "").trim();
-  const list = items || [];
-  if (
-    pinHasCompactSilentThumbnail({ thumbnail: current, mediaItems: list }) ||
-    isPlatformThumbnailUrl(current)
-  ) {
-    return current;
-  }
-  const ownerFromSelection =
-    selectedThumbnailOwnerUrl &&
-    list.find(
-      (item) =>
-        normalizeVideoUrl(item.url) === normalizeVideoUrl(selectedThumbnailOwnerUrl)
-    );
-  const starred =
-    ownerFromSelection || (current ? findMediaItemForThumbnail(list, current) : null);
-  const firstVideo = list.find((item) => item?.kind === "video" && item.url) || null;
-  const firstImage =
-    list.find((item) => item?.kind === "image" && isDirectImageUrl(item.url)) || null;
-  const candidates = [];
-  if (starred?.kind === "video") candidates.push(starred);
-  else if (starred?.kind === "image") candidates.push(starred);
-  else {
-    if (firstVideo) candidates.push(firstVideo);
-    if (firstImage) candidates.push(firstImage);
-  }
-  if (starred) {
-    if (firstVideo && firstVideo !== starred) candidates.push(firstVideo);
-    if (firstImage && firstImage !== starred) candidates.push(firstImage);
-  }
-  for (const item of candidates) {
-    const still =
-      item.kind === "video"
-        ? await captureStillFromVideo(item)
-        : await captureStillFromImage(item);
-    if (!still) continue;
-    selectedThumbnailOwnerUrl = item.url;
-    selectedThumbnailUrl = still;
-    syncThumbnailUi();
-    return still;
-  }
-  if (isPreviewStillUrl(current) && !thumbnailMatchesMediaItem(current, list)) {
-    return current;
-  }
-  return current;
-}
+export {
+  isPinFormOpen,
+  captureStillFromVideo,
+  captureStillFromImage,
+  ensureCapturedThumbnailForSave,
+};

@@ -2,13 +2,12 @@ import { state } from "../state.js";
 import { createPin, deletePin, updatePin } from "../api/pins.js";
 import { cachePinDetail } from "../helpers/pin-detail-cache.js";
 import { pushPinCreateSnapshot, pushPinDeleteSnapshot, pushPinUpdateSnapshot } from "./undo-redo.js";
-import { deriveLegacyMediaFields, normalizeMediaItem } from "../helpers/pin-media.js";
+import { deriveLegacyMediaFields, normalizeMediaItem, pinHasCompactSilentThumbnail } from "../helpers/pin-media.js";
 import { isDirectionalPinTag } from "../pin-tags.js";
 import { isDiscordMediaUrl } from "../utils/video.js";
 import { showEditorToast } from "../ui/editor-toast.js";
 import { isPlacementComplete, canSavePlacement, getPinFormTag, syncViewportFormClasses, clearDraftPlacement, isMgSpotPlacement } from "./placement-mode.js";
 import { validatePinMediaForm, ensureCapturedThumbnailForSave } from "./media-form.js";
-import { pinHasCompactSilentThumbnail } from "../helpers/pin-media.js";
 import { renderPins } from "../ui/pin-marker.js";
 import { renderPinList } from "../ui/sidebar.js";
 import { highlightPin } from "../helpers/proximity.js";
@@ -16,129 +15,35 @@ import { normalizePinTitle } from "../helpers/pin-title.js";
 import { ingestDiscordPinMedia } from "../helpers/discord-ingest-client.js";
 import { clearPinDirty } from "../helpers/pin-persist.js";
 import { roundCoord } from "../helpers/position-code.js";
+import {
+  buildPinDataFromForm,
+  captureEditFormBaselineFromForm,
+  isUnchangedEditPayload,
+  clearEditFormBaseline,
+  isEditFormBaselineReady,
+  normalizePinPayloadForCompare,
+  pinPayloadEquals,
+  normalizeRequiresForCompare,
+  normalizeMediaItemsForCompare,
+} from "./form-handler-baseline.js";
+import {
+  initRequiresCheckboxes,
+  scheduleAutoSave,
+  initAutoSave,
+  updateFactionRequires,
+  getRequiresData,
+  setRequiresData,
+  resetRequires,
+  getRequiresOptions,
+  getPinTitle,
+  getPinDescription,
+  getBtnDeletePin,
+} from "./form-handler-requires.js";
 
-const REQUIRES_FACTION_CONFIG = {
-  axis: { label: "Gate", icon: "fa-archway" },
-  allies: { label: "Hedgehog", icon: "fa-maximize" },
-};
-
-const AUTO_SAVE_DELAY_MS = 450;
-let autoSaveTimer = null;
-let autoSaveDeps = null;
 let editUndoSnapshotPushed = false;
 let rerunSaveAfterCurrent = false;
 let lastNotifiedError = "";
 let lastNotifiedAt = 0;
-/** Normalized snapshot of the pin when the edit form finished loading (null = not ready). */
-let editFormBaseline = null;
-
-function normalizeRequiresForCompare(requires) {
-  const source = requires && typeof requires === "object" ? requires : {};
-  const keys = Object.keys(source).sort();
-  const normalized = {};
-  for (const key of keys) {
-    const value = source[key];
-    if (value === undefined || value === false || value === null) continue;
-    normalized[key] = value === true ? true : value;
-  }
-  return normalized;
-}
-
-function normalizeMediaItemsForCompare(items) {
-  if (!Array.isArray(items)) return [];
-  return items
-    .map((item) => normalizeMediaItem(item))
-    .filter(Boolean)
-    .map((item) => {
-      const next = { kind: item.kind, url: item.url };
-      if (item.isThumbnail) next.isThumbnail = true;
-      return next;
-    });
-}
-
-function normalizePinPayloadForCompare(payload) {
-  const requires = normalizeRequiresForCompare(payload?.requires);
-  const mediaItems = normalizeMediaItemsForCompare(payload?.mediaItems);
-  const normalized = {
-    title: normalizePinTitle(payload?.title || ""),
-    description: String(payload?.description || "").trim(),
-    tag: payload?.tag || "",
-    x: roundCoord(Number(payload?.x)),
-    y: roundCoord(Number(payload?.y)),
-    videoUrl: String(payload?.videoUrl || "").trim(),
-    thumbnail: String(payload?.thumbnail || "").trim(),
-    mediaItems,
-    faction: payload?.faction || "neutral",
-    requires,
-  };
-  if (payload?.dirX != null && payload?.dirY != null) {
-    normalized.dirX = roundCoord(Number(payload.dirX));
-    normalized.dirY = roundCoord(Number(payload.dirY));
-  }
-  return normalized;
-}
-
-function pinPayloadEquals(a, b) {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-export function clearEditFormBaseline() {
-  editFormBaseline = null;
-}
-
-export function isEditFormBaselineReady() {
-  return editFormBaseline != null;
-}
-
-function buildPinDataFromForm(mediaItems, thumbnail) {
-  const title = normalizePinTitle(getPinTitle()?.value);
-  const tag = getPinFormTag();
-  if (!title || !tag || !state.pendingCoords) return null;
-
-  const mediaFields = deriveLegacyMediaFields(mediaItems, thumbnail);
-  const pinData = {
-    title,
-    description: getPinDescription()?.value.trim() || "",
-    videoUrl: mediaFields.videoUrl,
-    thumbnail: mediaFields.thumbnail || "",
-    mediaItems: mediaFields.mediaItems,
-    tag,
-    x: state.pendingCoords.x,
-    y: state.pendingCoords.y,
-    faction: state.pendingFaction,
-  };
-
-  if (isDirectionalPinTag(tag)) {
-    if (!state.pendingDirection) return null;
-    pinData.dirX = state.pendingDirection.x;
-    pinData.dirY = state.pendingDirection.y;
-  }
-
-  const requires = getRequiresData();
-  pinData.requires = Object.keys(requires).length > 0 ? requires : {};
-  return pinData;
-}
-
-/** Snapshot the loaded edit form so unchanged backs/switches skip KV writes. */
-export function captureEditFormBaselineFromForm() {
-  const mediaValidation = validatePinMediaForm({ showErrors: false });
-  if (!mediaValidation.valid) {
-    editFormBaseline = null;
-    return;
-  }
-  const pinData = buildPinDataFromForm(
-    mediaValidation.items,
-    mediaValidation.thumbnail || ""
-  );
-  editFormBaseline = pinData ? normalizePinPayloadForCompare(pinData) : null;
-}
-
-function isUnchangedEditPayload(pinData) {
-  if (!editFormBaseline || state.panelMode !== "edit" || !state.editingPinId) {
-    return false;
-  }
-  return pinPayloadEquals(normalizePinPayloadForCompare(pinData), editFormBaseline);
-}
 
 function showSaveError(message, { notifyUser = false } = {}) {
   if (!notifyUser || !message) return;
@@ -179,8 +84,8 @@ function getPlacementErrorMessage() {
 }
 
 export function cancelPendingAutoSave() {
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = null;
+  clearTimeout(state.autoSaveTimer);
+  state.autoSaveTimer = null;
 }
 
 export async function waitForPinSaveComplete() {
@@ -189,7 +94,7 @@ export async function waitForPinSaveComplete() {
   }
 }
 
-export async function flushAndSavePin(deps = autoSaveDeps) {
+export async function flushAndSavePin(deps = state.autoSaveDeps) {
   if (!deps) {
     return { ok: false, reason: "save", message: "Save is not configured" };
   }
@@ -221,114 +126,6 @@ export function resetEditUndoSnapshot() {
 
 export function markEditUndoBaselinePushed() {
   editUndoSnapshotPushed = true;
-}
-
-function getRequiresOptions() {
-  return document.getElementById("pin-requires-options");
-}
-
-function getPinTitle() {
-  return document.getElementById("pin-title");
-}
-
-function getPinDescription() {
-  return document.getElementById("pin-description");
-}
-
-function getBtnDeletePin() {
-  return document.getElementById("btn-delete-pin");
-}
-
-export function initRequiresCheckboxes() {
-  const requiresOptions = getRequiresOptions();
-  if (!requiresOptions) return;
-  requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
-    const checkbox = label.querySelector('input[type="checkbox"]');
-    if (!checkbox) return;
-    checkbox.addEventListener("change", () => {
-      label.classList.toggle("is-checked", checkbox.checked);
-      scheduleAutoSave();
-    });
-    label.addEventListener("click", (event) => {
-      event.preventDefault();
-      checkbox.checked = !checkbox.checked;
-      checkbox.dispatchEvent(new Event("change"));
-    });
-  });
-}
-
-export function scheduleAutoSave() {
-  // Intentionally no-op: pin edits flush once on back arrow (KV free-tier).
-}
-
-export function initAutoSave(deps) {
-  autoSaveDeps = deps;
-}
-
-export function updateFactionRequires(faction) {
-  const requiresFactionCheckbox = document.querySelector(".requires-checkbox--faction");
-  if (!requiresFactionCheckbox) return;
-  if (faction === "neutral") {
-    requiresFactionCheckbox.classList.add("hidden");
-    return;
-  }
-  const config = REQUIRES_FACTION_CONFIG[faction];
-  if (config) {
-    const label = document.getElementById("requires-faction-label");
-    const icon = document.getElementById("requires-faction-icon");
-    if (label) label.textContent = config.label;
-    if (icon) icon.className = `fa-solid ${config.icon}`;
-    requiresFactionCheckbox.classList.remove("hidden");
-  } else {
-    requiresFactionCheckbox.classList.add("hidden");
-  }
-}
-
-export function getRequiresData() {
-  const requires = {};
-  const requiresOptions = getRequiresOptions();
-  if (!requiresOptions) return {};
-  requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
-    const checkbox = label.querySelector('input[type="checkbox"]');
-    const requiresKey = label.dataset.requires;
-    if (checkbox && checkbox.checked) {
-      if (requiresKey === "faction-specific") {
-        requires["faction-specific"] = state.pendingFaction;
-      } else {
-        requires[requiresKey] = true;
-      }
-    }
-  });
-  return requires;
-}
-
-export function setRequiresData(requires) {
-  const requiresOptions = getRequiresOptions();
-  if (!requiresOptions) return;
-  requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
-    const checkbox = label.querySelector('input[type="checkbox"]');
-    const requiresKey = label.dataset.requires;
-    if (!checkbox) return;
-    let isChecked = false;
-    if (requiresKey === "faction-specific") {
-      isChecked = Boolean(requires && requires["faction-specific"]);
-    } else {
-      isChecked = Boolean(requires && requires[requiresKey]);
-    }
-    checkbox.checked = isChecked;
-    label.classList.toggle("is-checked", isChecked);
-  });
-}
-
-export function resetRequires() {
-  const requiresOptions = getRequiresOptions();
-  if (!requiresOptions) return;
-  requiresOptions.querySelectorAll(".requires-checkbox").forEach((label) => {
-    const checkbox = label.querySelector('input[type="checkbox"]');
-    if (!checkbox) return;
-    checkbox.checked = false;
-    label.classList.remove("is-checked");
-  });
 }
 
 export async function onSavePin(

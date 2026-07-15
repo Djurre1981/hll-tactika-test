@@ -1,73 +1,44 @@
-import { fetchCurrentUser, logout, setCurrentUser, getCurrentUser } from "../api/auth.js";
+import { fetchCurrentUser, logout } from "../api/auth.js";
 import { state } from "../state.js";
-import { initWelcomeTypewriter } from "./welcome-typewriter.js";
 import {
   bindDashboardUi,
   bindToolChromeNav,
-  hideDashboardView,
-  populateDashboard,
-  showComingSoon,
-  showDashboardView,
 } from "./dashboard.js";
 import { go, ROUTES } from "./router.js";
+import {
+  loadWelcomeScrub,
+  startTypewriter,
+  showWelcome,
+  hideWelcome,
+  showBye,
+  hideBye,
+} from "./auth-animations.js";
+import {
+  establishSession,
+  showDashboard,
+  enterApp,
+  returnToDashboard,
+  consumeHomeNotice,
+} from "./auth-dashboard.js";
 
-function applyToolChrome(tool) {
-  const modeSwitch = document.getElementById("mode-switch");
-  const stratsTab = modeSwitch?.querySelector('[data-mode="strats"]');
-  state.toolRoute = tool;
-  if (tool === "stratmaker") {
-    modeSwitch?.classList.add("hidden");
-    stratsTab?.classList.add("hidden");
-    return;
-  }
-  if (tool === "climbing-guide") {
-    stratsTab?.classList.add("hidden");
-  }
-}
-
-const DEFAULT_AUTH = {
+export const DEFAULT_AUTH = {
   title: "CIRCLE COMP LOGIN",
   message:
     "Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.",
 };
 
 const AUTH_CLOSE_MS = 500;
-const AUTH_BOOT_KEY = "hll-tactika-authed";
-const BYE_VIDEO_SRC = "/assets/welcome/bye.mp4";
+export const AUTH_BOOT_KEY = "hll-tactika-authed";
+let byeUiBound = false;
 
-function loadWelcomeScrub() {
-  // String dynamic import so Vite bundles the module graph (not a raw asset URL).
-  return import("./welcome-scrub.js");
-}
-
-function preloadVideoAsset(href) {
-  if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
-  const link = document.createElement("link");
-  link.rel = "preload";
-  link.as = "video";
-  link.href = href;
-  link.type = "video/mp4";
-  document.head.appendChild(link);
-}
-
-function setStoredAuthSession(active) {
+export function setStoredAuthSession(active) {
   try {
     if (active) localStorage.setItem(AUTH_BOOT_KEY, "1");
     else localStorage.removeItem(AUTH_BOOT_KEY);
   } catch {}
 }
 
-let scrubController = null;
-let typewriterController = null;
-let byeScrubController = null;
-let byeTypewriterController = null;
-let byeActionsRevealTimer = null;
-let byeUiBound = false;
-
-const BYE_TYPEWRITER_SPEED = 22;
-const BYE_ACTIONS_REVEAL_DELAY_MS = 700;
-
-function getAuthEls() {
+export function getAuthEls() {
   return {
     welcomePage: document.getElementById("welcome-page"),
     byePage: document.getElementById("bye-page"),
@@ -92,7 +63,21 @@ function getAuthEls() {
   };
 }
 
-function applyUserCluster(user) {
+export function applyToolChrome(tool) {
+  const modeSwitch = document.getElementById("mode-switch");
+  const stratsTab = modeSwitch?.querySelector('[data-mode="strats"]');
+  state.toolRoute = tool;
+  if (tool === "stratmaker") {
+    modeSwitch?.classList.add("hidden");
+    stratsTab?.classList.add("hidden");
+    return;
+  }
+  if (tool === "climbing-guide") {
+    stratsTab?.classList.add("hidden");
+  }
+}
+
+export function applyUserCluster(user) {
   const els = getAuthEls();
   const label = user.name || `Steam user ${user.steamId}`;
   if (els.userName) els.userName.textContent = label;
@@ -147,7 +132,7 @@ function setAuthDialogContent({ title, message, showLogin = true }) {
   els.btnSteamLogin?.classList.toggle("hidden", !showLogin);
 }
 
-function openAuthDialog(content) {
+export function openAuthDialog(content) {
   const els = getAuthEls();
   if (!els.gate) return;
   setAuthDialogContent(content);
@@ -157,7 +142,7 @@ function openAuthDialog(content) {
   }
 }
 
-function closeAuthDialog() {
+export function closeAuthDialog() {
   const els = getAuthEls();
   if (!els.gate?.open || els.gate.classList.contains("is-closing")) return;
 
@@ -175,22 +160,7 @@ function closeAuthDialog() {
   window.setTimeout(finishClose, AUTH_CLOSE_MS + 50);
 }
 
-function destroyWelcomeScrub() {
-  scrubController?.destroy();
-  scrubController = null;
-}
-
-function destroyTypewriter() {
-  typewriterController?.destroy();
-  typewriterController = null;
-}
-
-function startTypewriter() {
-  destroyTypewriter();
-  typewriterController = initWelcomeTypewriter(document.getElementById("welcome-intro"));
-}
-
-function clearAuthPending() {
+export function clearAuthPending() {
   getAuthEls().appRoot?.classList.remove("is-auth-pending");
 }
 
@@ -210,7 +180,6 @@ function showAuthPending() {
   els.userCluster?.classList.add("hidden");
 
   if (maybeAuthed) {
-    // Returning session: show dashboard shell while /api/auth/me resolves.
     document.documentElement.classList.remove("welcome-boot", "bye-boot", "app-boot");
     document.documentElement.classList.add("dashboard-boot");
     els.welcomePage?.classList.add("is-hidden");
@@ -221,206 +190,19 @@ function showAuthPending() {
     return;
   }
 
-  // Guest / fresh visit: keep welcome visible — never blank the viewport.
   document.documentElement.classList.remove("app-boot", "bye-boot", "dashboard-boot");
   document.documentElement.classList.add("welcome-boot");
   els.welcomePage?.classList.remove("is-hidden");
   els.hubChrome?.classList.add("hidden");
   els.dashboardPage?.classList.add("hidden");
 
-  scrubController = els.scrubVideo?.__welcomeScrub ?? null;
-  if (els.scrubVideo && !scrubController) {
-    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
-      scrubController = initWelcomeScrub(els.scrubVideo);
-    });
-  }
-  startTypewriter();
-}
-
-function showWelcome({ openDialog = false, dialogContent = DEFAULT_AUTH } = {}) {
-  const els = getAuthEls();
-  hideBye();
-  clearAuthPending();
-  setStoredAuthSession(false);
-  document.documentElement.classList.remove("app-boot", "bye-boot", "dashboard-boot");
-  document.documentElement.classList.add("welcome-boot");
-  els.welcomePage?.classList.remove("is-hidden");
-  els.appRoot?.classList.add("hidden");
-  els.userCluster?.classList.add("hidden");
-  els.modeSwitch?.classList.add("hidden");
-  els.hubChrome?.classList.add("hidden");
-  els.dashboardPage?.classList.add("hidden");
-  hideDashboardView();
-
-  scrubController = els.scrubVideo?.__welcomeScrub ?? null;
-  if (els.scrubVideo && !scrubController) {
-    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
-      scrubController = initWelcomeScrub(els.scrubVideo);
-    });
-  }
-
-  startTypewriter();
-
-  if (openDialog) {
-    openAuthDialog(dialogContent);
-  } else {
-    closeAuthDialog();
-  }
-}
-
-function hideWelcome() {
-  const els = getAuthEls();
-  document.documentElement.classList.remove("welcome-boot");
-  els.welcomePage?.classList.add("is-hidden");
-  destroyWelcomeScrub();
-  destroyTypewriter();
-  closeAuthDialog();
-}
-
-function destroyByeScrub() {
-  byeScrubController?.destroy();
-  byeScrubController = null;
-}
-
-function destroyByeTypewriter() {
-  byeTypewriterController?.destroy();
-  byeTypewriterController = null;
-}
-
-function clearByeActionsRevealTimer() {
-  if (!byeActionsRevealTimer) return;
-  window.clearTimeout(byeActionsRevealTimer);
-  byeActionsRevealTimer = null;
-}
-
-function resetByeActions() {
-  const els = getAuthEls();
-  clearByeActionsRevealTimer();
-  if (!els.byeActions) return;
-  els.byeActions.hidden = true;
-  els.byeActions.classList.remove("is-visible");
-}
-
-function revealByeActions() {
-  const els = getAuthEls();
-  if (!els.byeActions) return;
-  clearByeActionsRevealTimer();
-  byeActionsRevealTimer = window.setTimeout(() => {
-    byeActionsRevealTimer = null;
-    els.byeActions.hidden = false;
-    els.byeActions.classList.add("is-visible");
-  }, BYE_ACTIONS_REVEAL_DELAY_MS);
-}
-
-function startByeTypewriter() {
-  destroyByeTypewriter();
-  resetByeActions();
-  byeTypewriterController = initWelcomeTypewriter(document.getElementById("bye-intro"), {
-    speed: BYE_TYPEWRITER_SPEED,
-    onComplete: revealByeActions,
+  void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
+    if (els.scrubVideo) {
+      els.scrubVideo.__welcomeScrub = initWelcomeScrub(els.scrubVideo);
+    }
   });
-}
 
-function showBye() {
-  const els = getAuthEls();
-  clearAuthPending();
-  setStoredAuthSession(false);
-  document.documentElement.classList.remove("app-boot", "welcome-boot", "dashboard-boot");
-  document.documentElement.classList.add("bye-boot");
-  els.welcomePage?.classList.add("is-hidden");
-  destroyWelcomeScrub();
-  destroyTypewriter();
-  els.byePage?.classList.remove("is-hidden");
-  els.appRoot?.classList.add("hidden");
-  els.userCluster?.classList.add("hidden");
-  els.modeSwitch?.classList.add("hidden");
-  els.hubChrome?.classList.add("hidden");
-  els.dashboardPage?.classList.add("hidden");
-  hideDashboardView();
-  closeAuthDialog();
-
-  preloadVideoAsset(BYE_VIDEO_SRC);
-
-  byeScrubController = els.byeScrubVideo?.__welcomeScrub ?? null;
-  if (els.byeScrubVideo && !byeScrubController) {
-    void loadWelcomeScrub().then(({ initWelcomeScrub }) => {
-      byeScrubController = initWelcomeScrub(els.byeScrubVideo);
-    });
-  }
-
-  startByeTypewriter();
-}
-
-function hideBye() {
-  const els = getAuthEls();
-  document.documentElement.classList.remove("bye-boot");
-  els.byePage?.classList.add("is-hidden");
-  destroyByeScrub();
-  destroyByeTypewriter();
-  resetByeActions();
-}
-
-function establishSession(user) {
-  clearAuthPending();
-  setCurrentUser(user);
-  setStoredAuthSession(true);
-  hideBye();
-  hideWelcome();
-  applyUserCluster(user);
-}
-
-function showDashboard(user) {
-  const els = getAuthEls();
-  establishSession(user);
-  document.documentElement.classList.remove("app-boot", "welcome-boot", "bye-boot");
-  document.documentElement.classList.add("dashboard-boot");
-  els.appRoot?.classList.add("hidden");
-  els.modeSwitch?.classList.add("hidden");
-  state.toolRoute = null;
-  populateDashboard(user);
-  showDashboardView();
-  document.title = "HLL-Tactika";
-}
-
-export function enterApp(mode = "viewer") {
-  const els = getAuthEls();
-  const user = getCurrentUser();
-  const tool = mode === "strats" ? "stratmaker" : "climbing-guide";
-  hideWelcome();
-  hideBye();
-  hideDashboardView();
-  document.documentElement.classList.remove("dashboard-boot", "welcome-boot", "bye-boot");
-  document.documentElement.classList.add("app-boot");
-  els.appRoot?.classList.remove("hidden");
-  if (els.appRoot && !els.appRoot.hasAttribute("data-ready")) {
-    els.appRoot.classList.add("is-auth-pending");
-  }
-  applyUserCluster(user || { name: els.userName?.textContent || "" });
-  applyToolChrome(tool);
-  if (tool === "stratmaker" || user?.role === "viewer") {
-    els.modeSwitch?.classList.add("hidden");
-  } else {
-    els.modeSwitch?.classList.remove("hidden");
-  }
-  if (els.appRoot) els.appRoot.dataset.enterMode = mode;
-  return mode;
-}
-
-/** Full page navigation back to the dashboard (MPA). */
-export async function returnToDashboard() {
-  go(ROUTES.HOME);
-}
-
-function consumeHomeNotice() {
-  const params = new URLSearchParams(window.location.search);
-  const notice = params.get("notice");
-  if (!notice) return;
-  if (notice === "stratmaker-locked") {
-    showComingSoon("Circle Stratmaker is not available for your role");
-  }
-  params.delete("notice");
-  const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;
-  window.history.replaceState({}, "", next);
+  startTypewriter();
 }
 
 function bindSteamButtonMirror(btn) {
@@ -487,7 +269,6 @@ function bindLogout() {
   });
 }
 
-/** Home page: welcome / bye / dashboard only. */
 export async function initHomeAuth() {
   const authResult = getAuthErrorFromUrl();
   clearAuthQuery();
@@ -539,10 +320,6 @@ export async function initHomeAuth() {
   }
 }
 
-/**
- * Tool page auth. Unauthenticated users are sent to /home.
- * @param {{ tool: "climbing-guide" | "stratmaker", enterMode: string }} options
- */
 export async function initToolAuth({ tool, enterMode }) {
   bindLogout();
   bindToolChromeNav();
@@ -571,7 +348,6 @@ export async function initToolAuth({ tool, enterMode }) {
   }
 }
 
-/** @deprecated Prefer initHomeAuth / initToolAuth */
 export async function initAuth() {
   return initHomeAuth();
 }

@@ -7,6 +7,17 @@ import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { createVideoElement, clearMediaContainer } from "../utils/video.js";
 import { getPinMediaItems, getPinThumbnailMediaIndex } from "../helpers/pin-media.js";
+import {
+  armModalDismissGuard,
+  cancelPendingModalClose,
+  closeModal,
+  handleModalCloseEvent,
+} from "./modal-dismiss-guard.js";
+import {
+  getPinUploaderLabel,
+  updateModalMediaNav,
+  setModalMediaFullscreenVisible,
+} from "./modal-media-nav.js";
 
 export const REQUIRES_ICON_CONFIG = {
   truck: { icon: "fa-solid fa-truck", label: "Transport Truck" },
@@ -27,7 +38,7 @@ export function getRequiresDisplayConfig(key, value, pinFaction = "neutral") {
   return REQUIRES_ICON_CONFIG[key] || null;
 }
 
-function getModal() {
+export function getModal() {
   return document.getElementById("video-modal");
 }
 
@@ -43,11 +54,11 @@ function getModalUploader() {
   return document.getElementById("modal-uploader");
 }
 
-function getModalPlayer() {
+export function getModalPlayer() {
   return document.getElementById("modal-player");
 }
 
-function getModalPlayerWrap() {
+export function getModalPlayerWrap() {
   return document.getElementById("modal-player-wrap");
 }
 
@@ -61,142 +72,6 @@ function getModalPositionCode() {
 
 function getModalRequires() {
   return document.getElementById("modal-requires");
-}
-
-function getModalMediaPrev() {
-  return document.getElementById("modal-media-prev");
-}
-
-function getModalMediaNext() {
-  return document.getElementById("modal-media-next");
-}
-
-function getModalMediaCounter() {
-  return document.getElementById("modal-media-counter");
-}
-
-function getModalMediaFullscreen() {
-  return document.getElementById("modal-media-fullscreen");
-}
-
-function modalStageHasMedia() {
-  return Boolean(getModalPlayer()?.querySelector("img, video, iframe"));
-}
-
-function isPhoneImmersiveActive() {
-  return getModalPlayerWrap()?.classList.contains("is-phone-immersive") ?? false;
-}
-
-function isModalStageFullscreen() {
-  return document.fullscreenElement === getModalPlayerWrap() || isPhoneImmersiveActive();
-}
-
-function shouldShowModalFullscreenButton(player) {
-  if (!player) return false;
-  if (player instanceof HTMLVideoElement) return true;
-  if (player instanceof HTMLImageElement) return true;
-  if (player.tagName === "IFRAME") return !isPhoneLayout();
-  return true;
-}
-
-function getPinUploaderLabel(pin) {
-  if (!pin?.createdBy) {
-    return null;
-  }
-  return pin.createdByName || `Steam user ${pin.createdBy}`;
-}
-
-function updateModalMediaNav(pin) {
-  const items = getPinMediaItems(pin);
-  const showNav = items.length > 1;
-  const index = state.modalMediaIndex;
-
-  getModalMediaPrev()?.classList.toggle("hidden", !showNav);
-  getModalMediaNext()?.classList.toggle("hidden", !showNav);
-
-  const counter = getModalMediaCounter();
-  if (counter) {
-    counter.classList.toggle("hidden", !showNav);
-    counter.textContent = showNav ? `${index + 1} / ${items.length}` : "";
-  }
-}
-
-function syncModalMediaFullscreenButton() {
-  const button = getModalMediaFullscreen();
-  if (!button) return;
-
-  const icon = button.querySelector(".video-modal__fullscreen-icon");
-  const isFullscreen = isModalStageFullscreen();
-  button.setAttribute("aria-label", isFullscreen ? "Exit fullscreen" : "Enter fullscreen");
-  if (icon) {
-    icon.classList.toggle("fa-expand", !isFullscreen);
-    icon.classList.toggle("fa-compress", isFullscreen);
-  }
-}
-
-function setModalMediaFullscreenVisible(visible) {
-  getModalMediaFullscreen()?.classList.toggle("hidden", !visible);
-  if (!visible) {
-    void exitModalMediaFullscreen();
-  } else {
-    syncModalMediaFullscreenButton();
-  }
-}
-
-async function exitModalMediaFullscreen() {
-  const wrap = getModalPlayerWrap();
-  wrap?.classList.remove("is-phone-immersive");
-
-  if (document.fullscreenElement === wrap) {
-    try {
-      await document.exitFullscreen();
-    } catch {
-      // Ignore if the browser already exited fullscreen.
-    }
-  }
-  syncModalMediaFullscreenButton();
-}
-
-async function toggleModalMediaFullscreen() {
-  const wrap = getModalPlayerWrap();
-  if (!wrap || !modalStageHasMedia()) return;
-
-  const player = getModalPlayer();
-  const video = player?.querySelector("video");
-  const img = player?.querySelector("img");
-
-  try {
-    if (video) {
-      if (isPhoneLayout()) {
-        if (typeof video.webkitEnterFullscreen === "function") {
-          video.webkitEnterFullscreen();
-        } else if (video.requestFullscreen) {
-          await video.requestFullscreen();
-        }
-      } else if (isModalStageFullscreen()) {
-        await document.exitFullscreen();
-      } else {
-        await wrap.requestFullscreen();
-      }
-      syncModalMediaFullscreenButton();
-      return;
-    }
-
-    if (img && isPhoneLayout()) {
-      wrap.classList.toggle("is-phone-immersive");
-      syncModalMediaFullscreenButton();
-      return;
-    }
-
-    if (isModalStageFullscreen()) {
-      await document.exitFullscreen();
-    } else {
-      await wrap.requestFullscreen();
-    }
-  } catch (error) {
-    console.warn(error);
-  }
-  syncModalMediaFullscreenButton();
 }
 
 function renderModalImage(url, title) {
@@ -355,7 +230,7 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
       player.setAttribute("controlsList", "nofullscreen");
     }
     modalPlayer.appendChild(player);
-    setModalMediaFullscreenVisible(shouldShowModalFullscreenButton(player));
+    setModalMediaFullscreenVisible(shouldShowModalMediaFullscreenButton(player));
   } catch (error) {
     console.warn(error);
     if (state.modalPin?.id !== pin.id || state.modalMediaIndex !== mediaIndex) return;
@@ -370,154 +245,20 @@ export async function loadModalPlayer(pin, mediaIndex = state.modalMediaIndex) {
   }
 }
 
-export function showPreviousModalMedia() {
-  const pin = state.modalPin;
-  if (!pin) return;
-  const count = getPinMediaItems(pin).length;
-  if (count <= 1) return;
-  state.modalMediaIndex = (state.modalMediaIndex - 1 + count) % count;
-  updateModalMediaNav(pin);
-  clearMediaContainer(getModalPlayer());
-  getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
-  loadModalPlayer(pin, state.modalMediaIndex);
-}
-
-export function showNextModalMedia() {
-  const pin = state.modalPin;
-  if (!pin) return;
-  const count = getPinMediaItems(pin).length;
-  if (count <= 1) return;
-  state.modalMediaIndex = (state.modalMediaIndex + 1) % count;
-  updateModalMediaNav(pin);
-  clearMediaContainer(getModalPlayer());
-  getModalPlayer().innerHTML = '<p class="preview-loading">Loading clip…</p>';
-  loadModalPlayer(pin, state.modalMediaIndex);
-}
-
-export function initModalMediaNav() {
-  const modal = getModal();
-  modal?.addEventListener("cancel", (event) => {
-    event.preventDefault();
-    closeModal();
-  });
-
-  modal?.addEventListener("beforetoggle", (event) => {
-    if (event.newState !== "closed") return;
-    if (isModalDismissGuarded() && state.modalPin) {
-      event.preventDefault();
-    }
-  });
-
-  modal?.addEventListener("click", (event) => {
-    if (event.target !== modal || event.button !== 0) return;
-    if (isModalDismissGuarded()) return;
-    closeModal();
-  });
-
-  getModalMediaPrev()?.addEventListener("click", showPreviousModalMedia);
-  getModalMediaNext()?.addEventListener("click", showNextModalMedia);
-  getModalMediaFullscreen()?.addEventListener("click", () => {
-    void toggleModalMediaFullscreen();
-  });
-
-  document.addEventListener("fullscreenchange", syncModalMediaFullscreenButton);
-
-  document.addEventListener("keydown", (event) => {
-    if (!getModal()?.open || !state.modalPin) return;
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      showPreviousModalMedia();
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      showNextModalMedia();
-    }
-  });
-}
-
-const MODAL_DISMISS_GUARD_MS = 300;
-let modalDismissGuardUntil = 0;
-
-export function armModalDismissGuard() {
-  modalDismissGuardUntil = Date.now() + MODAL_DISMISS_GUARD_MS;
-}
-
-function isModalDismissGuarded() {
-  return Date.now() < modalDismissGuardUntil;
-}
-
-function clearModalDismissGuard() {
-  modalDismissGuardUntil = 0;
-}
-
-const MODAL_CLOSE_MS = 320;
-
-let pendingCloseTimer = null;
-let pendingCloseAnimationHandler = null;
-let pendingCloseId = 0;
-
-function cancelPendingModalClose() {
-  pendingCloseId += 1;
-  if (pendingCloseTimer != null) {
-    clearTimeout(pendingCloseTimer);
-    pendingCloseTimer = null;
-  }
-  if (pendingCloseAnimationHandler) {
-    getModal()?.removeEventListener("animationend", pendingCloseAnimationHandler);
-    pendingCloseAnimationHandler = null;
-  }
-}
-
-function finishModalClose(closeId) {
-  if (closeId !== pendingCloseId) return;
-  pendingCloseTimer = null;
-  pendingCloseAnimationHandler = null;
-
-  const modal = getModal();
-  modal.classList.remove("is-closing");
-  modal.close();
-  if (document.activeElement?.classList?.contains("map-mg-spot")) {
-    document.activeElement.blur();
-  }
-}
-
-export function closeModal() {
-  const modal = getModal();
-  if (!modal?.open || modal.classList.contains("is-closing")) return;
-
-  clearModalDismissGuard();
-  cancelPendingModalClose();
-  const closeId = pendingCloseId;
-
-  modal.classList.add("is-closing");
-  pendingCloseTimer = setTimeout(() => finishModalClose(closeId), MODAL_CLOSE_MS);
-  pendingCloseAnimationHandler = (event) => {
-    if (event.target !== modal) return;
-    if (pendingCloseTimer != null) {
-      clearTimeout(pendingCloseTimer);
-      pendingCloseTimer = null;
-    }
-    finishModalClose(closeId);
-  };
-  modal.addEventListener("animationend", pendingCloseAnimationHandler, { once: true });
-}
-
-export function handleModalCloseEvent() {
-  const modal = getModal();
-  if (isModalDismissGuarded() && state.modalPin) {
-    modal.classList.add("is-instant");
-    if (!modal.open) {
-      modal.showModal();
-    }
-    requestAnimationFrame(() => {
-      modal.classList.remove("is-instant");
-    });
-    return;
-  }
-  clearModalPlayer();
+function shouldShowModalMediaFullscreenButton(player) {
+  if (!player) return false;
+  if (player instanceof HTMLVideoElement) return true;
+  if (player instanceof HTMLImageElement) return true;
+  if (player.tagName === "IFRAME") return !isPhoneLayout();
+  return true;
 }
 
 export function clearModalPlayer() {
-  void exitModalMediaFullscreen();
+  const wrap = getModalPlayerWrap();
+  wrap?.classList.remove("is-phone-immersive");
+  if (document.fullscreenElement === wrap) {
+    try { void document.exitFullscreen(); } catch {}
+  }
   clearMediaContainer(getModalPlayer());
   setModalMediaFullscreenVisible(false);
   state.modalPin = null;
