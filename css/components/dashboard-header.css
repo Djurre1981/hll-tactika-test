@@ -1,0 +1,24 @@
+.dashboard-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dashboard-page__greeting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
+.dashboard-page__tagline {
+  margin: 0;
+  max-width: 40rem;
+  font-size: 0.88rem;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.45;
+}
