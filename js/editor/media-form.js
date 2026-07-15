@@ -8,6 +8,7 @@ import {
 import { resolveMedalClip } from "../utils/medal.js";
 import {
   detectMediaKind,
+  applyMediaThumbnailFlag,
   findMediaItemForThumbnail,
   getUnsupportedMediaUrlMessage,
   isDirectImageUrl,
@@ -534,19 +535,25 @@ export function setPinMediaFormItems(items, thumbnailUrl = null) {
     list.appendChild(createMediaRow({ isFirst: true }));
     return;
   }
+  const flaggedOwner = findMediaItemForThumbnail(normalized, thumb);
   if (thumb) {
     if (isPreviewStillUrl(thumb)) {
       selectedThumbnailUrl = thumb;
     } else {
-      const match = findMediaItemForThumbnail(normalized, thumb);
       selectedThumbnailUrl =
-        youtubeThumbnail(match?.url || thumb) || match?.url || thumb;
+        youtubeThumbnail(flaggedOwner?.url || thumb) ||
+        flaggedOwner?.url ||
+        thumb;
     }
+  } else if (flaggedOwner) {
+    selectedThumbnailUrl =
+      youtubeThumbnail(flaggedOwner.url) || flaggedOwner.url;
   } else {
     const first = normalized[0];
     selectedThumbnailUrl = youtubeThumbnail(first.url) || first.url;
   }
-  const owner = findMediaItemForThumbnail(normalized, selectedThumbnailUrl);
+  const owner =
+    flaggedOwner || findMediaItemForThumbnail(normalized, selectedThumbnailUrl);
   selectedThumbnailOwnerUrl = owner?.url || null;
   normalized.forEach((item, index) => {
     const isThumbnail = owner
@@ -621,7 +628,15 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
     };
   }
 
-  return { valid: true, items, thumbnail: resolveFormThumbnail(items) };
+  const owner =
+    selectedThumbnailOwnerUrl ||
+    findMediaItemForThumbnail(items, selectedThumbnailUrl)?.url ||
+    null;
+  return {
+    valid: true,
+    items: applyMediaThumbnailFlag(items, owner),
+    thumbnail: resolveFormThumbnail(items),
+  };
 }
 
 function thumbnailMatchesMediaItem(thumbnailUrl, items) {

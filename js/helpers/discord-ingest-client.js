@@ -42,9 +42,17 @@ export async function ingestDiscordPinMedia(pinData) {
     if (!url) continue;
 
     if (isDiscordMediaUrl(url)) {
-      mediaItems.push({ kind, url: await ingestDiscordUrl(url, kind) });
+      mediaItems.push({
+        kind,
+        url: await ingestDiscordUrl(url, kind),
+        ...(item?.isThumbnail === true ? { isThumbnail: true } : {}),
+      });
     } else {
-      mediaItems.push({ kind, url });
+      mediaItems.push({
+        kind,
+        url,
+        ...(item?.isThumbnail === true ? { isThumbnail: true } : {}),
+      });
     }
   }
 

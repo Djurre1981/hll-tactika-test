@@ -49,7 +49,11 @@ function normalizeMediaItemsForCompare(items) {
   return items
     .map((item) => normalizeMediaItem(item))
     .filter(Boolean)
-    .map((item) => ({ kind: item.kind, url: item.url }));
+    .map((item) => {
+      const next = { kind: item.kind, url: item.url };
+      if (item.isThumbnail) next.isThumbnail = true;
+      return next;
+    });
 }
 
 function normalizePinPayloadForCompare(payload) {

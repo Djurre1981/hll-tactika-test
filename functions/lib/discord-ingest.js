@@ -217,7 +217,11 @@ export async function mirrorPinMedia(env, pin) {
       if (mirrored.error) {
         return mirrored;
       }
-      mediaItems.push({ kind, url: mirrored.url });
+      mediaItems.push({
+        kind,
+        url: mirrored.url,
+        ...(item?.isThumbnail === true ? { isThumbnail: true } : {}),
+      });
     }
     next.mediaItems = mediaItems;
     const legacy = deriveLegacyFields(mediaItems);

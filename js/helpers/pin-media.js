@@ -75,6 +75,9 @@ export function mediaUrlMatchesThumbnail(mediaUrl, thumbnailUrl) {
  */
 export function findMediaItemForThumbnail(items, thumbnailUrl) {
   const list = Array.isArray(items) ? items.filter((item) => item?.url) : [];
+  const flagged = list.find((item) => item?.isThumbnail === true);
+  if (flagged) return flagged;
+
   const thumb = String(thumbnailUrl || "").trim();
   if (!list.length || !thumb) return null;
 
@@ -153,7 +156,28 @@ export function normalizeMediaItem(item) {
   const url = String(item.url).trim();
   if (!url) return null;
   const kind = detectMediaKind(url) || (item.kind === "image" ? "image" : "video");
-  return { kind, url };
+  const normalized = { kind, url };
+  if (item.isThumbnail === true) normalized.isThumbnail = true;
+  return normalized;
+}
+
+/** Keep at most one isThumbnail flag; first wins. */
+export function applyMediaThumbnailFlag(items, ownerUrl) {
+  const list = Array.isArray(items) ? items.filter((item) => item?.url) : [];
+  const ownerNorm = normalizeVideoUrl(String(ownerUrl || "").trim());
+  let marked = false;
+  return list.map((item) => {
+    const next = { kind: item.kind, url: item.url };
+    if (
+      !marked &&
+      ownerNorm &&
+      normalizeVideoUrl(item.url) === ownerNorm
+    ) {
+      next.isThumbnail = true;
+      marked = true;
+    }
+    return next;
+  });
 }
 
 export function getPinMediaItems(pin) {
@@ -178,7 +202,6 @@ export function getPinThumbnailMediaIndex(pin) {
   const items = getPinMediaItems(pin);
   if (!items.length) return 0;
   const thumb = String(pin?.thumbnail || "").trim();
-  if (!thumb) return 0;
   const owner = findMediaItemForThumbnail(items, thumb);
   if (!owner) return 0;
   const index = items.indexOf(owner);

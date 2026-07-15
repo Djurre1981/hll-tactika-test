@@ -45,12 +45,22 @@ function buildPinFromBody(pin, createdBy) {
   next.requires = sanitizeRequires(pin.requires);
 
   if (Array.isArray(pin.mediaItems) && pin.mediaItems.length > 0) {
+    let thumbnailMarked = false;
     next.mediaItems = pin.mediaItems
-      .map((item) => ({
-        kind: item?.kind === "image" ? "image" : "video",
-        url: String(item?.url || "").trim(),
-      }))
-      .filter((item) => item.url);
+      .map((item) => {
+        const url = String(item?.url || "").trim();
+        if (!url) return null;
+        const nextItem = {
+          kind: item?.kind === "image" ? "image" : "video",
+          url,
+        };
+        if (!thumbnailMarked && item?.isThumbnail === true) {
+          nextItem.isThumbnail = true;
+          thumbnailMarked = true;
+        }
+        return nextItem;
+      })
+      .filter(Boolean);
   }
 
   if (next.tag === "mg-spot") {

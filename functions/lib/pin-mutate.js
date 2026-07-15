@@ -42,12 +42,22 @@ export function applyPinUpdates(existing, pin) {
     updated.requires = sanitizeRequires(pin.requires);
   }
   if (Array.isArray(pin.mediaItems)) {
+    let thumbnailMarked = false;
     const mediaItems = pin.mediaItems
-      .map((item) => ({
-        kind: item?.kind === "image" ? "image" : "video",
-        url: String(item?.url || "").trim(),
-      }))
-      .filter((item) => item.url);
+      .map((item) => {
+        const url = String(item?.url || "").trim();
+        if (!url) return null;
+        const next = {
+          kind: item?.kind === "image" ? "image" : "video",
+          url,
+        };
+        if (!thumbnailMarked && item?.isThumbnail === true) {
+          next.isThumbnail = true;
+          thumbnailMarked = true;
+        }
+        return next;
+      })
+      .filter(Boolean);
     if (mediaItems.length > 0) {
       updated.mediaItems = mediaItems;
     } else {
