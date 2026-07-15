@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { getPinMediaItems, getPinThumbnailMediaIndex } from "../helpers/pin-media.js";
 import { createVideoElement, clearMediaContainer } from "../utils/video.js";
-import { getPinPlayback } from "./pin-preview.js";
+import { getPinPlayback } from "./preview-media.js";
 import {
   getModal,
   getModalPlayer,

@@ -7,14 +7,8 @@ import {
   getMapName,
   escapeHtml,
 } from "./strats-state.js";
-import {
-  renderStratsChrome,
-  scheduleSave,
-  setSaveStatus,
-  activateCurrentSlideMap,
-  getSlideMapImage,
-  saveStratUiPrefs,
-} from "./strats-save.js";
+import { scheduleSave, getSlideMapImage, setSaveStatus } from "./strats-save.js";
+import { renderStratsChrome, activateCurrentSlideMap, saveStratUiPrefs } from "./strats-chrome.js";
 import {
   moveSlide,
   openDuplicateSlideDialog,

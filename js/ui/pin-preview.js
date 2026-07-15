@@ -19,7 +19,8 @@ import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";
 import { getMgArrowheadFocusCoords } from "./mg-spot-arrows.js";
 import { isPhoneLayout } from "../helpers/layout.js";
-import { openModal, armModalDismissGuard } from "./pin-modal.js";
+import { armModalDismissGuard } from "./modal-dismiss-guard.js";
+import { openModal } from "./pin-modal.js";
 import {
   absoluteThumbUrl,
   ensureWarmedThumbnail,

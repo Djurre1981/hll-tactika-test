@@ -7,20 +7,13 @@ import { hasStratsObjectSelection } from "../strats/strat-drawing.js";
 import { getStratsPickerOpen } from "./strats-state.js";
 import { setStratsPickerOpen, renderStratsPicker, renderStratsPickerList, renderStratsPickerTrigger } from "./strats-picker.js";
 import {
-  setStratsPanelView,
-  setSaveStatus,
-  openStrat,
-  closeStratEditor,
-  scheduleSave,
-  bindTagBar,
   bindAccordionAutoCollapse,
   bindStratDeleteConfirmDialog,
   deleteStratFromCatalog,
-  populateMatchStartingPointSelect,
-  renderStratsChrome,
   syncAccordionSummaries,
-  activateCurrentSlideMap,
 } from "./strats-editor.js";
+import { setSaveStatus, closeStratEditor, scheduleSave } from "./strats-save.js";
+import { setStratsPanelView, openStrat, bindTagBar, populateMatchStartingPointSelect, renderStratsChrome, activateCurrentSlideMap } from "./strats-chrome.js";
 import { resetImportDialog, submitStratSketchImport, queueImportPreview } from "./strats-import.js";
 import {
   navigateSlide,

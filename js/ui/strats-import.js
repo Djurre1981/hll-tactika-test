@@ -14,7 +14,8 @@ import {
   getImportPreviewTimer,
   setImportPreviewTimer,
 } from "./strats-state.js";
-import { setSaveStatus, openStrat } from "./strats-editor.js";
+import { setSaveStatus } from "./strats-save.js";
+import { openStrat } from "./strats-chrome.js";
 import { renderStratsPicker } from "./strats-picker.js";
 
 function setImportStatus(message, { error = false } = {}) {

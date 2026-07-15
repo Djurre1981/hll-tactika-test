@@ -5,7 +5,8 @@ import {
   setStratsPickerOpenValue,
   escapeHtml,
 } from "./strats-state.js";
-import { openStrat, canDeleteStratFromOpenList, deleteStratFromCatalog } from "./strats-editor.js";
+import { canDeleteStratFromOpenList, deleteStratFromCatalog } from "./strats-editor.js";
+import { openStrat } from "./strats-chrome.js";
 
 function filterStratsBySearch(strats, query) {
   const needle = String(query || "").trim().toLowerCase();

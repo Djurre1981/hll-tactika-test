@@ -21,14 +21,16 @@ import {
   findTopObjectAt,
   getMapPoint,
   getMapAspect,
+  refreshDrawLayer,
+} from "./strat-drawing.js";
+import {
   createPreviewObject,
   applyDrawConstraints,
   updateDrawPreview,
   finishDrawSession,
   setPreviewObject,
   applyHandleDragSession,
-  refreshDrawLayer,
-} from "./strat-drawing.js";
+} from "./strat-drawing-preview.js";
 import { setSelectedObject, notifySelectionChange } from "./strat-drawing-clipboard.js";
 import { getSelectionHandles, hitTestSelectionHandle, getBoxFromObjectPoints } from "./strat-selection-handles.js";
 import { constrainDragDelta, getDrawModifiers } from "./strat-draw-modifiers.js";
@@ -37,7 +39,7 @@ export function isDrawingTool(tool) {
   return tool !== "select" && tool !== "eraser";
 }
 
-function shouldBlockMapPan() {
+export function shouldBlockMapPan() {
   if (state.appMode !== "strats" || !state.activeStrat) return false;
   const tool = state.stratsToolSettings.activeTool;
   return isDrawingTool(tool) || tool === "eraser" || Boolean(getDrawSession()) || Boolean(getObjectDragSession()) || Boolean(getHandleDragSession());

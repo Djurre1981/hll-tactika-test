@@ -1,7 +1,8 @@
 import { state } from "../state.js";
 import { isPhoneLayout } from "../helpers/layout.js";
 import { resolvePinDetail } from "../helpers/pin-detail-cache.js";
-import { getPinPlayback, hidePreviewImmediately } from "./pin-preview.js";
+import { getPinPlayback } from "./preview-media.js";
+import { hidePreviewImmediately } from "./pin-preview.js";
 import { escapeHtml, safeUrlAttr } from "../helpers/sanitizer.js";
 import { generatePositionCode } from "../helpers/position-code.js";
 import { getFactionDisplay, getPinTagLabel } from "../helpers/constants.js";

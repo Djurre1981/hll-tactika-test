@@ -4,22 +4,16 @@ import { canEnterEditorMode, canModifyPin } from "../helpers/permissions.js";
 import { DEFAULT_PIN_TAG } from "../pin-tags.js";
 import { hasPinDirection, renderDraftMgSpot } from "./mg-spot-arrows.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
-import { closeModal } from "./pin-modal.js";
+import { closeModal } from "./modal-dismiss-guard.js";
 import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, updatePlacementUi, syncViewportFormClasses, isPlacementComplete } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
-import {
-  updateFactionRequires,
-  setRequiresData,
-  resetRequires,
-  resetEditUndoSnapshot,
-  markEditUndoBaselinePushed,
-  clearEditFormBaseline,
-  captureEditFormBaselineFromForm,
-  isEditFormBaselineReady,
-} from "../editor/form-handler.js";
-import { resetPinMediaForm, setPinMediaFormItems, isMediaUploadInProgress } from "../editor/media-form.js";
+import { resetEditUndoSnapshot, markEditUndoBaselinePushed } from "../editor/form-handler.js";
+import { clearEditFormBaseline, captureEditFormBaselineFromForm, isEditFormBaselineReady } from "../editor/form-handler-baseline.js";
+import { updateFactionRequires, setRequiresData, resetRequires } from "../editor/form-handler-requires.js";
+import { resetPinMediaForm, setPinMediaFormItems } from "../editor/media-form.js";
+import { isMediaUploadInProgress } from "../editor/media-form-upload.js";
 import { getPinMediaItems } from "../helpers/pin-media.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";

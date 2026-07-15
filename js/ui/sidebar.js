@@ -5,7 +5,8 @@ import { getPinTag, normalizePinTag } from "../pin-tags.js";
 import { getPinPositionCode } from "../helpers/position-code.js";
 import { canModifyPin } from "../helpers/permissions.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
-import { openModal, armModalDismissGuard, getRequiresDisplayConfig } from "./pin-modal.js";
+import { armModalDismissGuard } from "./modal-dismiss-guard.js";
+import { openModal, getRequiresDisplayConfig } from "./pin-modal.js";
 
 const FACTIONS = new Set(["axis", "allies", "neutral"]);
 

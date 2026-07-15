@@ -3,9 +3,9 @@ import { enterEditorMode, exitEditorMode, updateEditorHeaderButtons } from "./pi
 import { hidePreviewImmediately } from "./pin-preview.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
-import { closeModal } from "./pin-modal.js";
+import { closeModal } from "./modal-dismiss-guard.js";
 import { confirmStratsUnsavedAction, discardStratsUnsavedChanges } from "../helpers/strats-unsaved.js";
-import { exitStratEditorSession } from "./strats.js";
+import { exitStratEditorSession } from "./strats-save.js";
 
 function getLayout() {
   return document.querySelector(".layout");

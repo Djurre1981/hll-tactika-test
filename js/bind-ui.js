@@ -12,10 +12,8 @@ import {
 import {
   onDeletePin,
   onDeleteAddPinPlacement,
-  initRequiresCheckboxes,
-  initAutoSave,
-  updateFactionRequires,
 } from "./editor/form-handler.js";
+import { initRequiresCheckboxes, initAutoSave, updateFactionRequires } from "./editor/form-handler-requires.js";
 import { initPinMediaForm } from "./editor/media-form.js";
 import {
   onPinContextMenuAction,
@@ -23,7 +21,8 @@ import {
   onContextMenuKeyDown,
   handleEditorPlacementContextMenu,
 } from "./ui/pin-context-menu.js";
-import { closeModal, handleModalCloseEvent, initModalMediaNav } from "./ui/pin-modal.js";
+import { handleModalCloseEvent, closeModal } from "./ui/modal-dismiss-guard.js";
+import { initModalMediaNav } from "./ui/modal-media-nav.js";
 import {
   onViewportClick,
   onViewportContextMenu,

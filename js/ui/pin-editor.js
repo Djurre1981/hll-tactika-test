@@ -2,23 +2,16 @@ import { state } from "../state.js";
 import { canEnterEditorMode, canModifyPin } from "../helpers/permissions.js";
 import { DEFAULT_PIN_TAG } from "../pin-tags.js";
 import { hidePreviewImmediately } from "./pin-preview.js";
-import { closeModal } from "./pin-modal.js";
+import { closeModal } from "./modal-dismiss-guard.js";
 import { applyEditorFactionToUi } from "./filter-bar.js";
 import { highlightPin, focusPin } from "../helpers/proximity.js";
 import { setPinFormTag, syncViewportFormClasses, isPlacementComplete } from "../editor/placement-mode.js";
 import { hidePlacementCrosshair, updateDraftMarker } from "../editor/draft-renderer.js";
-import {
-  updateFactionRequires,
-  setRequiresData,
-  resetRequires,
-  resetEditUndoSnapshot,
-  flushAndSavePin,
-  markEditUndoBaselinePushed,
-  clearEditFormBaseline,
-  captureEditFormBaselineFromForm,
-  isEditFormBaselineReady,
-} from "../editor/form-handler.js";
-import { resetPinMediaForm, isMediaUploadInProgress } from "../editor/media-form.js";
+import { resetEditUndoSnapshot, flushAndSavePin, markEditUndoBaselinePushed } from "../editor/form-handler.js";
+import { clearEditFormBaseline, captureEditFormBaselineFromForm, isEditFormBaselineReady } from "../editor/form-handler-baseline.js";
+import { updateFactionRequires, setRequiresData, resetRequires } from "../editor/form-handler-requires.js";
+import { resetPinMediaForm } from "../editor/media-form.js";
+import { isMediaUploadInProgress } from "../editor/media-form-upload.js";
 import { renderPins } from "./pin-marker.js";
 import { renderPinList } from "./sidebar.js";
 import { hidePinContextMenu } from "./pin-context-menu.js";

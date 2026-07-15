@@ -1,4 +1,5 @@
-import { enterApp, initToolAuth } from "../ui/auth-gate.js";
+import { initToolAuth } from "../ui/auth-gate.js";
+import { enterApp } from "../ui/auth-dashboard.js";
 import { markAppBootstrapped, setEnterAppModeHandler } from "../ui/dashboard.js";
 import { applyMapBgFade } from "../ui/map-bg-fade.js";
 import { state, loadSelectedMapId, saveSelectedMapId } from "../state.js";

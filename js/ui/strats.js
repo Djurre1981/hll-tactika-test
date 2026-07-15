@@ -15,13 +15,8 @@ import {
   setSwitchMapCallback,
 } from "./strats-state.js";
 import { bindStratsUi } from "./strats-bind.js";
-import {
-  renderStratsChrome,
-  populateSlideMapSelect,
-  populateMatchMapSelect,
-  reloadStratsCatalog,
-  scheduleSave,
-} from "./strats-editor.js";
+import { scheduleSave } from "./strats-save.js";
+import { renderStratsChrome, populateSlideMapSelect, populateMatchMapSelect, reloadStratsCatalog } from "./strats-chrome.js";
 import { renderSlidesList } from "./strats-slides.js";
 
 export {

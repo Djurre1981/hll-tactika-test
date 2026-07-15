@@ -1,7 +1,8 @@
 import { state } from "../state.js";
 import { getActiveSlide } from "../helpers/strat-defaults.js";
 import { normalizeStratObjects, normalizeStyle, cloneStratObject, hitTestObject, settingsToObjectStyle } from "./strat-object-schema.js";
-import { renderStratObjects, renderStratObject, renderSelectionOverlay } from "./strat-draw-render.js";
+import { renderStratObjects, renderStratObject } from "./strat-draw-render.js";
+import { renderSelectionOverlay } from "./strat-selection-handles.js";
 import { setSelectedObject, notifySelectionChange } from "./strat-drawing-clipboard.js";
 import { createPreviewObject, updateDrawPreview, applyDrawConstraints, refreshActiveDrawFromModifiers, finishDrawSession, setPreviewObject, renderHandlesOverlay, applyHandleDragSession } from "./strat-drawing-preview.js";
 import { bindDrawModifierTracking, constrainDragDelta, getDrawModifiers, resolveTwoPointShape, visualDistance } from "./strat-draw-modifiers.js";
@@ -360,6 +361,5 @@ export {
   copySelectedObject,
   cutSelectedObject,
   pasteClipboardObject,
-  getSelectedObject,
   notifySelectionChange,
 };

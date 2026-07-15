@@ -12,9 +12,11 @@ import {
   movePreview,
   scheduleHidePreview,
 } from "./pin-preview.js";
-import { openModal, armModalDismissGuard } from "./pin-modal.js";
+import { armModalDismissGuard } from "./modal-dismiss-guard.js";
+import { openModal } from "./pin-modal.js";
 import { showPinContextMenu, hidePinContextMenu } from "./pin-context-menu.js";
-import { attachClimbPinDrag, attachMgSpotDrag } from "../editor/pin-drag.js";
+import { attachClimbPinDrag } from "../editor/pin-drag.js";
+import { attachMgSpotDrag } from "../editor/pin-drag-mg-spot.js";
 import { pinHasMedia } from "../helpers/pin-media.js";
 
 export function getPinStylingClasses(pin) {

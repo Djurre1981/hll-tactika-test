@@ -4,7 +4,8 @@ import {
   normalizeStyle,
   settingsToObjectStyle,
 } from "./strat-object-schema.js";
-import { renderStratObject, renderSelectionOverlay } from "./strat-draw-render.js";
+import { renderStratObject } from "./strat-draw-render.js";
+import { renderSelectionOverlay } from "./strat-selection-handles.js";
 import {
   constrainDragDelta,
   getDrawModifiers,
