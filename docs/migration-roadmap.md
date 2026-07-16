@@ -1,11 +1,13 @@
 # Tactika v2.0 Migration Roadmap
 
 ## Phase 0 – Infrastructure
-- Provision D1, migrate KV data
-- Deploy Y‑WebSocket server
-- Add collab API endpoints (join, save)
-- Create staging environment
-- Write ai-context.md
+- [x] Provision D1 databases (`hll-tactika-db` + preview) and bind `DB` on Pages
+- [x] Apply foundation schema (`migrations/0001_init_schema.sql`)
+- [ ] Migrate KV data (pins / users / strats) into D1
+- [ ] Deploy Y‑WebSocket server
+- [ ] Add collab API endpoints (join, save)
+- [x] Create staging environment (`hll-tactika-test`)
+- [x] Write ai-context.md
 
 ## Phase 1 – React Shell
 - Configure Vite MPA
