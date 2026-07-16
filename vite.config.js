@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const STATIC_DIRS = ["assets", "maps", "data"];
@@ -41,7 +42,6 @@ function copyStaticToDist() {
 
 /** Keep /assets|/maps|/data URLs as public paths (no Vite fingerprinting). */
 function preserveStaticUrls() {
-  // Encode the path in the placeholder so multi-page builds can't race a shared map.
   return [
     {
       name: "preserve-static-urls-pre",
@@ -90,7 +90,7 @@ function sendStaticFile(req, res, filePath) {
       }
       end = Math.min(end, size - 1);
       res.statusCode = 206;
-      res.setHeader("Content-Range", `bytes ${start}-${end}/${size}`);
+      res.setHeader("Content-Range", `bytes ${start}-${end}`);
       res.setHeader("Content-Length", String(end - start + 1));
       fs.createReadStream(filePath, { start, end }).pipe(res);
       return;
@@ -111,17 +111,10 @@ function serveRepoStatic() {
         const url = qIndex >= 0 ? raw.slice(0, qIndex) : raw;
         const query = qIndex >= 0 ? raw.slice(qIndex) : "";
 
-        if (url === "/" || url === "") {
-          res.statusCode = 302;
-          res.setHeader("Location", `/home/${query}`);
-          res.end();
-          return;
-        }
-
         const barePages = {
-          "/home": "/home/",
+          "/climbing-guide-v1": "/climbing-guide-v1/",
           "/tool/stratmaker": "/tool/stratmaker/",
-          "/tool/climbing-guide": "/tool/climbing-guide/",
+          "/home": "/home/",
         };
         if (barePages[url]) {
           res.statusCode = 302;
@@ -133,16 +126,35 @@ function serveRepoStatic() {
         const match = STATIC_DIRS.find(
           (dir) => url === `/${dir}` || url.startsWith(`/${dir}/`)
         );
-        if (!match) return next();
-        const filePath = path.join(root, decodeURIComponent(url.slice(1)));
-        if (
-          !filePath.startsWith(path.join(root, match)) ||
-          !fs.existsSync(filePath) ||
-          fs.statSync(filePath).isDirectory()
-        ) {
+        if (match) {
+          const filePath = path.join(root, decodeURIComponent(url.slice(1)));
+          if (
+            filePath.startsWith(path.join(root, match)) &&
+            fs.existsSync(filePath) &&
+            !fs.statSync(filePath).isDirectory()
+          ) {
+            sendStaticFile(req, res, filePath);
+            return;
+          }
           return next();
         }
-        sendStaticFile(req, res, filePath);
+
+        // SPA history fallback for React routes (MPA mode otherwise 404s on refresh).
+        const skipSpa =
+          url.startsWith("/api") ||
+          url.startsWith("/climbing-guide-v1") ||
+          url.startsWith("/tool/") ||
+          url.startsWith("/home") ||
+          url.startsWith("/css") ||
+          url.startsWith("/js") ||
+          url.startsWith("/src") ||
+          url.startsWith("/@") ||
+          url.startsWith("/node_modules") ||
+          /\.\w+$/.test(url);
+        if (!skipSpa && req.method === "GET") {
+          req.url = `/${query}`;
+        }
+        return next();
       });
     },
     closeBundle() {
@@ -155,15 +167,20 @@ export default defineConfig({
   root,
   publicDir: false,
   appType: "mpa",
-  plugins: [...preserveStaticUrls(), serveRepoStatic()],
+  plugins: [react(), ...preserveStaticUrls(), serveRepoStatic()],
+  resolve: {
+    alias: {
+      "@map-kernel": path.resolve(root, "map-kernel"),
+    },
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        home: path.resolve(root, "home/index.html"),
+        app: path.resolve(root, "index.html"),
+        climbingGuide: path.resolve(root, "climbing-guide-v1/index.html"),
         stratmaker: path.resolve(root, "tool/stratmaker/index.html"),
-        climbingGuide: path.resolve(root, "tool/climbing-guide/index.html"),
       },
     },
   },

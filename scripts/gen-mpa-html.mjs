@@ -263,7 +263,7 @@ writePage(
 );
 
 writePage(
-  "tool/climbing-guide/index.html",
+  "climbing-guide-v1/index.html",
   "app-boot",
   CLIMB_CSS,
   toolBoot,
@@ -282,20 +282,5 @@ writePage(
   "/js/entries/stratmaker.js"
 );
 
-fs.writeFileSync(
-  path.join(root, "index.html"),
-  `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="refresh" content="0;url=/home" />
-  <script>location.replace("/home" + location.search + location.hash);</script>
-  <title>HLL-Tactika</title>
-</head>
-<body>
-  <p><a href="/home">Continue to Tactika</a></p>
-</body>
-</html>
-`
-);
-console.log("rewrote root index.html → /home redirect");
+// Root index.html is the React SPA entry — do not overwrite here.
+console.log("skipped root index.html (owned by React SPA)");

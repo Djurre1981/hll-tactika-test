@@ -32,18 +32,18 @@ export async function onRequestGet(context) {
 
     if (!(await isAllowedSteamId(steamId, env))) {
       const origin = getOrigin(request);
-      return redirect(`${origin}/home?auth=forbidden&steamId=${steamId}`);
+      return redirect(`${origin}/?auth=forbidden&steamId=${steamId}`);
     }
 
     await recordUserLastSignedIn(steamId, env);
 
     const cookie = await createSessionCookie(profile, getSessionSecret(env), request);
-    return redirect(`${getOrigin(request)}/home`, {
+    return redirect(`${getOrigin(request)}/`, {
       headers: { "Set-Cookie": cookie },
     });
   } catch (error) {
     console.error("Steam callback failed:", error);
     const origin = getOrigin(request);
-    return redirect(`${origin}/home?auth=error`);
+    return redirect(`${origin}/?auth=error`);
   }
 }

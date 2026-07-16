@@ -1,6 +1,6 @@
 export const ROUTES = {
   HOME: "/home",
-  CLIMBING_GUIDE: "/tool/climbing-guide",
+  CLIMBING_GUIDE: "/climbing-guide-v1",
   STRATMAKER: "/tool/stratmaker",
 };
 

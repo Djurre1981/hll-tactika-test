@@ -77,7 +77,7 @@ freePort(VITE_PORT);
 
 // Open Vite directly — wrangler.toml pages_build_output_dir=dist would otherwise
 // serve a stale production build on :8788 without HMR.
-console.log(`Dev: http://127.0.0.1:${VITE_PORT}/home/  (API → wrangler :${API_PORT})`);
+console.log(`Dev: http://127.0.0.1:${VITE_PORT}/  (API → wrangler :${API_PORT})`);
 
 run("node", ["scripts/stratsketch-dev-import-server.mjs"], "import-sidecar");
 run(
