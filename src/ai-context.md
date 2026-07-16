@@ -26,6 +26,7 @@ root
 │ ├── lib/ # API client, query keys, Zustand stores, constants
 │ └── styles/ # Tailwind + global resets
 ├── data/ # Static seed data (map-spawns.json, etc.)
+├── migrations/ # Cloudflare D1 SQL migrations (Phase 0+)
 ├── public/ # Static assets (maps, fonts, icons)
 └── scripts/ # Dev & deploy helpers
 
@@ -36,8 +37,19 @@ root
 - **TanStack Query v5** for server state (caching, refetch)
 - **Zustand** for client UI state (tool, camera, UI toggles)
 - **Tailwind CSS** (utility-first)
+- **Cloudflare D1** – primary SQL store for pins, users, strats metadata (`env.DB`)
+- **Cloudflare KV** – Yjs collaboration snapshots only (not full JSON catalogs)
+- **Cloudflare R2** – media uploads
 - **Yjs** + `y-websocket` for real-time collaboration (Phase 6+)
 - **Map Kernel** – imperative vanilla JS module, aliased as `@map-kernel`
+
+## Data Layer Rules (Phase 0+)
+- Prefer **D1 row-level** reads/writes over rewriting whole JSON blobs in KV.
+- Use `functions/lib/d1.js` (`getDb` / `requireDb`) to access `env.DB`.
+- Keep slide drawing `objects` as JSON text columns until Yjs owns them.
+- Do **not** store Yjs CRDT snapshots in D1 — those stay in KV.
+- Schema changes go through `migrations/*.sql` and `npm run db:migrate:*`.
+- Follow `docs/migration-plan.md` and `docs/migration-roadmap.md`.
 
 ## Core Rules & Conventions
 

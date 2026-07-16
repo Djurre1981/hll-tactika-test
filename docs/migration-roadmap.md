@@ -1,11 +1,17 @@
 # Tactika v2.0 Migration Roadmap
 
-## Phase 0 – Infrastructure
-- Provision D1, migrate KV data
-- Deploy Y‑WebSocket server
-- Add collab API endpoints (join, save)
-- Create staging environment
-- Write ai-context.md
+## Phase 0 – Infrastructure & Free‑Tier Foundation *(3‑5 days)*
+
+**Goal:** Provision all backend services and migrate existing data to D1.
+
+- [x] Create D1 database with tables: `pins`, `users`, `strats`, `events`, `teams`, `strat_folders`
+- [x] Migrate existing KV `pins` and `users` data into D1 with a one‑time script
+- [x] Bind D1 and R2 to the Pages project in `wrangler.toml`
+- [ ] Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)
+- [ ] Add `functions/api/collab/join.js` – session‑validated JWT minting for room access
+- [ ] Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`
+- [x] Create staging environment (Cloudflare Pages preview deployments, separate D1 preview)
+- [x] Write initial `src/ai-context.md`
 
 ## Phase 1 – React Shell
 - Configure Vite MPA

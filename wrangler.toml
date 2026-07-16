@@ -13,3 +13,12 @@ preview_id = "e5ed67e5071744a290fa94f020905a6c"
 binding = "VIDEOS_R2"
 bucket_name = "hll-climb-videos"
 preview_bucket_name = "hll-climb-videos-preview"
+
+# D1 is the primary structured store (pins, users, strats metadata).
+# KV remains for Yjs collaboration snapshots only (see docs/migration-plan.md).
+[[d1_databases]]
+binding = "DB"
+database_name = "hll-tactika-db"
+database_id = "6d617404-fe7c-4f77-980c-a64fbefde494"
+preview_database_id = "101f085d-bbd6-4513-9d21-5d3942df1cc3"
+migrations_dir = "migrations"
