@@ -9,3 +9,4 @@ credentials.json
 node_modules/
 .wrangler/
 dist/
+data/kv-d1-backup/
