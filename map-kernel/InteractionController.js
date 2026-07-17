@@ -369,6 +369,12 @@ export class InteractionController {
       this.paste();
       return;
     }
+    if (mod && event.key.toLowerCase() === "d") {
+      event.preventDefault();
+      this.copy();
+      this.paste();
+      return;
+    }
 
     if (event.key === "Delete" || event.key === "Backspace") {
       const selected = this.scene.getSelected();

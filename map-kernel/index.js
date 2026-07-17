@@ -242,6 +242,26 @@ export class MapKernel {
     this.interaction?.paste();
   }
 
+  copy() {
+    this.interaction?.copy();
+  }
+
+  cut() {
+    this.interaction?.cut();
+  }
+
+  duplicate() {
+    this.interaction?.copy();
+    this.interaction?.paste();
+  }
+
+  deleteSelected() {
+    const selected = this.scene?.getSelected();
+    if (!selected) return;
+    this.scene.removeObject(selected.id);
+    this.renderer?.requestDraw(this.scene.getObjects());
+  }
+
   updateSelected(partial) {
     this.interaction?.updateSelectedStyle(partial);
   }

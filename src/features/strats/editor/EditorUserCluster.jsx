@@ -1,54 +1,55 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../../auth/hooks/useAuthQuery.js";
+import { userMenuPill } from "./editorUi.js";
 
-/** Legacy-style top-right avatar with hover menu (Dashboard / Sign out). */
+function canManageTeam(role) {
+  return role === "admin" || role === "owner";
+}
+
+/** Same chrome as home LegacyUserMenu — avatar + glass pill menu (no Dashboard). */
 export function EditorUserCluster() {
   const user = useAuth();
   const logout = useLogoutMutation();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const name = user.name || user.steamId;
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {open && (
-        <div className="absolute right-full top-0 mr-2 flex flex-col gap-1.5">
+    <div className="relative flex items-start gap-[0.65rem]">
+      <div className="group relative flex items-center">
+        <div
+          className="pointer-events-none invisible absolute right-full top-0 flex w-max flex-col items-stretch gap-[0.35rem] pr-[0.65rem] group-hover:pointer-events-auto group-hover:visible group-focus-within:pointer-events-auto group-focus-within:visible"
+          role="menu"
+        >
+          {canManageTeam(user.role) ? (
+            <Link className={userMenuPill} to="/team" role="menuitem">
+              Admin Panel
+            </Link>
+          ) : null}
           <button
             type="button"
-            onClick={() => navigate("/home")}
-            className="whitespace-nowrap rounded-lg border border-white/12 bg-[rgba(50,50,50,0.92)] px-3 py-2 text-left text-xs text-white/85 backdrop-blur-md hover:bg-white/10"
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            disabled={logout.isPending}
+            className={userMenuPill}
+            role="menuitem"
             onClick={() => logout.mutate()}
-            className="whitespace-nowrap rounded-lg border border-white/12 bg-[rgba(50,50,50,0.92)] px-3 py-2 text-left text-xs text-white/85 backdrop-blur-md hover:bg-white/10 disabled:opacity-40"
+            disabled={logout.isPending}
           >
             Sign out
           </button>
         </div>
-      )}
-      <button
-        type="button"
-        aria-label="Account"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 overflow-hidden rounded-full border border-white/20 bg-black/50 shadow-lg"
-      >
-        {user.avatar ? (
-          <img src={user.avatar} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-xs text-white/60">
-            {(user.name || "?").slice(0, 1)}
-          </span>
-        )}
-      </button>
+        <button
+          type="button"
+          aria-label="Account"
+          className="flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-solid border-white/[0.18] bg-white/[0.06] backdrop-blur-[20px] backdrop-saturate-[160%] transition hover:border-white/[0.32] hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]"
+        >
+          {user.avatar ? (
+            <img src={user.avatar} alt="" className="h-full w-full object-cover" width={40} height={40} />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-xs text-white/60">
+              {(name || "?").slice(0, 1)}
+            </span>
+          )}
+        </button>
+      </div>
+      <span className="sr-only">{name}</span>
     </div>
   );
 }

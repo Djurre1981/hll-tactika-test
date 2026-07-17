@@ -9,6 +9,7 @@ import { Spinner } from "../../../shared/Spinner.jsx";
 import { CanvasWrapper } from "./CanvasWrapper.jsx";
 import { ToolsPanel } from "./ToolsPanel.jsx";
 import { StratsSidePanel } from "./StratsSidePanel.jsx";
+import { MapChrome } from "./MapChrome.jsx";
 import { EditorUserCluster } from "./EditorUserCluster.jsx";
 import { ImportStratSketchModal } from "./ImportStratSketchModal.jsx";
 import { useMutateStrat } from "./hooks/useMutateStrat.js";
@@ -159,6 +160,44 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     if (activeSlideId === slideId) setActiveSlideId(next[0].id);
   };
 
+  const handleDuplicateSlide = async (slideId) => {
+    const source = slides.find((s) => s.id === slideId);
+    if (!source) return;
+    const next = [
+      ...slides,
+      {
+        ...structuredClone(source),
+        id: `slide-${crypto.randomUUID()}`,
+        name: `${source.name || "Slide"} copy`,
+        order: slides.length,
+      },
+    ];
+    await persistSlides(next);
+    setActiveSlideId(next[next.length - 1].id);
+  };
+
+  const handleMoveSlide = async (slideId, delta) => {
+    const ordered = sortSlides(slides);
+    const index = ordered.findIndex((s) => s.id === slideId);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= ordered.length) return;
+    const next = [...ordered];
+    [next[index], next[target]] = [next[target], next[index]];
+    await persistSlides(next.map((s, order) => ({ ...s, order })));
+  };
+
+  const handleReorderSlides = async (sourceId, targetId) => {
+    if (sourceId === targetId) return;
+    const ordered = sortSlides(slides);
+    const from = ordered.findIndex((s) => s.id === sourceId);
+    const to = ordered.findIndex((s) => s.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...ordered];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    await persistSlides(next.map((s, order) => ({ ...s, order })));
+  };
+
   const handleRenameSlide = async (slideId, name) => {
     const next = slides.map((s) => (s.id === slideId ? { ...s, name } : s));
     await persistSlides(next);
@@ -174,6 +213,39 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     if (!canEdit) return;
     stratRef.current = { ...stratRef.current, title };
     await mutation.mutateAsync({ title });
+  };
+
+  const handlePatchStrat = async (partial) => {
+    if (!canEdit) return;
+    stratRef.current = { ...stratRef.current, ...partial };
+    if (partial.tags) {
+      stratRef.current.tags = { ...stratRef.current.tags, ...partial.tags };
+    }
+    if (partial.match) {
+      stratRef.current.match = { ...stratRef.current.match, ...partial.match };
+    }
+    await mutation.mutateAsync(partial);
+  };
+
+  const handleDuplicateStrat = async () => {
+    const data = await apiClient(`/strats/${stratId}/duplicate`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    const id = data?.strat?.id;
+    if (!id) return;
+    queryClient.setQueryData(queryKeys.strats.byId(id), data);
+    queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
+    queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
+    navigate(`/strats/${id}`);
+  };
+
+  const handleDeleteStrat = async () => {
+    if (!window.confirm("Delete this strat? This cannot be undone.")) return;
+    await apiClient(`/strats/${stratId}`, { method: "DELETE" });
+    queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
+    queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
+    navigate("/home");
   };
 
   const handleNewStrat = async () => {
@@ -262,8 +334,13 @@ export function StratEditor({ stratId, backTo = "/home" }) {
           <ToolsPanel
             disabled={!canEdit}
             selected={selected}
-            onFitView={() => kernelRef.current?.fitToView()}
             onPaste={() => kernelRef.current?.paste()}
+            onCopy={() => kernelRef.current?.copy()}
+            onDuplicate={() => kernelRef.current?.duplicate()}
+            onDeleteSelected={() => {
+              kernelRef.current?.deleteSelected();
+              setSelected(null);
+            }}
             onUndo={() => kernelRef.current?.undo()}
             onRedo={() => kernelRef.current?.redo()}
             onUpdateSelected={(partial) => {
@@ -272,6 +349,10 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             }}
           />
         </div>
+      </div>
+
+      <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
+        <MapChrome onFitView={() => kernelRef.current?.fitToView()} />
       </div>
 
       <div className="absolute right-6 top-6 z-30">
@@ -296,9 +377,15 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             onSelectSlide={handleSelectSlide}
             onAddSlide={handleAddSlide}
             onRemoveSlide={handleRemoveSlide}
+            onDuplicateSlide={handleDuplicateSlide}
+            onMoveSlide={handleMoveSlide}
+            onReorderSlides={handleReorderSlides}
             onRenameSlide={handleRenameSlide}
             onChangeSlideMap={handleChangeSlideMap}
             onRenameStrat={handleRenameStrat}
+            onPatchStrat={handlePatchStrat}
+            onDuplicateStrat={handleDuplicateStrat}
+            onDeleteStrat={handleDeleteStrat}
             onNewStrat={handleNewStrat}
             onImport={() => setImportOpen(true)}
           />

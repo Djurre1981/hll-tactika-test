@@ -1,8 +1,25 @@
 import { useEffect, useState } from "react";
 import { STRAT_MAP_IDS } from "./mapIds.js";
-
-const panelClass =
-  "relative flex h-full flex-col overflow-hidden rounded-[16px] border border-white/[0.14] shadow-[0_24px_80px_rgba(0,0,0,0.28)]";
+import { StratDetailsPanel } from "./StratDetailsPanel.jsx";
+import {
+  cx,
+  fieldLabel,
+  glassIconBtn,
+  glassIconBtnActive,
+  glassInput,
+  glassSelect,
+  panelBody,
+  panelGlassFill,
+  panelShell,
+  sectionTitle,
+  slideAction,
+  slideActionLg,
+  slideItem,
+  slideItemActive,
+  slideItemDragging,
+  slideItemDropTarget,
+  stratPickerTrigger,
+} from "./editorUi.js";
 
 function IconBtn({ title, disabled, onClick, children, pressed }) {
   return (
@@ -13,15 +30,16 @@ function IconBtn({ title, disabled, onClick, children, pressed }) {
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border text-sm transition ${
-        pressed
-          ? "border-white/[0.22] bg-white/[0.12] text-white"
-          : "border-white/12 bg-white/[0.05] text-white/[0.88] hover:bg-white/10"
-      } disabled:cursor-not-allowed disabled:opacity-35`}
+      className={cx(glassIconBtn, pressed && glassIconBtnActive)}
     >
       {children}
     </button>
   );
+}
+
+function mapThumbUrl(mapId) {
+  if (!mapId) return null;
+  return `/maps/no-grid/${mapId}_NoGrid.webp`;
 }
 
 export function StratsSidePanel({
@@ -36,9 +54,15 @@ export function StratsSidePanel({
   onSelectSlide,
   onAddSlide,
   onRemoveSlide,
+  onDuplicateSlide,
+  onMoveSlide,
+  onReorderSlides,
   onRenameSlide,
   onChangeSlideMap,
   onRenameStrat,
+  onPatchStrat,
+  onDuplicateStrat,
+  onDeleteStrat,
   onNewStrat,
   onImport,
 }) {
@@ -46,6 +70,8 @@ export function StratsSidePanel({
   const active = sorted.find((s) => s.id === activeSlideId) || sorted[0];
   const [titleDraft, setTitleDraft] = useState(strat?.title || "");
   const [slideNameDraft, setSlideNameDraft] = useState(active?.name || "");
+  const [dragId, setDragId] = useState(null);
+  const [dropId, setDropId] = useState(null);
 
   useEffect(() => {
     setTitleDraft(strat?.title || "");
@@ -62,38 +88,33 @@ export function StratsSidePanel({
   ].filter(Boolean);
 
   return (
-    <aside className={panelClass} aria-label="Strategy panel">
-      <div
-        className="pointer-events-none absolute inset-0 rounded-[16px] bg-[rgba(24,24,26,0.58)] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-[20px] backdrop-saturate-[180%]"
-        aria-hidden="true"
-      />
+    <aside className={panelShell} aria-label="Strategy panel">
+      <div className={panelGlassFill} aria-hidden="true" />
 
-      <div className="relative z-[1] flex min-h-0 flex-1 flex-col gap-3 p-4">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1 rounded-[10px] border border-white/12 bg-[rgba(50,50,50,0.55)] px-3 py-2">
-            <input
-              type="text"
-              value={titleDraft}
-              disabled={!canEdit}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={() => {
-                if (titleDraft.trim() && titleDraft !== strat?.title) {
-                  onRenameStrat?.(titleDraft.trim());
-                }
-              }}
-              className="w-full truncate bg-transparent text-sm font-medium text-white outline-none placeholder:text-white/40"
-              placeholder="Select or create a strat…"
-            />
-            <p className="mt-0.5 truncate text-[0.68rem] uppercase tracking-wide text-white/40">
-              {metaBits.join(" · ") || (dirty || saving ? "Saving…" : "Saved")}
-            </p>
+      <div className={panelBody}>
+        <div className="flex items-stretch gap-[0.45rem]">
+          <div className={stratPickerTrigger}>
+            <div className="min-w-0 flex-1">
+              <input
+                type="text"
+                value={titleDraft}
+                disabled={!canEdit}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => {
+                  if (titleDraft.trim() && titleDraft !== strat?.title) {
+                    onRenameStrat?.(titleDraft.trim());
+                  }
+                }}
+                className="w-full truncate bg-transparent text-[0.82rem] font-normal text-white outline-none placeholder:text-white/40"
+                placeholder="Select or create a strat…"
+              />
+              <p className="mt-[0.1rem] truncate text-[0.64rem] font-light uppercase tracking-[0.06em] text-white/45">
+                {metaBits.join(" · ") || (dirty || saving ? "Saving…" : "Saved")}
+              </p>
+            </div>
           </div>
-          <div className="flex shrink-0 gap-1.5">
-            <IconBtn
-              title="Strat details"
-              pressed={showDetails}
-              onClick={onToggleDetails}
-            >
+          <div className="flex shrink-0 items-stretch gap-[0.45rem]">
+            <IconBtn title="Strat details" pressed={showDetails} onClick={onToggleDetails}>
               <i className="fa-solid fa-circle-info" aria-hidden="true" />
             </IconBtn>
             <IconBtn title="New strat" disabled={!canEdit} onClick={onNewStrat}>
@@ -106,105 +127,209 @@ export function StratsSidePanel({
         </div>
 
         {showDetails ? (
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-[10px] border border-white/10 bg-black/[0.22] p-3">
-            <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/45">
-              Details
-            </h2>
-            <p className="text-xs text-white/50">
-              Status: {dirty || saving ? "Saving…" : "Saved"}
-              {strat?.locked ? " · Locked" : ""}
-            </p>
-            <p className="text-xs text-white/40">
-              Created by {strat?.createdByName || "unknown"}
-            </p>
-          </div>
+          <StratDetailsPanel
+            strat={strat}
+            canEdit={canEdit}
+            onBack={onToggleDetails}
+            onPatchStrat={onPatchStrat}
+            onDuplicateStrat={onDuplicateStrat}
+            onDeleteStrat={onDeleteStrat}
+          />
         ) : (
           <>
-            <header className="flex items-center gap-2">
-              <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/45">
-                Slides
-              </h2>
-              <span className="text-[0.68rem] text-white/35">{sorted.length}</span>
+            <header className="flex shrink-0 items-center gap-2">
+              <h2 className={cx(sectionTitle, "flex-1")}>Slides</h2>
+              <span className="text-[0.64rem] uppercase tracking-[0.1em] text-white/35">
+                {sorted.length}
+              </span>
               <button
                 type="button"
                 disabled={!canEdit}
                 title="Add slide"
+                aria-label="Add slide"
                 onClick={onAddSlide}
-                className="ml-auto flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/12 bg-white/[0.05] text-white/80 hover:bg-white/10 disabled:opacity-35"
+                className={cx(glassIconBtn, "ml-auto")}
               >
                 <i className="fa-solid fa-plus text-xs" aria-hidden="true" />
               </button>
             </header>
 
-            <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+            <ul className="m-0 flex min-h-0 flex-1 list-none flex-col gap-[0.45rem] overflow-y-auto p-0">
+              {sorted.length === 0 && (
+                <li className="px-2 py-4 text-center text-[0.78rem] text-white/45">
+                  No slides yet — add one to begin.
+                </li>
+              )}
               {sorted.map((slide, index) => {
                 const isActive = slide.id === active?.id;
+                const isFirst = index === 0;
+                const isLast = index === sorted.length - 1;
+                const thumb = mapThumbUrl(slide.mapId);
                 return (
                   <li key={slide.id}>
-                    <button
-                      type="button"
+                    <div
+                      draggable={canEdit}
+                      className={cx(
+                        slideItem,
+                        isActive && slideItemActive,
+                        dragId === slide.id && slideItemDragging,
+                        dropId === slide.id && dragId !== slide.id && slideItemDropTarget
+                      )}
                       onClick={() => onSelectSlide(slide.id)}
-                      className={`w-full rounded-[10px] border px-3 py-2.5 text-left transition ${
-                        isActive
-                          ? "border-white/[0.22] bg-white/[0.12] text-white"
-                          : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/5"
-                      }`}
+                      onDragStart={(e) => {
+                        if (!canEdit) return;
+                        setDragId(slide.id);
+                        e.dataTransfer.setData("text/plain", slide.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setDropId(null);
+                      }}
+                      onDragOver={(e) => {
+                        if (!canEdit || !dragId || dragId === slide.id) return;
+                        e.preventDefault();
+                        setDropId(slide.id);
+                      }}
+                      onDragLeave={() => {
+                        if (dropId === slide.id) setDropId(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const sourceId = e.dataTransfer.getData("text/plain") || dragId;
+                        setDropId(null);
+                        setDragId(null);
+                        if (sourceId && sourceId !== slide.id) {
+                          onReorderSlides?.(sourceId, slide.id);
+                        }
+                      }}
                     >
-                      <div className="truncate text-sm font-medium">
-                        {slide.name || `Slide ${index + 1}`}
+                      <div className="flex shrink-0 flex-col items-center gap-[0.1rem]">
+                        <button
+                          type="button"
+                          title="Drag to reorder"
+                          aria-label="Drag to reorder"
+                          className={cx(slideAction, "cursor-grab active:cursor-grabbing")}
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        >
+                          <i className="fa-solid fa-grip-vertical" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Move up"
+                          aria-label="Move slide up"
+                          disabled={!canEdit || isFirst}
+                          className={slideAction}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveSlide?.(slide.id, -1);
+                          }}
+                        >
+                          <i className="fa-solid fa-chevron-up" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Move down"
+                          aria-label="Move slide down"
+                          disabled={!canEdit || isLast}
+                          className={slideAction}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveSlide?.(slide.id, 1);
+                          }}
+                        >
+                          <i className="fa-solid fa-chevron-down" aria-hidden="true" />
+                        </button>
                       </div>
-                      <div className="mt-0.5 truncate text-[0.68rem] text-white/40">
-                        {slide.mapId}
+
+                      <div
+                        className="h-[2.1rem] w-[2.1rem] shrink-0 overflow-hidden rounded-[0.35rem] border border-white/[0.08] bg-white/[0.06]"
+                        aria-hidden="true"
+                      >
+                        {thumb ? (
+                          <img src={thumb} alt="" className="h-full w-full object-cover opacity-80" />
+                        ) : null}
                       </div>
-                    </button>
+
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <div className="truncate font-normal text-white/85">
+                          {slide.name || `Slide ${index + 1}`}
+                        </div>
+                        <div className="truncate text-[0.68rem] text-white/40">{slide.mapId}</div>
+                      </div>
+
+                      {canEdit && (
+                        <div className="flex shrink-0 gap-0.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            title="Duplicate slide"
+                            aria-label="Duplicate slide"
+                            className={slideActionLg}
+                            onClick={() => onDuplicateSlide?.(slide.id)}
+                          >
+                            <i className="fa-regular fa-copy text-xs" aria-hidden="true" />
+                          </button>
+                          {sorted.length > 1 && (
+                            <button
+                              type="button"
+                              title="Delete slide"
+                              aria-label="Delete slide"
+                              className={slideActionLg}
+                              onClick={() => onRemoveSlide?.(slide.id)}
+                            >
+                              <i className="fa-regular fa-trash-can text-xs" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </li>
                 );
               })}
             </ul>
 
             {active && (
-              <div className="space-y-2 rounded-[10px] border border-white/10 bg-black/[0.22] p-3">
-                <h3 className="text-xs font-medium text-white/70">Active slide</h3>
-                <label className="block text-[0.7rem] text-white/45">
+              <div className="mt-3 flex shrink-0 flex-col gap-[0.55rem] border-t border-solid border-white/[0.08] pt-3">
+                <h3 className={sectionTitle}>Active slide</h3>
+                <label className={fieldLabel}>
                   Name
                   <input
                     type="text"
                     maxLength={40}
                     disabled={!canEdit}
                     value={slideNameDraft}
+                    placeholder="Untitled"
                     onChange={(e) => setSlideNameDraft(e.target.value)}
                     onBlur={() => {
                       if (slideNameDraft !== (active.name || "")) {
                         onRenameSlide?.(active.id, slideNameDraft);
                       }
                     }}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white outline-none focus:border-white/25"
+                    className={cx(glassInput, "mt-1")}
                   />
                 </label>
-                <label className="block text-[0.7rem] text-white/45">
+                <label className={fieldLabel}>
                   Map
-                  <select
-                    disabled={!canEdit}
-                    value={active.mapId || ""}
-                    onChange={(e) => onChangeSlideMap?.(active.id, e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white outline-none focus:border-white/25"
-                  >
-                    {STRAT_MAP_IDS.map((id) => (
-                      <option key={id} value={id}>
-                        {id}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="relative mt-1 block">
+                    <select
+                      disabled={!canEdit}
+                      value={active.mapId || ""}
+                      onChange={(e) => onChangeSlideMap?.(active.id, e.target.value)}
+                      className={glassSelect}
+                    >
+                      {STRAT_MAP_IDS.map((id) => (
+                        <option key={id} value={id}>
+                          {id}
+                        </option>
+                      ))}
+                    </select>
+                    <i
+                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
+                      aria-hidden="true"
+                    />
+                  </span>
                 </label>
-                {sorted.length > 1 && canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSlide?.(active.id)}
-                    className="w-full rounded-lg border border-red-400/20 bg-red-500/10 px-2 py-1.5 text-[0.7rem] text-red-300 hover:bg-red-500/20"
-                  >
-                    Delete slide
-                  </button>
-                )}
                 <p className="text-center text-[0.68rem] text-white/35">
                   {dirty || saving ? "Saving…" : "Saved!"}
                 </p>

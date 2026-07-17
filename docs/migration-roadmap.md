@@ -55,18 +55,17 @@
 - [x] Inset-aware map fit/zoom + grid/strongpoint overlays in map-kernel
 - [x] D1 load/save with auto‑save
 - [x] Port drawing tools, undo/redo, clipboard (canvas renderer)
-- [ ] Strats browser re-entry / open existing (deferred; new strats still land in D1)
 
-## Phase 7 – Live Collaboration
+## Phase 7 – Micro‑Prep Whiteboard
+- Full‑page whiteboard + background upload
+- Kernel extensions: sticky notes, highlighter
+- Excalidraw engine
+
+## Phase 8 – Live Collaboration
 - useYjsRoom hook (JWT → WS)
 - Sync Y.Doc objects with kernel
 - Remote cursors via awareness
 - KV snapshots on idle/save/teardown
-
-## Phase 8 – Micro‑Prep Whiteboard
-- Full‑page whiteboard + background upload
-- Kernel extensions: sticky notes, highlighter
-- Excalidraw engine
 
 ## Phase 9 - Discord Bot
 Build D1 tables & Cloudflare API endpoints.

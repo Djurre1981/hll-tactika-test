@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../lib/api-client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
+import { cx, fieldLabel, glassInput, glassPillBtn, glassSurface } from "./editorUi.js";
 
 export function ImportStratSketchModal({ open, onClose }) {
   const navigate = useNavigate();
@@ -14,6 +15,12 @@ export function ImportStratSketchModal({ open, onClose }) {
   const [busy, setBusy] = useState(false);
 
   if (!open) return null;
+
+  const briefingHref = url.trim().startsWith("http")
+    ? url.trim()
+    : url.trim()
+      ? `https://stratsketch.com/${url.trim()}`
+      : "https://stratsketch.com/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,39 +52,50 @@ export function ImportStratSketchModal({ open, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[4px]">
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Import from StratSketch"
-        className="relative w-full max-w-md rounded-2xl border border-white/14 bg-[rgba(40,40,42,0.95)] p-5 shadow-2xl"
+        className={cx(glassSurface, "w-full max-w-[28rem] p-5")}
       >
         <button
           type="button"
           aria-label="Close"
           onClick={onClose}
-          className="absolute right-3 top-3 text-xl text-white/50 hover:text-white"
+          className="absolute right-[0.85rem] top-[0.85rem] border-0 bg-transparent text-[1.4rem] leading-none text-white/[0.72] hover:text-white"
         >
-          ×
+          &times;
         </button>
-        <h2 className="pr-8 text-lg font-medium text-white">Import from StratSketch</h2>
-        <p className="mt-1 text-sm text-white/50">
-          Paste a StratSketch briefing URL or code.
-        </p>
-        <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-          <label className="block text-xs text-white/45">
+
+        <header className="pr-8">
+          <h2 className="m-0 mb-[0.35rem] text-[1.05rem] font-light tracking-wide text-white">
+            Import from StratSketch
+          </h2>
+          <p className="m-0 mb-4 text-[0.82rem] leading-relaxed text-white/45">
+            Paste a StratSketch briefing URL or code. Slides are imported as PNG snapshots with
+            title and creator metadata when available.
+          </p>
+        </header>
+
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          <label className={fieldLabel}>
             URL or code
             <input
               type="text"
               required
               value={url}
               disabled={busy}
+              autoComplete="off"
+              spellCheck={false}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://stratsketch.com/…"
-              className="mt-1 w-full rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+              placeholder="https://stratsketch.com/DbvCaCJLCrW"
+              className={cx(glassInput, "mt-1")}
             />
           </label>
-          <label className="block text-xs text-white/45">
-            Title <span className="text-white/30">(optional)</span>
+
+          <label className={fieldLabel}>
+            Title <span className="font-normal text-white/35">(optional)</span>
             <input
               type="text"
               maxLength={80}
@@ -85,17 +103,35 @@ export function ImportStratSketchModal({ open, onClose }) {
               disabled={busy}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Uses StratSketch title if empty"
-              className="mt-1 w-full rounded-lg border border-white/12 bg-black/40 px-3 py-2 text-sm text-white outline-none focus:border-white/30"
+              className={cx(glassInput, "mt-1")}
             />
           </label>
-          {status && (
-            <p className={`text-xs ${error ? "text-red-300" : "text-white/50"}`}>{status}</p>
-          )}
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-full border border-white/15 bg-white/10 px-4 py-2.5 text-sm text-white hover:bg-white/15 disabled:opacity-40"
+
+          <p
+            className={cx(
+              "m-0 min-h-[1.2rem] text-[0.78rem] leading-[1.4]",
+              error ? "text-[#ff6b6b]" : "text-white/45"
+            )}
+            aria-live="polite"
           >
+            {status}
+          </p>
+
+          <p className="m-0 text-[0.74rem] leading-relaxed text-white/45">
+            StratSketch does not expose per-slide PNG exports publicly, so each slide is rendered to
+            PNG during import. If loading fails, open the briefing on{" "}
+            <a
+              href={briefingHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 underline-offset-2 hover:text-white hover:underline"
+            >
+              stratsketch.com
+            </a>{" "}
+            first and continue as guest.
+          </p>
+
+          <button type="submit" disabled={busy} className={glassPillBtn}>
             {busy ? "Importing…" : "Import"}
           </button>
         </form>
