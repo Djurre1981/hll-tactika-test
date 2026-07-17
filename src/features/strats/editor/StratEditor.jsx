@@ -199,7 +199,7 @@ export function StratEditor({ stratId, backTo = "/home" }) {
 
   if (query.isLoading) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 bg-[#0b0f14] text-white/50">
+      <div className="flex h-full items-center justify-center gap-2 bg-[#0f0f0f] text-white/50">
         <Spinner /> Loading strat…
       </div>
     );
@@ -207,7 +207,7 @@ export function StratEditor({ stratId, backTo = "/home" }) {
 
   if (query.isError || !strat) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0b0f14] p-6">
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0f0f0f] p-6">
         <p className="text-white/50">{query.error?.message || "Strat not found"}</p>
         <Link to={backTo} className="text-white/80 hover:underline">
           Back
@@ -217,8 +217,31 @@ export function StratEditor({ stratId, backTo = "/home" }) {
   }
 
   return (
-    <div ref={shellRef} className="relative h-full w-full overflow-hidden bg-[#0b0f14]">
-      <div className="absolute inset-0">
+    <div ref={shellRef} className="stratmaker-map-shell relative h-full w-full overflow-hidden">
+      <div className="absolute inset-0 z-0" aria-hidden="true">
+        <div className="absolute inset-0 bg-[#0f0f0f]" />
+        <div
+          className="absolute inset-0 opacity-100"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' fill='none'%3E%3Cg stroke='rgba(255,235,200,0.1)' stroke-width='0.55' shape-rendering='crispEdges'%3E%3Cpath d='M15 .5H81'/%3E%3Cpath d='M.5 15V81'/%3E%3C/g%3E%3C/svg%3E\")",
+            backgroundSize: "96px 96px",
+            WebkitMaskImage:
+              "linear-gradient(20deg, transparent 0%, rgba(0,0,0,0.15) 18%, #000 44%, #000 56%, rgba(0,0,0,0.15) 82%, transparent 100%)",
+            maskImage:
+              "linear-gradient(20deg, transparent 0%, rgba(0,0,0,0.15) 18%, #000 44%, #000 56%, rgba(0,0,0,0.15) 82%, transparent 100%)",
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(62, 36, 15, 0.76) 0%, rgba(62, 36, 15, 0.28) 24%, transparent 42%)",
+          }}
+        />
+      </div>
+
+      <div className="absolute inset-0 z-[1]">
         <CanvasWrapper
           kernelRef={kernelRef}
           mapId={activeSlide?.mapId}

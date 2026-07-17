@@ -1,10 +1,11 @@
 const MAX_SCALE = 5;
 const ZOOM_STEP = 1.15;
-const MIN_SCALE = 0.2;
+const MIN_SCALE = 0.05;
 
 /**
  * Pan/zoom map stage. Coords: map-% via screenToMapPercent / mapPercentToScreen.
  * Overlay canvas lives as sibling of the map image inside stage.
+ * Fit/clamp mirrors legacy js/ui/map-viewer.js (height-fit on landscape).
  */
 export class MapViewer {
   constructor(viewport, stage, image) {
@@ -30,7 +31,14 @@ export class MapViewer {
     this._onPointerMove = (e) => this.onPointerMove(e);
     this._onPointerUp = (e) => this.onPointerUp(e);
     this._onResize = () => {
+      // Keep at least fit-scale; if we were at min (fit), re-center.
+      const min = this.getFitScale();
+      const wasFit = Math.abs(this.scale - min) < 0.002 || this.scale <= min + 0.001;
       this.scale = this.clampScale(this.scale);
+      if (wasFit) {
+        this.fitToView();
+        return;
+      }
       this.clampTranslation();
       this.applyTransform();
     };
@@ -69,6 +77,12 @@ export class MapViewer {
     };
   }
 
+  getImageSize() {
+    const imgW = this.image.naturalWidth || this.image.width || 0;
+    const imgH = this.image.naturalHeight || this.image.height || 0;
+    return { imgW, imgH };
+  }
+
   getVisibleBounds() {
     const rect = this.viewport.getBoundingClientRect();
     const { left, right, top, bottom } = this.panelInsets;
@@ -96,51 +110,69 @@ export class MapViewer {
     this.applyTransform();
   }
 
-  fitToView() {
-    const imgW = this.image.naturalWidth || this.image.width || 1920;
-    const imgH = this.image.naturalHeight || this.image.height || 1920;
-    const bounds = this.getVisibleBounds();
-    if (!bounds.width || !bounds.height) return;
+  /** Legacy landscape: scale = viewportHeight / imageHeight (map runs under side panels). */
+  getFitScale() {
+    const rect = this.viewport.getBoundingClientRect();
+    const { imgW, imgH } = this.getImageSize();
+    if (!imgW || !imgH || !rect.width || !rect.height) return MIN_SCALE;
+    if (rect.width >= rect.height) return rect.height / imgH;
+    return rect.width / imgW;
+  }
 
-    const scale =
-      Math.min(bounds.width / imgW, bounds.height / imgH) * 0.95;
-    this.scale = this.clampScale(scale);
+  fitToView() {
+    const rect = this.viewport.getBoundingClientRect();
+    const { imgW, imgH } = this.getImageSize();
+    if (!rect.width || !rect.height || !imgW || !imgH) return;
+
+    this.scale = this.getFitScale();
+    const bounds = this.getVisibleBounds();
     this.translateX = bounds.centerX - (imgW * this.scale) / 2;
-    this.translateY = bounds.centerY - (imgH * this.scale) / 2;
+    this.translateY = (rect.height - imgH * this.scale) / 2;
     this.clampTranslation();
     this.applyTransform();
   }
 
   clampScale(scale) {
-    return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+    return Math.min(MAX_SCALE, Math.max(this.getFitScale(), scale));
+  }
+
+  clampAxisWithHalfOverscroll(value, contentSize, viewportSize) {
+    const half = viewportSize / 2;
+    return Math.min(half, Math.max(half - contentSize, value));
+  }
+
+  clampAxisToMapEdges(value, contentSize, viewportSize) {
+    if (contentSize <= viewportSize) {
+      return (viewportSize - contentSize) / 2;
+    }
+    return Math.min(0, Math.max(viewportSize - contentSize, value));
   }
 
   clampTranslation() {
-    const bounds = this.getVisibleBounds();
-    const imgW = this.image.naturalWidth || this.image.width || 1920;
-    const imgH = this.image.naturalHeight || this.image.height || 1920;
+    const rect = this.viewport.getBoundingClientRect();
+    const { imgW, imgH } = this.getImageSize();
+    if (!imgW || !imgH) return;
     const contentW = imgW * this.scale;
     const contentH = imgH * this.scale;
 
-    const clampAxis = (value, content, viewSize, origin) => {
-      if (content <= viewSize) return origin + (viewSize - content) / 2;
-      const min = origin + viewSize - content;
-      const max = origin;
-      return Math.min(max, Math.max(min, value));
-    };
-
-    this.translateX = clampAxis(
+    this.translateX = this.clampAxisWithHalfOverscroll(
       this.translateX,
       contentW,
-      bounds.width,
-      bounds.left
+      rect.width
     );
-    this.translateY = clampAxis(
-      this.translateY,
-      contentH,
-      bounds.height,
-      bounds.top
-    );
+    if (rect.width >= rect.height) {
+      this.translateY = this.clampAxisToMapEdges(
+        this.translateY,
+        contentH,
+        rect.height
+      );
+    } else {
+      this.translateY = this.clampAxisWithHalfOverscroll(
+        this.translateY,
+        contentH,
+        rect.height
+      );
+    }
   }
 
   applyTransform() {
@@ -150,18 +182,17 @@ export class MapViewer {
 
   screenToMapPercent(clientX, clientY) {
     const rect = this.viewport.getBoundingClientRect();
+    const { imgW, imgH } = this.getImageSize();
+    if (!imgW || !imgH) return { x: 0, y: 0 };
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     const mapX = (x - this.translateX) / this.scale;
     const mapY = (y - this.translateY) / this.scale;
-    const imgW = this.image.naturalWidth || this.image.width || 1920;
-    const imgH = this.image.naturalHeight || this.image.height || 1920;
     return { x: (mapX / imgW) * 100, y: (mapY / imgH) * 100 };
   }
 
   mapPercentToScreen(xPercent, yPercent) {
-    const imgW = this.image.naturalWidth || this.image.width || 1920;
-    const imgH = this.image.naturalHeight || this.image.height || 1920;
+    const { imgW, imgH } = this.getImageSize();
     return {
       x: this.translateX + (xPercent / 100) * imgW * this.scale,
       y: this.translateY + (yPercent / 100) * imgH * this.scale,
@@ -169,8 +200,8 @@ export class MapViewer {
   }
 
   getMapAspect() {
-    const imgW = this.image.naturalWidth || this.image.width || 1920;
-    const imgH = this.image.naturalHeight || this.image.height || 1920;
+    const { imgW, imgH } = this.getImageSize();
+    if (!imgW || !imgH) return 1;
     return imgW / imgH;
   }
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import MapKernel from "@map-kernel";
-import { useCameraStore } from "../../../lib/stores/useCameraStore.js";
 import { useEditorStore } from "../../../lib/stores/useEditorStore.js";
 import { useToolStore } from "../../../lib/stores/useToolStore.js";
 
@@ -22,6 +21,7 @@ function toolSettingsFromStore(state) {
 
 /**
  * Sole React bridge to @map-kernel. Exposes kernel via `kernelRef`.
+ * Camera stays inside the kernel (no Zustand round-trip — that was distorting fit).
  */
 export function CanvasWrapper({
   kernelRef,
@@ -35,22 +35,19 @@ export function CanvasWrapper({
 }) {
   const hostRef = useRef(null);
   const localKernel = useRef(null);
-  const applyingCamera = useRef(false);
   const selectionCb = useRef(onSelectionChange);
   selectionCb.current = onSelectionChange;
+  const fittedRef = useRef(false);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
 
+    fittedRef.current = false;
     const kernel = new MapKernel({
       onSelectionChange: (selected) => {
         useEditorStore.getState().setSelectedObjectId(selected?.id || null);
         selectionCb.current?.(selected);
-      },
-      onCameraChange: (camera) => {
-        if (applyingCamera.current) return;
-        useCameraStore.getState().setCamera(camera);
       },
     });
     kernel.mount(host);
@@ -63,11 +60,6 @@ export function CanvasWrapper({
     const unsubTool = useToolStore.subscribe((state) => {
       kernel.setTool(toolSettingsFromStore(state));
     });
-    const unsubCamera = useCameraStore.subscribe((state) => {
-      applyingCamera.current = true;
-      kernel.setCamera({ x: state.x, y: state.y, zoom: state.zoom });
-      applyingCamera.current = false;
-    });
     const unsubEditor = useEditorStore.subscribe((state) => {
       kernel.setOverlays({
         grid: state.showGrid,
@@ -75,9 +67,18 @@ export function CanvasWrapper({
       });
     });
 
+    // Refit when the host actually has layout size (flex/absolute race).
+    const ro = new ResizeObserver(() => {
+      if (!fittedRef.current && host.clientWidth > 0 && host.clientHeight > 0) {
+        fittedRef.current = true;
+        kernel.fitToView();
+      }
+    });
+    ro.observe(host);
+
     return () => {
+      ro.disconnect();
       unsubTool();
-      unsubCamera();
       unsubEditor();
       kernel.destroy();
       localKernel.current = null;
@@ -96,17 +97,6 @@ export function CanvasWrapper({
   useEffect(() => {
     if (!localKernel.current || !panelInsets) return;
     localKernel.current.setPanelInsets(panelInsets);
-  }, [panelInsets]);
-
-  // Initial fit once insets are known after mount
-  const fittedRef = useRef(false);
-  useEffect(() => {
-    if (!localKernel.current || !panelInsets) return;
-    if (fittedRef.current) return;
-    if (panelInsets.left > 0 || panelInsets.right > 0) {
-      fittedRef.current = true;
-      localKernel.current.fitToView();
-    }
   }, [panelInsets]);
 
   useEffect(() => {

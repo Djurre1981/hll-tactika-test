@@ -60,7 +60,7 @@ export class MapKernel {
     el.style.width = "100%";
     el.style.height = "100%";
     el.style.touchAction = "none";
-    el.style.background = "#0b0f14";
+    el.style.background = "transparent";
 
     this.viewport = document.createElement("div");
     this.viewport.className = "map-kernel-viewport";
@@ -86,10 +86,12 @@ export class MapKernel {
     this.image.draggable = false;
     Object.assign(this.image.style, {
       display: "block",
-      width: "1920px",
-      height: "1920px",
+      maxWidth: "none",
+      width: "auto",
+      height: "auto",
       userSelect: "none",
       pointerEvents: "none",
+      WebkitUserDrag: "none",
     });
 
     this.canvas = document.createElement("canvas");
@@ -124,10 +126,14 @@ export class MapKernel {
     this.interaction.attach(this.viewport);
 
     this.image.addEventListener("load", () => {
-      const size = this.image.naturalWidth || 1920;
-      this.image.style.width = `${size}px`;
-      this.image.style.height = `${this.image.naturalHeight || size}px`;
-      this.renderer.setMapSize(size);
+      const w = this.image.naturalWidth || 4096;
+      const h = this.image.naturalHeight || w;
+      // Intrinsic size only — never force a fake 1920 box (maps are 4096²).
+      this.image.removeAttribute("width");
+      this.image.removeAttribute("height");
+      this.image.style.width = `${w}px`;
+      this.image.style.height = `${h}px`;
+      this.renderer.setMapSize(w);
       this.overlays?.syncSize();
       this.viewer.fitToView();
       this.renderer.requestDraw(this.scene.getObjects());
@@ -172,8 +178,13 @@ export class MapKernel {
 
   setPanelInsets(insets) {
     this.viewer?.setPanelInsets(insets);
-    this.viewer?.clampTranslation();
-    this.viewer?.applyTransform();
+    if (!this.viewer) return;
+    const { imgW } = this.viewer.getImageSize();
+    if (!imgW) return;
+    const bounds = this.viewer.getVisibleBounds();
+    this.viewer.translateX = bounds.centerX - (imgW * this.viewer.scale) / 2;
+    this.viewer.clampTranslation();
+    this.viewer.applyTransform();
   }
 
   fitToView() {

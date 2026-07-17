@@ -56,7 +56,7 @@ export function StratmakerPage() {
 
   if (error) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0b0f14] p-6">
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[#0f0f0f] p-6">
         <p className="text-white/60">{error}</p>
         <Link to="/home" className="text-amber-300/90 hover:underline">
           Back to hub
@@ -67,7 +67,7 @@ export function StratmakerPage() {
 
   if (!stratId) {
     return (
-      <div className="flex h-full items-center justify-center gap-2 bg-[#0b0f14] text-white/50">
+      <div className="flex h-full items-center justify-center gap-2 bg-[#0f0f0f] text-white/50">
         <Spinner /> Creating strat…
       </div>
     );

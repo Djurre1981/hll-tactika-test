@@ -17,8 +17,9 @@ export class MapOverlays {
     this.gridImage.draggable = false;
     Object.assign(this.gridImage.style, {
       display: "block",
-      width: "1920px",
-      height: "1920px",
+      maxWidth: "none",
+      width: "4096px",
+      height: "4096px",
       pointerEvents: "none",
       userSelect: "none",
     });
@@ -29,8 +30,9 @@ export class MapOverlays {
     this.spImage.draggable = false;
     Object.assign(this.spImage.style, {
       display: "block",
-      width: "1920px",
-      height: "1920px",
+      maxWidth: "none",
+      width: "4096px",
+      height: "4096px",
       pointerEvents: "none",
       userSelect: "none",
     });
@@ -57,8 +59,8 @@ export class MapOverlays {
   }
 
   syncSize() {
-    const w = this.image.naturalWidth || 1920;
-    const h = this.image.naturalHeight || 1920;
+    const w = this.image.naturalWidth || 4096;
+    const h = this.image.naturalHeight || w;
     for (const img of [this.gridImage, this.spImage]) {
       img.style.width = `${w}px`;
       img.style.height = `${h}px`;

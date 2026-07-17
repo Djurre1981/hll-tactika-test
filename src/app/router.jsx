@@ -59,8 +59,10 @@ function AppShell() {
 /** Full-bleed shell for map editor (no max-width main). */
 function EditorShell() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
-      <Outlet />
+    <div className="relative h-screen w-screen overflow-hidden bg-[#0f0f0f] text-text">
+      <div className="absolute inset-0">
+        <Outlet />
+      </div>
     </div>
   );
 }
