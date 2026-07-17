@@ -1,21 +1,24 @@
-const memory = new Set();
+const played = new Set();
+const typewriterProgress = new Map();
 
 export function hasPlayedOnce(key) {
   if (!key) return false;
-  if (memory.has(key)) return true;
-  try {
-    return sessionStorage.getItem(key) === "done";
-  } catch {
-    return false;
-  }
+  return played.has(key);
 }
 
 export function markPlayedOnce(key) {
   if (!key) return;
-  memory.add(key);
-  try {
-    sessionStorage.setItem(key, "done");
-  } catch {
-    // ignore quota / private mode
-  }
+  played.add(key);
+}
+
+/** In-memory only — cleared on full page reload. */
+export function getTypewriterProgress(key) {
+  if (!key) return { index: 0, done: false };
+  return typewriterProgress.get(key) || { index: 0, done: false };
+}
+
+export function setTypewriterProgress(key, index, done) {
+  if (!key) return;
+  typewriterProgress.set(key, { index, done });
+  if (done) played.add(key);
 }

@@ -1,26 +1,8 @@
 import { useEffect, useState } from "react";
-
-const completedTypewriters = new Set();
-
-function isTypewriterDone(storageKey) {
-  if (!storageKey) return false;
-  if (completedTypewriters.has(storageKey)) return true;
-  try {
-    return sessionStorage.getItem(storageKey) === "done";
-  } catch {
-    return false;
-  }
-}
-
-function markTypewriterDone(storageKey) {
-  if (!storageKey) return;
-  completedTypewriters.add(storageKey);
-  try {
-    sessionStorage.setItem(storageKey, "done");
-  } catch {
-    // ignore quota / private mode
-  }
-}
+import {
+  getTypewriterProgress,
+  setTypewriterProgress,
+} from "./oneShot.js";
 
 export const WELCOME_INTRO_TEXT =
   "Tactika is a tailored strategy and planning platform for Hell Let Loose. " +
@@ -35,10 +17,12 @@ export function useTypewriter(
   text,
   { speed = 16, startDelay = 400, enabled = true, storageKey } = {},
 ) {
-  const alreadyDone = enabled && isTypewriterDone(storageKey);
-  const [displayText, setDisplayText] = useState(alreadyDone ? text : "");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isDone, setIsDone] = useState(alreadyDone);
+  const saved = getTypewriterProgress(storageKey);
+  const [displayText, setDisplayText] = useState(() =>
+    saved.done ? text : text.slice(0, saved.index),
+  );
+  const [isTyping, setIsTyping] = useState(() => enabled && !saved.done && saved.index > 0);
+  const [isDone, setIsDone] = useState(() => Boolean(saved.done));
   const [cursorVisible, setCursorVisible] = useState(true);
 
   useEffect(() => {
@@ -61,43 +45,50 @@ export function useTypewriter(
       return undefined;
     }
 
-    if (isTypewriterDone(storageKey)) {
+    const progress = getTypewriterProgress(storageKey);
+    if (progress.done || progress.index >= text.length) {
+      setTypewriterProgress(storageKey, text.length, true);
       setDisplayText(text);
       setIsTyping(false);
       setIsDone(true);
       return undefined;
     }
 
-    let index = 0;
+    let index = progress.index;
     let timer = null;
     let startTimer = null;
     let cancelled = false;
 
-    setDisplayText("");
+    setDisplayText(text.slice(0, index));
     setIsTyping(true);
     setIsDone(false);
 
     function tick() {
       if (cancelled) return;
       if (index >= text.length) {
+        setTypewriterProgress(storageKey, text.length, true);
         setIsTyping(false);
         setIsDone(true);
-        markTypewriterDone(storageKey);
         return;
       }
-      setDisplayText(text.slice(0, index + 1));
       index += 1;
+      setTypewriterProgress(storageKey, index, false);
+      setDisplayText(text.slice(0, index));
       timer = window.setTimeout(tick, speed);
     }
 
+    // Resume immediately if we already started before a remount / tab switch.
+    const delay = index > 0 ? 0 : startDelay;
     startTimer = window.setTimeout(() => {
       if (!cancelled) tick();
-    }, startDelay);
+    }, delay);
 
     return () => {
       cancelled = true;
       if (startTimer) window.clearTimeout(startTimer);
       if (timer) window.clearTimeout(timer);
+      // Keep current index so the next mount continues instead of restarting.
+      setTypewriterProgress(storageKey, index, index >= text.length);
     };
   }, [text, speed, startDelay, enabled, storageKey]);
 

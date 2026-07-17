@@ -7,6 +7,7 @@ export function useAuthQuery() {
     queryKey: queryKeys.users.me,
     queryFn: () => apiClient("/auth/me"),
     retry: false,
+    refetchOnWindowFocus: false,
   });
 }
 
