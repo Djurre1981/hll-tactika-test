@@ -19,12 +19,21 @@ export function FolderTree({
     onDropStrat?.(stratId, folderId);
   }
 
+  function itemClass(active) {
+    return [
+      "w-full rounded-xl border-0 bg-transparent px-2.5 py-2 text-left text-white/70 transition hover:bg-white/[0.06] hover:text-white",
+      active ? "bg-accent/15 text-[#f0d9a0]" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
   return (
-    <ul className="strat-folder-tree">
+    <ul className="m-0 flex list-none flex-col gap-1 p-0">
       <li>
         <button
           type="button"
-          className={`strat-folder-tree__item${selectedFolderId == null ? " is-active" : ""}`}
+          className={itemClass(selectedFolderId == null)}
           onClick={() => onSelect(null)}
           onDragOver={handleDragOver}
           onDrop={(event) => handleDrop(event, null)}
@@ -35,7 +44,7 @@ export function FolderTree({
       <li>
         <button
           type="button"
-          className={`strat-folder-tree__item${selectedFolderId === "none" ? " is-active" : ""}`}
+          className={itemClass(selectedFolderId === "none")}
           onClick={() => onSelect("none")}
           onDragOver={handleDragOver}
           onDrop={(event) => handleDrop(event, null)}
@@ -47,7 +56,7 @@ export function FolderTree({
         <li key={folder.id}>
           <button
             type="button"
-            className={`strat-folder-tree__item${selectedFolderId === folder.id ? " is-active" : ""}`}
+            className={itemClass(selectedFolderId === folder.id)}
             onClick={() => onSelect(folder.id)}
             onDragOver={handleDragOver}
             onDrop={(event) => handleDrop(event, folder.id)}

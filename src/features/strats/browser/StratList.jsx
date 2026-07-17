@@ -14,17 +14,17 @@ export function StratList({ strats, foldersById, canDrag = false, filter = "" })
     : strats;
 
   if (filtered.length === 0) {
-    return <p className="mgmt-empty">No strats match this filter.</p>;
+    return <p className="my-8 text-[0.92rem] text-white/45">No strats match this filter.</p>;
   }
 
   return (
-    <ul className="strat-list">
+    <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
       {filtered.map((strat) => {
         const folderName = strat.folderId ? foldersById.get(strat.folderId)?.name : null;
         return (
           <li key={strat.id}>
             <div
-              className="strat-list__row"
+              className="flex cursor-grab items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 active:cursor-grabbing"
               draggable={canDrag}
               onDragStart={(event) => {
                 if (!canDrag) return;
@@ -32,11 +32,14 @@ export function StratList({ strats, foldersById, canDrag = false, filter = "" })
                 event.dataTransfer.effectAllowed = "move";
               }}
             >
-              <div className="strat-list__main">
-                <Link className="strat-list__title" to={`/strats/${strat.id}`}>
+              <div>
+                <Link
+                  className="text-base text-white no-underline transition hover:text-accent"
+                  to={`/strats/${strat.id}`}
+                >
                   {strat.title || "Untitled Strat"}
                 </Link>
-                <p className="strat-list__meta">
+                <p className="mt-1 text-[0.8rem] text-white/40">
                   {[strat.tags?.team, strat.tags?.type, folderName || "Unfiled"]
                     .filter(Boolean)
                     .join(" · ")}

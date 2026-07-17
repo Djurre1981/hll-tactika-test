@@ -7,6 +7,9 @@ import {
   useRosterQuery,
 } from "../hooks/useRosterQuery.js";
 
+const fieldClass =
+  "min-h-[2.4rem] min-w-[10rem] rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-white/90";
+
 export function RosterSection() {
   const [query, setQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -59,17 +62,18 @@ export function RosterSection() {
   const error = roster.error?.message || addMember.error?.message || removeMember.error?.message;
 
   return (
-    <section className="mgmt-section">
-      <header className="mgmt-section__header">
+    <section>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="mgmt-section__title">Roster</h2>
-          <p className="mgmt-section__sub">Clan members — not website access.</p>
+          <h2 className="m-0 text-[1.65rem] font-medium tracking-wide text-white">Roster</h2>
+          <p className="mt-1.5 text-[0.9rem] text-white/50">Clan members — not website access.</p>
         </div>
-        <div className="mgmt-section__tools">
-          <label className="mgmt-search">
+        <div className="flex items-center gap-2.5">
+          <label>
             <span className="sr-only">Search roster</span>
             <input
               type="search"
+              className={`${fieldClass} w-[min(220px,42vw)] min-w-0`}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search"
@@ -77,7 +81,7 @@ export function RosterSection() {
           </label>
           <button
             type="button"
-            className="mgmt-icon-btn mgmt-icon-btn--round"
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/[0.05] text-lg text-white/55 transition hover:text-white"
             onClick={() => setShowForm((open) => !open)}
           >
             +
@@ -86,20 +90,26 @@ export function RosterSection() {
       </header>
 
       {showForm ? (
-        <form className="mgmt-form" onSubmit={handleAdd}>
+        <form className="mb-4 flex flex-wrap gap-2.5" onSubmit={handleAdd}>
           <input
             required
+            className={fieldClass}
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
             placeholder="Display name"
             maxLength={80}
           />
           <input
+            className={fieldClass}
             value={steamId}
             onChange={(event) => setSteamId(event.target.value)}
             placeholder="Steam ID (optional)"
           />
-          <select value={rosterRole} onChange={(event) => setRosterRole(event.target.value)}>
+          <select
+            className={fieldClass}
+            value={rosterRole}
+            onChange={(event) => setRosterRole(event.target.value)}
+          >
             {Object.entries(ROLE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}

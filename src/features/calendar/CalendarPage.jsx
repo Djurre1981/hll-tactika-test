@@ -3,11 +3,13 @@ import { useAuth } from "../auth/AuthGate.jsx";
 import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
 import { Modal } from "../../shared/Modal.jsx";
+import { DayDetails } from "./DayDetails.jsx";
 import { EventForm } from "./EventForm.jsx";
 import { MonthGrid } from "./MonthGrid.jsx";
 import {
   buildMonthDays,
   canEditEvents,
+  eventsForDay,
   startOfMonth,
 } from "./calendar-utils.js";
 import {
@@ -17,10 +19,14 @@ import {
   useUpdateEventMutation,
 } from "./hooks/useEventsQuery.js";
 
+const navBtnClass =
+  "grid h-[2.2rem] w-[2.2rem] place-items-center rounded-full border border-white/12 bg-white/[0.05] text-base text-white/80 transition hover:border-white/20 hover:bg-white/10";
+
 export function CalendarPage({ hub = false }) {
   const user = useAuth();
   const canEdit = canEditEvents(user.role);
   const [monthDate, setMonthDate] = useState(startOfMonth(new Date()));
+  const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [modalState, setModalState] = useState(null);
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth() + 1;
@@ -34,16 +40,23 @@ export function CalendarPage({ hub = false }) {
     month: "long",
     year: "numeric",
   }).format(monthDate);
+  const monthEventCount = events.length;
+  const selectedDayCount = eventsForDay(events, selectedDay).length;
 
   function shiftMonth(delta) {
-    setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+    setMonthDate((current) => {
+      const next = new Date(current.getFullYear(), current.getMonth() + delta, 1);
+      setSelectedDay(new Date(next.getFullYear(), next.getMonth(), 1));
+      return next;
+    });
   }
 
   function openCreate(day) {
     if (!canEdit) return;
-    const selectedDay = new Date(day);
-    selectedDay.setHours(19, 0, 0, 0);
-    setModalState({ mode: "create", selectedDay });
+    const selected = new Date(day);
+    selected.setHours(19, 0, 0, 0);
+    setSelectedDay(day);
+    setModalState({ mode: "create", selectedDay: selected });
   }
 
   function openEdit(event) {
@@ -71,8 +84,117 @@ export function CalendarPage({ hub = false }) {
     createEvent.error?.message || updateEvent.error?.message || deleteEvent.error?.message;
   const sectionStyle = useFadeIn();
 
-  const content = (
-    <section className={hub ? "space-y-5" : "space-y-6"} style={sectionStyle}>
+  const modal = (
+    <Modal
+      open={Boolean(modalState)}
+      onClose={closeModal}
+      title={modalState?.mode === "view" ? "Event details" : "Event"}
+    >
+      {modalState?.mode === "view" ? (
+        <div className="space-y-3 text-sm">
+          <p className="text-xl font-medium">{modalState.event.title}</p>
+          <p className="uppercase tracking-[0.16em] text-accent">
+            {modalState.event.eventType}
+          </p>
+          <p className="text-muted">{new Date(modalState.event.startsAt).toLocaleString()}</p>
+          {modalState.event.description ? <p>{modalState.event.description}</p> : null}
+        </div>
+      ) : modalState ? (
+        <EventForm
+          key={modalState.event?.id || "create"}
+          initialEvent={modalState.event}
+          selectedDay={modalState.selectedDay}
+          onSubmit={submitEvent}
+          onDelete={handleDelete}
+          pending={createEvent.isPending || updateEvent.isPending || deleteEvent.isPending}
+          error={mutationError}
+          canDelete={modalState.mode === "edit"}
+        />
+      ) : null}
+    </Modal>
+  );
+
+  if (hub) {
+    return (
+      <div
+        className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
+        data-hub-fill
+        style={sectionStyle}
+      >
+        {eventsQuery.error ? (
+          <p className="hub-admin-status is-error mb-3">{eventsQuery.error.message}</p>
+        ) : null}
+        <div className="grid h-auto min-h-0 flex-1 grid-cols-1 gap-5 overflow-auto lg:h-full lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.85fr)] lg:overflow-hidden">
+          <section className="flex min-h-0 flex-col">
+            <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="m-0 text-[1.65rem] font-medium tracking-wide text-white">
+                  {monthLabel}
+                </h1>
+                <p className="mt-1 text-[0.8rem] text-white/40">
+                  {monthEventCount} event{monthEventCount === 1 ? "" : "s"} this month
+                  {selectedDayCount ? ` · ${selectedDayCount} on selected day` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className={navBtnClass}
+                  aria-label="Previous month"
+                  onClick={() => shiftMonth(-1)}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className={navBtnClass}
+                  aria-label="Today"
+                  onClick={() => {
+                    const today = new Date();
+                    setMonthDate(startOfMonth(today));
+                    setSelectedDay(today);
+                  }}
+                >
+                  •
+                </button>
+                <button
+                  type="button"
+                  className={navBtnClass}
+                  aria-label="Next month"
+                  onClick={() => shiftMonth(1)}
+                >
+                  ›
+                </button>
+              </div>
+            </header>
+            <MonthGrid
+              compact
+              days={days}
+              monthDate={monthDate}
+              events={events}
+              selectedDay={selectedDay}
+              canEdit={canEdit}
+              isLoading={eventsQuery.isLoading}
+              onSelectDay={setSelectedDay}
+              onCreateDay={openCreate}
+            />
+          </section>
+          <DayDetails
+            selectedDay={selectedDay}
+            events={events}
+            canEdit={canEdit}
+            isLoading={eventsQuery.isLoading}
+            onAdd={openCreate}
+            onOpenEvent={openEdit}
+          />
+        </div>
+        {modal}
+      </div>
+    );
+  }
+
+  return (
+    <section className="space-y-6" style={sectionStyle}>
       <div className="glass-panel p-6 md:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -113,40 +235,7 @@ export function CalendarPage({ hub = false }) {
         onCreateDay={openCreate}
         onOpenEvent={openEdit}
       />
-
-      <Modal
-        open={Boolean(modalState)}
-        onClose={closeModal}
-        title={modalState?.mode === "view" ? "Event details" : "Event"}
-      >
-        {modalState?.mode === "view" ? (
-          <div className="space-y-3 text-sm">
-            <p className="text-xl font-medium">{modalState.event.title}</p>
-            <p className="uppercase tracking-[0.16em] text-accent">
-              {modalState.event.eventType}
-            </p>
-            <p className="text-muted">{new Date(modalState.event.startsAt).toLocaleString()}</p>
-            {modalState.event.description ? <p>{modalState.event.description}</p> : null}
-          </div>
-        ) : modalState ? (
-          <EventForm
-            key={modalState.event?.id || "create"}
-            initialEvent={modalState.event}
-            selectedDay={modalState.selectedDay}
-            onSubmit={submitEvent}
-            onDelete={handleDelete}
-            pending={createEvent.isPending || updateEvent.isPending || deleteEvent.isPending}
-            error={mutationError}
-            canDelete={modalState.mode === "edit"}
-          />
-        ) : null}
-      </Modal>
+      {modal}
     </section>
   );
-
-  if (hub) {
-    return <div className="hub-calendar-shell space-y-5">{content}</div>;
-  }
-
-  return content;
 }

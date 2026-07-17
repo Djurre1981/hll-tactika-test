@@ -114,3 +114,14 @@ root
 - Before modifying `map-kernel/`, understand that it must remain vanilla JS and cannot depend on React.
 - Use existing patterns: look at how `useTeamQuery.js` is structured for API calls, or how `CanvasWrapper.jsx` mounts the kernel.
 - Keep the code short when possible
+
+## Conventions
+* No barrel files — import directly from the source file.
+* Feature co‑location — all code for a feature lives inside features/<name>/.
+* No cross‑feature imports — use shared/ or an explicit public API.
+* Shared UI only in shared/ — buttons, modals, spinners, etc.
+* map-kernel/ is pure vanilla JS — never imports React.
+* Zustand slices one per file — useToolStore.js, useCameraStore.js, each under 50 lines.
+* TanStack Query key factories — all keys from lib/query-keys.js.
+* Tailwind only — no CSS modules unless unavoidable; custom CSS is co‑located.
+* Legacy climbing guide lives outside src/ — untouched by the React build.
