@@ -21,20 +21,6 @@ export default {
         glow: "0 0 28px rgba(196, 163, 90, 0.24)",
         neon: "0 0 26px rgba(57, 255, 20, 0.18)",
       },
-      keyframes: {
-        "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(14px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "soft-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-      },
-      animation: {
-        "fade-up": "fade-up 650ms cubic-bezier(0.22, 1, 0.36, 1) both",
-        "soft-in": "soft-in 280ms ease-out both",
-      },
     },
   },
   plugins: [],

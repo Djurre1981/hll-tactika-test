@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { StatCard } from "./StatCard.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
@@ -19,9 +20,10 @@ export function DashboardPage() {
   const { strats, upcoming } = useDashboardQuery();
   const events = upcoming.data?.events || [];
   const name = user.name || "operator";
+  const sectionStyle = useFadeIn();
 
   return (
-    <section className="animate-fade-up space-y-6">
+    <section className="space-y-6" style={sectionStyle}>
       <div className="glass-panel p-6 md:p-8">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>

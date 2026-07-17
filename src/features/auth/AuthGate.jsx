@@ -1,8 +1,10 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import { ApiError } from "../../lib/api-client.js";
-import { Button } from "../../shared/Button.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
-import { useAuthQuery, useLogoutMutation } from "./hooks/useAuthQuery.js";
+import { ByePage } from "./ByePage.jsx";
+import { WelcomePage } from "./WelcomePage.jsx";
+import { useAuthQuery } from "./hooks/useAuthQuery.js";
+import { useAuthQueryParams } from "./hooks/useAuthQueryParams.js";
 
 const AuthContext = createContext(null);
 
@@ -14,61 +16,48 @@ export function useAuth() {
   return value;
 }
 
-function AuthFrame({ title, children }) {
+function AuthLoading() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 text-text">
-      <section className="w-full max-w-md rounded border border-border bg-surface p-6 shadow-lg">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <div className="mt-4 text-sm text-muted">{children}</div>
-      </section>
+    <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
+      <div className="flex items-center gap-3 text-sm text-white/80">
+        <Spinner />
+        <span>Loading your Tactika session...</span>
+      </div>
     </div>
   );
 }
 
 export function AuthGate({ children }) {
   const auth = useAuthQuery();
-  const logout = useLogoutMutation();
+  const queryParams = useAuthQueryParams();
+  const [forceWelcome, setForceWelcome] = useState(false);
 
-  if (auth.isLoading) {
+  if (!queryParams.ready || auth.isLoading) {
+    return <AuthLoading />;
+  }
+
+  if (auth.data?.authenticated) {
+    return <AuthContext.Provider value={auth.data}>{children}</AuthContext.Provider>;
+  }
+
+  if (auth.error && !(auth.error instanceof ApiError && (auth.error.status === 401 || auth.error.status === 403))) {
     return (
-      <AuthFrame title="Checking session">
-        <div className="flex items-center gap-3">
-          <Spinner />
-          <span>Loading your Tactika session...</span>
-        </div>
-      </AuthFrame>
+      <WelcomePage
+        authError={{
+          message: auth.error.message || "Unable to load your session.",
+          showLogin: false,
+        }}
+      />
     );
   }
 
-  if (auth.error instanceof ApiError && auth.error.status === 401) {
-    return (
-      <AuthFrame title="Sign in required">
-        <p>Use Steam to access Tactika v2.</p>
-        <Button className="mt-4" onClick={() => window.location.assign("/api/auth/steam")}>
-          Sign in with Steam
-        </Button>
-      </AuthFrame>
-    );
+  const showBye =
+    !forceWelcome &&
+    (queryParams.view === "bye" || (auth.error instanceof ApiError && auth.error.status === 403));
+
+  if (showBye) {
+    return <ByePage onGiveUp={() => setForceWelcome(true)} />;
   }
 
-  if (auth.error instanceof ApiError && auth.error.status === 403) {
-    return (
-      <AuthFrame title="Access denied">
-        <p>Your Steam account is authenticated but is not on the Tactika roster.</p>
-        <Button className="mt-4" onClick={() => logout.mutate()} disabled={logout.isPending}>
-          Try another account
-        </Button>
-      </AuthFrame>
-    );
-  }
-
-  if (auth.error) {
-    return (
-      <AuthFrame title="Authentication failed">
-        <p>{auth.error.message || "Unable to load your session."}</p>
-      </AuthFrame>
-    );
-  }
-
-  return <AuthContext.Provider value={auth.data}>{children}</AuthContext.Provider>;
+  return <WelcomePage authError={queryParams.error} />;
 }

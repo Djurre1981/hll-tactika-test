@@ -33,9 +33,10 @@
 - [x] Loading/empty/error states
 
 ## Phase 4 – Bug fixes & Welcome/bye pages
-- Make the app up and running similar to how it was before (excluding stratmaker)
-- Fix any bugs/issues
-- Review the welcome and bye page
+- [x] WelcomePage with video scrub + typewriter hooks
+- [x] ByePage (v1 parity) with scrub, typewriter, and actions
+- [x] AuthGate restructured for public vs protected routes
+- [x] Session/cache edge cases and dashboard query key stabilization
 
 ## Phase 5 – Strat Browser
 - Add folders table + folder_id to strats

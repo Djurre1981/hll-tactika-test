@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../lib/api-client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
@@ -11,16 +12,22 @@ export function useStratsCountQuery() {
 }
 
 function useUpcomingEventsQuery(limit = 3) {
-  const now = new Date();
-  const from = now.toISOString();
-  const toDate = new Date(now);
-  toDate.setUTCDate(toDate.getUTCDate() + 45);
-  const to = toDate.toISOString();
+  const range = useMemo(() => {
+    const now = new Date();
+    const toDate = new Date(now);
+    toDate.setUTCDate(toDate.getUTCDate() + 45);
+    return {
+      from: now.toISOString(),
+      to: toDate.toISOString(),
+      keyFrom: now.toISOString().slice(0, 10),
+      keyTo: toDate.toISOString().slice(0, 10),
+    };
+  }, []);
 
   return useQuery({
-    queryKey: queryKeys.events.upcoming(from.slice(0, 10), to.slice(0, 10)),
+    queryKey: queryKeys.events.upcoming(range.keyFrom, range.keyTo),
     queryFn: () => {
-      const search = new URLSearchParams({ from, to });
+      const search = new URLSearchParams({ from: range.from, to: range.to });
       return apiClient(`/events?${search.toString()}`);
     },
     select: (data) => ({ events: (data.events || []).slice(0, limit) }),

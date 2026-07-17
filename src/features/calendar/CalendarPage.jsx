@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
 import { Modal } from "../../shared/Modal.jsx";
 import { EventForm } from "./EventForm.jsx";
@@ -68,9 +69,10 @@ export function CalendarPage() {
 
   const mutationError =
     createEvent.error?.message || updateEvent.error?.message || deleteEvent.error?.message;
+  const sectionStyle = useFadeIn();
 
   return (
-    <section className="animate-fade-up space-y-6">
+    <section className="space-y-6" style={sectionStyle}>
       <div className="glass-panel p-6 md:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

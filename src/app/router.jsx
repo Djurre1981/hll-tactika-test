@@ -1,4 +1,4 @@
-import { BrowserRouter, NavLink, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { DashboardPage } from "../features/dashboard/DashboardPage.jsx";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
 import { TeamPage } from "../features/team/TeamPage.jsx";
@@ -10,7 +10,6 @@ import { UserMenu } from "../features/auth/UserMenu.jsx";
 import dashboardBg from "../../assets/dashboard-bg.jpg";
 
 const NAV = [
-  { to: "/", label: "Home", end: true },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/calendar", label: "Calendar" },
   { to: "/team", label: "Team" },
@@ -57,9 +56,7 @@ function AppShell() {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  isActive
-                    ? "text-accent"
-                    : "text-muted transition hover:text-text"
+                  isActive ? "text-accent" : "text-muted transition hover:text-text"
                 }
               >
                 {label}
@@ -73,15 +70,6 @@ function AppShell() {
         <Outlet />
       </main>
     </div>
-  );
-}
-
-function HomePage() {
-  return (
-    <section>
-      <h1 className="text-2xl font-semibold">Tactika v2</h1>
-      <p className="mt-2 text-muted">Phase 1 placeholder — React shell is live.</p>
-    </section>
   );
 }
 
@@ -105,7 +93,7 @@ export function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppShell />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="team" element={<StaffOnlyTeamPage />} />
