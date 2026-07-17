@@ -176,6 +176,9 @@ export default defineConfig({
       "@map-kernel": path.resolve(root, "map-kernel"),
     },
   },
+  optimizeDeps: {
+    include: ["@excalidraw/excalidraw"],
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

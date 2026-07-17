@@ -1,8 +1,7 @@
+import { useParams } from "react-router-dom";
+import { WhiteboardEditor } from "./WhiteboardEditor.jsx";
+
 export function MicroPrepPage() {
-  return (
-    <section>
-      <h1 className="text-2xl font-semibold">Micro-prep</h1>
-      <p className="mt-2 text-muted">Phase 1 placeholder</p>
-    </section>
-  );
+  const { id } = useParams();
+  return <WhiteboardEditor boardId={id} backTo="/home" />;
 }

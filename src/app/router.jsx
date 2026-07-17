@@ -5,6 +5,7 @@ import { ManagementPage } from "../features/management/ManagementPage.jsx";
 import { StratsPage } from "../features/strats/browser/StratsPage.jsx";
 import { StratEditorPage } from "../features/strats/editor/StratEditorPage.jsx";
 import { StratmakerPage } from "../features/strats/editor/StratmakerPage.jsx";
+import { MicroPrepEntryPage } from "../features/micro-prep/MicroPrepEntryPage.jsx";
 import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
 import { UserMenu } from "../features/auth/UserMenu.jsx";
@@ -16,7 +17,6 @@ const NAV = [
   { to: "/calendar", label: "Calendar" },
   { to: "/team", label: "Team" },
   { to: "/strats", label: "Strats" },
-  { to: "/micro-prep", label: "Micro-prep" },
 ];
 
 function canViewTeam(role) {
@@ -56,7 +56,7 @@ function AppShell() {
   );
 }
 
-/** Full-bleed shell for map editor (no max-width main). */
+/** Full-bleed shell for map editor / whiteboard (no max-width main). */
 function EditorShell() {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#0f0f0f] text-text">
@@ -114,9 +114,11 @@ export function AppRouter() {
         <Route element={<EditorShell />}>
           <Route path="tool/stratmaker" element={<StratmakerPage />} />
           <Route path="strats/:id" element={<StratEditorPage />} />
+          <Route path="tool/micro-prep" element={<MicroPrepEntryPage />} />
+          <Route path="micro-prep/:id" element={<MicroPrepPage />} />
         </Route>
         <Route element={<AppShell />}>
-          <Route path="micro-prep" element={<MicroPrepPage />} />
+          <Route path="micro-prep" element={<Navigate to="/tool/micro-prep" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -25,4 +25,8 @@ export const queryKeys = {
   users: {
     me: ["users", "me"],
   },
+  whiteboards: {
+    all: ["whiteboards"],
+    byId: (id) => ["whiteboards", id],
+  },
 };

@@ -45,14 +45,17 @@ export function HomePage() {
 
   function handleToolClick(tool) {
     if (tool.placeholder) {
-      const label =
-        tool.id === "micro-prep" ? "Micro Prep — coming soon" : "HLL Records — coming soon";
-      showToast(label);
+      showToast("HLL Records — coming soon");
       return;
     }
 
     if (tool.id === "strats") {
       window.location.assign("/tool/stratmaker");
+      return;
+    }
+
+    if (tool.id === "micro-prep") {
+      window.location.assign("/tool/micro-prep");
       return;
     }
 
@@ -137,12 +140,14 @@ export function HomePage() {
             </button>
             <button
               type="button"
-              className="dashboard-tool glass-surface"
-              onClick={() => handleToolClick({ id: "micro-prep", placeholder: true })}
+              className={`dashboard-tool glass-surface${canStrats ? "" : " is-role-locked"}`}
+              disabled={!canStrats}
+              aria-disabled={!canStrats}
+              onClick={() => handleToolClick({ id: "micro-prep" })}
             >
               <span className="dashboard-tool__title">Micro Prep</span>
               <span className="dashboard-tool__desc">
-                Match-day drills and checklists — coming soon.
+                Brainstorm and sketch on a shared whiteboard.
               </span>
             </button>
             <button

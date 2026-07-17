@@ -7,9 +7,9 @@
 - [x] Create D1 database with tables: `pins`, `users`, `strats`, `events`, `teams`, `strat_folders`
 - [x] Migrate existing KV `pins` and `users` data into D1 with a one‑time script
 - [x] Bind D1 and R2 to the Pages project in `wrangler.toml`
-- [ ] ~~Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)~~ *(skipped for now — revisit in Phase 8)*
-- [ ] ~~Add `functions/api/collab/join.js` – session‑validated JWT minting for room access~~ *(skipped for now — revisit in Phase 8)*
-- [ ] ~~Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`~~ *(skipped for now — revisit in Phase 8)*
+- [ ] ~~Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)~~ *(skipped — revisit in Phase 8)*
+- [ ] ~~Add `functions/api/collab/join.js` – session‑validated JWT minting for room access~~ *(skipped — revisit in Phase 8)*
+- [ ] ~~Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`~~ *(skipped — revisit in Phase 8)*
 - [x] Create staging environment (Cloudflare Pages preview deployments, separate D1 preview)
 - [x] Write initial `src/ai-context.md`
 
@@ -57,13 +57,17 @@
 - [x] Port drawing tools, undo/redo, clipboard (canvas renderer)
 
 ## Phase 7 – Micro‑Prep Whiteboard
-- Full‑page whiteboard + background upload
-- Kernel extensions: sticky notes, highlighter
-- Excalidraw engine
+- [x] Full‑page Excalidraw whiteboard (not map-kernel)
+- [x] Glass tools panel matching Stratmaker (`shared/glassUi.js`)
+- [x] D1 `whiteboards` CRUD + debounced scene autosave
+- [x] Background image upload via R2 (`/api/uploads/image`)
+- [x] Sticky / highlighter via Excalidraw tools (no kernel extensions)
+- Note: no Yjs / live collab until Phase 8
 
 ## Phase 8 – Live Collaboration
+- Deploy Y‑WebSocket server + `collab/join` + `collab/save` (deferred from Phase 0)
 - useYjsRoom hook (JWT → WS)
-- Sync Y.Doc objects with kernel
+- Sync Y.Doc objects with kernel / Excalidraw
 - Remote cursors via awareness
 - KV snapshots on idle/save/teardown
 

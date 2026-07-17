@@ -1,0 +1,61 @@
+/* Dark glass overrides for Excalidraw chrome (our panel is primary UI). */
+
+.tactika-excalidraw {
+  --color-primary: #e8e8e8;
+  --color-primary-darker: #d0d0d0;
+  --color-primary-darkest: #b8b8b8;
+  --color-primary-light: #3a3a3c;
+  --color-primary-light-darker: #2e2e30;
+  --island-bg-color: rgba(24, 24, 26, 0.85);
+  --button-gray-1: rgba(255, 255, 255, 0.08);
+  --button-gray-2: rgba(255, 255, 255, 0.12);
+  --button-gray-3: rgba(255, 255, 255, 0.18);
+  --input-bg-color: rgba(0, 0, 0, 0.28);
+  --input-border-color: rgba(255, 255, 255, 0.1);
+  --popup-bg-color: rgba(24, 24, 26, 0.95);
+  --color-surface-low: #1a1a1c;
+  --color-surface-mid: #222224;
+  --color-surface-high: #2a2a2c;
+  --default-bg-color: #0f0f0f;
+  --default-border-color: rgba(255, 255, 255, 0.1);
+  --color-on-primary-container: #f5f5f5;
+  --color-on-surface: rgba(255, 255, 255, 0.88);
+  --icon-fill-color: rgba(255, 255, 255, 0.75);
+  height: 100%;
+  width: 100%;
+}
+
+.tactika-excalidraw .excalidraw {
+  --theme-filter: none;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Prefer our glass tools panel — hide default left toolbar / top menu clutter */
+.tactika-excalidraw .App-menu,
+.tactika-excalidraw .App-toolbar-container,
+.tactika-excalidraw .Stack.Stack_vertical.App-menu_top__left,
+.tactika-excalidraw .layer-ui__wrapper__top-right,
+.tactika-excalidraw .FixedSideContainer_side_top,
+.tactika-excalidraw .main-menu-trigger,
+.tactika-excalidraw .sidebar-trigger,
+.tactika-excalidraw .help-icon,
+.tactika-excalidraw .ToolIcon__library,
+.tactika-excalidraw label.ToolIcon[title="Library"],
+.tactika-excalidraw .welcome-screen-center,
+.tactika-excalidraw .welcome-screen-menu {
+  display: none !important;
+}
+
+.tactika-excalidraw .Island.App-toolbar {
+  display: none !important;
+}
+
+.tactika-excalidraw .Footer,
+.tactika-excalidraw footer {
+  opacity: 0.55;
+}
+
+.tactika-excalidraw .excalidraw .ToolIcon__type_button {
+  border-radius: 10px;
+}

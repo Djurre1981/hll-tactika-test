@@ -21,7 +21,7 @@ root
 │ │ ├── strats/
 │ │ │ ├── browser/ # Folder tree, list
 │ │ │ └── editor/ # Canvas wrapper, toolbar, slides, properties
-│ │ └── micro-prep/
+│ │ └── micro-prep/     # Excalidraw whiteboard (not map-kernel)
 │ ├── shared/ # Reusable UI components (Button, Modal, etc.)
 │ ├── lib/ # API client, query keys, Zustand stores, constants
 │ └── styles/ # Tailwind + global resets
