@@ -32,29 +32,30 @@
 - [x] Calendar month view + event CRUD
 - [x] Loading/empty/error states
 
-## Phase 4 – Strat Browser
+## Phase 4 – Bug fixes & Welcome/bye pages
+- Make the app up and running similar to how it was before (excluding stratmaker)
+- Fix any bugs/issues
+- Review the welcome and bye page
+
+## Phase 5 – Strat Browser
 - Add folders table + folder_id to strats
 - Folder tree with drag‑and‑drop
 - Filterable strat list
 - Update GET /api/strats
 
-## Phase 5 – Strat Editor (no collab)
+## Phase 6 – Strat Editor (no collab)
 - CanvasWrapper mounts kernel via ref
 - Toolbar, slide list, properties panel
 - D1 load/save with auto‑save
 - Port all drawing tools, undo/redo
-
-## Phase 6 – Live Collaboration
-- useYjsRoom hook (JWT → WS)
-- Sync Y.Doc objects with kernel
-- Remote cursors via awareness
-- KV snapshots on idle/save/teardown
 
 ## Phase 7 – Micro‑Prep Whiteboard
 - Full‑page whiteboard + background upload
 - Kernel extensions: sticky notes, highlighter
 - D1 board CRUD, optional Yjs sync
 
-## Folder Reviews
-- [x] After Phase 1 – validate feature-folder layout
-- At Phase 5 start – check editor subtree for Yjs readiness
+## Phase 8 – Live Collaboration
+- useYjsRoom hook (JWT → WS)
+- Sync Y.Doc objects with kernel
+- Remote cursors via awareness
+- KV snapshots on idle/save/teardown

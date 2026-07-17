@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
+import { StatCard } from "./StatCard.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 
 function formatEventTime(value) {
@@ -11,18 +12,6 @@ function formatEventTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
-}
-
-function StatCard({ label, value, detail, loading, error }) {
-  return (
-    <article className="glass-surface p-5">
-      <p className="text-xs uppercase tracking-[0.22em] text-muted">{label}</p>
-      <div className="mt-5 flex items-end justify-between gap-4">
-        {loading ? <Spinner /> : <span className="text-5xl font-medium text-text">{value}</span>}
-        <span className="text-right text-sm text-muted">{error ? "Unavailable" : detail}</span>
-      </div>
-    </article>
-  );
 }
 
 export function DashboardPage() {

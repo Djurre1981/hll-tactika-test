@@ -1,3 +1,5 @@
+import { requireDb } from "./d1.js";
+
 function rowToEvent(row) {
   return {
     id: row.id,
@@ -10,13 +12,6 @@ function rowToEvent(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function requireDb(env) {
-  if (!env.DB) {
-    throw new Error("D1 database binding DB is not configured");
-  }
-  return env.DB;
 }
 
 export async function listEvents(env, { from, to }) {

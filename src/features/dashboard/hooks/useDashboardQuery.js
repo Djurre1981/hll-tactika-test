@@ -1,13 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../lib/api-client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
-import { useUpcomingEventsQuery } from "../../calendar/hooks/useEventsQuery.js";
 
 export function useStratsCountQuery() {
   return useQuery({
     queryKey: queryKeys.strats.all,
     queryFn: () => apiClient("/strats"),
     select: (data) => (data.strats || []).length,
+  });
+}
+
+function useUpcomingEventsQuery(limit = 3) {
+  const now = new Date();
+  const from = now.toISOString();
+  const toDate = new Date(now);
+  toDate.setUTCDate(toDate.getUTCDate() + 45);
+  const to = toDate.toISOString();
+
+  return useQuery({
+    queryKey: queryKeys.events.upcoming(from.slice(0, 10), to.slice(0, 10)),
+    queryFn: () => {
+      const search = new URLSearchParams({ from, to });
+      return apiClient(`/events?${search.toString()}`);
+    },
+    select: (data) => ({ events: (data.events || []).slice(0, limit) }),
   });
 }
 
