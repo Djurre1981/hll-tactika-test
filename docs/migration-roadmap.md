@@ -28,9 +28,9 @@
 - [x] Role‑gated UI and API
 
 ## Phase 3 – Dashboard & Calendar
-- Dashboard stat cards
-- Calendar month view + event CRUD
-- Loading/empty/error states
+- [x] Dashboard stat cards
+- [x] Calendar month view + event CRUD
+- [x] Loading/empty/error states
 
 ## Phase 4 – Strat Browser
 - Add folders table + folder_id to strats

@@ -12,6 +12,7 @@ export const queryKeys = {
   },
   events: {
     byMonth: (year, month) => ["events", year, month],
+    upcoming: (from, to) => ["events", "upcoming", from, to],
   },
   users: {
     me: ["users", "me"],

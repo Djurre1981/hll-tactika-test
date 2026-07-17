@@ -2,13 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Texta Alt";
+  src: url("../../assets/fonts/TextaAlt-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("../../assets/fonts/TextaAlt-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("../../assets/fonts/TextaAlt-Regular.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --color-bg: #0b0f14;
-  --color-surface: #141b24;
-  --color-text: #e8eef5;
-  --color-muted: #8b9aab;
-  --color-accent: #3d8bfd;
-  --color-border: #243041;
+  --color-bg: 15 16 18;
+  --color-surface: 23 25 28;
+  --color-panel: 30 32 37;
+  --color-text: 232 235 230;
+  --color-muted: 154 168 158;
+  --color-accent: 196 163 90;
+  --color-neon: 57 255 20;
+  --color-border: 255 255 255;
 }
 
 html,
@@ -19,7 +45,26 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-family: "Texta Alt", "Segoe UI", system-ui, sans-serif;
+  font-weight: 300;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-[2rem] border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl;
+  }
+
+  .glass-surface {
+    @apply rounded-3xl border border-white/10 bg-white/[0.065] shadow-glow backdrop-blur-xl;
+  }
+
+  .glass-control {
+    @apply rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-sm text-text transition hover:border-accent/50 hover:bg-white/[0.11] focus:outline-none focus:ring-2 focus:ring-accent/40;
+  }
+
+  .glass-input {
+    @apply rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-text placeholder:text-muted/70 outline-none transition focus:border-accent/60 focus:ring-2 focus:ring-accent/20;
+  }
 }
