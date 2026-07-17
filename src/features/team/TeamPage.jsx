@@ -1,34 +1,45 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { Button } from "../../shared/Button.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { RosterTable } from "./RosterTable.jsx";
 import {
   useAddTeamMemberMutation,
+  useExportPinsMutation,
   useRemoveTeamMemberMutation,
   useTeamQuery,
+  useTestDiscordAlertMutation,
   useUpdateTeamMemberRoleMutation,
 } from "./hooks/useTeamQuery.js";
 
 const ROLE_FILTERS = ["all", "owner", "admin", "assist", "editor", "viewer"];
 
-export function TeamPage() {
+export function TeamPage({ hub = false }) {
   const currentUser = useAuth();
   const [roleFilter, setRoleFilter] = useState("all");
   const [steamId, setSteamId] = useState("");
+  const [actionStatus, setActionStatus] = useState({ message: "", isError: false });
   const team = useTeamQuery();
   const addMember = useAddTeamMemberMutation();
   const updateRole = useUpdateTeamMemberRoleMutation();
   const removeMember = useRemoveTeamMemberMutation();
+  const exportPins = useExportPinsMutation();
+  const testAlert = useTestDiscordAlertMutation();
   const users = team.data?.users || [];
+  const isOwner = currentUser.role === "owner";
   const filteredUsers = useMemo(
     () => users.filter((user) => roleFilter === "all" || user.role === roleFilter),
-    [users, roleFilter]
+    [users, roleFilter],
   );
-  const actionPending = addMember.isPending || updateRole.isPending || removeMember.isPending;
+  const actionPending =
+    addMember.isPending ||
+    updateRole.isPending ||
+    removeMember.isPending ||
+    exportPins.isPending ||
+    testAlert.isPending;
 
   function handleAdd(event) {
     event.preventDefault();
+    setActionStatus({ message: "", isError: false });
     addMember.mutate(steamId.trim(), {
       onSuccess: () => setSteamId(""),
     });
@@ -44,43 +55,104 @@ export function TeamPage() {
     }
   }
 
+  function handleExportPins() {
+    setActionStatus({ message: "Preparing backup…", isError: false });
+    exportPins.mutate(undefined, {
+      onSuccess: () => setActionStatus({ message: "Backup downloaded.", isError: false }),
+      onError: (error) =>
+        setActionStatus({ message: error.message || "Could not export pins", isError: true }),
+    });
+  }
+
+  function handleTestAlert() {
+    setActionStatus({ message: "Sending Discord probe…", isError: false });
+    testAlert.mutate(undefined, {
+      onSuccess: (result) => {
+        const count = result.sent || result.webhookCount || 1;
+        setActionStatus({
+          message:
+            count > 1
+              ? `Discord probe sent to ${count} webhooks.`
+              : "Discord probe sent. Check your alert channel.",
+          isError: false,
+        });
+      },
+      onError: (error) =>
+        setActionStatus({ message: error.message || "Alert test failed", isError: true }),
+    });
+  }
+
   const error =
     team.error?.message ||
     addMember.error?.message ||
     updateRole.error?.message ||
     removeMember.error?.message;
 
-  return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Team</h1>
-          <p className="mt-2 text-muted">Staff roster and access management.</p>
-        </div>
-        <form className="flex flex-wrap items-end gap-2" onSubmit={handleAdd}>
-          <label className="text-sm">
-            <span className="mb-1 block text-muted">Steam ID64</span>
-            <input
-              className="rounded border border-border bg-surface px-3 py-2 text-text"
-              value={steamId}
-              onChange={(event) => setSteamId(event.target.value)}
-              placeholder="7656119..."
-              inputMode="numeric"
-            />
-          </label>
-          <Button type="submit" disabled={!steamId.trim() || actionPending}>
-            Add member
-          </Button>
-        </form>
-      </div>
+  const content = (
+    <>
+      <header className="dashboard-page__header">
+        <h1 className="dashboard-page__greeting">Admin Panel</h1>
+        <p className="dashboard-page__tagline">
+          {isOwner
+            ? "Add or remove circle members. Owners can change roles, export pin backups, and test Discord alerts."
+            : "Add or remove circle members and manage access."}
+        </p>
+      </header>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="text-sm text-muted" htmlFor="role-filter">
+      {isOwner ? (
+        <div className="hub-admin-actions">
+          <button
+            type="button"
+            className="hub-admin-action"
+            onClick={handleExportPins}
+            disabled={actionPending}
+          >
+            Export full pin backup
+          </button>
+          <button
+            type="button"
+            className="hub-admin-action"
+            onClick={handleTestAlert}
+            disabled={actionPending}
+          >
+            Test Discord alert
+          </button>
+        </div>
+      ) : null}
+
+      {actionStatus.message ? (
+        <p className={`hub-admin-status${actionStatus.isError ? " is-error" : ""}`}>
+          {actionStatus.message}
+        </p>
+      ) : null}
+
+      <form className="mb-4 flex flex-wrap items-end gap-3" onSubmit={handleAdd}>
+        <label className="min-w-[14rem] flex-1 text-sm text-white/55">
+          <span className="mb-1 block tracking-[0.08em]">Steam ID64</span>
+          <input
+            className="glass-input w-full"
+            value={steamId}
+            onChange={(event) => setSteamId(event.target.value)}
+            placeholder="7656119..."
+            inputMode="numeric"
+          />
+        </label>
+        <button
+          type="submit"
+          className="hub-admin-action"
+          disabled={!steamId.trim() || actionPending}
+        >
+          Add member
+        </button>
+      </form>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-white/55" htmlFor="role-filter">
           Filter role
         </label>
         <select
           id="role-filter"
-          className="rounded border border-border bg-surface px-3 py-2 text-text"
+          className="glass-input"
           value={roleFilter}
           onChange={(event) => setRoleFilter(event.target.value)}
         >
@@ -90,19 +162,17 @@ export function TeamPage() {
             </option>
           ))}
         </select>
-        <span className="text-sm text-muted">
+        <span className="text-sm text-white/45">
           {filteredUsers.length} of {users.length} members
         </span>
       </div>
 
       {error ? (
-        <p className="rounded border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
-          {error}
-        </p>
+        <p className="hub-admin-status is-error mb-3">{error}</p>
       ) : null}
 
       {team.isLoading ? (
-        <div className="flex items-center gap-3 text-muted">
+        <div className="flex items-center gap-3 text-white/55">
           <Spinner />
           <span>Loading roster...</span>
         </div>
@@ -115,6 +185,12 @@ export function TeamPage() {
           actionPending={actionPending}
         />
       )}
-    </section>
+    </>
   );
+
+  if (hub) {
+    return <div className="hub-admin-shell">{content}</div>;
+  }
+
+  return <section className="space-y-6">{content}</section>;
 }

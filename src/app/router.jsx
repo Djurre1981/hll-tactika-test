@@ -55,19 +55,19 @@ function AppShell() {
   );
 }
 
-function StaffOnlyTeamPage() {
+function StaffOnlyTeamPage({ hub = false }) {
   const user = useAuth();
 
   if (!canViewTeam(user.role)) {
     return (
-      <section>
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="mt-2 text-muted">Comp Admins only.</p>
+      <section className={hub ? "hub-admin-shell" : undefined}>
+        <h1 className="dashboard-page__greeting">Admin Panel</h1>
+        <p className="dashboard-page__tagline">Comp Admins only.</p>
       </section>
     );
   }
 
-  return <TeamPage />;
+  return <TeamPage hub={hub} />;
 }
 
 export function AppRouter() {
@@ -79,9 +79,9 @@ export function AppRouter() {
           <Route path="home" element={<HomePage />} />
           <Route path="dashboard" element={<Navigate to="/home" replace />} />
           <Route path="calendar" element={<CalendarPage hub />} />
+          <Route path="team" element={<StaffOnlyTeamPage hub />} />
         </Route>
         <Route element={<AppShell />}>
-          <Route path="team" element={<StaffOnlyTeamPage />} />
           <Route path="strats" element={<StratsPage />} />
           <Route path="strats/:id" element={<StratEditorPage />} />
           <Route path="micro-prep" element={<MicroPrepPage />} />

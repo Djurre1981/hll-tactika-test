@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../auth/hooks/useAuthQuery.js";
 
@@ -8,20 +8,13 @@ function canManageTeam(role) {
 
 export function LegacyUserMenu() {
   const user = useAuth();
-  const location = useLocation();
   const logout = useLogoutMutation();
   const name = user.name || user.steamId;
-  const onHome = location.pathname === "/home";
 
   return (
     <div className="user-cluster">
       <div className="user-cluster__avatar-wrap">
         <div className="user-cluster__menu" role="menu">
-          {!onHome ? (
-            <Link className="user-cluster__signout" to="/home" role="menuitem">
-              Dashboard
-            </Link>
-          ) : null}
           {canManageTeam(user.role) ? (
             <Link className="user-cluster__admin" to="/team" role="menuitem">
               Admin Panel

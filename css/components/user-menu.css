@@ -40,6 +40,14 @@
   transition: visibility 0.3s var(--ease-smooth);
 }
 
+.user-cluster__menu > :first-child {
+  box-sizing: border-box;
+  min-height: var(--user-cluster-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .user-cluster__avatar-wrap:hover .user-cluster__menu,
 .user-cluster__avatar-wrap:focus-within .user-cluster__menu {
   visibility: visible;

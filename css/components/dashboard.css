@@ -40,8 +40,8 @@
 
 .hub-chrome__logo img {
   display: block;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: var(--user-cluster-size);
+  height: var(--user-cluster-size);
   object-fit: contain;
   pointer-events: none;
 }
@@ -135,7 +135,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  min-height: min(78vh, 820px);
+  min-height: min(82vh, 870px);
   animation: dashboard-shell-enter 0.65s var(--ease-smooth) both;
 }
 
@@ -267,8 +267,8 @@ html.dashboard-boot #btn-dashboard-home {
   }
 
   .hub-chrome__logo img {
-    width: 2.35rem;
-    height: 2.35rem;
+    width: var(--user-cluster-size);
+    height: var(--user-cluster-size);
   }
 
   .hub-nav {
