@@ -4,7 +4,17 @@ import { getStartingPointLabel } from "../helpers/map-midpoints.js";
 import { deleteStrat as apiDeleteStrat } from "../api/strats.js";
 import { getCurrentUser } from "../api/auth.js";
 import { renderStratsPicker } from "./strats-picker.js";
-import { renderStratsChrome, populateSlideMapSelect, populateMatchMapSelect, populateMatchStartingPointSelect, bindTagBar, activateCurrentSlideMap, openStrat } from "./strats-chrome.js";
+import {
+  renderStratsChrome,
+  populateSlideMapSelect,
+  populateMatchMapSelect,
+  populateMatchStartingPointSelect,
+  bindTagBar,
+  activateCurrentSlideMap,
+  openStrat,
+  reloadStratsCatalog,
+  setStratsPanelView,
+} from "./strats-chrome.js";
 import { setSaveStatus, scheduleSave, closeStratEditor, getSlideMapImage, syncStratSlideMapImage } from "./strats-save.js";
 import { getStratDeleteConfirmResolver, setStratDeleteConfirmResolver } from "./strats-state.js";
 
@@ -207,6 +217,18 @@ async function deleteStratFromCatalog(strat) {
 }
 
 export {
+  openStrat,
+  closeStratEditor,
+  scheduleSave,
+  setSaveStatus,
+  setStratsPanelView,
+  bindTagBar,
+  populateSlideMapSelect,
+  populateMatchMapSelect,
+  populateMatchStartingPointSelect,
+  reloadStratsCatalog,
+  renderStratsChrome,
+  activateCurrentSlideMap,
   updateTagBar,
   truncateText,
   formatMatchDateLabel,

@@ -22,10 +22,10 @@
 - Note: `home/` is deprecated in favor of the React SPA at `/`
 
 ## Phase 2 – Auth & Team
-- Move auth to D1
-- AuthGate + UserMenu
-- Team page with roster table
-- Role‑gated UI and API
+- [x] Move auth to D1
+- [x] AuthGate + UserMenu
+- [x] Team page with roster table
+- [x] Role‑gated UI and API
 
 ## Phase 3 – Dashboard & Calendar
 - Dashboard stat cards

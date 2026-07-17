@@ -17,7 +17,12 @@ import {
   getSwitchMapCallback,
 } from "./strats-state.js";
 import { setStratsPickerOpen, renderStratsPicker } from "./strats-picker.js";
-import { renderStratsChrome, setStratsPanelView } from "./strats-chrome.js";
+import {
+  activateCurrentSlideMap,
+  renderStratsChrome,
+  saveStratUiPrefs,
+  setStratsPanelView,
+} from "./strats-chrome.js";
 
 function resolveImageSrc(imagePath) {
   const path = assetUrl(imagePath);
@@ -167,6 +172,9 @@ async function exitStratEditorSession() {
 export {
   resolveImageSrc,
   getSlideMapImage,
+  activateCurrentSlideMap,
+  renderStratsChrome,
+  saveStratUiPrefs,
   waitForMapImage,
   syncStratSlideMapImage,
   scheduleSave,

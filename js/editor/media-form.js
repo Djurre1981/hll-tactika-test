@@ -423,6 +423,7 @@ export function validatePinMediaForm({ showErrors = false } = {}) {
 
 export {
   isPinFormOpen,
+  isMediaUploadInProgress,
   captureStillFromVideo,
   captureStillFromImage,
   ensureCapturedThumbnailForSave,

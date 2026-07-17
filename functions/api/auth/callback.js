@@ -1,7 +1,7 @@
 import { isAllowedSteamId } from "../../lib/roles.js";
 import { guardAccess } from "../../lib/access-guard.js";
 import { redirect } from "../../lib/response.js";
-import { createSessionCookie, getSessionSecret } from "../../lib/session.js";
+import { createSessionCookie } from "../../lib/session.js";
 import { cacheSteamProfile, fetchSteamProfile, getOrigin, verifySteamCallback } from "../../lib/steam.js";
 import { recordUserLastSignedIn } from "../../lib/users-store.js";
 
@@ -35,9 +35,9 @@ export async function onRequestGet(context) {
       return redirect(`${origin}/?auth=forbidden&steamId=${steamId}`);
     }
 
-    await recordUserLastSignedIn(steamId, env);
+    await recordUserLastSignedIn(steamId, env, profile);
 
-    const cookie = await createSessionCookie(profile, getSessionSecret(env), request);
+    const cookie = await createSessionCookie(profile, env, request);
     return redirect(`${getOrigin(request)}/`, {
       headers: { "Set-Cookie": cookie },
     });

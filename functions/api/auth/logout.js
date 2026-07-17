@@ -1,5 +1,5 @@
 import { guardAccess } from "../../lib/access-guard.js";
-import { clearSessionCookie, verifySession } from "../../lib/session.js";
+import { clearSessionCookie, destroySession, verifySession } from "../../lib/session.js";
 import { json } from "../../lib/response.js";
 
 function clientKey(request) {
@@ -23,6 +23,7 @@ export async function onRequestPost(context) {
     return access.error;
   }
 
+  await destroySession(context.request, context.env);
   return json({ ok: true }, {
     headers: { "Set-Cookie": clearSessionCookie(context.request) },
   });

@@ -21,6 +21,8 @@ import {
   consumeHomeNotice,
 } from "./auth-dashboard.js";
 
+export { enterApp };
+
 export const DEFAULT_AUTH = {
   title: "CIRCLE COMP LOGIN",
   message:

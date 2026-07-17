@@ -8,7 +8,14 @@ import { isPlacementComplete, updatePlacementUi } from "./placement-mode.js";
 import { updateDraftMarker } from "./draft-renderer.js";
 import { refreshMgSpotGroup } from "../ui/mg-spot-arrows.js";
 import { getViewport, getImage, getPinLabel, getImageSize, screenToMapPx, mapPxToPercent } from "./pin-drag-coords.js";
-import { beginMgHandleDrag, moveMgSpotDrag, syncDraftMgCollapseHint } from "./pin-drag-mg-spot.js";
+import {
+  attachMgSpotDrag,
+  beginMgHandleDrag,
+  moveMgSpotDrag,
+  syncDraftMgCollapseHint,
+} from "./pin-drag-mg-spot.js";
+
+export { attachMgSpotDrag };
 
 const DRAG_THRESHOLD_PX = 4;
 

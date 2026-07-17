@@ -18,14 +18,16 @@ import {
 } from "./strats-state.js";
 import {
   renderStratsChrome,
-  scheduleSave,
-  setSaveStatus,
   activateCurrentSlideMap,
-  getSlideMapImage,
   openStrat,
   reloadStratsCatalog,
   saveStratUiPrefs,
 } from "./strats-chrome.js";
+import {
+  getSlideMapImage,
+  scheduleSave,
+  setSaveStatus,
+} from "./strats-save.js";
 import { renderStratsPicker } from "./strats-picker.js";
 import { renderSlidesList } from "./strats-slides-list.js";
 

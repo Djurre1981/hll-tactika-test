@@ -338,6 +338,11 @@ export {
   getMapPoint,
   getMapAspect,
   createPreviewObject,
+  applyDrawConstraints,
+  updateDrawPreview,
+  finishDrawSession,
+  setPreviewObject,
+  applyHandleDragSession,
   refreshDrawLayer,
   clearDrawLayer,
   duplicateSelectedObject,
@@ -360,6 +365,5 @@ export {
   copySelectedObject,
   cutSelectedObject,
   pasteClipboardObject,
-  getSelectedObject,
   notifySelectionChange,
 };

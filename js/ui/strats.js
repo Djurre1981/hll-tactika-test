@@ -22,11 +22,13 @@ import {
   reloadStratsCatalog,
   scheduleSave,
 } from "./strats-editor.js";
+import { exitStratEditorSession } from "./strats-save.js";
 import { renderSlidesList } from "./strats-slides.js";
 
 export {
   confirmStratsUnsavedAction,
   discardStratsUnsavedChanges,
+  exitStratEditorSession,
   hasStratsUnsavedChanges,
 };
 

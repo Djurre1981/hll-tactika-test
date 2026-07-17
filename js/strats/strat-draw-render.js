@@ -9,6 +9,8 @@ import {
   renderPing,
 } from "./renderers/strat-draw-renderers.js";
 
+export { renderSelectionOverlay } from "./strat-selection-handles.js";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 function dashArray(lineType, size) {

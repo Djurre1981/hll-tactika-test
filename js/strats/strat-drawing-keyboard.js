@@ -1,13 +1,13 @@
 import { state } from "../state.js";
 import {
   getSelectedObjectId,
-  setSelectedObject,
   getClipboardObject,
 } from "./strat-drawing-state.js";
 import {
   copySelectedObject,
   cutSelectedObject,
   pasteClipboardObject,
+  setSelectedObject,
 } from "./strat-drawing-clipboard.js";
 import {
   isStratsEditingBlocked,

@@ -15,9 +15,12 @@ import {
 } from "./modal-dismiss-guard.js";
 import {
   getPinUploaderLabel,
+  initModalMediaNav,
   updateModalMediaNav,
   setModalMediaFullscreenVisible,
 } from "./modal-media-nav.js";
+
+export { armModalDismissGuard, closeModal, handleModalCloseEvent, initModalMediaNav };
 
 export const REQUIRES_ICON_CONFIG = {
   truck: { icon: "fa-solid fa-truck", label: "Transport Truck" },

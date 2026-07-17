@@ -30,6 +30,7 @@ import {
   beginPreviewLoad,
   cancelPreviewTimers,
   getPinPreviewPlayback,
+  getPinPlayback,
   getPinThumbnailMediaItem,
 } from "./preview-media.js";
 import { renderPreviewPlayer } from "./preview-video.js";
@@ -423,6 +424,7 @@ export function initPreviewTooltip() {
 
 export {
   getPreviewMedia,
+  getPinPlayback,
   resolvePreviewStillUrl,
   absoluteStillUrl,
   currentPreviewStillUrl,

@@ -26,6 +26,18 @@ import {
   normalizeRequiresForCompare,
   normalizeMediaItemsForCompare,
 } from "./form-handler-baseline.js";
+
+export {
+  buildPinDataFromForm,
+  captureEditFormBaselineFromForm,
+  isUnchangedEditPayload,
+  clearEditFormBaseline,
+  isEditFormBaselineReady,
+  normalizePinPayloadForCompare,
+  pinPayloadEquals,
+  normalizeRequiresForCompare,
+  normalizeMediaItemsForCompare,
+};
 import {
   initRequiresCheckboxes,
   scheduleAutoSave,
@@ -39,6 +51,20 @@ import {
   getPinDescription,
   getBtnDeletePin,
 } from "./form-handler-requires.js";
+
+export {
+  initRequiresCheckboxes,
+  scheduleAutoSave,
+  initAutoSave,
+  updateFactionRequires,
+  getRequiresData,
+  setRequiresData,
+  resetRequires,
+  getRequiresOptions,
+  getPinTitle,
+  getPinDescription,
+  getBtnDeletePin,
+};
 
 let editUndoSnapshotPushed = false;
 let rerunSaveAfterCurrent = false;

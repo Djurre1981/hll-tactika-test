@@ -37,7 +37,7 @@ export function isDrawingTool(tool) {
   return tool !== "select" && tool !== "eraser";
 }
 
-function shouldBlockMapPan() {
+export function shouldBlockMapPan() {
   if (state.appMode !== "strats" || !state.activeStrat) return false;
   const tool = state.stratsToolSettings.activeTool;
   return isDrawingTool(tool) || tool === "eraser" || Boolean(getDrawSession()) || Boolean(getObjectDragSession()) || Boolean(getHandleDragSession());
