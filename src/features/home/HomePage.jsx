@@ -52,7 +52,7 @@ export function HomePage() {
     }
 
     if (tool.id === "strats") {
-      window.location.assign("/tool/stratmaker/");
+      window.location.assign("/tool/stratmaker");
       return;
     }
 

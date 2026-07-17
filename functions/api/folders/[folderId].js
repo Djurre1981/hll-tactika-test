@@ -1,7 +1,7 @@
 import { requireAdmin } from "../../lib/auth-request.js";
 import { guardAccess } from "../../lib/access-guard.js";
 import { deleteFolder, getFolder, updateFolder } from "../../lib/folders-store.js";
-import { loadStratsData, saveStratsData } from "../../lib/strats-store.js";
+import { clearFolderFromStrats } from "../../lib/strats-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 import { sanitizeFolderBody } from "../folders.js";
 
@@ -70,17 +70,7 @@ export async function onRequestDelete(context) {
     const folder = await deleteFolder(context.env, folderId);
     if (!folder) return errorResponse("Folder not found", 404);
 
-    const data = await loadStratsData(context.env);
-    let changed = false;
-    for (const strat of data.strats || []) {
-      if (strat.folderId === folderId) {
-        strat.folderId = null;
-        changed = true;
-      }
-    }
-    if (changed) {
-      await saveStratsData(context.env, data);
-    }
+    await clearFolderFromStrats(context.env, folderId);
 
     return json({ ok: true, folderId });
   } catch (error) {

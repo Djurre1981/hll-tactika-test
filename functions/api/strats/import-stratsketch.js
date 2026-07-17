@@ -4,7 +4,7 @@ import { canEnterEditorMode } from "../../lib/pin-permissions.js";
 import { sanitizeStratInput } from "../../lib/strat-fields.js";
 import { fetchStratSketchExport, parseStratSketchCode } from "../../lib/stratsketch-client.js";
 import { convertStratSketchBriefing } from "../../lib/stratsketch-convert.js";
-import { loadStratsData, saveStratsData } from "../../lib/strats-store.js";
+import { createStrat } from "../../lib/strats-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 export async function onRequestPost(context) {
@@ -69,12 +69,10 @@ export async function onRequestPost(context) {
       },
     };
 
-    const data = await loadStratsData(context.env);
-    data.strats.push(strat);
-    await saveStratsData(context.env, data);
+    const saved = await createStrat(context.env, strat);
 
     return json({
-      strat,
+      strat: saved,
       import: {
         source: "stratsketch",
         code: exported.metadata.code,

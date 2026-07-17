@@ -2,7 +2,7 @@ import { requireAuth } from "../lib/auth-request.js";
 import { resolveCreatorName } from "../lib/pin-creators.js";
 import { canEnterEditorMode } from "../lib/pin-permissions.js";
 import { sanitizeStratInput } from "../lib/strat-fields.js";
-import { loadStratsData, saveStratsData } from "../lib/strats-store.js";
+import { createStrat, listStrats } from "../lib/strats-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
 function buildStratFromBody(strat, createdBy, createdByName) {
@@ -39,7 +39,7 @@ function stratListItem(strat) {
     createdByName: strat.createdByName,
     createdAt: strat.createdAt,
     updatedAt: strat.updatedAt,
-    slideCount: Array.isArray(strat.slides) ? strat.slides.length : 0,
+    slideCount: strat.slideCount ?? (Array.isArray(strat.slides) ? strat.slides.length : 0),
   };
 }
 
@@ -49,23 +49,25 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
-  const data = await loadStratsData(context.env);
-  const params = new URL(context.request.url).searchParams;
-  const folderId = params.get("folderId");
-  const lightweight = params.get("meta") === "1";
+  try {
+    const params = new URL(context.request.url).searchParams;
+    const folderId = params.get("folderId");
+    const lightweight = params.get("meta") === "1";
 
-  let strats = data.strats || [];
-  if (folderId === "none") {
-    strats = strats.filter((strat) => !strat.folderId);
-  } else if (folderId) {
-    strats = strats.filter((strat) => strat.folderId === folderId);
+    const strats = await listStrats(context.env, {
+      folderId: folderId || undefined,
+      meta: lightweight,
+    });
+
+    if (lightweight) {
+      return json({ strats: strats.map(stratListItem) });
+    }
+
+    return json({ strats });
+  } catch (error) {
+    console.error("GET /api/strats failed:", error);
+    return errorResponse("Strat storage is not configured", 503);
   }
-
-  if (lightweight) {
-    return json({ strats: strats.map(stratListItem) });
-  }
-
-  return json({ strats });
 }
 
 export async function onRequestPost(context) {
@@ -96,15 +98,11 @@ export async function onRequestPost(context) {
     return errorResponse(built.error, 400);
   }
 
-  const data = await loadStratsData(context.env);
-  data.strats.push(built.strat);
-
   try {
-    await saveStratsData(context.env, data);
+    const strat = await createStrat(context.env, built.strat);
+    return json({ strat }, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error("POST /api/strats failed:", error);
     return errorResponse("Strat storage is not configured", 503);
   }
-
-  return json({ strat: built.strat }, { status: 201 });
 }

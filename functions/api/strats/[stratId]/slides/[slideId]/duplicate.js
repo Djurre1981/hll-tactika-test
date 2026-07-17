@@ -2,7 +2,7 @@ import { requireAuth } from "../../../../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../../../../lib/pin-permissions.js";
 import { normalizeSlideName } from "../../../../../lib/strat-fields.js";
 import { canModifyStrat } from "../../../../../lib/strat-permissions.js";
-import { findStrat, loadStratsData, saveStratsData } from "../../../../../lib/strats-store.js";
+import { getStrat, saveStrat } from "../../../../../lib/strats-store.js";
 import { errorResponse, json } from "../../../../../lib/response.js";
 
 function cloneSlide(slide, order, name) {
@@ -33,46 +33,48 @@ export async function onRequestPost(context) {
     body = {};
   }
 
-  const data = await loadStratsData(context.env);
-  const sourceFound = findStrat(data, stratId);
-  if (!sourceFound) {
-    return errorResponse("Strat not found", 404);
-  }
-
-  const slideIndex = (sourceFound.strat.slides || []).findIndex((slide) => slide.id === slideId);
-  if (slideIndex < 0) {
-    return errorResponse("Slide not found", 404);
-  }
-
-  const targetStratId = String(body.targetStratId || stratId).trim();
-  const targetFound = findStrat(data, targetStratId);
-  if (!targetFound) {
-    return errorResponse("Target strat not found", 404);
-  }
-
-  if (
-    !canModifyStrat(sourceFound.strat, auth.session.steamId, auth.role)
-    || !canModifyStrat(targetFound.strat, auth.session.steamId, auth.role)
-  ) {
-    return errorResponse("Not allowed to duplicate this slide", 403);
-  }
-
-  const sourceSlide = sourceFound.strat.slides[slideIndex];
-  const order = targetFound.strat.slides.length;
-  const duplicate = cloneSlide(sourceSlide, order, body.name);
-
-  targetFound.strat.slides.push(duplicate);
-  targetFound.strat.updatedAt = new Date().toISOString();
-
   try {
-    await saveStratsData(context.env, data);
+    const source = await getStrat(context.env, stratId);
+    if (!source) {
+      return errorResponse("Strat not found", 404);
+    }
+
+    const slideIndex = (source.slides || []).findIndex((slide) => slide.id === slideId);
+    if (slideIndex < 0) {
+      return errorResponse("Slide not found", 404);
+    }
+
+    const targetStratId = String(body.targetStratId || stratId).trim();
+    const target =
+      targetStratId === stratId ? source : await getStrat(context.env, targetStratId);
+    if (!target) {
+      return errorResponse("Target strat not found", 404);
+    }
+
+    if (
+      !canModifyStrat(source, auth.session.steamId, auth.role) ||
+      !canModifyStrat(target, auth.session.steamId, auth.role)
+    ) {
+      return errorResponse("Not allowed to duplicate this slide", 403);
+    }
+
+    const sourceSlide = source.slides[slideIndex];
+    const order = target.slides.length;
+    const duplicate = cloneSlide(sourceSlide, order, body.name);
+
+    target.slides.push(duplicate);
+    target.updatedAt = new Date().toISOString();
+    await saveStrat(context.env, target);
+
+    return json(
+      {
+        slide: duplicate,
+        stratId: targetStratId,
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error(error);
+    console.error("POST slide duplicate failed:", error);
     return errorResponse("Strat storage is not configured", 503);
   }
-
-  return json({
-    slide: duplicate,
-    stratId: targetStratId,
-  }, { status: 201 });
 }

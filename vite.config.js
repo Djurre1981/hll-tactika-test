@@ -113,11 +113,17 @@ function serveRepoStatic() {
 
         const barePages = {
           "/climbing-guide-v1": "/climbing-guide-v1/",
-          "/tool/stratmaker": "/tool/stratmaker/",
         };
         if (barePages[url]) {
           res.statusCode = 302;
           res.setHeader("Location", `${barePages[url]}${query}`);
+          res.end();
+          return;
+        }
+
+        if (url === "/tool/stratmaker" || url.startsWith("/tool/stratmaker/")) {
+          res.statusCode = 302;
+          res.setHeader("Location", `/strats${query}`);
           res.end();
           return;
         }
@@ -142,7 +148,6 @@ function serveRepoStatic() {
         const skipSpa =
           url.startsWith("/api") ||
           url.startsWith("/climbing-guide-v1") ||
-          url.startsWith("/tool/") ||
           url.startsWith("/css") ||
           url.startsWith("/js") ||
           url.startsWith("/src") ||
@@ -178,7 +183,6 @@ export default defineConfig({
       input: {
         app: path.resolve(root, "index.html"),
         climbingGuide: path.resolve(root, "climbing-guide-v1/index.html"),
-        stratmaker: path.resolve(root, "tool/stratmaker/index.html"),
       },
     },
   },

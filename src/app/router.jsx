@@ -4,6 +4,7 @@ import { TeamPage } from "../features/team/TeamPage.jsx";
 import { ManagementPage } from "../features/management/ManagementPage.jsx";
 import { StratsPage } from "../features/strats/browser/StratsPage.jsx";
 import { StratEditorPage } from "../features/strats/editor/StratEditorPage.jsx";
+import { StratmakerPage } from "../features/strats/editor/StratmakerPage.jsx";
 import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
 import { UserMenu } from "../features/auth/UserMenu.jsx";
@@ -15,7 +16,6 @@ const NAV = [
   { to: "/calendar", label: "Calendar" },
   { to: "/team", label: "Team" },
   { to: "/strats", label: "Strats" },
-  { to: "/strats/demo", label: "Strat editor" },
   { to: "/micro-prep", label: "Micro-prep" },
 ];
 
@@ -52,6 +52,15 @@ function AppShell() {
       <main className="mx-auto max-w-5xl px-4 py-8">
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+/** Full-bleed shell for map editor (no max-width main). */
+function EditorShell() {
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-bg text-text">
+      <Outlet />
     </div>
   );
 }
@@ -100,8 +109,11 @@ export function AppRouter() {
           <Route path="management" element={<StaffOnlyManagementPage />} />
           <Route path="strats" element={<StratsPage hub />} />
         </Route>
-        <Route element={<AppShell />}>
+        <Route element={<EditorShell />}>
+          <Route path="tool/stratmaker" element={<StratmakerPage />} />
           <Route path="strats/:id" element={<StratEditorPage />} />
+        </Route>
+        <Route element={<AppShell />}>
           <Route path="micro-prep" element={<MicroPrepPage />} />
         </Route>
       </Routes>

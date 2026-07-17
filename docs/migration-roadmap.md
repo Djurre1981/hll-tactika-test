@@ -48,18 +48,32 @@
 - [x] Update GET /api/strats
 
 ## Phase 6 – Strat Editor (no collab)
-- CanvasWrapper mounts kernel via ref
-- Toolbar, slide list, properties panel
-- D1 load/save with auto‑save
-- Port all drawing tools, undo/redo
+- [x] D1 `strats` table + store rewrite (KV reserved for Yjs)
+- [x] CanvasWrapper mounts kernel via ref
+- [x] Legacy-shell UI redo (Tailwind): left tools, full-bleed map, right slides
+- [x] Dashboard opens `/tool/stratmaker` and auto-creates a D1 strat
+- [x] Inset-aware map fit/zoom + grid/strongpoint overlays in map-kernel
+- [x] D1 load/save with auto‑save
+- [x] Port drawing tools, undo/redo, clipboard (canvas renderer)
+- [ ] Strats browser re-entry / open existing (deferred; new strats still land in D1)
 
-## Phase 7 – Micro‑Prep Whiteboard
-- Full‑page whiteboard + background upload
-- Kernel extensions: sticky notes, highlighter
-- D1 board CRUD, optional Yjs sync
-
-## Phase 8 – Live Collaboration
+## Phase 7 – Live Collaboration
 - useYjsRoom hook (JWT → WS)
 - Sync Y.Doc objects with kernel
 - Remote cursors via awareness
 - KV snapshots on idle/save/teardown
+
+## Phase 8 – Micro‑Prep Whiteboard
+- Full‑page whiteboard + background upload
+- Kernel extensions: sticky notes, highlighter
+- Excalidraw engine
+
+## Phase 9 - Discord Bot
+Build D1 tables & Cloudflare API endpoints.
+Deploy Discord.js bot with /link commands.
+Add /event create modal with persistence.
+Handle signup/cancel buttons with role checks.
+Post & auto-refresh rich embed updates.
+Schedule recurring events and reminders.
+Implement /post now and scheduled posts.
+Sync web dashboard, deploy to Hetzner with PM2.
