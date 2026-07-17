@@ -22,6 +22,7 @@ export function HubToast() {
 
 export function HubProvider({ children }) {
   const [toast, setToast] = useState({ visible: false, message: "" });
+  const [rail, setRail] = useState(null);
   const timerRef = useRef(null);
 
   const showToast = useCallback((message) => {
@@ -36,6 +37,8 @@ export function HubProvider({ children }) {
   }, []);
 
   return (
-    <HubContext.Provider value={{ toast, showToast }}>{children}</HubContext.Provider>
+    <HubContext.Provider value={{ toast, showToast, rail, setRail }}>
+      {children}
+    </HubContext.Provider>
   );
 }

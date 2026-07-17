@@ -6,6 +6,14 @@ export const queryKeys = {
   strats: {
     all: ["strats"],
     byId: (id) => ["strats", id],
+    byFolder: (folderId) => ["strats", "folder", folderId || "all"],
+    meta: ["strats", "meta"],
+  },
+  roster: {
+    all: ["roster"],
+  },
+  folders: {
+    all: ["folders"],
   },
   team: {
     roster: ["team", "roster"],

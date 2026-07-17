@@ -127,6 +127,8 @@ export function sanitizeStratInput(strat, { requireSlides = true } = {}) {
     return { error: "At least one slide is required" };
   }
 
+  const folderId = String(strat.folderId || "").trim() || null;
+
   return {
     strat: {
       title,
@@ -134,6 +136,7 @@ export function sanitizeStratInput(strat, { requireSlides = true } = {}) {
       notes,
       match,
       slides,
+      folderId,
       locked: Boolean(strat.locked),
       lockedBy: strat.locked ? String(strat.lockedBy || "").trim() || null : null,
     },
@@ -170,6 +173,10 @@ export function applyStratUpdates(existing, updates) {
   if (updates.locked !== undefined) {
     merged.locked = Boolean(updates.locked);
     merged.lockedBy = merged.locked ? String(updates.lockedBy || existing.lockedBy || "").trim() || null : null;
+  }
+
+  if (updates.folderId !== undefined) {
+    merged.folderId = String(updates.folderId || "").trim() || null;
   }
 
   return { strat: merged };

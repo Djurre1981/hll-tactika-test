@@ -139,6 +139,30 @@
   animation: dashboard-shell-enter 0.65s var(--ease-smooth) both;
 }
 
+.dashboard-page__main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.15rem;
+  width: min(calc(1520px + 5.5rem), 98vw);
+  max-width: 100%;
+}
+
+.dashboard-page__main.has-rail .dashboard-page__shell {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.dashboard-page__rail {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
 .dashboard-page__shell::before {
   border-radius: inherit;
 }
@@ -229,10 +253,25 @@ html.dashboard-boot #btn-dashboard-home {
     align-items: flex-start;
   }
 
+  .dashboard-page__main {
+    flex-direction: column;
+    align-items: stretch;
+    width: min(1520px, 100%);
+    gap: 0.85rem;
+  }
+
+  .dashboard-page__rail {
+    justify-content: center;
+  }
+
   .dashboard-page__shell {
     width: min(1520px, 100%);
     min-height: 0;
     border-radius: 26px;
+  }
+
+  .dashboard-page__main.has-rail .dashboard-page__shell {
+    width: 100%;
   }
 
   .dashboard-page__grid {

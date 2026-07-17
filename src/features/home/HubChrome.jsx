@@ -4,18 +4,15 @@ import { useHub } from "./HubContext.jsx";
 
 const HUB_TABS = [
   { id: "home", label: "Dashboard", to: "/home" },
-  { id: "strats", label: "My Strats", placeholder: true },
-  { id: "management", label: "Management", placeholder: true },
+  { id: "strats", label: "My Strats", to: "/strats" },
+  { id: "management", label: "Management", to: "/management" },
   { id: "calendar", label: "Calendar", to: "/calendar" },
 ];
 
-const PLACEHOLDER_LABELS = {
-  strats: "My Strats — coming soon",
-  management: "Management — coming soon",
-};
-
 function activeTab(pathname) {
   if (pathname.startsWith("/calendar")) return "calendar";
+  if (pathname.startsWith("/management")) return "management";
+  if (pathname.startsWith("/strats")) return "strats";
   return "home";
 }
 
@@ -44,7 +41,7 @@ export function HubChrome() {
         window.clearTimeout(peekTimerRef.current);
       }
       setPeekIndex(index);
-      showToast(PLACEHOLDER_LABELS[tab.id] || "Coming soon");
+      showToast("Coming soon");
       peekTimerRef.current = window.setTimeout(() => {
         setPeekIndex(null);
         peekTimerRef.current = null;

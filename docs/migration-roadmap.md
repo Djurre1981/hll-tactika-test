@@ -38,11 +38,14 @@
 - [x] AuthGate restructured for public vs protected routes
 - [x] Session/cache edge cases and dashboard query key stabilization
 
-## Phase 5 – Strat Browser
-- Add folders table + folder_id to strats
-- Folder tree with drag‑and‑drop
-- Filterable strat list
-- Update GET /api/strats
+## Phase 5 – Strat Browser + management section
+- [x] Add folders table + folder_id to strats
+- [x] Add management section
+- [x] Add management roster (clan roster, separate from site access)
+- [x] Add management left bar
+- [x] Folder tree with drag‑and‑drop
+- [x] Filterable strat list
+- [x] Update GET /api/strats
 
 ## Phase 6 – Strat Editor (no collab)
 - CanvasWrapper mounts kernel via ref

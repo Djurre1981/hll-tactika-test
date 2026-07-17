@@ -1,8 +1,22 @@
 import { Outlet } from "react-router-dom";
 import "../../styles/home.css";
 import { HubChrome } from "./HubChrome.jsx";
-import { HubProvider, HubToast } from "./HubContext.jsx";
+import { HubProvider, HubToast, useHub } from "./HubContext.jsx";
 import { LegacyUserMenu } from "./LegacyUserMenu.jsx";
+
+function HubMain() {
+  const { rail } = useHub();
+
+  return (
+    <div className={`dashboard-page__main${rail ? " has-rail" : ""}`}>
+      {rail ? <aside className="dashboard-page__rail">{rail}</aside> : null}
+      <div className="dashboard-page__shell glass-panel">
+        <Outlet />
+        <HubToast />
+      </div>
+    </div>
+  );
+}
 
 export function HubLayout() {
   return (
@@ -11,10 +25,7 @@ export function HubLayout() {
       <HubProvider>
         <HubChrome />
         <LegacyUserMenu />
-        <div className="dashboard-page__shell glass-panel">
-          <Outlet />
-          <HubToast />
-        </div>
+        <HubMain />
       </HubProvider>
     </div>
   );

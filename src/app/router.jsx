@@ -1,6 +1,7 @@
 import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
 import { TeamPage } from "../features/team/TeamPage.jsx";
+import { ManagementPage } from "../features/management/ManagementPage.jsx";
 import { StratsPage } from "../features/strats/browser/StratsPage.jsx";
 import { StratEditorPage } from "../features/strats/editor/StratEditorPage.jsx";
 import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
@@ -55,19 +56,35 @@ function AppShell() {
   );
 }
 
-function StaffOnlyTeamPage({ hub = false }) {
+function StaffGate({ hub = false, title, children }) {
   const user = useAuth();
 
   if (!canViewTeam(user.role)) {
     return (
       <section className={hub ? "hub-admin-shell" : undefined}>
-        <h1 className="dashboard-page__greeting">Admin Panel</h1>
+        <h1 className="dashboard-page__greeting">{title}</h1>
         <p className="dashboard-page__tagline">Comp Admins only.</p>
       </section>
     );
   }
 
-  return <TeamPage hub={hub} />;
+  return children;
+}
+
+function StaffOnlyTeamPage({ hub = false }) {
+  return (
+    <StaffGate hub={hub} title="Admin Panel">
+      <TeamPage hub={hub} />
+    </StaffGate>
+  );
+}
+
+function StaffOnlyManagementPage() {
+  return (
+    <StaffGate hub title="Management">
+      <ManagementPage />
+    </StaffGate>
+  );
 }
 
 export function AppRouter() {
@@ -80,9 +97,10 @@ export function AppRouter() {
           <Route path="dashboard" element={<Navigate to="/home" replace />} />
           <Route path="calendar" element={<CalendarPage hub />} />
           <Route path="team" element={<StaffOnlyTeamPage hub />} />
+          <Route path="management" element={<StaffOnlyManagementPage />} />
+          <Route path="strats" element={<StratsPage hub />} />
         </Route>
         <Route element={<AppShell />}>
-          <Route path="strats" element={<StratsPage />} />
           <Route path="strats/:id" element={<StratEditorPage />} />
           <Route path="micro-prep" element={<MicroPrepPage />} />
         </Route>
