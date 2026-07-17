@@ -1,60 +1,67 @@
-import { useRef, useState } from "react";
-import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
+import { useEffect, useRef, useState } from "react";
+import "../../../css/components/welcome-page.css";
 import { AuthDialog } from "./AuthDialog.jsx";
+import { hasPlayedOnce, markPlayedOnce } from "./hooks/oneShot.js";
 import { useTypewriter, WELCOME_INTRO_TEXT } from "./hooks/useTypewriter.js";
 import { useVideoScrub } from "./hooks/useVideoScrub.js";
 
 const DISCORD_URL = "https://discord.gg/kDaK9wpr8y";
 const WELCOME_VIDEO = "/assets/welcome/welcome.mp4";
 const LOGO_SRC = "/assets/logos/tactika-full-logo.svg";
+const TYPEWRITER_KEY = "tactika:welcome-typewriter";
+const NAV_ANIM_KEY = "tactika:welcome-nav";
 
 export function WelcomePage({ authError = null }) {
+  const pageRef = useRef(null);
   const videoRef = useRef(null);
   const [dialogOpen, setDialogOpen] = useState(Boolean(authError));
-  const { tapToPlay } = useVideoScrub(videoRef, WELCOME_VIDEO);
-  const { text, isTyping, cursorVisible } = useTypewriter(WELCOME_INTRO_TEXT);
-  const navStyle = useFadeIn({ delay: 100, duration: 800 });
+  const [navSettled, setNavSettled] = useState(() => hasPlayedOnce(NAV_ANIM_KEY));
+  const { tapToPlay } = useVideoScrub(videoRef, WELCOME_VIDEO, pageRef);
+  const { text, isTyping } = useTypewriter(WELCOME_INTRO_TEXT, {
+    storageKey: TYPEWRITER_KEY,
+  });
+
+  useEffect(() => {
+    if (navSettled) return undefined;
+    markPlayedOnce(NAV_ANIM_KEY);
+    const timer = window.setTimeout(() => setNavSettled(true), 1000);
+    return () => window.clearTimeout(timer);
+  }, [navSettled]);
 
   const dialogMessage =
     authError?.message ||
     "Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.";
 
   return (
-    <div className="fixed inset-0 z-[150] overflow-hidden bg-black font-sans">
+    <div
+      ref={pageRef}
+      className={`welcome-page${tapToPlay ? " scrub-video--tap-to-play" : ""}`}
+    >
       <video
         ref={videoRef}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        className="welcome-page__video"
         muted
         playsInline
+        preload="auto"
         disablePictureInPicture
         disableRemotePlayback
       />
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/20"
-        aria-hidden="true"
-      />
-
-      {tapToPlay ? (
-        <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center text-sm font-light uppercase tracking-[0.14em] text-white/75">
-          Tap to play
-        </div>
-      ) : null}
+      <div className="welcome-page__gradient" aria-hidden="true" />
 
       <nav
-        className="absolute right-[5.5rem] top-9 z-[3] flex items-center gap-7 max-md:right-14 max-md:top-6 max-md:gap-5"
-        style={navStyle}
+        className={`welcome-page__nav${navSettled ? " is-settled" : ""}`}
         aria-label="Welcome"
       >
         <button
           type="button"
-          className="cursor-pointer border-none bg-transparent text-[1.15rem] font-light tracking-[0.12em] text-white transition hover:opacity-65 max-md:text-[1.05rem]"
+          className="welcome-page__nav-link"
           onClick={() => setDialogOpen(true)}
         >
           Sign in
         </button>
-        <span className="h-[3px] w-[3px] shrink-0 rounded-full bg-white/55" aria-hidden="true" />
+        <span className="welcome-page__nav-sep" aria-hidden="true" />
         <a
-          className="text-[1.15rem] font-light tracking-[0.12em] text-white no-underline transition hover:opacity-65 max-md:text-[1.05rem]"
+          className="welcome-page__nav-link"
           href={DISCORD_URL}
           target="_blank"
           rel="noopener noreferrer"
@@ -63,21 +70,15 @@ export function WelcomePage({ authError = null }) {
         </a>
       </nav>
 
-      <div className="pointer-events-none absolute bottom-[calc(19.625rem-min(72vw,840px)*186/840)] left-[5.5rem] z-[3] flex w-[min(72vw,840px)] select-none flex-col items-start max-md:left-10 max-md:w-[min(82vw,640px)]">
+      <div className="welcome-page__brand">
         <p
-          className="mb-0 box-border h-[8.25em] w-full max-w-full px-[4%] pb-0 pt-[4.5em] text-left text-[clamp(0.82rem,1.05vw,1rem)] font-thin leading-[1.65] tracking-[0.03em] text-white/90"
+          className={`welcome-page__intro${isTyping ? " is-typing" : ""}`}
           aria-live="polite"
         >
           {text}
-          {isTyping ? (
-            <span
-              className="ml-0.5 inline-block h-[0.95em] w-px bg-white/80 align-text-bottom"
-              style={{ opacity: cursorVisible ? 1 : 0 }}
-            />
-          ) : null}
         </p>
-        <div className="relative w-full">
-          <img className="block h-auto w-full" src={LOGO_SRC} alt="HLL Tactika" width={840} height={186} />
+        <div className="welcome-page__logo-wrap">
+          <img className="welcome-page__logo" src={LOGO_SRC} alt="HLL Tactika" width={840} height={186} />
         </div>
       </div>
 

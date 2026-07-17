@@ -57,7 +57,11 @@
 }
 
 .hub-nav__thumb {
-  width: calc(25% - 0.2rem);
+  width: calc((100% - 0.4rem) / 4);
+}
+
+.hub-nav .mode-switch__thumb.hub-nav__thumb {
+  width: calc((100% - 0.4rem) / 4);
 }
 
 .hub-nav[data-hub-index="1"] .hub-nav__thumb {

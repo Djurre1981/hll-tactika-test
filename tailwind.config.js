@@ -18,7 +18,6 @@ export default {
       },
       boxShadow: {
         glass: "0 24px 80px rgba(0, 0, 0, 0.34)",
-        glow: "0 0 28px rgba(196, 163, 90, 0.24)",
         neon: "0 0 26px rgba(57, 255, 20, 0.18)",
       },
     },

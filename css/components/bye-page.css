@@ -90,6 +90,12 @@
   animation: bye-actions-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.bye-page__actions.is-settled {
+  opacity: 1;
+  pointer-events: auto;
+  animation: none;
+}
+
 .bye-page__action {
   padding: 0;
   border: none;

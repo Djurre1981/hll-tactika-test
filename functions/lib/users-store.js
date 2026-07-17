@@ -260,32 +260,38 @@ export async function saveUserProfile(steamId, env, profile = {}) {
   await saveUsersData(env, data);
 }
 
-export async function recordUserLastSignedIn(steamId, env, profile = {}) {
+export async function recordUserLastSignedIn(steamId, env, profile = {}, role = "viewer") {
   const id = String(steamId).trim();
   if (!id) {
     return;
   }
 
+  const nextRole = normalizeStoredRole(role) || "viewer";
+
   if (getDb(env)) {
     const db = requireDb(env);
+    // Upsert so env-allowlisted users (not yet in D1) can create sessions.
     await db
       .prepare(
-        `UPDATE users
-            SET display_name = COALESCE(?, display_name),
-                avatar_url = COALESCE(?, avatar_url),
-                last_signed_in_at = datetime('now'),
-                updated_at = datetime('now')
-          WHERE steam_id = ?`
+        `INSERT INTO users (
+           steam_id, role, display_name, avatar_url, last_signed_in_at, updated_at
+         ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+         ON CONFLICT(steam_id) DO UPDATE SET
+           display_name = COALESCE(excluded.display_name, users.display_name),
+           avatar_url = COALESCE(excluded.avatar_url, users.avatar_url),
+           last_signed_in_at = datetime('now'),
+           updated_at = datetime('now')`
       )
-      .bind(profile.name || null, profile.avatar || null, id)
+      .bind(id, nextRole, profile.name || null, profile.avatar || null)
       .run();
     return;
   }
 
   const data = await loadUsersData(env);
-  const member = data.users.find((user) => String(user.steamId).trim() === id);
+  let member = data.users.find((user) => String(user.steamId).trim() === id);
   if (!member) {
-    return;
+    member = { steamId: id, role: nextRole };
+    data.users.push(member);
   }
 
   member.lastSignedInAt = new Date().toISOString();

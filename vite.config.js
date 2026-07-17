@@ -114,7 +114,6 @@ function serveRepoStatic() {
         const barePages = {
           "/climbing-guide-v1": "/climbing-guide-v1/",
           "/tool/stratmaker": "/tool/stratmaker/",
-          "/home": "/home/",
         };
         if (barePages[url]) {
           res.statusCode = 302;
@@ -144,7 +143,6 @@ function serveRepoStatic() {
           url.startsWith("/api") ||
           url.startsWith("/climbing-guide-v1") ||
           url.startsWith("/tool/") ||
-          url.startsWith("/home") ||
           url.startsWith("/css") ||
           url.startsWith("/js") ||
           url.startsWith("/src") ||
@@ -185,8 +183,10 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     port: 5173,
     strictPort: true,
+    open: "/",
     proxy: {
       "/api": {
         target: WRANGLER_API,

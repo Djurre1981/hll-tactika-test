@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
+import "../../../css/components/bye-page.css";
+import { hasPlayedOnce, markPlayedOnce } from "./hooks/oneShot.js";
 import { BYE_INTRO_TEXT, useTypewriter } from "./hooks/useTypewriter.js";
 import { useVideoScrub } from "./hooks/useVideoScrub.js";
 
@@ -7,88 +8,79 @@ const DISCORD_URL = "https://discord.gg/kDaK9wpr8y";
 const BYE_VIDEO = "/assets/welcome/bye.mp4";
 const LOGO_SRC = "/assets/logos/tactika-full-logo.svg";
 const ACTIONS_REVEAL_DELAY_MS = 700;
+const TYPEWRITER_KEY = "tactika:bye-typewriter";
+const ACTIONS_KEY = "tactika:bye-actions";
 
 export function ByePage({ onGiveUp }) {
+  const pageRef = useRef(null);
   const videoRef = useRef(null);
-  const [actionsVisible, setActionsVisible] = useState(false);
-  const { tapToPlay } = useVideoScrub(videoRef, BYE_VIDEO);
-  const { text, isTyping, isDone, cursorVisible } = useTypewriter(BYE_INTRO_TEXT, { speed: 22 });
-  const actionsStyle = useFadeIn({
-    delay: 0,
-    duration: 800,
-    enabled: actionsVisible,
+  const actionsAlreadyPlayed = hasPlayedOnce(ACTIONS_KEY);
+  const [actionsVisible, setActionsVisible] = useState(actionsAlreadyPlayed);
+  const [actionsSettled, setActionsSettled] = useState(actionsAlreadyPlayed);
+  const { tapToPlay } = useVideoScrub(videoRef, BYE_VIDEO, pageRef);
+  const { text, isTyping, isDone } = useTypewriter(BYE_INTRO_TEXT, {
+    speed: 22,
+    storageKey: TYPEWRITER_KEY,
   });
 
   useEffect(() => {
-    if (!isDone) {
-      setActionsVisible(false);
-      return undefined;
-    }
+    if (actionsAlreadyPlayed || !isDone) return undefined;
 
-    const timer = window.setTimeout(() => setActionsVisible(true), ACTIONS_REVEAL_DELAY_MS);
+    const timer = window.setTimeout(() => {
+      setActionsVisible(true);
+      markPlayedOnce(ACTIONS_KEY);
+      window.setTimeout(() => setActionsSettled(true), 850);
+    }, ACTIONS_REVEAL_DELAY_MS);
+
     return () => window.clearTimeout(timer);
-  }, [isDone]);
+  }, [actionsAlreadyPlayed, isDone]);
 
   return (
-    <div className="fixed inset-0 z-[150] overflow-hidden bg-black font-sans">
+    <div
+      ref={pageRef}
+      className={`bye-page${tapToPlay ? " scrub-video--tap-to-play" : ""}`}
+    >
       <video
         ref={videoRef}
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        className="bye-page__video"
         muted
         playsInline
+        preload="auto"
         disablePictureInPicture
         disableRemotePlayback
       />
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-black/60"
-        aria-hidden="true"
-      />
+      <div className="bye-page__gradient" aria-hidden="true" />
 
-      {tapToPlay ? (
-        <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center text-sm font-light uppercase tracking-[0.14em] text-white/75">
-          Tap to play
+      <div className="bye-page__brand">
+        <div className="bye-page__logo-wrap">
+          <img className="bye-page__logo" src={LOGO_SRC} alt="HLL Tactika" width={840} height={186} />
         </div>
-      ) : null}
-
-      <div className="pointer-events-none absolute left-[4.75rem] top-9 z-[3] w-[min(72vw,840px)] select-none max-md:left-9 max-md:top-6 max-md:w-[min(82vw,640px)]">
-        <img className="block h-auto w-full" src={LOGO_SRC} alt="HLL Tactika" width={840} height={186} />
       </div>
 
-      <div className="absolute bottom-[5.5rem] left-1/2 z-[3] flex w-[min(72vw,840px)] -translate-x-1/2 flex-col items-center max-md:bottom-16 max-md:w-[min(82vw,640px)]">
+      <div className="bye-page__footer">
         {actionsVisible ? (
           <div
-            className="mb-6 flex w-full justify-between px-[5.5rem] max-md:px-14"
-            style={actionsStyle}
+            className={`bye-page__actions${actionsSettled ? " is-settled" : " is-visible"}`}
           >
             <a
-              className="cursor-pointer border-none bg-transparent text-[1.15rem] font-light tracking-[0.12em] text-white no-underline transition hover:opacity-65 max-md:text-[1.05rem]"
+              className="bye-page__action"
               href={DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
             >
               Join us
             </a>
-            <button
-              type="button"
-              className="cursor-pointer border-none bg-transparent text-[1.15rem] font-light tracking-[0.12em] text-white transition hover:opacity-65 max-md:text-[1.05rem]"
-              onClick={onGiveUp}
-            >
+            <button type="button" className="bye-page__action" onClick={onGiveUp}>
               Give up
             </button>
           </div>
         ) : null}
 
         <p
-          className="m-0 w-full text-center text-[clamp(0.82rem,1.05vw,1rem)] font-thin leading-[1.65] tracking-[0.03em] text-white/90"
+          className={`bye-page__intro${isTyping ? " is-typing" : ""}`}
           aria-live="polite"
         >
           {text}
-          {isTyping ? (
-            <span
-              className="ml-0.5 inline-block h-[0.95em] w-px bg-white/80 align-text-bottom"
-              style={{ opacity: cursorVisible ? 1 : 0 }}
-            />
-          ) : null}
         </p>
       </div>
     </div>

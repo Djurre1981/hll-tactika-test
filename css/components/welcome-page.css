@@ -60,6 +60,12 @@
   animation: welcome-fade-down 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
 }
 
+.welcome-page__nav.is-settled {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
 .welcome-page__nav-link {
   padding: 0;
   border: none;

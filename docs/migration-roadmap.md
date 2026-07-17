@@ -7,9 +7,9 @@
 - [x] Create D1 database with tables: `pins`, `users`, `strats`, `events`, `teams`, `strat_folders`
 - [x] Migrate existing KV `pins` and `users` data into D1 with a one‑time script
 - [x] Bind D1 and R2 to the Pages project in `wrangler.toml`
-- [ ] Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)
-- [ ] Add `functions/api/collab/join.js` – session‑validated JWT minting for room access
-- [ ] Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`
+- [ ] ~~Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)~~ *(skipped for now — revisit in Phase 8)*
+- [ ] ~~Add `functions/api/collab/join.js` – session‑validated JWT minting for room access~~ *(skipped for now — revisit in Phase 8)*
+- [ ] ~~Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`~~ *(skipped for now — revisit in Phase 8)*
 - [x] Create staging environment (Cloudflare Pages preview deployments, separate D1 preview)
 - [x] Write initial `src/ai-context.md`
 

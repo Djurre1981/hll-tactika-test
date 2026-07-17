@@ -1,4 +1,4 @@
-import { isAllowedSteamId } from "../../lib/roles.js";
+import { getUserRole } from "../../lib/roles.js";
 import { guardAccess } from "../../lib/access-guard.js";
 import { redirect } from "../../lib/response.js";
 import { createSessionCookie } from "../../lib/session.js";
@@ -30,12 +30,13 @@ export async function onRequestGet(context) {
     const profile = await fetchSteamProfile(steamId, env);
     await cacheSteamProfile(profile, env);
 
-    if (!(await isAllowedSteamId(steamId, env))) {
+    const role = await getUserRole(steamId, env);
+    if (!role) {
       const origin = getOrigin(request);
       return redirect(`${origin}/?auth=forbidden&steamId=${steamId}`);
     }
 
-    await recordUserLastSignedIn(steamId, env, profile);
+    await recordUserLastSignedIn(steamId, env, profile, role);
 
     const cookie = await createSessionCookie(profile, env, request);
     return redirect(`${getOrigin(request)}/`, {

@@ -39,10 +39,11 @@ function freePort(port) {
 function killTree(child) {
   if (!child?.pid) return;
   if (process.platform === "win32") {
-    spawn("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
-      stdio: "ignore",
-      windowsHide: true,
-    });
+    try {
+      execFileSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore" });
+    } catch {
+      /* already gone */
+    }
     return;
   }
   child.kill("SIGTERM");
@@ -51,14 +52,46 @@ function killTree(child) {
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
+  console.log("\nStopping dev servers...");
   for (const child of children) killTree(child);
+  freePort(SIDECAR_PORT);
+  freePort(API_PORT);
+  freePort(VITE_PORT);
+  if (process.stdin.isTTY) {
+    try {
+      process.stdin.setRawMode(false);
+    } catch {
+      /* ignore */
+    }
+  }
   process.exit(code);
 }
 
+function enableKeyExit() {
+  if (!process.stdin.isTTY) return;
+
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (key) => {
+    const k = String(key);
+    // x / X, or Ctrl+C
+    if (k === "x" || k === "X" || k === "\u0003") {
+      shutdown(0);
+    }
+  });
+}
+
+function runBuildOnce() {
+  console.log("Building frontend for :8788...");
+  execFileSync("npx", ["vite", "build"], { cwd: root, stdio: "inherit", shell: process.platform === "win32" });
+}
+
 function run(command, args, name) {
+  // Keep stdin on the parent so "x" always reaches this script (not wrangler).
   const child = spawn(command, args, {
     cwd: root,
-    stdio: "inherit",
+    stdio: ["ignore", "inherit", "inherit"],
     shell: process.platform === "win32",
   });
   children.push(child);
@@ -75,9 +108,13 @@ freePort(SIDECAR_PORT);
 freePort(API_PORT);
 freePort(VITE_PORT);
 
-// Open Vite directly — wrangler.toml pages_build_output_dir=dist would otherwise
-// serve a stale production build on :8788 without HMR.
-console.log(`Dev: http://127.0.0.1:${VITE_PORT}/  (API → wrangler :${API_PORT})`);
+runBuildOnce();
+
+// Open Vite directly — wrangler pages dev serves `dist` on :8788.
+// Vite dev (:5173) has HMR; build --watch keeps :8788 in sync.
+console.log(`Dev UI (HMR):  http://localhost:${VITE_PORT}/`);
+console.log(`Dev full stack: http://localhost:${API_PORT}/  (API + built UI)`);
+console.log("Press x to stop all servers.\n");
 
 run("node", ["scripts/stratsketch-dev-import-server.mjs"], "import-sidecar");
 run(
@@ -85,7 +122,10 @@ run(
   ["wrangler", "pages", "dev", "dist", "--port", String(API_PORT), "--compatibility-date=2024-01-01"],
   "wrangler"
 );
+run("npx", ["vite", "build", "--watch"], "vite-build");
 run("npx", ["vite", "--port", String(VITE_PORT), "--strictPort"], "vite");
+
+enableKeyExit();
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));

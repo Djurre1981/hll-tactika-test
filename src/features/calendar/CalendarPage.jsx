@@ -17,7 +17,7 @@ import {
   useUpdateEventMutation,
 } from "./hooks/useEventsQuery.js";
 
-export function CalendarPage() {
+export function CalendarPage({ hub = false }) {
   const user = useAuth();
   const canEdit = canEditEvents(user.role);
   const [monthDate, setMonthDate] = useState(startOfMonth(new Date()));
@@ -71,8 +71,8 @@ export function CalendarPage() {
     createEvent.error?.message || updateEvent.error?.message || deleteEvent.error?.message;
   const sectionStyle = useFadeIn();
 
-  return (
-    <section className="space-y-6" style={sectionStyle}>
+  const content = (
+    <section className={hub ? "space-y-5" : "space-y-6"} style={sectionStyle}>
       <div className="glass-panel p-6 md:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -143,4 +143,10 @@ export function CalendarPage() {
       </Modal>
     </section>
   );
+
+  if (hub) {
+    return <div className="hub-calendar-shell space-y-5">{content}</div>;
+  }
+
+  return content;
 }

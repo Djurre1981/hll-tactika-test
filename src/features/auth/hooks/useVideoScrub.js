@@ -14,7 +14,7 @@ function resolveSourceUrl(sourceUrl) {
   return new URL(path, window.location.origin).href;
 }
 
-export function useVideoScrub(videoRef, sourceUrl) {
+export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
   const [tapToPlay, setTapToPlay] = useState(false);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ export function useVideoScrub(videoRef, sourceUrl) {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const phoneLayout = isPhoneLayout();
     const resolvedSourceUrl = resolveSourceUrl(sourceUrl);
+    const gestureRoot = containerRef?.current || video.parentElement || document.body;
 
     let videoDuration = 0;
     let videoReady = false;
@@ -44,7 +45,10 @@ export function useVideoScrub(videoRef, sourceUrl) {
     let phoneGestureRegistered = false;
 
     video.muted = true;
+    video.defaultMuted = true;
     video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
     video.preload = "auto";
 
     function hasValidDuration() {
@@ -103,8 +107,8 @@ export function useVideoScrub(videoRef, sourceUrl) {
       }
     }
 
-    function waitForFrameData({ allowCached = true } = {}) {
-      if (allowCached && hasFrameData()) return Promise.resolve(true);
+    function waitForEvent(okCheck, events, { allowCached = true } = {}) {
+      if (allowCached && okCheck()) return Promise.resolve(true);
 
       return new Promise((resolve) => {
         let done = false;
@@ -116,71 +120,73 @@ export function useVideoScrub(videoRef, sourceUrl) {
         };
 
         const check = () => {
-          if (hasFrameData()) finish(true);
-        };
-
-        const cleanup = () => {
-          window.clearTimeout(timer);
-          video.removeEventListener("loadeddata", check);
-          video.removeEventListener("canplay", check);
-          video.removeEventListener("error", onError);
+          if (okCheck()) finish(true);
         };
 
         const onError = () => finish(false);
 
-        video.addEventListener("loadeddata", check);
-        video.addEventListener("canplay", check);
+        const cleanup = () => {
+          window.clearTimeout(timer);
+          for (const event of events) {
+            video.removeEventListener(event, check);
+          }
+          video.removeEventListener("error", onError);
+        };
+
+        for (const event of events) {
+          video.addEventListener(event, check);
+        }
         video.addEventListener("error", onError);
 
-        const timer = window.setTimeout(() => finish(hasFrameData()), LOAD_TIMEOUT_MS);
+        const timer = window.setTimeout(() => finish(okCheck()), LOAD_TIMEOUT_MS);
         check();
       });
     }
 
-    function waitForMetadata() {
-      if (hasValidDuration()) return Promise.resolve(true);
+    function waitForFrameData(options) {
+      return waitForEvent(hasFrameData, ["loadeddata", "canplay", "canplaythrough"], options);
+    }
 
-      return new Promise((resolve) => {
-        let done = false;
-        const finish = (ok) => {
-          if (done) return;
-          done = true;
-          cleanup();
-          resolve(ok);
-        };
+    function waitForMetadata(options) {
+      return waitForEvent(hasValidDuration, ["loadedmetadata", "durationchange"], options);
+    }
 
-        const check = () => {
-          if (hasValidDuration()) finish(true);
-        };
-
-        const cleanup = () => {
-          window.clearTimeout(timer);
-          video.removeEventListener("loadedmetadata", check);
-          video.removeEventListener("durationchange", check);
-          video.removeEventListener("error", onError);
-        };
-
-        const onError = () => finish(false);
-
-        video.addEventListener("loadedmetadata", check);
-        video.addEventListener("durationchange", check);
-        video.addEventListener("error", onError);
-
-        const timer = window.setTimeout(() => finish(hasValidDuration()), LOAD_TIMEOUT_MS);
-        check();
-      });
+    async function paintFirstFrame() {
+      if (destroyed || !hasFrameData()) return;
+      try {
+        const playPromise = video.play();
+        if (playPromise) await playPromise;
+        if (destroyed) return;
+        if (!phoneLayout) {
+          video.pause();
+        }
+      } catch {
+        // Autoplay may be blocked; scrub/seek can still work once data is ready.
+      }
     }
 
     async function startStreaming() {
-      if (video.src !== resolvedSourceUrl) {
-        video.src = sourceUrl;
+      // Force a fresh load each activate attempt (Strict Mode remounts / stalled buffers).
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        blobUrl = null;
       }
-      return phoneLayout ? waitForMetadata() : waitForFrameData();
+      video.pause();
+      video.removeAttribute("src");
+      video.src = sourceUrl;
+      video.load();
+
+      const loaded = phoneLayout ? await waitForMetadata({ allowCached: false }) : await waitForFrameData({ allowCached: false });
+      if (!loaded || destroyed) return false;
+      if (video.src !== resolvedSourceUrl && !video.src.startsWith("blob:")) {
+        // Browser may normalize absolute URL; accept either.
+      }
+      return true;
     }
 
     function removePhoneGestureListener() {
-      video.removeEventListener("pointerdown", handlePhoneGesturePlay);
-      video.removeEventListener("touchstart", handlePhoneGesturePlay);
+      gestureRoot.removeEventListener("pointerdown", handlePhoneGesturePlay);
+      gestureRoot.removeEventListener("touchstart", handlePhoneGesturePlay);
       phoneGestureRegistered = false;
     }
 
@@ -193,8 +199,8 @@ export function useVideoScrub(videoRef, sourceUrl) {
       if (destroyed || phoneGestureRegistered || phoneAutoplayMode) return;
       phoneGestureRegistered = true;
       setTapToPlay(true);
-      video.addEventListener("pointerdown", handlePhoneGesturePlay, { passive: true });
-      video.addEventListener("touchstart", handlePhoneGesturePlay, { passive: true });
+      gestureRoot.addEventListener("pointerdown", handlePhoneGesturePlay, { passive: true });
+      gestureRoot.addEventListener("touchstart", handlePhoneGesturePlay, { passive: true });
     }
 
     async function tryPhoneAutoplay() {
@@ -232,6 +238,7 @@ export function useVideoScrub(videoRef, sourceUrl) {
         const nextBlobUrl = URL.createObjectURL(data);
         const preservedTime = video.currentTime;
         video.src = nextBlobUrl;
+        video.load();
 
         const ready = await waitForFrameData({ allowCached: false });
         if (!ready || destroyed) {
@@ -279,7 +286,9 @@ export function useVideoScrub(videoRef, sourceUrl) {
         updateTargetTime();
         currentDisplayTime = targetTime;
 
-        video.pause();
+        await paintFirstFrame();
+        if (destroyed) return;
+
         applySeek(currentDisplayTime);
 
         stopRetry();
@@ -355,11 +364,6 @@ export function useVideoScrub(videoRef, sourceUrl) {
       }
     }
 
-    function removeTouchScrubListeners() {
-      document.removeEventListener("touchstart", handleTouchMove);
-      document.removeEventListener("touchmove", handleTouchMove);
-    }
-
     void activate();
 
     if (!phoneLayout) {
@@ -386,13 +390,14 @@ export function useVideoScrub(videoRef, sourceUrl) {
       }
       if (!phoneLayout) {
         document.removeEventListener("mousemove", handleMouseMove);
-        removeTouchScrubListeners();
+        document.removeEventListener("touchstart", handleTouchMove);
+        document.removeEventListener("touchmove", handleTouchMove);
         document.removeEventListener("mouseenter", handleMouseEnter);
         window.removeEventListener("resize", handleResize);
       }
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [videoRef, sourceUrl]);
+  }, [videoRef, sourceUrl, containerRef]);
 
   return { tapToPlay };
 }
