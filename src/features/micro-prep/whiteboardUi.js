@@ -28,6 +28,7 @@ export const WB_TOOL_ITEMS = [
   { id: "rectangle", icon: "fa-regular fa-square", title: "Rectangle" },
   { id: "sticky", icon: "fa-solid fa-note-sticky", title: "Sticky note" },
   { id: "text", icon: "fa-solid fa-font", title: "Text" },
+  { id: "image", icon: "fa-regular fa-image", title: "Image" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },
   { id: "hand", icon: "fa-regular fa-hand", title: "Pan" },
 ];

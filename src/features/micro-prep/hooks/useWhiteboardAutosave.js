@@ -3,8 +3,9 @@ import { useCallback, useEffect, useRef } from "react";
 const DEBOUNCE_MS = 1500;
 
 /**
- * Debounced autosave of Excalidraw scene.
+ * Debounced autosave of Excalidraw scene (whiteboard or slideshow).
  * Call `markDirty()` from Excalidraw onChange.
+ * `getScene` must return the full persistable scene object.
  */
 export function useWhiteboardAutosave({
   enabled,
@@ -33,19 +34,7 @@ export function useWhiteboardAutosave({
       await mutate({
         title: t,
         backgroundUrl: bg ?? null,
-        ...(scene
-          ? {
-              scene: {
-                elements: scene.elements,
-                appState: {
-                  viewBackgroundColor: scene.appState?.viewBackgroundColor,
-                  gridSize: scene.appState?.gridSize,
-                  theme: scene.appState?.theme,
-                },
-                files: scene.files || {},
-              },
-            }
-          : {}),
+        ...(scene ? { scene } : {}),
       });
     } catch (error) {
       console.error("Whiteboard autosave failed:", error);
@@ -68,5 +57,5 @@ export function useWhiteboardAutosave({
     };
   }, [flush]);
 
-  return { markDirty };
+  return { markDirty, flush };
 }

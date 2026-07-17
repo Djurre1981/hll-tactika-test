@@ -26,9 +26,18 @@
 }
 
 .tactika-excalidraw .excalidraw {
-  --theme-filter: none;
+  --theme-filter: none !important;
   height: 100% !important;
   width: 100% !important;
+}
+
+/* Excalidraw is forced to light theme; keep filter off if class flips. */
+.tactika-excalidraw .excalidraw.theme--dark {
+  --theme-filter: none !important;
+}
+
+.tactika-excalidraw .excalidraw.theme--dark canvas {
+  filter: none !important;
 }
 
 /* Prefer our glass tools panel — hide default left toolbar / top menu clutter */
@@ -58,4 +67,13 @@
 
 .tactika-excalidraw .excalidraw .ToolIcon__type_button {
   border-radius: 10px;
+}
+
+/* Slideshow: no free wander / “scroll back to content” chrome */
+.tactika-excalidraw--bounded .Footer,
+.tactika-excalidraw--bounded footer,
+.tactika-excalidraw--bounded .scroll-back-to-content,
+.tactika-excalidraw--bounded [class*="scroll-back"],
+.tactika-excalidraw--bounded .HintViewer {
+  display: none !important;
 }

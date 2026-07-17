@@ -82,6 +82,8 @@ export function WhiteboardToolsPanel({
   uploading = false,
   hasBackground = false,
   onClearBackground,
+  /** Slideshow: hide free pan — viewport is clamped on the stage. */
+  lockPan = false,
 }) {
   const fileRef = useRef(null);
   const [tool, setTool] = useState(activeTool || "selection");
@@ -95,6 +97,13 @@ export function WhiteboardToolsPanel({
     applyDrawSettings(api, tool, settings);
   }, [api]); // eslint-disable-line react-hooks/exhaustive-deps -- sync once API mounts
 
+  useEffect(() => {
+    if (!lockPan || tool !== "hand") return;
+    setTool("selection");
+    onToolChange?.("selection");
+    applyToolAndSettings(api, "selection", settings);
+  }, [lockPan]); // eslint-disable-line react-hooks/exhaustive-deps -- only when lock toggles
+
   const selectTool = (id) => {
     const nextSettings = TOOL_PRESETS[id]
       ? {
@@ -102,8 +111,10 @@ export function WhiteboardToolsPanel({
           strokeColor: theme === "light" ? "#1e1e1e" : "#ffffff",
           ...TOOL_PRESETS[id],
         }
-      : settings;
-    if (TOOL_PRESETS[id]) setSettings(nextSettings);
+      : id === "image"
+        ? { ...settings, opacity: 100 }
+        : settings;
+    if (TOOL_PRESETS[id] || id === "image") setSettings(nextSettings);
     setTool(id);
     onToolChange?.(id);
     applyToolAndSettings(api, id, nextSettings);
@@ -123,13 +134,17 @@ export function WhiteboardToolsPanel({
             ? "#ffffff"
             : prev.strokeColor;
       const updated = { ...prev, strokeColor: nextStroke };
-      applyDrawSettings(api, tool, updated);
+      // Only update pen defaults — never restyle existing elements (esp. images).
+      applyDrawSettings(api, tool, updated, { elements: false });
       return updated;
     });
     onThemeChange?.(next);
   };
 
   const isDark = theme === "dark";
+  const tools = lockPan
+    ? WB_TOOL_ITEMS.filter((item) => item.id !== "hand")
+    : WB_TOOL_ITEMS;
 
   return (
     <aside className={panelShell} aria-label="Whiteboard tools">
@@ -188,7 +203,7 @@ export function WhiteboardToolsPanel({
         <div>
           <p className={sectionTitle}>Tools</p>
           <div className="mt-2 grid grid-cols-4 gap-1.5">
-            {WB_TOOL_ITEMS.map((item) => (
+            {tools.map((item) => (
               <ToolBtn
                 key={item.id}
                 active={tool === item.id}
@@ -258,8 +273,8 @@ export function WhiteboardToolsPanel({
             disabled={disabled || uploading}
             onClick={() => fileRef.current?.click()}
           >
-            <i className="fa-solid fa-image" aria-hidden="true" />
-            {uploading ? "Uploading…" : "Upload image"}
+            <i className="fa-solid fa-panorama" aria-hidden="true" />
+            {uploading ? "Uploading…" : "Set background"}
           </button>
           {hasBackground ? (
             <button
@@ -271,6 +286,9 @@ export function WhiteboardToolsPanel({
               Clear background
             </button>
           ) : null}
+          <p className="mt-2 text-[0.65rem] font-light leading-snug text-white/35">
+            Use the Image tool above to place pictures on the canvas.
+          </p>
         </div>
       </div>
     </aside>

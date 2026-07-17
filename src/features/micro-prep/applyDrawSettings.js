@@ -26,6 +26,13 @@ export function settingsToAppState(settings, toolId) {
     };
   }
 
+  if (toolId === "image") {
+    return {
+      ...base,
+      currentItemOpacity: 100,
+    };
+  }
+
   return base;
 }
 
@@ -48,6 +55,8 @@ function patchSelectedElements(api, styleState, newElementWith) {
 
   const next = elements.map((el) => {
     if (!selectedIds[el.id] || el.isDeleted) return el;
+    // Never restyle images from pen/theme settings.
+    if (el.type === "image") return el;
     changed = true;
     return newElementWith(el, {
       strokeColor: styleState.currentItemStrokeColor,
@@ -66,13 +75,17 @@ function patchSelectedElements(api, styleState, newElementWith) {
 
 /**
  * Push draw settings into Excalidraw (current tool defaults + selected elements).
+ * Pass `{ elements: false }` to only update tool defaults (e.g. theme chrome swap).
  */
-export async function applyDrawSettings(api, toolId, settings) {
+export async function applyDrawSettings(api, toolId, settings, opts = {}) {
   if (!api) return;
 
   const { CaptureUpdateAction, newElementWith } = await loadExcalidrawHelpers();
   const styleState = settingsToAppState(settings, toolId);
-  const nextElements = patchSelectedElements(api, styleState, newElementWith);
+  const patchElements = opts.elements !== false;
+  const nextElements = patchElements
+    ? patchSelectedElements(api, styleState, newElementWith)
+    : null;
 
   api.updateScene({
     appState: styleState,

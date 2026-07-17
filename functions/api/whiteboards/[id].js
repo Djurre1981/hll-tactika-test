@@ -73,6 +73,7 @@ export async function onRequestPut(context) {
     const next = {
       ...existing,
       title,
+      mode: existing.mode,
       scene:
         input.scene && typeof input.scene === "object" ? input.scene : existing.scene,
       backgroundUrl:

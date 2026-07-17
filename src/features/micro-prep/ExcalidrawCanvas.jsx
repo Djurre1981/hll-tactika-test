@@ -8,16 +8,65 @@ const Excalidraw = lazy(async () => {
   return { default: mod.Excalidraw };
 });
 
-function buildInitialData(scene, backgroundTransparent, theme) {
+/** Slideshow: start fully zoomed out; pan only within the page when zoomed in. */
+const BOUNDED_ZOOM_MIN = 1;
+const BOUNDED_ZOOM_MAX = 1.75;
+const ZOOM_EPS = 0.02;
+
+/** Slide/page fill — black / white. Letterbox greys live in WhiteboardEditor. */
+const PAGE_COLOR = {
+  dark: "#0f0f0f",
+  light: "#ffffff",
+};
+
+function defaultPageColor(theme) {
+  return theme === "light" ? PAGE_COLOR.light : PAGE_COLOR.dark;
+}
+
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function idealScroll(width, height, zoom) {
+  return {
+    scrollX: width / (2 * zoom),
+    scrollY: height / (2 * zoom),
+  };
+}
+
+/** Keep the viewport inside the zoom=1 page so blank canvas edges never show. */
+function clampScrollToPage(scrollX, scrollY, width, height, zoom) {
+  if (zoom <= BOUNDED_ZOOM_MIN + ZOOM_EPS) {
+    return idealScroll(width, height, BOUNDED_ZOOM_MIN);
+  }
+  const minX = width / zoom - width / 2;
+  const maxX = width / 2;
+  const minY = height / zoom - height / 2;
+  const maxY = height / 2;
+  return {
+    scrollX: clamp(scrollX, minX, maxX),
+    scrollY: clamp(scrollY, minY, maxY),
+  };
+}
+
+function buildInitialData(scene, backgroundTransparent, theme, bounded) {
   const elements = Array.isArray(scene?.elements) ? scene.elements : [];
   const files = scene?.files && typeof scene.files === "object" ? scene.files : {};
-  const isDark = theme !== "light";
+
   const appState = {
     ...(scene?.appState || {}),
-    theme: isDark ? "dark" : "light",
+    // Always light inside Excalidraw — dark theme inverts inserted images.
+    theme: "light",
     viewBackgroundColor: backgroundTransparent
       ? "transparent"
-      : scene?.appState?.viewBackgroundColor || (isDark ? "#0f0f0f" : "#ffffff"),
+      : defaultPageColor(theme),
+    ...(bounded
+      ? {
+          zoom: { value: BOUNDED_ZOOM_MIN },
+          scrollX: scene?.appState?.scrollX,
+          scrollY: scene?.appState?.scrollY,
+        }
+      : {}),
   };
   return { elements, appState, files };
 }
@@ -29,6 +78,7 @@ export function ExcalidrawCanvas({
   scene,
   hasBackground,
   theme = "dark",
+  bounded = false,
   viewModeEnabled = false,
   onApiReady,
   onChange,
@@ -36,17 +86,37 @@ export function ExcalidrawCanvas({
   const apiRef = useRef(null);
   const initialRef = useRef(null);
   const themeRef = useRef(theme);
+  const clampingRef = useRef(false);
 
   if (!initialRef.current) {
-    initialRef.current = buildInitialData(scene, hasBackground, theme);
+    initialRef.current = buildInitialData(scene, hasBackground, theme, bounded);
   }
 
   const handleApi = useCallback(
     (api) => {
       apiRef.current = api;
+      if (bounded) {
+        // After layout, pin fully zoomed-out + centered (no pan at rest).
+        requestAnimationFrame(() => {
+          const state = api.getAppState();
+          const z = BOUNDED_ZOOM_MIN;
+          const { scrollX, scrollY } = idealScroll(
+            state.width || 1,
+            state.height || 1,
+            z
+          );
+          clampingRef.current = true;
+          api.updateScene({
+            appState: { zoom: { value: z }, scrollX, scrollY },
+          });
+          requestAnimationFrame(() => {
+            clampingRef.current = false;
+          });
+        });
+      }
       onApiReady?.(api);
     },
-    [onApiReady]
+    [bounded, onApiReady]
   );
 
   const handleChange = useCallback(
@@ -56,20 +126,60 @@ export function ExcalidrawCanvas({
     [onChange]
   );
 
+  const handleScrollChange = useCallback(
+    (scrollX, scrollY, zoom) => {
+      if (!bounded || clampingRef.current) return;
+      const api = apiRef.current;
+      if (!api) return;
+
+      const appState = api.getAppState();
+      const zRaw = typeof zoom === "object" && zoom ? zoom.value : zoom;
+      const z = typeof zRaw === "number" ? zRaw : BOUNDED_ZOOM_MIN;
+      const nextZ = clamp(z, BOUNDED_ZOOM_MIN, BOUNDED_ZOOM_MAX);
+      const w = appState.width || 1;
+      const h = appState.height || 1;
+      const { scrollX: nextX, scrollY: nextY } = clampScrollToPage(
+        scrollX,
+        scrollY,
+        w,
+        h,
+        nextZ
+      );
+
+      if (
+        Math.abs(nextZ - z) < 0.001 &&
+        Math.abs(nextX - scrollX) < 0.5 &&
+        Math.abs(nextY - scrollY) < 0.5
+      ) {
+        return;
+      }
+
+      clampingRef.current = true;
+      api.updateScene({
+        appState: {
+          zoom: { value: nextZ },
+          scrollX: nextX,
+          scrollY: nextY,
+        },
+      });
+      requestAnimationFrame(() => {
+        clampingRef.current = false;
+      });
+    },
+    [bounded]
+  );
+
   useEffect(() => {
     if (themeRef.current === theme) return;
     themeRef.current = theme;
     const api = apiRef.current;
     if (!api) return;
-    const isDark = theme !== "light";
     api.updateScene({
       appState: {
-        theme: isDark ? "dark" : "light",
+        theme: "light",
         viewBackgroundColor: hasBackground
           ? "transparent"
-          : isDark
-            ? "#0f0f0f"
-            : "#ffffff",
+          : defaultPageColor(theme),
       },
     });
   }, [theme, hasBackground]);
@@ -81,7 +191,9 @@ export function ExcalidrawCanvas({
   }, []);
 
   return (
-    <div className="tactika-excalidraw h-full w-full">
+    <div
+      className={`tactika-excalidraw h-full w-full${bounded ? " tactika-excalidraw--bounded" : ""}`}
+    >
       <Suspense
         fallback={
           <div className="flex h-full items-center justify-center gap-2 text-white/50">
@@ -93,7 +205,8 @@ export function ExcalidrawCanvas({
           excalidrawAPI={handleApi}
           initialData={initialRef.current}
           onChange={handleChange}
-          theme={theme === "light" ? "light" : "dark"}
+          onScrollChange={bounded ? handleScrollChange : undefined}
+          theme="light"
           viewModeEnabled={viewModeEnabled}
           zenModeEnabled
           gridModeEnabled={false}

@@ -1,18 +1,39 @@
 import { requireAuth } from "../lib/auth-request.js";
 import { resolveCreatorName } from "../lib/pin-creators.js";
 import { canEnterEditorMode } from "../lib/pin-permissions.js";
-import { createWhiteboard, listWhiteboards } from "../lib/whiteboards-store.js";
+import {
+  createWhiteboard,
+  listWhiteboards,
+  normalizeBoardMode,
+} from "../lib/whiteboards-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
 function boardListItem(board) {
   return {
     id: board.id,
     title: board.title,
+    mode: board.mode,
     backgroundUrl: board.backgroundUrl || null,
     createdBy: board.createdBy,
     createdByName: board.createdByName,
     createdAt: board.createdAt,
     updatedAt: board.updatedAt,
+  };
+}
+
+function emptySlideshowScene() {
+  const id = `slide-${crypto.randomUUID()}`;
+  return {
+    slides: [
+      {
+        id,
+        name: "Slide 1",
+        order: 0,
+        elements: [],
+        appState: { theme: "dark" },
+        files: {},
+      },
+    ],
   };
 }
 
@@ -52,10 +73,13 @@ export async function onRequestPost(context) {
   }
 
   const input = body.whiteboard || {};
+  const mode = normalizeBoardMode(input.mode);
   const title =
     typeof input.title === "string" && input.title.trim()
       ? input.title.trim().slice(0, 200)
-      : "Untitled Board";
+      : mode === "slideshow"
+        ? "Untitled Slideshow"
+        : "Untitled Board";
 
   const createdByName = await resolveCreatorName(
     auth.session.steamId,
@@ -63,11 +87,18 @@ export async function onRequestPost(context) {
     auth.session
   );
 
+  const defaultScene =
+    mode === "slideshow"
+      ? emptySlideshowScene()
+      : { elements: [], appState: { theme: "dark" }, files: {} };
+
   const now = new Date().toISOString();
   const board = {
     id: input.id || `wb-${crypto.randomUUID()}`,
     title,
-    scene: input.scene && typeof input.scene === "object" ? input.scene : {},
+    mode,
+    scene:
+      input.scene && typeof input.scene === "object" ? input.scene : defaultScene,
     backgroundUrl:
       typeof input.backgroundUrl === "string" && input.backgroundUrl
         ? input.backgroundUrl

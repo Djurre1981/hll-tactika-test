@@ -9,10 +9,15 @@ function parseJson(raw, fallback) {
   }
 }
 
+export function normalizeBoardMode(mode) {
+  return mode === "slideshow" ? "slideshow" : "whiteboard";
+}
+
 function rowToWhiteboard(row, { includeScene = true } = {}) {
   const board = {
     id: row.id,
     title: row.title,
+    mode: normalizeBoardMode(row.mode),
     backgroundUrl: row.background_url || null,
     createdBy: row.created_by,
     createdByName: row.created_by_name || "",
@@ -28,10 +33,10 @@ function rowToWhiteboard(row, { includeScene = true } = {}) {
 }
 
 const FULL_COLUMNS =
-  "id, title, scene_json, background_url, created_by, created_by_name, created_at, updated_at";
+  "id, title, mode, scene_json, background_url, created_by, created_by_name, created_at, updated_at";
 
 const META_COLUMNS =
-  "id, title, background_url, created_by, created_by_name, created_at, updated_at";
+  "id, title, mode, background_url, created_by, created_by_name, created_at, updated_at";
 
 export async function listWhiteboards(env, { meta = false } = {}) {
   const db = requireDb(env);
@@ -59,13 +64,15 @@ export async function createWhiteboard(env, board) {
 
 export async function saveWhiteboard(env, board) {
   const db = requireDb(env);
+  const mode = normalizeBoardMode(board.mode);
   await db
     .prepare(
       `INSERT INTO whiteboards (
-        id, title, scene_json, background_url, created_by, created_by_name, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, title, mode, scene_json, background_url, created_by, created_by_name, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
+        mode = excluded.mode,
         scene_json = excluded.scene_json,
         background_url = excluded.background_url,
         updated_at = excluded.updated_at`
@@ -73,6 +80,7 @@ export async function saveWhiteboard(env, board) {
     .bind(
       board.id,
       board.title,
+      mode,
       JSON.stringify(board.scene || {}),
       board.backgroundUrl || null,
       board.createdBy,

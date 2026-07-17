@@ -62,6 +62,8 @@
 - [x] D1 `whiteboards` CRUD + debounced scene autosave
 - [x] Background image upload via R2 (`/api/uploads/image`)
 - [x] Sticky / highlighter via Excalidraw tools (no kernel extensions)
+- [x] Mode chooser (Whiteboard / Slideshow) on `/tool/micro-prep`
+- [x] Slideshow: 16:9 letterboxed stage + right slides panel + multi-slide scene
 - Note: no Yjs / live collab until Phase 8
 
 ## Phase 8 – Live Collaboration

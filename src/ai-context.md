@@ -3,7 +3,7 @@
 ## Project Overview
 - **HLL Tactika** – Steam-authenticated web app for Hell Let Loose community.
 - **v1** (climbing guide) remains untouched in `climbing-guide-v1/`.
-- **v2** is a React SPA adding dashboard, calendar, team management, strat browser/editor with live collaboration, and micro-prep whiteboard.
+- **v2** is a React SPA adding dashboard, calendar, team management, strat browser/editor with live collaboration, and micro-prep whiteboard/slideshow.
 - **Goal:** Keep collaborative drawing smooth, stay within Cloudflare free tier, keep code AI‑friendly.
 
 ## Directory Map
@@ -21,7 +21,7 @@ root
 │ │ ├── strats/
 │ │ │ ├── browser/ # Folder tree, list
 │ │ │ └── editor/ # Canvas wrapper, toolbar, slides, properties
-│ │ └── micro-prep/     # Excalidraw whiteboard (not map-kernel)
+│ │ └── micro-prep/     # Excalidraw whiteboard + slideshow (not map-kernel)
 │ ├── shared/ # Reusable UI components (Button, Modal, etc.)
 │ ├── lib/ # API client, query keys, Zustand stores, constants
 │ └── styles/ # Tailwind + global resets
