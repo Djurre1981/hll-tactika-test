@@ -90,7 +90,14 @@ export function HomePage() {
         ];
 
   return (
-    <>
+    <div className="relative min-h-0 flex-1">
+      <OnlineNow
+        peers={presence.peers}
+        status={presence.status}
+        selfName={name}
+        selfAvatar={user.avatar}
+      />
+
       <header className="flex flex-col gap-1">
         <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
           Welcome back, {name}
@@ -100,7 +107,7 @@ export function HomePage() {
         </p>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
         <section
           className="glass-surface flex min-h-[220px] flex-col justify-end gap-2 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
           aria-labelledby="dashboard-hero-title"
@@ -142,9 +149,6 @@ export function HomePage() {
                 <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
               </article>
             ))}
-          </div>
-          <div className="mt-3 shrink-0 border-t border-white/10 pt-3">
-            <OnlineNow peers={presence.peers} status={presence.status} selfName={name} />
           </div>
         </aside>
 
@@ -203,6 +207,6 @@ export function HomePage() {
           </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }
