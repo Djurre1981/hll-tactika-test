@@ -74,7 +74,13 @@ export class CollabProvider {
       syncProtocol.writeSyncStep1(encoder, this.doc);
       this.ws.send(encoding.toUint8Array(encoder));
 
-      // announce awareness
+      // Re-announce local awareness now that the socket is open
+      if (awarenessState) {
+        this.awareness.setLocalState({
+          ...(this.awareness.getLocalState() || {}),
+          ...awarenessState,
+        });
+      }
       const encoder2 = encoding.createEncoder();
       encoding.writeVarUint(encoder2, messageAwareness);
       encoding.writeVarUint8Array(

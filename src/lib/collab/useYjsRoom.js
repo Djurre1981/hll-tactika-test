@@ -35,11 +35,15 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     (async () => {
       try {
         setStatus("joining");
-        const { token, wsUrl } = await apiClient("/rooms/join", {
+        const join = await apiClient("/collab/join", {
           method: "POST",
           body: JSON.stringify({ roomId }),
         });
         if (cancelled) return;
+        if (!join || typeof join !== "object" || !join.token || !join.wsUrl) {
+          throw new Error("Invalid join response");
+        }
+        const { token, wsUrl } = join;
 
         const state = {
           steamId: user?.steamId || "",

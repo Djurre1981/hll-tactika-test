@@ -88,4 +88,4 @@ root
 - Before modifying `map-kernel/`, keep it vanilla JS with no React dependency.
 - No barrel files — import directly from the source file.
 - No cross‑feature imports — use `shared/` or an explicit public API.
-- Collab: Yjs snapshots in KV (`yjs:{roomId}`); never store CRDT blobs in D1. Room join via `POST /api/rooms/join`; WS on Render `/collab`.
+- Collab: Yjs snapshots in KV (`yjs:{roomId}`); never store CRDT blobs in D1. Room join via `POST /api/collab/join`; WS on Render `/collab`.

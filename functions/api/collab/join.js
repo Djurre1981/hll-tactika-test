@@ -32,6 +32,10 @@ async function authorizeRoom(env, roomId, auth) {
   return { error: errorResponse("Invalid room id", 400) };
 }
 
+/**
+ * POST /api/collab/join — kept outside /api/rooms/:roomId so CF dynamic
+ * routes do not swallow the literal "join" segment (was 405).
+ */
 export async function onRequestPost(context) {
   const auth = await requireAuth(context);
   if (auth.error) return auth.error;
@@ -59,7 +63,7 @@ export async function onRequestPost(context) {
       roomId,
     });
   } catch (error) {
-    console.error("POST /api/rooms/join failed:", error);
+    console.error("POST /api/collab/join failed:", error);
     const msg = error?.message || "Collab is not configured";
     if (String(msg).includes("not configured")) {
       return errorResponse(msg, 503);
