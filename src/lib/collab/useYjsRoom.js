@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { apiClient } from "../api-client.js";
-import { CollabProvider } from "./provider.js";
+import { CollabProvider, PRESENCE_ROOM_ID } from "./provider.js";
 
 const KEEPALIVE_MS = 10 * 60 * 1000;
 
 /**
  * Join a collab room: JWT from CF → WS to Render.
  * Reconnects on drop; identity/awareness updates do not tear down the socket.
+ * Presence rooms use a server roster (message type 2) so peers stay visible.
  */
 export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
   const [status, setStatus] = useState("idle");
@@ -20,6 +21,9 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
   const userRef = useRef(user);
   const reconnectTimer = useRef(null);
   const generationRef = useRef(0);
+  const connectLock = useRef(false);
+  const rosterRef = useRef([]);
+  const awarenessPeersRef = useRef([]);
 
   awarenessRef.current = awarenessState;
   userRef.current = user;
@@ -53,8 +57,31 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     const generation = ++generationRef.current;
     const ydoc = new Y.Doc();
     docRef.current = ydoc;
+    const useRoster = String(roomId).startsWith("presence:");
+    rosterRef.current = [];
+    awarenessPeersRef.current = [];
 
-    const refreshPeers = (provider) => {
+    const publishPeers = () => {
+      const self = String(userRef.current?.steamId || "");
+      const bySteam = new Map();
+      // Awareness fallback (old servers / editor rooms)
+      for (const p of awarenessPeersRef.current) {
+        if (p?.steamId && String(p.steamId) !== self) {
+          bySteam.set(String(p.steamId), p);
+        }
+      }
+      // Server roster wins for presence rooms (JWT-backed)
+      if (useRoster) {
+        for (const p of rosterRef.current) {
+          if (p?.steamId && String(p.steamId) !== self) {
+            bySteam.set(String(p.steamId), p);
+          }
+        }
+      }
+      setPeers(Array.from(bySteam.values()));
+    };
+
+    const refreshAwarenessPeers = (provider) => {
       const states = [];
       provider.awareness.getStates().forEach((value, clientId) => {
         if (clientId === ydoc.clientID) return;
@@ -68,7 +95,8 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
       for (const p of states) {
         bySteam.set(String(p.steamId), p);
       }
-      setPeers(Array.from(bySteam.values()));
+      awarenessPeersRef.current = Array.from(bySteam.values());
+      publishPeers();
     };
 
     const buildLocalState = () => {
@@ -84,8 +112,12 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
 
     const connect = async () => {
       if (cancelled || generation !== generationRef.current) return;
+      if (connectLock.current) return;
+      connectLock.current = true;
       try {
-        setStatus((s) => (s === "connected" ? s : "joining"));
+        setStatus((s) =>
+          s === "connected" || s === "reconnecting" ? "reconnecting" : "joining"
+        );
         const join = await apiClient("/collab/join", {
           method: "POST",
           body: JSON.stringify({ roomId }),
@@ -96,12 +128,18 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         }
 
         providerRef.current?.destroy({ silent: true });
+        const local = buildLocalState();
         const provider = new CollabProvider({
           doc: ydoc,
           wsUrl: join.wsUrl,
           roomId,
           token: join.token,
-          awarenessState: buildLocalState(),
+          awarenessState: local,
+          onRoster: (rosterPeers) => {
+            if (cancelled || generation !== generationRef.current) return;
+            rosterRef.current = Array.isArray(rosterPeers) ? rosterPeers : [];
+            publishPeers();
+          },
           onStatus: (s) => {
             if (cancelled || generation !== generationRef.current) return;
             if (s === "connected") {
@@ -109,7 +147,6 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
               return;
             }
             if (s === "connecting") {
-              // Stay green during provider rebuild if we were already live
               setStatus((prev) =>
                 prev === "connected" || prev === "reconnecting"
                   ? "reconnecting"
@@ -117,7 +154,6 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
               );
               return;
             }
-            // Dropped — schedule reconnect instead of sticky red
             if (s === "disconnected" || s === "error") {
               setStatus((prev) =>
                 prev === "connected" || prev === "reconnecting"
@@ -134,8 +170,8 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         providerRef.current = provider;
         setDoc(ydoc);
         setAwareness(provider.awareness);
-        provider.awareness.on("change", () => refreshPeers(provider));
-        refreshPeers(provider);
+        provider.awareness.on("update", () => refreshAwarenessPeers(provider));
+        refreshAwarenessPeers(provider);
       } catch (err) {
         console.error("[collab] join failed:", err);
         if (cancelled || generation !== generationRef.current) return;
@@ -144,6 +180,8 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         reconnectTimer.current = setTimeout(() => {
           void connect();
         }, 2500);
+      } finally {
+        connectLock.current = false;
       }
     };
 
@@ -163,19 +201,21 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     };
   }, [roomId, enabled, user?.steamId]);
 
-  // Push awareness field updates without reconnecting
+  // Push awareness + presence hello without reconnecting
   useEffect(() => {
     const provider = providerRef.current;
     if (!provider || (status !== "connected" && status !== "reconnecting")) return;
     const u = user;
-    provider.awareness.setLocalState({
+    const next = {
       steamId: u?.steamId || "",
       name: u?.name || "Operator",
       avatar: u?.avatar || null,
       role: u?.role || "",
       ...(awarenessState || {}),
       _t: Date.now(),
-    });
+    };
+    provider.awareness.setLocalState(next);
+    provider.setPresenceHello(next);
   }, [
     status,
     user?.steamId,
@@ -193,5 +233,6 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     peers,
     provider: providerRef,
     connected: status === "connected" || status === "reconnecting",
+    roomId: roomId || PRESENCE_ROOM_ID,
   };
 }

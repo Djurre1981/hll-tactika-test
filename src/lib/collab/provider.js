@@ -6,6 +6,7 @@ import * as decoding from "lib0/decoding";
 
 const messageSync = 0;
 const messageAwareness = 1;
+const messagePresence = 2;
 
 /**
  * Minimal y-websocket-compatible provider against our Render /collab endpoint.
@@ -19,14 +20,18 @@ export class CollabProvider {
    * @param {string} opts.token
    * @param {object} [opts.awarenessState]
    * @param {(status: string) => void} [opts.onStatus]
+   * @param {(peers: object[]) => void} [opts.onRoster]
    */
-  constructor({ doc, wsUrl, roomId, token, awarenessState, onStatus }) {
+  constructor({ doc, wsUrl, roomId, token, awarenessState, onStatus, onRoster }) {
     this.doc = doc;
     this.awareness = new awarenessProtocol.Awareness(doc);
     this.roomId = roomId;
     this.onStatus = onStatus || (() => {});
+    this.onRoster = onRoster || (() => {});
     this.closed = false;
     this.ws = null;
+    this._rosterPeers = new Map();
+    this._presenceHello = awarenessState || null;
 
     if (awarenessState) {
       this.awareness.setLocalState(awarenessState);
@@ -77,9 +82,13 @@ export class CollabProvider {
 
       // Re-announce local awareness now that the socket is open
       this._announceAwareness();
+      this._sendPresenceHello();
       // y-protocols drops peers after ~30s without updates — refresh often
       if (this._heartbeat) clearInterval(this._heartbeat);
-      this._heartbeat = setInterval(() => this._announceAwareness(), 15_000);
+      this._heartbeat = setInterval(() => {
+        this._announceAwareness();
+        this._sendPresenceHello();
+      }, 15_000);
     });
 
     this.ws.addEventListener("close", () => {
@@ -87,7 +96,7 @@ export class CollabProvider {
     });
 
     this.ws.addEventListener("error", () => {
-      this.onStatus("error");
+      // close always follows; avoid double reconnect scheduling from error+close
     });
 
     this.ws.addEventListener("message", (event) => {
@@ -113,6 +122,10 @@ export class CollabProvider {
             );
             break;
           }
+          case messagePresence: {
+            this._handlePresence(JSON.parse(decoding.readVarString(decoder)));
+            break;
+          }
           default:
             break;
         }
@@ -125,6 +138,57 @@ export class CollabProvider {
   setAwarenessField(field, value) {
     const prev = this.awareness.getLocalState() || {};
     this.awareness.setLocalState({ ...prev, [field]: value });
+  }
+
+  setPresenceHello(state) {
+    this._presenceHello = state;
+    this._sendPresenceHello();
+  }
+
+  _sendPresenceHello() {
+    if (this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const state = this._presenceHello || this.awareness.getLocalState() || {};
+    if (!state.steamId) return;
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, messagePresence);
+    encoding.writeVarString(
+      encoder,
+      JSON.stringify({
+        type: "hello",
+        steamId: state.steamId,
+        name: state.name || "",
+        avatar: state.avatar || null,
+        role: state.role || "",
+        context: state.context || "hub",
+        path: state.path || "",
+      })
+    );
+    this.ws.send(encoding.toUint8Array(encoder));
+  }
+
+  _emitRoster() {
+    this.onRoster(Array.from(this._rosterPeers.values()));
+  }
+
+  _handlePresence(body) {
+    if (!body || typeof body !== "object") return;
+    if (body.type === "roster" && Array.isArray(body.peers)) {
+      this._rosterPeers.clear();
+      for (const peer of body.peers) {
+        if (peer?.steamId) this._rosterPeers.set(String(peer.steamId), peer);
+      }
+      this._emitRoster();
+      return;
+    }
+    if (body.type === "join" && body.peer?.steamId) {
+      this._rosterPeers.set(String(body.peer.steamId), body.peer);
+      this._emitRoster();
+      return;
+    }
+    if (body.type === "leave" && body.steamId) {
+      this._rosterPeers.delete(String(body.steamId));
+      this._emitRoster();
+    }
   }
 
   _announceAwareness() {
@@ -149,6 +213,7 @@ export class CollabProvider {
     );
     if (silent) {
       this.onStatus = () => {};
+      this.onRoster = () => {};
     }
     try {
       this.ws?.close();

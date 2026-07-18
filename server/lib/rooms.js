@@ -7,6 +7,8 @@ import { loadRoomSnapshot, saveRoomSnapshot, isPresenceRoom } from "./persist.js
 
 const messageSync = 0;
 const messageAwareness = 1;
+/** Site presence roster (JWT-backed) — not Yjs awareness */
+const messagePresence = 2;
 
 const IDLE_SAVE_MS = 30_000;
 const EMPTY_GRACE_MS = 5 * 60_000;
@@ -15,16 +17,53 @@ const EMPTY_GRACE_MS = 5 * 60_000;
 const rooms = new Map();
 
 /**
+ * @typedef {object} RosterPeer
+ * @property {string} steamId
+ * @property {string} name
+ * @property {string|null} avatar
+ * @property {string} role
+ * @property {string} [context]
+ * @property {string} [path]
+ * @property {Set<import('ws').WebSocket>} sockets
+ */
+
+/**
  * @typedef {object} RoomState
  * @property {string} id
  * @property {Y.Doc} doc
  * @property {awarenessProtocol.Awareness} awareness
  * @property {Set<import('ws').WebSocket>} sockets
+ * @property {Map<string, RosterPeer>} [roster]
  * @property {ReturnType<typeof setTimeout>|null} idleTimer
  * @property {ReturnType<typeof setTimeout>|null} emptyTimer
  * @property {boolean} dirty
  * @property {Promise<void>} ready
  */
+
+function encodePresence(payload) {
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, messagePresence);
+  encoding.writeVarString(encoder, JSON.stringify(payload));
+  return encoding.toUint8Array(encoder);
+}
+
+function peerPublic(peer) {
+  return {
+    steamId: peer.steamId,
+    name: peer.name,
+    avatar: peer.avatar,
+    role: peer.role,
+    context: peer.context || "hub",
+    path: peer.path || "",
+  };
+}
+
+function rosterSnapshot(room) {
+  return {
+    type: "roster",
+    peers: [...(room.roster?.values() || [])].map(peerPublic),
+  };
+}
 
 function getObjectsFromDoc(doc) {
   try {
@@ -88,6 +127,7 @@ async function createRoom(roomId) {
     doc,
     awareness,
     sockets: new Set(),
+    roster: isPresenceRoom(roomId) ? new Map() : undefined,
     idleTimer: null,
     emptyTimer: null,
     dirty: false,
@@ -163,11 +203,34 @@ export function attachClient(room, ws, identity) {
   ws.binaryType = "arraybuffer";
   /** @type {Set<number>} */
   const controlledIds = new Set();
+  const steamId = String(identity?.steamId || "").trim();
+  const isPresence = Boolean(room.roster) && Boolean(steamId);
 
   const onAwareness = ({ added, updated }, origin) => {
     if (origin === ws) trackControlledIds(ws, controlledIds, { added, updated });
   };
   room.awareness.on("update", onAwareness);
+
+  if (isPresence) {
+    let peer = room.roster.get(steamId);
+    if (!peer) {
+      peer = {
+        steamId,
+        name: identity.displayName || steamId,
+        avatar: null,
+        role: identity.role || "",
+        context: "hub",
+        path: "",
+        sockets: new Set(),
+      };
+      room.roster.set(steamId, peer);
+    } else if (identity.displayName) {
+      peer.name = identity.displayName;
+    }
+    peer.sockets.add(ws);
+    ws.send(encodePresence(rosterSnapshot(room)));
+    broadcast(room, ws, encodePresence({ type: "join", peer: peerPublic(peer) }));
+  }
 
   ws.on("message", (data) => {
     try {
@@ -193,6 +256,39 @@ export function attachClient(room, ws, identity) {
           );
           break;
         }
+        case messagePresence: {
+          if (!isPresence) break;
+          let body;
+          try {
+            body = JSON.parse(decoding.readVarString(decoder));
+          } catch {
+            break;
+          }
+          if (!body || body.type !== "hello") break;
+          const peer = room.roster.get(steamId);
+          if (!peer) break;
+          if (typeof body.name === "string" && body.name.trim()) {
+            peer.name = body.name.trim().slice(0, 80);
+          }
+          if (body.avatar === null || typeof body.avatar === "string") {
+            peer.avatar = body.avatar ? String(body.avatar).slice(0, 500) : null;
+          }
+          if (typeof body.context === "string") {
+            peer.context = body.context.slice(0, 40);
+          }
+          if (typeof body.path === "string") {
+            peer.path = body.path.slice(0, 200);
+          }
+          if (typeof body.role === "string") {
+            peer.role = body.role.slice(0, 32);
+          }
+          const msg = encodePresence({ type: "join", peer: peerPublic(peer) });
+          // Include sender so their own UI can reconcile
+          for (const sock of room.sockets) {
+            if (sock.readyState === 1) sock.send(msg);
+          }
+          break;
+        }
         default:
           break;
       }
@@ -210,6 +306,17 @@ export function attachClient(room, ws, identity) {
         Array.from(controlledIds),
         "disconnect"
       );
+    }
+
+    if (isPresence) {
+      const peer = room.roster.get(steamId);
+      if (peer) {
+        peer.sockets.delete(ws);
+        if (peer.sockets.size === 0) {
+          room.roster.delete(steamId);
+          broadcast(room, null, encodePresence({ type: "leave", steamId }));
+        }
+      }
     }
 
     if (room.sockets.size === 0) {
@@ -246,8 +353,6 @@ export function attachClient(room, ws, identity) {
     );
     ws.send(encoding.toUint8Array(encoder));
   }
-
-  void identity;
 }
 
 export async function flushAllRooms() {

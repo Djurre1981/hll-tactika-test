@@ -26,6 +26,10 @@ For always-on without a browser, point any uptime pinger at:
 `https://hll-tactika-test.onrender.com/health` every 10 minutes
 (or the repo GitHub Action `keep-render-awake`).
 
+## Site presence
+
+`presence:*` rooms use a **server roster** (WS message type 2) keyed by Steam ID
+from the JWT — not only Yjs awareness — so dashboard “online” bubbles stay in sync.
 ## Render dashboard (existing service)
 
 | Setting | Value |
