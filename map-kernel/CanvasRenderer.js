@@ -1,6 +1,7 @@
 import { getObjectBounds, objectNeedsAnimation } from "./object-schema.js";
 import { resolveIconDef } from "./icons/resolve-icon.js";
 import { resolveHllAsset } from "./icons/hll-object-catalog.js";
+import { curveHandleDrawSizes } from "./selection-handles.js";
 
 /** Match legacy CSS: strat-ping-pulse 1.2s ease-out infinite, delay ring*0.35s */
 const PING_PERIOD_MS = 1200;
@@ -46,9 +47,12 @@ export class CanvasRenderer {
     this.animCanvas = options.animCanvas || null;
     this.animCtx = this.animCanvas ? this.animCanvas.getContext("2d") : null;
     this.mapSize = 1920;
+    this.viewScale = 1;
     this.preview = null;
     this.selectedId = null;
     this._getObjects = typeof options.getObjects === "function" ? options.getObjects : null;
+    this._getToolSettings =
+      typeof options.getToolSettings === "function" ? options.getToolSettings : null;
     this._raf = 0;
     this._animRaf = 0;
     this._animRunning = false;
@@ -68,6 +72,15 @@ export class CanvasRenderer {
   setMapSize(size) {
     this.mapSize = size || 1920;
     this.resize();
+  }
+
+  /** Viewer CSS scale — keeps curve edit handles constant on screen. */
+  setViewScale(scale) {
+    const next = Math.max(0.08, Number(scale) || 1);
+    if (Math.abs(next - this.viewScale) < 0.0005) return;
+    this.viewScale = next;
+    this._staticDirty = true;
+    this.requestDraw();
   }
 
   resize() {
@@ -351,7 +364,8 @@ export class CanvasRenderer {
   }
 
   drawHll(ctx, object) {
-    const asset = resolveHllAsset(object.meta || {});
+    const showRadius = this._getToolSettings?.()?.hllShowRadius !== false;
+    const asset = resolveHllAsset(object.meta || {}, { showRadius });
     if (!asset) return;
 
     let x1;
@@ -380,7 +394,27 @@ export class CanvasRenderer {
     const heightPx = Math.max(1, this.pctToPx(y2 - y1));
     const img = this.getCachedImage(asset.src);
     if (img) {
-      ctx.drawImage(img, left, top, widthPx, heightPx);
+      if (object.meta?.placementPreview) {
+        const tw = Math.max(1, Math.ceil(widthPx));
+        const th = Math.max(1, Math.ceil(heightPx));
+        if (!this._hllTintCanvas) this._hllTintCanvas = document.createElement("canvas");
+        const off = this._hllTintCanvas;
+        if (off.width !== tw) off.width = tw;
+        if (off.height !== th) off.height = th;
+        const octx = off.getContext("2d");
+        octx.clearRect(0, 0, tw, th);
+        octx.drawImage(img, 0, 0, widthPx, heightPx);
+        octx.globalCompositeOperation = "source-atop";
+        octx.fillStyle =
+          object.meta.placeOk !== false
+            ? "rgba(34, 197, 94, 0.45)"
+            : "rgba(239, 68, 68, 0.45)";
+        octx.fillRect(0, 0, tw, th);
+        octx.globalCompositeOperation = "source-over";
+        ctx.drawImage(off, left, top);
+      } else {
+        ctx.drawImage(img, left, top, widthPx, heightPx);
+      }
       return;
     }
 
@@ -389,6 +423,13 @@ export class CanvasRenderer {
     ctx.strokeStyle = "rgba(255,255,255,0.45)";
     ctx.lineWidth = Math.max(1, this.mapSize * 0.001);
     ctx.strokeRect(left, top, widthPx, heightPx);
+    if (object.meta?.placementPreview) {
+      ctx.fillStyle =
+        object.meta.placeOk !== false
+          ? "rgba(34, 197, 94, 0.25)"
+          : "rgba(239, 68, 68, 0.25)";
+      ctx.fillRect(left, top, widthPx, heightPx);
+    }
     ctx.restore();
   }
 
@@ -514,12 +555,34 @@ export class CanvasRenderer {
       ctx.stroke();
       if (type === "arrow") {
         ctx.setLineDash([]);
-        if (style.endType === "end" || style.endType === "none") {
+        if (style.endType === "end" || style.endType === "none" || style.endType === "both") {
           this.drawArrowHead(ctx, a, b, style, false);
         }
-        if (style.endType === "start") {
+        if (style.endType === "start" || style.endType === "both") {
           this.drawArrowHead(ctx, a, b, style, true);
         }
+      }
+    } else if (type === "curve" && points.length >= 4) {
+      const [p0, cp1, cp2, p1] = points;
+      ctx.beginPath();
+      ctx.moveTo(this.pctToPx(p0.x), this.pctToPx(p0.y));
+      ctx.bezierCurveTo(
+        this.pctToPx(cp1.x),
+        this.pctToPx(cp1.y),
+        this.pctToPx(cp2.x),
+        this.pctToPx(cp2.y),
+        this.pctToPx(p1.x),
+        this.pctToPx(p1.y)
+      );
+      ctx.stroke();
+      const endType = style.endType || "none";
+      if (endType === "end" || endType === "both") {
+        ctx.setLineDash([]);
+        this.drawArrowHead(ctx, cp2, p1, style, false);
+      }
+      if (endType === "start" || endType === "both") {
+        ctx.setLineDash([]);
+        this.drawArrowHead(ctx, p0, cp1, style, true);
       }
     } else if (type === "rect") {
       const [a, b] = points;
@@ -570,7 +633,78 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
+  drawCurveEditChrome(ctx, object, { dim = false } = {}) {
+    if (!object?.points || object.points.length < 4) return;
+    const [p0, cp1, cp2, p1] = object.points;
+    const toPx = (p) => ({ x: this.pctToPx(p.x), y: this.pctToPx(p.y) });
+    const a0 = toPx(p0);
+    const a1 = toPx(cp1);
+    const b1 = toPx(cp2);
+    const b0 = toPx(p1);
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const alpha = dim ? 0.55 : 1;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Control polygon (Plasticity: gray CV links) — full p0–cp1–cp2–p1.
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = sizes.armWidth;
+    ctx.setLineDash([Math.max(3, sizes.armWidth * 2.5), Math.max(3, sizes.armWidth * 2)]);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(a0.x, a0.y);
+    ctx.lineTo(a1.x, a1.y);
+    ctx.lineTo(b1.x, b1.y);
+    ctx.lineTo(b0.x, b0.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Accent arms vertex→CV (clearer influence direction).
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.85)";
+    ctx.lineWidth = sizes.armWidth * 0.85;
+    ctx.beginPath();
+    ctx.moveTo(a0.x, a0.y);
+    ctx.lineTo(a1.x, a1.y);
+    ctx.moveTo(b0.x, b0.y);
+    ctx.lineTo(b1.x, b1.y);
+    ctx.stroke();
+
+    const drawDisc = (p, radius, fill) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.lineWidth = sizes.stroke;
+      ctx.stroke();
+    };
+
+    // CVs first (smaller), then vertices on top (Plasticity hierarchy).
+    drawDisc(a1, sizes.control, "#ef4444");
+    drawDisc(b1, sizes.control, "#ef4444");
+    drawDisc(a0, sizes.endpoint, "#dc2626");
+    drawDisc(b0, sizes.endpoint, "#dc2626");
+
+    // Tiny white core for grab affordance.
+    const core = Math.max(1.2, sizes.control * 0.28);
+    for (const p of [a1, b1, a0, b0]) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, core, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
   drawSelection(ctx, object) {
+    if (object?.type === "curve" && object.points?.length >= 4) {
+      this.drawCurveEditChrome(ctx, object);
+      return;
+    }
+
     const bounds = getObjectBounds(object);
     if (!bounds) return;
     const x = this.pctToPx(bounds.x);
@@ -616,6 +750,9 @@ export class CanvasRenderer {
     }
     if (this.preview && !objectNeedsAnimation(this.preview)) {
       this.drawObject(ctx, this.preview);
+      if (this.preview.type === "curve") {
+        this.drawCurveEditChrome(ctx, this.preview, { dim: true });
+      }
     }
     const selected = this.findSelected(objects);
     if (selected && !objectNeedsAnimation(selected)) {

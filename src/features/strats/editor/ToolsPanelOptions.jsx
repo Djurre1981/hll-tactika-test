@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import {
   actionBtn,
   actionBtnWide,
@@ -5,12 +6,20 @@ import {
   glassInput,
   HLL_OPTIONS,
   ICON_OPTIONS,
+  getHllToolbarPreviewSrc,
   sectionTitle,
 } from "./editorUi.js";
 import { StratIcon } from "./StratIcon.jsx";
 import { Segmented, SizeOption } from "./ToolsPanelPrimitives.jsx";
 
 const HLL_GROUPS = [...new Set(HLL_OPTIONS.map((o) => o.group))];
+
+function matchesQuery(haystack, query) {
+  if (!query) return true;
+  return String(haystack || "")
+    .toLowerCase()
+    .includes(query);
+}
 
 export function ToolsPanelOptions({
   tool,
@@ -28,16 +37,48 @@ export function ToolsPanelOptions({
   iconId,
   iconLabel,
   hllId,
-  hllShowRadius,
+  hllRadiusCheck,
   patch,
   onPaste,
-  onCopy,
-  onDuplicate,
-  onDeleteSelected,
   onUpdateSelected,
   onUndo,
   onRedo,
 }) {
+  const [iconQuery, setIconQuery] = useState("");
+  const [hllQuery, setHllQuery] = useState("");
+  const [openHllGroups, setOpenHllGroups] = useState(() => new Set(["Spawn"]));
+
+  const iconFilter = iconQuery.trim().toLowerCase();
+  const hllFilter = hllQuery.trim().toLowerCase();
+
+  const filteredIcons = useMemo(
+    () => ICON_OPTIONS.filter((opt) => matchesQuery(opt.id, iconFilter)),
+    [iconFilter]
+  );
+
+  const filteredHllByGroup = useMemo(() => {
+    const map = {};
+    for (const group of HLL_GROUPS) {
+      map[group] = HLL_OPTIONS.filter(
+        (o) =>
+          o.group === group &&
+          (matchesQuery(o.label, hllFilter) ||
+            matchesQuery(o.id, hllFilter) ||
+            matchesQuery(o.group, hllFilter))
+      );
+    }
+    return map;
+  }, [hllFilter]);
+
+  const toggleHllGroup = (group) => {
+    setOpenHllGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  };
+
   return (
     <section className="mt-1 border-t border-solid border-white/[0.08] pt-3">
       {tool === "select" && (
@@ -56,26 +97,9 @@ export function ToolsPanelOptions({
 
           {selected ? (
             <div className="space-y-2">
-              <p className="m-0 text-[0.68rem] uppercase tracking-wide text-white/40">
-                {selected.type}
+              <p className="m-0 text-[0.68rem] leading-relaxed text-white/45">
+                Selected object actions are under Tools. Copy Ctrl+C, cut Ctrl+X, duplicate Ctrl+D.
               </p>
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Selection actions">
-                <button type="button" className={actionBtn} title="Copy (Ctrl+C)" disabled={disabled} onClick={onCopy}>
-                  <i className="fa-solid fa-copy" aria-hidden="true" />
-                </button>
-                <button type="button" className={actionBtn} title="Duplicate (Ctrl+D)" disabled={disabled} onClick={onDuplicate}>
-                  <i className="fa-solid fa-clone" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={cx(actionBtn, "hover:border-red-400/30 hover:bg-red-500/15 hover:text-red-200")}
-                  title="Delete"
-                  disabled={disabled}
-                  onClick={onDeleteSelected}
-                >
-                  <i className="fa-solid fa-trash" aria-hidden="true" />
-                </button>
-              </div>
               {selected.type === "text" && (
                 <textarea
                   className="min-h-[56px] w-full rounded-[10px] border border-white/10 bg-black/40 p-2 text-xs text-white outline-none focus:border-white/25"
@@ -100,7 +124,9 @@ export function ToolsPanelOptions({
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Stroke</h3>
           <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
-            Shift snaps lines and arrows to 45°.
+            {tool === "curve"
+              ? "Drag to place a spline; select and pull the red discs to bend. Vertices are larger, control points smaller. Shift snaps the chord to 45°."
+              : "Shift snaps lines and arrows to 45°."}
           </p>
           <SizeOption
             label="Size"
@@ -234,12 +260,23 @@ export function ToolsPanelOptions({
               onChange={(e) => patch({ iconLabel: e.target.value })}
             />
           </label>
+          <label className="mb-2 block text-[0.76rem] text-white/[0.72]">
+            <span className="sr-only">Filter icons</span>
+            <input
+              type="search"
+              disabled={disabled}
+              value={iconQuery}
+              placeholder="Filter icons…"
+              className={glassInput}
+              onChange={(e) => setIconQuery(e.target.value)}
+            />
+          </label>
           <div
             className="grid max-h-64 grid-cols-5 gap-1 overflow-y-auto [--strat-icon-knockout:#1c1c1c]"
             role="radiogroup"
             aria-label="Icon"
           >
-            {ICON_OPTIONS.map((opt) => (
+            {filteredIcons.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
@@ -256,63 +293,121 @@ export function ToolsPanelOptions({
               </button>
             ))}
           </div>
+          {filteredIcons.length === 0 ? (
+            <p className="mt-2 m-0 text-[0.68rem] text-white/40">No icons match “{iconQuery.trim()}”.</p>
+          ) : null}
         </>
       )}
 
       {tool === "hll" && (
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>HLL Objects</h3>
-          <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
-            Click the map to place. Marker sizes match Maps Let Loose.
-          </p>
-          <label className="mb-2 flex items-center gap-2 text-[0.76rem] text-white/[0.72]">
+          <label className="mb-[0.55rem] flex items-center gap-[0.45rem] text-[0.76rem] text-white/[0.72]">
             <input
               type="checkbox"
+              checked={hllRadiusCheck !== false}
               disabled={disabled}
-              checked={hllShowRadius}
-              onChange={(e) => patch({ hllShowRadius: e.target.checked })}
-              className="accent-white"
+              onChange={(e) => patch({ hllRadiusCheck: e.target.checked })}
             />
-            Show spawn radius
+            <span>Radius check</span>
           </label>
-          <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5" role="radiogroup" aria-label="HLL object">
-            {HLL_GROUPS.map((group) => (
-              <div key={group}>
-                <p className="mb-1 text-[0.62rem] font-light uppercase tracking-[0.12em] text-white/40">
-                  {group}
-                </p>
-                <div className="grid grid-cols-4 gap-1">
-                  {HLL_OPTIONS.filter((o) => o.group === group).map((opt) => {
-                    const previewSrc =
-                      hllShowRadius && opt.hasRadius ? opt.src : opt.plainSrc || opt.src;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        title={opt.label}
-                        disabled={disabled}
-                        aria-pressed={hllId === opt.id}
-                        onClick={() => patch({ hllId: opt.id })}
-                        className={cx(
-                          "flex flex-col items-center gap-1 rounded-[10px] border border-solid border-white/10 bg-transparent px-1 py-1.5 text-white/[0.78] transition hover:bg-white/[0.08]",
-                          hllId === opt.id && "border-white/[0.22] bg-white/12 text-white"
-                        )}
-                      >
-                        <img
-                          src={previewSrc}
-                          alt=""
-                          className="h-7 w-7 object-contain"
-                          draggable={false}
-                        />
-                        <span className="line-clamp-2 text-center text-[0.58rem] leading-tight text-white/55">
-                          {opt.label}
-                        </span>
-                      </button>
+          <label className="mb-[0.55rem] block text-[0.76rem] text-white/[0.72]">
+            <span className="sr-only">Filter HLL objects</span>
+            <input
+              type="search"
+              disabled={disabled}
+              value={hllQuery}
+              placeholder="Filter objects…"
+              className={glassInput}
+              onChange={(e) => {
+                const next = e.target.value;
+                setHllQuery(next);
+                const q = next.trim().toLowerCase();
+                if (!q) return;
+                // Auto-expand groups that have matches while filtering.
+                setOpenHllGroups((prev) => {
+                  const nextOpen = new Set(prev);
+                  for (const group of HLL_GROUPS) {
+                    const has = HLL_OPTIONS.some(
+                      (o) =>
+                        o.group === group &&
+                        (matchesQuery(o.label, q) ||
+                          matchesQuery(o.id, q) ||
+                          matchesQuery(o.group, q))
                     );
-                  })}
+                    if (has) nextOpen.add(group);
+                  }
+                  return nextOpen;
+                });
+              }}
+            />
+          </label>
+          <div className="max-h-64 space-y-1 overflow-y-auto pr-0.5" role="radiogroup" aria-label="HLL object">
+            {HLL_GROUPS.map((group) => {
+              const items = filteredHllByGroup[group] || [];
+              if (hllFilter && items.length === 0) return null;
+              const open = openHllGroups.has(group) || Boolean(hllFilter);
+              return (
+                <div
+                  key={group}
+                  className="overflow-hidden rounded-[10px] border border-solid border-white/10 bg-black/[0.14]"
+                >
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-expanded={open}
+                    onClick={() => toggleHllGroup(group)}
+                    className="flex w-full items-center gap-2 border-0 bg-transparent px-[0.55rem] py-[0.4rem] text-left transition hover:bg-white/[0.05]"
+                  >
+                    <i
+                      className={cx(
+                        "fa-solid fa-chevron-right text-[0.55rem] text-white/35 transition-transform",
+                        open && "rotate-90"
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 flex-1 text-[0.62rem] font-light uppercase tracking-[0.12em] text-white/45">
+                      {group}
+                    </span>
+                    <span className="text-[0.58rem] tabular-nums text-white/30">{items.length}</span>
+                  </button>
+                  {open ? (
+                    <div className="grid grid-cols-5 gap-1 border-t border-solid border-white/[0.06] px-1 pb-1.5 pt-1">
+                      {items.map((opt) => {
+                        const previewSrc = getHllToolbarPreviewSrc(opt);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            title={opt.label}
+                            disabled={disabled}
+                            aria-label={opt.label}
+                            aria-pressed={hllId === opt.id}
+                            onClick={() => patch({ hllId: opt.id })}
+                            className={cx(
+                              "flex aspect-square items-center justify-center rounded-[10px] border border-solid border-white/10 bg-transparent p-1 text-white/[0.78] transition hover:bg-white/[0.08]",
+                              hllId === opt.id && "border-white/[0.22] bg-white/12 text-white"
+                            )}
+                          >
+                            <img
+                              src={previewSrc}
+                              alt=""
+                              className="h-full w-full object-contain"
+                              draggable={false}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            ))}
+              );
+            })}
+            {hllFilter && HLL_GROUPS.every((g) => (filteredHllByGroup[g] || []).length === 0) ? (
+              <p className="m-0 px-1 py-2 text-[0.68rem] text-white/40">
+                No objects match “{hllQuery.trim()}”.
+              </p>
+            ) : null}
           </div>
         </>
       )}

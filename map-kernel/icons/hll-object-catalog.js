@@ -178,10 +178,13 @@ export function getHllObjectDef(hllId) {
   return byId[hllId] || byId.garrison || null;
 }
 
-export function resolveHllAsset(meta = {}) {
+export function resolveHllAsset(meta = {}, options = {}) {
   const def = getHllObjectDef(meta.hllId);
   if (!def) return null;
-  const showRadius = meta.showRadius !== false && Boolean(def.hasRadius);
+  const showRadius =
+    options.showRadius !== undefined
+      ? Boolean(options.showRadius) && Boolean(def.hasRadius)
+      : meta.showRadius !== false && Boolean(def.hasRadius);
   if (showRadius) {
     return {
       def,
@@ -197,4 +200,52 @@ export function resolveHllAsset(meta = {}) {
     sizeWPct,
     sizeHPct: def.plainSizeHPct ?? def.sizeHPct ?? sizeWPct,
   };
+}
+
+/** Sidebar/toolbar preview — never the radius art. */
+export function getHllToolbarPreviewSrc(hllIdOrDef) {
+  const def =
+    typeof hllIdOrDef === "string" || !hllIdOrDef
+      ? getHllObjectDef(hllIdOrDef)
+      : hllIdOrDef;
+  if (!def) return "";
+  return def.plainSrc || def.src;
+}
+
+/** Half of the garrison radius art sizePct — in-game exclusion disk. */
+export function getGarrisonExclusionRadiusPct() {
+  const def = getHllObjectDef("garrison");
+  return (def?.sizePct || 0) / 2;
+}
+
+/** Center of an HLL object in map-% (bbox midpoint or single point). */
+export function hllObjectCenter(object) {
+  const pts = object?.points;
+  if (!Array.isArray(pts) || pts.length === 0) return null;
+  if (pts.length >= 2) {
+    return {
+      x: (pts[0].x + pts[1].x) / 2,
+      y: (pts[0].y + pts[1].y) / 2,
+    };
+  }
+  const p = pts[0];
+  return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null;
+}
+
+/**
+ * True if `point` is outside every existing friendly garrison's spawn radius.
+ * @param {{ x: number, y: number }} point
+ * @param {Array} objects
+ */
+export function isGarrisonPlacementValid(point, objects) {
+  const radius = getGarrisonExclusionRadiusPct();
+  if (!point || !(radius > 0)) return true;
+  const list = Array.isArray(objects) ? objects : [];
+  for (const obj of list) {
+    if (obj?.type !== "hll" || obj.meta?.hllId !== "garrison") continue;
+    const center = hllObjectCenter(obj);
+    if (!center) continue;
+    if (Math.hypot(point.x - center.x, point.y - center.y) < radius) return false;
+  }
+  return true;
 }

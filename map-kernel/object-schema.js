@@ -11,12 +11,14 @@ export {
   HLL_OBJECT_IDS,
   HLL_OBJECT_OPTIONS,
   getHllObjectDef,
+  getHllToolbarPreviewSrc,
   resolveHllAsset,
 } from "./icons/hll-object-catalog.js";
 
 export const STRAT_OBJECT_TYPES = [
   "pen",
   "line",
+  "curve",
   "arrow",
   "rect",
   "ellipse",
@@ -34,7 +36,7 @@ export function objectNeedsAnimation(object) {
 }
 
 const LINE_TYPES = ["solid", "dashed", "dotted"];
-const END_TYPES = ["none", "start", "end"];
+const END_TYPES = ["none", "start", "end", "both"];
 const TEXT_ALIGNS = ["left", "center", "right"];
 const ICON_SET = new Set(STRAT_ICON_IDS);
 const HLL_SET = new Set(HLL_OBJECT_IDS);
@@ -91,6 +93,10 @@ function normalizeMeta(meta = {}, type) {
   if (type === "hll") {
     normalized.hllId = HLL_SET.has(meta.hllId) ? meta.hllId : "garrison";
     normalized.showRadius = meta.showRadius !== false;
+    if (meta.placementPreview) {
+      normalized.placementPreview = true;
+      normalized.placeOk = meta.placeOk !== false;
+    }
   }
   return normalized;
 }
@@ -139,6 +145,52 @@ export function ensureHllBoxPoints(points, meta = {}) {
   return list;
 }
 
+/** Cubic Bézier [p0, cp1, cp2, p1] from chord endpoints.
+ * CVs sit slightly off the chord (Plasticity-style) so handles are visible immediately.
+ */
+export function cubicPointsFromEndpoints(start, end) {
+  const a = normalizePoint(start);
+  const b = normalizePoint(end);
+  if (!a || !b) return [];
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const offset = Math.min(3.5, Math.max(1.2, len * 0.12));
+  const ox = (-dy / len) * offset;
+  const oy = (dx / len) * offset;
+  return [
+    a,
+    normalizePoint({
+      x: a.x + dx / 3 + ox,
+      y: a.y + dy / 3 + oy,
+    }),
+    normalizePoint({
+      x: a.x + (2 * dx) / 3 + ox,
+      y: a.y + (2 * dy) / 3 + oy,
+    }),
+    b,
+  ].filter(Boolean);
+}
+
+export function ensureCurvePoints(points) {
+  const list = (Array.isArray(points) ? points : []).map(normalizePoint).filter(Boolean);
+  if (list.length >= 4) return list.slice(0, 4);
+  if (list.length >= 2) return cubicPointsFromEndpoints(list[0], list[list.length - 1]);
+  return list;
+}
+
+function sampleCubicPoint(p0, cp1, cp2, p1, t) {
+  const u = 1 - t;
+  const tt = t * t;
+  const uu = u * u;
+  const uuu = uu * u;
+  const ttt = tt * t;
+  return {
+    x: uuu * p0.x + 3 * uu * t * cp1.x + 3 * u * tt * cp2.x + ttt * p1.x,
+    y: uuu * p0.y + 3 * uu * t * cp1.y + 3 * u * tt * cp2.y + ttt * p1.y,
+  };
+}
+
 export function createStratObject(type, { points = [], style = {}, meta = {} } = {}) {
   if (!STRAT_OBJECT_TYPES.includes(type)) {
     throw new Error(`Unknown object type: ${type}`);
@@ -151,6 +203,8 @@ export function createStratObject(type, { points = [], style = {}, meta = {} } =
     normalizedPoints = ensureIconBoxPoints(normalizedPoints, normalizedStyle);
   } else if (type === "hll") {
     normalizedPoints = ensureHllBoxPoints(normalizedPoints, normalizedMeta);
+  } else if (type === "curve") {
+    normalizedPoints = ensureCurvePoints(normalizedPoints);
   }
 
   return {
@@ -178,7 +232,13 @@ export function normalizeStratObject(raw, index = 0) {
     .filter(Boolean);
 
   const minPoints =
-    type === "pen" ? 2 : type === "text" || type === "icon" || type === "hll" || type === "ping" ? 1 : 2;
+    type === "curve"
+      ? 2
+      : type === "pen"
+        ? 2
+        : type === "text" || type === "icon" || type === "hll" || type === "ping"
+          ? 1
+          : 2;
   if (points.length < minPoints) return null;
 
   const style = normalizeStyle(raw.style, type);
@@ -187,6 +247,9 @@ export function normalizeStratObject(raw, index = 0) {
     points = ensureIconBoxPoints(points, style);
   } else if (type === "hll") {
     points = ensureHllBoxPoints(points, meta);
+  } else if (type === "curve") {
+    points = ensureCurvePoints(points);
+    if (points.length < 4) return null;
   }
 
   return {
@@ -267,6 +330,17 @@ export function hitTestObject(object, point, threshold = 1.2) {
       if (distanceToSegment(point, object.points[index - 1], object.points[index]) <= threshold) {
         return true;
       }
+    }
+    return false;
+  }
+
+  if (object.type === "curve" && object.points.length >= 4) {
+    const [p0, cp1, cp2, p1] = object.points;
+    let prev = sampleCubicPoint(p0, cp1, cp2, p1, 0);
+    for (let i = 1; i <= 16; i += 1) {
+      const next = sampleCubicPoint(p0, cp1, cp2, p1, i / 16);
+      if (distanceToSegment(point, prev, next) <= threshold) return true;
+      prev = next;
     }
     return false;
   }

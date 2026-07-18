@@ -3,6 +3,7 @@ import { SceneGraph } from "./SceneGraph.js";
 import { CanvasRenderer } from "./CanvasRenderer.js";
 import { InteractionController } from "./InteractionController.js";
 import { MapOverlays } from "./MapOverlays.js";
+import { getHllObjectDef, hllBoxFromCenter } from "./object-schema.js";
 
 function mapUrlForId(mapId) {
   if (!mapId) return "";
@@ -37,10 +38,12 @@ export class MapKernel {
       iconLabel: "",
       hllId: "garrison",
       hllShowRadius: true,
+      hllRadiusCheck: true,
     };
     this.onObjectsChange = options.onObjectsChange || null;
     this.onSelectionChange = options.onSelectionChange || null;
     this.onCameraChange = options.onCameraChange || null;
+    this.onRequestTool = options.onRequestTool || null;
 
     this.scene.onChange = (objects, meta) => {
       this.renderer?.requestDraw(objects);
@@ -119,6 +122,7 @@ export class MapKernel {
 
     this.viewer = new MapViewer(this.viewport, this.stage, this.image);
     this.viewer.onTransform = (camera) => {
+      this.renderer?.setViewScale(camera?.zoom);
       this.syncPanBlock();
       this.onCameraChange?.(camera);
     };
@@ -126,6 +130,7 @@ export class MapKernel {
     this.renderer = new CanvasRenderer(this.canvas, {
       animCanvas: this.animCanvas,
       getObjects: () => this.scene.getObjects(),
+      getToolSettings: () => this.toolSettings,
     });
     this.interaction = new InteractionController({
       scene: this.scene,
@@ -133,6 +138,7 @@ export class MapKernel {
       getViewer: () => this.viewer,
       getToolSettings: () => this.toolSettings,
       onRequestRender: () => this.renderer.requestDraw(this.scene.getObjects()),
+      onRequestTool: (tool) => this.onRequestTool?.(tool),
     });
     this.interaction.attach(this.viewport);
 
@@ -216,11 +222,57 @@ export class MapKernel {
   }
 
   setTool(settings = {}) {
+    const prevShowRadius = this.toolSettings.hllShowRadius !== false;
     this.toolSettings = { ...this.toolSettings, ...settings };
     if (settings.tool != null) {
       this.toolSettings.tool = settings.tool;
     }
     this.syncPanBlock();
+    this.interaction?.onToolSettingsChanged?.();
+
+    if (settings.hllShowRadius != null) {
+      const nextShowRadius = this.toolSettings.hllShowRadius !== false;
+      if (nextShowRadius !== prevShowRadius) {
+        this.syncHllRadiusDisplay(nextShowRadius);
+      } else {
+        this.renderer?.requestDraw(this.scene.getObjects());
+      }
+    }
+  }
+
+  /** Live view toggle: swap radius/plain art and resize spawn markers around their center. */
+  syncHllRadiusDisplay(showRadius) {
+    const objects = this.scene.getObjects();
+    let changed = false;
+    const nextObjects = objects.map((object) => {
+      if (object.type !== "hll") return object;
+      const def = getHllObjectDef(object.meta?.hllId);
+      if (!def?.hasRadius || object.points?.length < 2) {
+        if (object.meta?.showRadius === showRadius) return object;
+        changed = true;
+        return {
+          ...object,
+          meta: { ...object.meta, showRadius },
+        };
+      }
+      const cx = (object.points[0].x + object.points[1].x) / 2;
+      const cy = (object.points[0].y + object.points[1].y) / 2;
+      const points = hllBoxFromCenter(
+        { x: cx, y: cy },
+        { hllId: object.meta.hllId, showRadius }
+      );
+      changed = true;
+      return {
+        ...object,
+        points,
+        meta: { ...object.meta, showRadius },
+      };
+    });
+    if (changed) {
+      this.scene.replaceObjects(nextObjects, { pushUndo: false });
+    } else {
+      this.renderer?.requestDraw(objects);
+    }
   }
 
   setLocked(locked) {

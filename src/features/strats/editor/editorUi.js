@@ -1,7 +1,11 @@
 /** Stratmaker-specific tokens + re-exports of shared glass chrome. */
 
 import { STRAT_ICON_OPTIONS } from "@map-kernel/icons/strat-icon-catalog.js";
-import { HLL_OBJECT_OPTIONS } from "@map-kernel/icons/hll-object-catalog.js";
+import {
+  HLL_OBJECT_OPTIONS,
+  getHllObjectDef,
+  getHllToolbarPreviewSrc,
+} from "@map-kernel/icons/hll-object-catalog.js";
 
 export {
   actionBtn,
@@ -80,11 +84,13 @@ export const COLOR_PRESETS = [
 
 export const ICON_OPTIONS = STRAT_ICON_OPTIONS;
 export const HLL_OPTIONS = HLL_OBJECT_OPTIONS;
+export { getHllObjectDef, getHllToolbarPreviewSrc };
 
 export const TOOL_ITEMS = [
   { id: "select", icon: "fa-solid fa-arrow-pointer", title: "Select" },
   { id: "pen", icon: "fa-solid fa-pen", title: "Draw" },
   { id: "line", icon: "fa-solid fa-minus", title: "Line" },
+  { id: "curve", icon: "fa-solid fa-bezier-curve", title: "Curved line" },
   { id: "ellipse", icon: "fa-regular fa-circle", title: "Circle" },
   { id: "rect", icon: "fa-regular fa-square", title: "Rectangle" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },

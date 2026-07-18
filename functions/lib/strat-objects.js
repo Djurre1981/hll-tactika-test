@@ -1,6 +1,7 @@
 const STRAT_OBJECT_TYPES = [
   "pen",
   "line",
+  "curve",
   "arrow",
   "rect",
   "ellipse",
@@ -11,7 +12,7 @@ const STRAT_OBJECT_TYPES = [
 ];
 
 const LINE_TYPES = ["solid", "dashed", "dotted"];
-const END_TYPES = ["none", "start", "end"];
+const END_TYPES = ["none", "start", "end", "both"];
 const TEXT_ALIGNS = ["left", "center", "right"];
 const ICON_IDS = new Set([
   "check",
@@ -216,11 +217,40 @@ export function normalizeStratObject(raw, index = 0) {
     .filter(Boolean);
 
   const minPoints =
-    type === "pen" ? 2 : type === "text" || type === "icon" || type === "hll" || type === "ping" ? 1 : 2;
+    type === "curve"
+      ? 2
+      : type === "pen"
+        ? 2
+        : type === "text" || type === "icon" || type === "hll" || type === "ping"
+          ? 1
+          : 2;
   if (points.length < minPoints) return null;
 
   const style = normalizeStyle(raw.style, type);
   const meta = normalizeMeta(raw.meta, type);
+
+  if (type === "curve") {
+    if (points.length >= 4) {
+      points = points.slice(0, 4);
+    } else if (points.length >= 2) {
+      const a = points[0];
+      const b = points[points.length - 1];
+      points = [
+        a,
+        {
+          x: clamp(a.x + (b.x - a.x) / 3, COORD_MIN, COORD_MAX),
+          y: clamp(a.y + (b.y - a.y) / 3, COORD_MIN, COORD_MAX),
+        },
+        {
+          x: clamp(a.x + (2 * (b.x - a.x)) / 3, COORD_MIN, COORD_MAX),
+          y: clamp(a.y + (2 * (b.y - a.y)) / 3, COORD_MIN, COORD_MAX),
+        },
+        b,
+      ];
+    } else {
+      return null;
+    }
+  }
 
   // Icons / HLL markers use a 2-point bbox (like rect/ellipse); upgrade legacy center-only.
   if ((type === "icon" || type === "hll") && points.length === 1) {

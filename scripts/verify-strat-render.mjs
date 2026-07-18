@@ -37,6 +37,7 @@ function makeCtx(ops, tag) {
     beginPath() {},
     moveTo() {},
     lineTo() {},
+    bezierCurveTo() {},
     closePath() {},
     fill() {
       ops.push(`${tag}:fill`);
@@ -146,6 +147,21 @@ check("icon places as 2-point bbox and handle drag stretches", () => {
   assert(stretched[1].x > original[1].x, "east handle should widen");
   assert(Math.abs(stretched[0].y - original[0].y) < 0.001, "east handle should not move top");
   assert(Math.abs(stretched[1].y - original[1].y) < 0.001, "east handle should not move bottom");
+});
+
+check("curve places as cubic and control handle moves", () => {
+  const curve = createStratObject("curve", {
+    points: [
+      { x: 10, y: 10 },
+      { x: 50, y: 50 },
+    ],
+    style: { color: "#fff", size: 3 },
+  });
+  assert(curve.points.length === 4, "expected 4 cubic points");
+  const original = structuredClone(curve.points);
+  const moved = applyHandleDrag(curve, "cp1", { x: 30, y: 5 }, original, null);
+  assert(moved[1].x === 30 && moved[1].y === 5, "cp1 should move");
+  assert(moved[0].x === original[0].x && moved[3].y === original[3].y, "other points stay");
 });
 
 check("CanvasRenderer layers: static once, anim every frame", () => {

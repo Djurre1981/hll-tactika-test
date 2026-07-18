@@ -4,14 +4,17 @@ import {
   settingsToObjectStyle,
   cloneStratObject,
   normalizePoint,
+  cubicPointsFromEndpoints,
 } from "./object-schema.js";
 import {
   applyHandleDrag,
   getBoxFromObjectPoints,
   getSelectionHandles,
   hitTestSelectionHandle,
+  curveHandleHitPct,
   nudgePoints,
 } from "./selection-handles.js";
+import { isGarrisonPlacementValid } from "./icons/hll-object-catalog.js";
 
 const PASTE_OFFSET = 0.8;
 const NUDGE = 0.15;
@@ -31,12 +34,13 @@ function resolveTwoPoint(start, end, { shift = false, aspect = 1 } = {}) {
 
 /** Pointer / keyboard interaction for drawing tools. */
 export class InteractionController {
-  constructor({ scene, renderer, getViewer, getToolSettings, onRequestRender }) {
+  constructor({ scene, renderer, getViewer, getToolSettings, onRequestRender, onRequestTool }) {
     this.scene = scene;
     this.renderer = renderer;
     this.getViewer = getViewer;
     this.getToolSettings = getToolSettings;
     this.onRequestRender = onRequestRender;
+    this.onRequestTool = onRequestTool || null;
 
     this.drawSession = null;
     this.objectDrag = null;
@@ -44,12 +48,14 @@ export class InteractionController {
     this.clipboard = null;
     this.pasteIteration = 0;
     this.locked = false;
+    this.hllPlacementPreview = null;
 
     this._onPointerDown = (e) => this.onPointerDown(e);
     this._onPointerMove = (e) => this.onPointerMove(e);
     this._onPointerUp = (e) => this.onPointerUp(e);
     this._onKeyDown = (e) => this.onKeyDown(e);
     this._onDblClick = (e) => this.onDblClick(e);
+    this._onContextMenu = (e) => this.onContextMenu(e);
   }
 
   attach(viewport) {
@@ -60,6 +66,7 @@ export class InteractionController {
     window.addEventListener("pointercancel", this._onPointerUp);
     window.addEventListener("keydown", this._onKeyDown);
     viewport.addEventListener("dblclick", this._onDblClick);
+    viewport.addEventListener("contextmenu", this._onContextMenu);
   }
 
   detach() {
@@ -70,6 +77,7 @@ export class InteractionController {
     window.removeEventListener("pointercancel", this._onPointerUp);
     window.removeEventListener("keydown", this._onKeyDown);
     this.viewport.removeEventListener("dblclick", this._onDblClick);
+    this.viewport.removeEventListener("contextmenu", this._onContextMenu);
     this.viewport = null;
   }
 
@@ -98,12 +106,82 @@ export class InteractionController {
 
   refresh() {
     this.renderer.setSelectedId(this.scene.selectedId);
-    this.renderer.setPreview(this.drawSession?.preview || null);
+    this.renderer.setPreview(this.drawSession?.preview || this.hllPlacementPreview || null);
     this.onRequestRender();
   }
 
+  isHllGarrisonRadiusCheckActive(settings = this.getToolSettings()) {
+    return (
+      settings.tool === "hll" &&
+      (settings.hllId || "garrison") === "garrison" &&
+      settings.hllRadiusCheck !== false
+    );
+  }
+
+  clearHllPlacementPreview() {
+    if (!this.hllPlacementPreview) return;
+    this.hllPlacementPreview = null;
+    this.refresh();
+  }
+
+  onToolSettingsChanged() {
+    if (!this.isHllGarrisonRadiusCheckActive()) {
+      this.clearHllPlacementPreview();
+    }
+  }
+
+  updateHllPlacementPreview(point) {
+    const settings = this.getToolSettings();
+    if (!this.isHllGarrisonRadiusCheckActive(settings) || !point) {
+      this.clearHllPlacementPreview();
+      return;
+    }
+    const placeOk = isGarrisonPlacementValid(point, this.scene.getObjects());
+    this.hllPlacementPreview = createStratObject("hll", {
+      points: [point],
+      style: settingsToObjectStyle(settings),
+      meta: {
+        hllId: "garrison",
+        showRadius: settings.hllShowRadius !== false,
+        placementPreview: true,
+        placeOk,
+      },
+    });
+    this.refresh();
+  }
+
+  /** Right-click: cancel in-progress draw and return to Select (CAD-style finish). */
+  activateSelectTool() {
+    if (this.drawSession) {
+      this.drawSession = null;
+      this.renderer.setPreview(null);
+    }
+    this.clearHllPlacementPreview();
+    this.handleDrag = null;
+    this.objectDrag = null;
+    if (this.getToolSettings().tool !== "select") {
+      this.onRequestTool?.("select");
+    }
+    this.getViewer()?.setBlockPan(this.shouldBlockPan());
+    this.refresh();
+  }
+
+  onContextMenu(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.locked) return;
+    this.activateSelectTool();
+  }
+
   onPointerDown(event) {
-    if (this.locked || event.button !== 0) return;
+    if (this.locked) return;
+    if (event.button === 2) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      this.activateSelectTool();
+      return;
+    }
+    if (event.button !== 0) return;
     const viewer = this.getViewer();
     if (!viewer) return;
 
@@ -115,7 +193,15 @@ export class InteractionController {
     if (tool === "select") {
       const selected = this.scene.getSelected();
       if (selected) {
-        const handle = hitTestSelectionHandle(getSelectionHandles(selected), point);
+        const handleHit =
+          selected.type === "curve"
+            ? curveHandleHitPct(this.getViewer()?.getCamera?.()?.zoom, this.renderer?.mapSize)
+            : undefined;
+        const handle = hitTestSelectionHandle(
+          getSelectionHandles(selected),
+          point,
+          handleHit
+        );
         if (handle) {
           event.stopImmediatePropagation();
           event.preventDefault();
@@ -201,17 +287,26 @@ export class InteractionController {
     if (tool === "hll") {
       event.stopImmediatePropagation();
       event.preventDefault();
+      const hllId = settings.hllId || "garrison";
+      if (
+        hllId === "garrison" &&
+        settings.hllRadiusCheck !== false &&
+        !isGarrisonPlacementValid(point, this.scene.getObjects())
+      ) {
+        this.updateHllPlacementPreview(point);
+        return;
+      }
       const object = createStratObject("hll", {
         points: [point],
         style: settingsToObjectStyle(settings),
         meta: {
-          hllId: settings.hllId || "garrison",
+          hllId,
           showRadius: settings.hllShowRadius !== false,
         },
       });
       this.scene.addObject(object);
       this.scene.setSelectedId(object.id);
-      this.refresh();
+      this.updateHllPlacementPreview(point);
       return;
     }
 
@@ -228,7 +323,7 @@ export class InteractionController {
     }
 
     const drawType = tool === "arrow" ? "arrow" : tool;
-    if (!["pen", "line", "arrow", "rect", "ellipse"].includes(drawType)) return;
+    if (!["pen", "line", "curve", "arrow", "rect", "ellipse"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
     event.preventDefault();
@@ -255,6 +350,12 @@ export class InteractionController {
       session.points.push(normalizePoint(point));
       session.preview = createStratObject("pen", {
         points: session.points,
+        style,
+      });
+    } else if (session.type === "curve") {
+      const end = resolveTwoPoint(session.start, point, { shift: shiftKey, aspect });
+      session.preview = createStratObject("curve", {
+        points: cubicPointsFromEndpoints(session.start, end),
         style,
       });
     } else {
@@ -301,6 +402,15 @@ export class InteractionController {
     if (this.drawSession && this.drawSession.pointerId === event.pointerId) {
       event.stopPropagation();
       this.updateDrawPreview(this.mapPoint(event), event.shiftKey);
+      return;
+    }
+
+    if (this.isHllGarrisonRadiusCheckActive()) {
+      const point = this.mapPoint(event);
+      if (point) this.updateHllPlacementPreview(point);
+      else this.clearHllPlacementPreview();
+    } else if (this.hllPlacementPreview) {
+      this.clearHllPlacementPreview();
     }
   }
 
@@ -324,7 +434,14 @@ export class InteractionController {
     this.getViewer()?.setBlockPan(this.shouldBlockPan());
 
     if (preview && (preview.type === "pen" ? preview.points.length >= 2 : true)) {
-      if (preview.type !== "pen") {
+      if (preview.type === "curve" && preview.points.length >= 4) {
+        const a = preview.points[0];
+        const b = preview.points[3];
+        if (a && b && Math.hypot(b.x - a.x, b.y - a.y) < 0.15) {
+          this.refresh();
+          return;
+        }
+      } else if (preview.type !== "pen") {
         const [a, b] = preview.points;
         if (a && b && Math.hypot(b.x - a.x, b.y - a.y) < 0.15) {
           this.refresh();

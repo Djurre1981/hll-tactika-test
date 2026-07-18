@@ -3,7 +3,9 @@ import { useToolStore } from "../../../lib/stores/useToolStore.js";
 import {
   COLOR_PRESETS,
   TOOL_ITEMS,
+  actionBtn,
   cx,
+  getHllObjectDef,
   panelBody,
   panelDivider,
   panelGlassFill,
@@ -12,6 +14,21 @@ import {
 } from "./editorUi.js";
 import { ToolBtn } from "./ToolsPanelPrimitives.jsx";
 import { ToolsPanelOptions } from "./ToolsPanelOptions.jsx";
+
+function selectionLabel(selected) {
+  if (!selected) return "";
+  if (selected.type === "hll") {
+    return getHllObjectDef(selected.meta?.hllId)?.label || "HLL object";
+  }
+  if (selected.type === "icon") {
+    return selected.meta?.iconId || "icon";
+  }
+  if (selected.type === "text") {
+    const text = String(selected.meta?.text || "Text").trim();
+    return text.length > 18 ? `${text.slice(0, 18)}…` : text || "Text";
+  }
+  return selected.type;
+}
 
 export function ToolsPanel({
   disabled = false,
@@ -36,12 +53,13 @@ export function ToolsPanel({
   const iconId = useToolStore((s) => s.iconId);
   const iconLabel = useToolStore((s) => s.iconLabel);
   const hllId = useToolStore((s) => s.hllId);
-  const hllShowRadius = useToolStore((s) => s.hllShowRadius);
+  const hllRadiusCheck = useToolStore((s) => s.hllRadiusCheck);
   const patch = useToolStore((s) => s.patch);
 
-  const isStroke = tool === "pen" || tool === "line" || tool === "arrow";
+  const isStroke = tool === "pen" || tool === "line" || tool === "curve" || tool === "arrow";
   const isShape = tool === "rect" || tool === "ellipse";
   const isPreset = COLOR_PRESETS.some((c) => c.toLowerCase() === color.toLowerCase());
+  const selectedColor = selected?.style?.color || color;
 
   const setTool = (id) => {
     if (id === "arrow" && endType === "none") {
@@ -136,6 +154,56 @@ export function ToolsPanel({
               />
             ))}
           </div>
+
+          {selected ? (
+            <div
+              className="mt-2 flex items-center gap-1.5 rounded-[10px] border border-solid border-white/10 bg-black/[0.28] px-[0.5rem] py-[0.4rem]"
+              role="status"
+              aria-label="Selected object"
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+                style={{ background: selectedColor }}
+                title={selectedColor}
+              />
+              <span className="min-w-0 flex-1 truncate text-[0.68rem] text-white/[0.78]">
+                <span className="text-white/90">{selectionLabel(selected)}</span>
+                <span className="text-white/35"> · </span>
+                <span className="font-mono text-[0.62rem] uppercase tracking-wide text-white/45">
+                  {selected.type}
+                </span>
+              </span>
+              <div className="flex shrink-0 gap-0.5" role="group" aria-label="Selection actions">
+                <button
+                  type="button"
+                  className={actionBtn}
+                  title="Copy (Ctrl+C)"
+                  disabled={disabled}
+                  onClick={onCopy}
+                >
+                  <i className="fa-solid fa-copy" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className={actionBtn}
+                  title="Duplicate (Ctrl+D)"
+                  disabled={disabled}
+                  onClick={onDuplicate}
+                >
+                  <i className="fa-solid fa-clone" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className={cx(actionBtn, "hover:border-red-400/30 hover:bg-red-500/15 hover:text-red-200")}
+                  title="Delete"
+                  disabled={disabled}
+                  onClick={onDeleteSelected}
+                >
+                  <i className="fa-solid fa-trash" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <ToolsPanelOptions
@@ -154,12 +222,9 @@ export function ToolsPanel({
           iconId={iconId}
           iconLabel={iconLabel}
           hllId={hllId}
-          hllShowRadius={hllShowRadius}
+          hllRadiusCheck={hllRadiusCheck}
           patch={patch}
           onPaste={onPaste}
-          onCopy={onCopy}
-          onDuplicate={onDuplicate}
-          onDeleteSelected={onDeleteSelected}
           onUpdateSelected={onUpdateSelected}
           onUndo={onUndo}
           onRedo={onRedo}
