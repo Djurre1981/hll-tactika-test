@@ -1,5 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { useDashboardQuery } from "../dashboard/hooks/useDashboardQuery.js";
+import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 import { useHub } from "./HubContext.jsx";
 
 function formatEventMeta(event) {
@@ -35,8 +36,12 @@ function placeholderCards() {
   ];
 }
 
+const toolBtnClass =
+  "glass-surface flex min-h-[7.5rem] flex-col items-start justify-end gap-1 rounded-[1.375rem] border border-white/10 bg-white/[0.06] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-45";
+
 export function HomePage() {
   const user = useAuth();
+  const navigate = useNavigate();
   const { upcoming } = useDashboardQuery();
   const { showToast } = useHub();
   const name = user.name || "Operator";
@@ -48,17 +53,14 @@ export function HomePage() {
       showToast("HLL Records — coming soon");
       return;
     }
-
     if (tool.id === "strats") {
-      window.location.assign("/tool/stratmaker");
+      navigate("/tool/stratmaker");
       return;
     }
-
     if (tool.id === "micro-prep") {
-      window.location.assign("/tool/micro-prep");
+      navigate("/tool/micro-prep");
       return;
     }
-
     if (tool.id === "viewer") {
       window.location.assign("/climbing-guide-v1/");
     }
@@ -86,85 +88,111 @@ export function HomePage() {
 
   return (
     <>
-      <header className="dashboard-page__header">
-        <h1 className="dashboard-page__greeting">Welcome back, {name}</h1>
-        <p className="dashboard-page__tagline">
+      <header className="flex flex-col gap-1">
+        <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
+          Welcome back, {name}
+        </h1>
+        <p className="m-0 max-w-xl text-[0.88rem] font-light leading-snug tracking-wide text-white/50">
           Your Circle command hub — prep, climb intel, and strats in one place.
         </p>
       </header>
 
-      <div className="dashboard-page__grid">
-        <section className="dashboard-hero glass-surface" aria-labelledby="dashboard-hero-title">
-          <p className="dashboard-hero__eyebrow">Overview</p>
-          <h2 className="dashboard-hero__title" id="dashboard-hero-title">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
+        <section
+          className="glass-surface flex min-h-[220px] flex-col justify-end gap-2 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
+          aria-labelledby="dashboard-hero-title"
+        >
+          <p className="m-0 text-[0.68rem] font-light uppercase tracking-[0.18em] text-white/40">
+            Overview
+          </p>
+          <h2 className="m-0 text-xl font-medium tracking-wide text-white" id="dashboard-hero-title">
             Circle operations
           </h2>
-          <p className="dashboard-hero__body">
+          <p className="m-0 max-w-xl text-[0.88rem] font-light leading-relaxed text-white/60">
             Jump into the climbing guide for pin intel, or open Stratmaker to plan the next match.
             More Circle tools will land here as they come online.
           </p>
         </section>
 
-        <aside className="dashboard-upcoming glass-surface" aria-labelledby="dashboard-upcoming-title">
-          <h2 className="dashboard-upcoming__title" id="dashboard-upcoming-title">
+        <aside
+          className="glass-surface flex min-h-0 flex-col rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4 md:col-start-2 md:row-span-2 md:row-start-1"
+          aria-labelledby="dashboard-upcoming-title"
+        >
+          <h2
+            className="m-0 mb-3 px-1 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
+            id="dashboard-upcoming-title"
+          >
             Upcoming games
           </h2>
-          <div className="dashboard-upcoming__list">
+          <div className="flex min-h-0 flex-col gap-2 overflow-auto pr-1">
             {upcomingCards.map((card) => (
               <article
                 key={card.key}
-                className={`dashboard-upcoming__card${card.muted ? " dashboard-upcoming__card--muted" : ""}`}
+                className={`rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 ${
+                  card.muted ? "opacity-55" : ""
+                }`}
               >
-                <p className="dashboard-upcoming__card-meta">{card.meta}</p>
-                <p className="dashboard-upcoming__card-title">{card.title}</p>
-                <p className="dashboard-upcoming__card-sub">{card.sub}</p>
+                <p className="m-0 mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/40">
+                  {card.meta}
+                </p>
+                <p className="m-0 text-[0.95rem] font-medium text-white">{card.title}</p>
+                <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
               </article>
             ))}
           </div>
         </aside>
 
-        <section className="dashboard-tools" aria-labelledby="dashboard-tools-title">
-          <h2 className="dashboard-tools__title" id="dashboard-tools-title">
+        <section className="md:col-start-1 md:row-start-2" aria-labelledby="dashboard-tools-title">
+          <h2
+            className="m-0 mb-3 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
+            id="dashboard-tools-title"
+          >
             The Circle Tools
           </h2>
-          <div className="dashboard-tools__grid">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               type="button"
-              className={`dashboard-tool glass-surface${canStrats ? "" : " is-role-locked"}`}
+              className={toolBtnClass}
               disabled={!canStrats}
               aria-disabled={!canStrats}
               onClick={() => handleToolClick({ id: "strats" })}
             >
-              <span className="dashboard-tool__title">Circle Stratmaker</span>
-              <span className="dashboard-tool__desc">Draw and share ops on the tactical map.</span>
+              <span className="text-[0.95rem] font-medium text-white">Circle Stratmaker</span>
+              <span className="text-[0.78rem] font-light text-white/50">
+                Draw and share ops on the tactical map.
+              </span>
             </button>
             <button
               type="button"
-              className={`dashboard-tool glass-surface${canStrats ? "" : " is-role-locked"}`}
+              className={toolBtnClass}
               disabled={!canStrats}
               aria-disabled={!canStrats}
               onClick={() => handleToolClick({ id: "micro-prep" })}
             >
-              <span className="dashboard-tool__title">Micro Prep</span>
-              <span className="dashboard-tool__desc">
+              <span className="text-[0.95rem] font-medium text-white">Micro Prep</span>
+              <span className="text-[0.78rem] font-light text-white/50">
                 Brainstorm and sketch on a shared whiteboard.
               </span>
             </button>
             <button
               type="button"
-              className="dashboard-tool glass-surface dashboard-tool--climb"
+              className={toolBtnClass}
               onClick={() => handleToolClick({ id: "viewer" })}
             >
-              <span className="dashboard-tool__title">Climbing Guide</span>
-              <span className="dashboard-tool__desc">Interactive climb and MG spot map.</span>
+              <span className="text-[0.95rem] font-medium text-white">Climbing Guide</span>
+              <span className="text-[0.78rem] font-light text-white/50">
+                Interactive climb and MG spot map.
+              </span>
             </button>
             <button
               type="button"
-              className="dashboard-tool glass-surface"
+              className={toolBtnClass}
               onClick={() => handleToolClick({ id: "records", placeholder: true })}
             >
-              <span className="dashboard-tool__title">HLL Records</span>
-              <span className="dashboard-tool__desc">VODs and result history — coming soon.</span>
+              <span className="text-[0.95rem] font-medium text-white">HLL Records</span>
+              <span className="text-[0.78rem] font-light text-white/50">
+                VODs and result history — coming soon.
+              </span>
             </button>
           </div>
         </section>

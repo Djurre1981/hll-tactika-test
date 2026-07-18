@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: "Texta Alt";
-  src: url("../../assets/fonts/TextaAlt-Light.ttf") format("truetype");
+  src: url("/assets/fonts/TextaAlt-Light.ttf") format("truetype");
   font-weight: 300;
   font-style: normal;
   font-display: swap;
@@ -12,7 +12,7 @@
 
 @font-face {
   font-family: "Texta Alt";
-  src: url("../../assets/fonts/TextaAlt-Book.ttf") format("truetype");
+  src: url("/assets/fonts/TextaAlt-Book.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -20,7 +20,7 @@
 
 @font-face {
   font-family: "Texta Alt";
-  src: url("../../assets/fonts/TextaAlt-Regular.ttf") format("truetype");
+  src: url("/assets/fonts/TextaAlt-Regular.ttf") format("truetype");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -28,7 +28,7 @@
 
 @font-face {
   font-family: "Texta Alt";
-  src: url("../../assets/fonts/TextaAlt-Black.ttf") format("truetype");
+  src: url("/assets/fonts/TextaAlt-Black.ttf") format("truetype");
   font-weight: 900;
   font-style: normal;
   font-display: swap;
@@ -251,4 +251,62 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Hub shell (Tailwind pages; keep bg + sliding thumb here) */
+@keyframes hub-chrome-enter {
+  from {
+    margin-top: -8px;
+  }
+  to {
+    margin-top: 0;
+  }
+}
+
+@keyframes hub-shell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hub-page-bg::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  background: url("/assets/dashboard-bg.jpg") center / cover no-repeat;
+  filter: blur(8px) saturate(0.95) brightness(0.78);
+  transform: scale(1.03);
+}
+
+.hub-page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.38) 0%,
+    rgba(8, 8, 10, 0.48) 55%,
+    rgba(8, 8, 10, 0.62) 100%
+  );
+  pointer-events: none;
+}
+
+.hub-nav-thumb {
+  width: calc((100% - 0.4rem) / 4);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-nav[data-hub-index="1"] .hub-nav-thumb {
+  transform: translateX(100%);
+}
+.hub-nav[data-hub-index="2"] .hub-nav-thumb {
+  transform: translateX(200%);
+}
+.hub-nav[data-hub-index="3"] .hub-nav-thumb {
+  transform: translateX(300%);
 }

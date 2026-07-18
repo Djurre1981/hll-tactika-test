@@ -14,7 +14,7 @@
 - [x] Write initial `src/ai-context.md`
 
 ## Phase 1 – React Shell
-- [x] Configure Vite MPA (React at `/`, `climbing-guide-v1/`, legacy stratmaker)
+- [x] Configure Vite MPA (React at `/`, `climbing-guide-v1/` self-contained)
 - [x] Install Router, Query, Zustand, Tailwind
 - [x] Define all routes, scaffold pages
 - [x] Build shared UI primitives

@@ -2,46 +2,43 @@
 
 ## Project Overview
 - **HLL Tactika** – Steam-authenticated web app for Hell Let Loose community.
-- **v1** (climbing guide) remains untouched in `climbing-guide-v1/`.
-- **v2** is a React SPA adding dashboard, calendar, team management, strat browser/editor with live collaboration, and micro-prep whiteboard/slideshow.
+- **v1** (climbing guide) remains self-contained in `climbing-guide-v1/` (js + css co-located). Do **not** modify after relocation.
+- **v2** is a React SPA adding dashboard, calendar, team management, strat browser/editor, and micro-prep whiteboard/slideshow.
 - **Goal:** Keep collaborative drawing smooth, stay within Cloudflare free tier, keep code AI‑friendly.
+- **Collab / Yjs:** deferred to Phase 8 (skipped for now).
 
 ## Directory Map
+```
 root
-├── climbing-guide-v1/ # Vanilla v1 – do NOT modify
-├── map-kernel/ # Pure JS drawing engine – no React imports
-├── functions/ # Cloudflare Pages Functions (REST API)
-├── src/ # React SPA
-│ ├── app/ # Top-level shell, router, providers
-│ ├── features/ # Feature‑scoped code (one folder per feature)
-│ │ ├── auth/
-│ │ ├── dashboard/
-│ │ ├── calendar/
-│ │ ├── team/
-│ │ ├── strats/
-│ │ │ ├── browser/ # Folder tree, list
-│ │ │ └── editor/ # Canvas wrapper, toolbar, slides, properties
-│ │ └── micro-prep/     # Excalidraw whiteboard + slideshow (not map-kernel)
-│ ├── shared/ # Reusable UI components (Button, Modal, etc.)
-│ ├── lib/ # API client, query keys, Zustand stores, constants
-│ └── styles/ # Tailwind + global resets
-├── data/ # Static seed data (map-spawns.json, etc.)
-├── migrations/ # Cloudflare D1 SQL migrations (Phase 0+)
-├── public/ # Static assets (maps, fonts, icons)
-└── scripts/ # Dev & deploy helpers
+├── climbing-guide-v1/   # Vanilla v1 – do NOT modify (owns its js/ + css/)
+├── map-kernel/          # Pure JS drawing engine – no React imports
+├── functions/           # Cloudflare Pages Functions (REST API)
+├── public/              # Static assets (maps/, assets/, data/)
+├── src/                 # React SPA
+│   ├── app/             # Top-level shell, router, providers
+│   ├── features/        # Feature‑scoped code
+│   │   ├── auth/
+│   │   ├── home/        # Hub shell + dashboard home
+│   │   ├── calendar/
+│   │   ├── team/
+│   │   ├── management/  # Roster + folders (Phase 5)
+│   │   ├── strats/
+│   │   │   ├── browser/
+│   │   │   └── editor/
+│   │   └── micro-prep/
+│   ├── shared/
+│   ├── lib/
+│   └── styles/
+├── migrations/
+└── scripts/
+```
 
 ## Technology Stack
 - **React 18** (function components + hooks)
-- **Vite** (MPA config – v1 and v2 as separate entries)
-- **React Router v6** (nested routes)
-- **TanStack Query v5** for server state (caching, refetch)
-- **Zustand** for client UI state (tool, camera, UI toggles)
-- **Tailwind CSS** (utility-first)
-- **Cloudflare D1** – primary SQL store for pins, users, strats metadata (`env.DB`)
-- **Cloudflare KV** – Yjs collaboration snapshots only (not full JSON catalogs)
-- **Cloudflare R2** – media uploads
-- **Yjs** + `y-websocket` for real-time collaboration (Phase 6+)
-- **Map Kernel** – imperative vanilla JS module, aliased as `@map-kernel`
+- **Vite** (MPA – React at `/`, climbing guide at `/climbing-guide-v1/`)
+- **React Router v6**, **TanStack Query v5**, **Zustand**, **Tailwind CSS**
+- **Cloudflare D1 / KV / R2**
+- **Map Kernel** – aliased as `@map-kernel`
 
 ## Data Layer Rules (Phase 0+)
 - Prefer **D1 row-level** reads/writes over rewriting whole JSON blobs in KV.
@@ -61,67 +58,32 @@ root
 
 ### Map Kernel Isolation
 - **Never import `@map-kernel` into a React component directly.**
-- Always use a thin wrapper (e.g., `CanvasWrapper`) that communicates via:
-  - Zustand stores for tools/camera.
-  - A ref and imperative API for drawing operations.
-- The kernel must remain React‑agnostic; it will later talk to Yjs directly.
+- Always use a thin wrapper (e.g., `CanvasWrapper`) that communicates via Zustand + ref.
+- The kernel must remain React‑agnostic.
 
 ### Data Fetching
 - All server data goes through TanStack Query.
-- Query keys defined in `src/lib/query-keys.js` – use factories like `pins.byMap(mapId)`.
-- Mutations use `useMutation` with optimistic updates and cache invalidation.
-- Default stale time: 5 minutes; refetch on window focus.
+- Query keys defined in `src/lib/query-keys.js`.
 - API base URL: `/api/`.
 
 ### State Management
-- **Server state → TanStack Query.** Do not duplicate in local state.
-- **UI state → Zustand.** Stores are defined in `src/lib/stores/`.
-  - `useToolStore` (current drawing tool, color, stroke width)
-  - `useCameraStore` (pan x/y, zoom)
-  - `useUIStore` (sidebar, modals, etc.)
-- No prop‑drilling beyond 2 levels.
+- **Server state → TanStack Query.** **UI state → Zustand** under `src/lib/stores/`.
 
 ### Styling
-- Use Tailwind utility classes exclusively for layout/spacing/color.
-- For complex animations, use `framer-motion`; no CSS modules unless absolutely necessary.
-- Keep `styles/globals.css` minimal – Tailwind directives and CSS custom properties for the dark palette.
+- Use Tailwind utility classes for layout/spacing/color.
+- Keep `styles/globals.css` minimal – Tailwind directives, glass helpers, hub chrome keyframes.
+- Auth welcome/bye CSS is co-located under `src/features/auth/`.
 
 ### API Client
-- `src/lib/api-client.js` wraps `fetch` with auth cookie handling and error normalization.
-- All frontend API calls must use this client.
+- `src/lib/api-client.js` wraps `fetch` with auth cookie handling.
 
 ### File Naming
-- PascalCase for React components: `StratEditor.jsx`.
-- camelCase for hooks: `useStratEditor.js`.
-- kebab-case or camelCase for utilities: `query-keys.js`, `api-client.js`.
-
-## Adding a New Feature
-1. Create folder: `src/features/<name>/`.
-2. Add page component, any sub‑components, and a `hooks/` folder.
-3. If data comes from server, add query key to `query-keys.js` and hook in feature’s `hooks/`.
-4. Add route in `src/app/router.jsx`.
-5. If new API endpoint needed, add handler in `functions/api/`.
-
-## Collaboration (Yjs) – When Implemented
-- Yjs document structure: Y.Map for slides (keys = slide IDs), each slide has Y.Array of objects.
-- The kernel will directly read/write Yjs types – do not bridge through React state.
-- Awareness (cursors) will be displayed on canvas, not in React.
+- PascalCase for React components; camelCase for hooks; kebab/camel for utilities.
+- Prefer files under ~250 lines; extract hooks / subcomponents.
 
 ## Agent Instructions
-- When asked to implement something, first check if it fits into an existing feature folder. If yes, extend it; if no, create a new feature folder following conventions.
-- Prefer short files (under ~250 lines). Extract hooks or sub‑components aggressively.
-- Never modify `climbing-guide-v1/`.
-- Before modifying `map-kernel/`, understand that it must remain vanilla JS and cannot depend on React.
-- Use existing patterns: look at how `useTeamQuery.js` is structured for API calls, or how `CanvasWrapper.jsx` mounts the kernel.
-- Keep the code short when possible
-
-## Conventions
-* No barrel files — import directly from the source file.
-* Feature co‑location — all code for a feature lives inside features/<name>/.
-* No cross‑feature imports — use shared/ or an explicit public API.
-* Shared UI only in shared/ — buttons, modals, spinners, etc.
-* map-kernel/ is pure vanilla JS — never imports React.
-* Zustand slices one per file — useToolStore.js, useCameraStore.js, each under 50 lines.
-* TanStack Query key factories — all keys from lib/query-keys.js.
-* Tailwind only — no CSS modules unless unavoidable; custom CSS is co‑located.
-* Legacy climbing guide lives outside src/ — untouched by the React build.
+- Prefer extending an existing feature folder over inventing new top-level areas.
+- Never modify `climbing-guide-v1/` (frozen after cleanup relocation).
+- Before modifying `map-kernel/`, keep it vanilla JS with no React dependency.
+- No barrel files — import directly from the source file.
+- No cross‑feature imports — use `shared/` or an explicit public API.

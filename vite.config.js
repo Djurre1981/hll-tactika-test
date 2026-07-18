@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC = path.join(root, "public");
 const STATIC_DIRS = ["assets", "maps", "data"];
 const STATIC_FILES = ["_headers", "_redirects"];
 const WRANGLER_API = "http://127.0.0.1:8788";
@@ -26,13 +27,8 @@ const MIME = {
   ".ttf": "font/ttf",
 };
 
-function copyStaticToDist() {
+function copyExtraToDist() {
   const dist = path.join(root, "dist");
-  for (const dir of STATIC_DIRS) {
-    const from = path.join(root, dir);
-    if (!fs.existsSync(from)) continue;
-    fs.cpSync(from, path.join(dist, dir), { recursive: true });
-  }
   for (const file of STATIC_FILES) {
     const from = path.join(root, file);
     if (!fs.existsSync(from)) continue;
@@ -121,20 +117,15 @@ function serveRepoStatic() {
           return;
         }
 
-        if (url === "/tool/stratmaker" || url.startsWith("/tool/stratmaker/")) {
-          res.statusCode = 302;
-          res.setHeader("Location", `/strats${query}`);
-          res.end();
-          return;
-        }
+        // React owns /tool/stratmaker — SPA fallback handles refresh.
 
         const match = STATIC_DIRS.find(
           (dir) => url === `/${dir}` || url.startsWith(`/${dir}/`)
         );
         if (match) {
-          const filePath = path.join(root, decodeURIComponent(url.slice(1)));
+          const filePath = path.join(PUBLIC, decodeURIComponent(url.slice(1)));
           if (
-            filePath.startsWith(path.join(root, match)) &&
+            filePath.startsWith(path.join(PUBLIC, match)) &&
             fs.existsSync(filePath) &&
             !fs.statSync(filePath).isDirectory()
           ) {
@@ -148,8 +139,6 @@ function serveRepoStatic() {
         const skipSpa =
           url.startsWith("/api") ||
           url.startsWith("/climbing-guide-v1") ||
-          url.startsWith("/css") ||
-          url.startsWith("/js") ||
           url.startsWith("/src") ||
           url.startsWith("/@") ||
           url.startsWith("/node_modules") ||
@@ -161,14 +150,14 @@ function serveRepoStatic() {
       });
     },
     closeBundle() {
-      copyStaticToDist();
+      copyExtraToDist();
     },
   };
 }
 
 export default defineConfig({
   root,
-  publicDir: false,
+  publicDir: "public",
   appType: "mpa",
   plugins: [react(), ...preserveStaticUrls(), serveRepoStatic()],
   resolve: {
@@ -181,7 +170,9 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    emptyOutDir: true,
+    // Watch rebuilds must keep old hashed chunks so an open :8788 tab
+    // does not 404 mid-import (Excalidraw loads large lazy chunks).
+    emptyOutDir: !process.argv.includes("--watch"),
     rollupOptions: {
       input: {
         app: path.resolve(root, "index.html"),

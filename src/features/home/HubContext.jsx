@@ -14,7 +14,12 @@ export function HubToast() {
   const { toast } = useHub();
 
   return (
-    <p className="dashboard-toast" role="status" aria-live="polite" hidden={!toast.visible}>
+    <p
+      className="pointer-events-none absolute bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/15 bg-black/55 px-4 py-2 text-[0.78rem] tracking-wide text-white/90 shadow-glass backdrop-blur-md"
+      role="status"
+      aria-live="polite"
+      hidden={!toast.visible}
+    >
       {toast.message}
     </p>
   );

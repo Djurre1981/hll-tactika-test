@@ -23,8 +23,7 @@
     "migrate:videos:upload": "node scripts/video-migration/3-upload-r2.mjs",
     "migrate:videos:apply": "node scripts/video-migration/4-apply-kv.mjs",
     "stratsketch:spike": "node scripts/stratsketch-spike.mjs",
-    "stratsketch:icons": "node scripts/build-stratsketch-icon-pack.mjs",
-    "gen:mpa-html": "node scripts/gen-mpa-html.mjs"
+    "stratsketch:icons": "node scripts/build-stratsketch-icon-pack.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

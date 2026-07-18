@@ -1,0 +1,200 @@
+.welcome-page {
+  --welcome-font-thin: "Texta Alt", sans-serif;
+  --welcome-font-light: "Texta Alt", sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  overflow: hidden;
+  background: #000;
+  font-family: var(--welcome-font-thin);
+}
+
+.welcome-page__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.welcome-page.scrub-video--tap-to-play::after,
+.bye-page.scrub-video--tap-to-play::after {
+  content: "Tap to play";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--welcome-font-light, var(--bye-font-light, "Texta Alt", sans-serif));
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.welcome-page__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.12) 38%,
+    transparent 78%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  pointer-events: none;
+}
+
+.welcome-page__nav {
+  position: absolute;
+  top: 2.25rem;
+  right: 5.5rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  animation: welcome-fade-down 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+.welcome-page__nav.is-settled {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+.welcome-page__nav-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #fff;
+  font-family: var(--welcome-font-light);
+  font-size: 1.15rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.welcome-page__nav-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.welcome-page__nav-link:hover {
+  opacity: 0.65;
+  transform: translateY(-1px);
+}
+
+.welcome-page__brand {
+  position: absolute;
+  bottom: calc(19.625rem - min(72vw, 840px) * 186 / 840);
+  left: 5.5rem;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: min(72vw, 840px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.welcome-page__intro {
+  width: 100%;
+  max-width: 100%;
+  height: 8.25em;
+  padding: 4.5em 2.1% 0 4%;
+  box-sizing: border-box;
+  margin: 0 0 0.05rem;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: var(--welcome-font-thin);
+  font-size: clamp(0.82rem, 1.05vw, 1rem);
+  font-weight: 100;
+  line-height: 1.65;
+  letter-spacing: 0.03em;
+  text-align: left;
+}
+
+.welcome-page__intro.is-typing::after {
+  content: "";
+  display: inline-block;
+  width: 1px;
+  height: 0.95em;
+  margin-left: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  vertical-align: text-bottom;
+  animation: welcome-cursor-blink 0.85s step-end infinite;
+}
+
+.welcome-page__logo-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.welcome-page__logo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.welcome-page.is-hidden {
+  display: none !important;
+}
+
+@keyframes welcome-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes welcome-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .welcome-page__brand {
+    left: 2.5rem;
+    width: min(82vw, 640px);
+  }
+
+  .welcome-page__nav {
+    top: 1.5rem;
+    right: 3.5rem;
+    gap: 1.35rem;
+  }
+
+  .welcome-page__nav-link {
+    font-size: 1.05rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 640px) {
+  .welcome-page__brand {
+    bottom: calc(19.625rem - (100vw - 3rem) * 186 / 840);
+    left: 1.5rem;
+    width: calc(100vw - 3rem);
+  }
+
+  .welcome-page__intro {
+    font-size: 0.78rem;
+    line-height: 1.55;
+    height: 9.5em;
+    padding-top: 5.25em;
+    margin-bottom: 0.05rem;
+  }
+}

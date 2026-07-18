@@ -58,7 +58,7 @@ function stratToInsert(strat) {
 }
 
 function loadFromSeed() {
-  const seedPath = path.join(root, "data/strats.json");
+  const seedPath = path.join(root, "public/data/strats.json");
   const raw = JSON.parse(fs.readFileSync(seedPath, "utf8"));
   return raw.strats || [];
 }

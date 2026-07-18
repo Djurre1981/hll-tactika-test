@@ -1,4 +1,4 @@
-import { BrowserRouter, NavLink, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
 import { TeamPage } from "../features/team/TeamPage.jsx";
 import { ManagementPage } from "../features/management/ManagementPage.jsx";
@@ -8,55 +8,14 @@ import { StratmakerPage } from "../features/strats/editor/StratmakerPage.jsx";
 import { MicroPrepEntryPage } from "../features/micro-prep/MicroPrepEntryPage.jsx";
 import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
-import { UserMenu } from "../features/auth/UserMenu.jsx";
 import { HubLayout } from "../features/home/HubLayout.jsx";
 import { HomePage } from "../features/home/HomePage.jsx";
-
-const NAV = [
-  { to: "/home", label: "Home" },
-  { to: "/calendar", label: "Calendar" },
-  { to: "/team", label: "Team" },
-  { to: "/strats", label: "Strats" },
-];
 
 function canViewTeam(role) {
   return role === "admin" || role === "owner";
 }
 
-function AppShell() {
-  const user = useAuth();
-  const nav = NAV.filter((item) => item.to !== "/team" || canViewTeam(user.role));
-
-  return (
-    <div className="min-h-screen bg-bg text-text">
-      <header className="border-b border-border bg-surface px-4 py-3">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4">
-          <span className="text-lg font-medium tracking-[0.18em]">TACTIKA</span>
-          <nav className="flex flex-wrap gap-3 text-sm">
-            {nav.map(({ to, label, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  isActive ? "text-accent" : "text-muted transition hover:text-text"
-                }
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-          <UserMenu />
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
-/** Full-bleed shell for map editor / whiteboard (no max-width main). */
+/** Full-bleed shell for map editor / whiteboard. */
 function EditorShell() {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#0f0f0f] text-text">
@@ -67,14 +26,18 @@ function EditorShell() {
   );
 }
 
-function StaffGate({ hub = false, title, children }) {
+function StaffGate({ title, children }) {
   const user = useAuth();
 
   if (!canViewTeam(user.role)) {
     return (
-      <section className={hub ? "hub-admin-shell" : undefined}>
-        <h1 className="dashboard-page__greeting">{title}</h1>
-        <p className="dashboard-page__tagline">Comp Admins only.</p>
+      <section className="min-h-0 flex-1 overflow-auto">
+        <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
+          {title}
+        </h1>
+        <p className="m-0 max-w-xl text-[0.88rem] font-light tracking-wide text-white/50">
+          Comp Admins only.
+        </p>
       </section>
     );
   }
@@ -84,7 +47,7 @@ function StaffGate({ hub = false, title, children }) {
 
 function StaffOnlyTeamPage({ hub = false }) {
   return (
-    <StaffGate hub={hub} title="Admin Panel">
+    <StaffGate title="Admin Panel">
       <TeamPage hub={hub} />
     </StaffGate>
   );
@@ -92,7 +55,7 @@ function StaffOnlyTeamPage({ hub = false }) {
 
 function StaffOnlyManagementPage() {
   return (
-    <StaffGate hub title="Management">
+    <StaffGate title="Management">
       <ManagementPage />
     </StaffGate>
   );
@@ -117,9 +80,7 @@ export function AppRouter() {
           <Route path="tool/micro-prep" element={<MicroPrepEntryPage />} />
           <Route path="micro-prep/:id" element={<MicroPrepPage />} />
         </Route>
-        <Route element={<AppShell />}>
-          <Route path="micro-prep" element={<Navigate to="/tool/micro-prep" replace />} />
-        </Route>
+        <Route path="micro-prep" element={<Navigate to="/tool/micro-prep" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -86,12 +86,12 @@ export function FoldersSection() {
           maxLength={80}
           required
         />
-        <button type="submit" className="hub-admin-action" disabled={pending}>
+        <button type="submit" className="glass-control" disabled={pending}>
           Create
         </button>
       </form>
 
-      {error ? <p className="hub-admin-status is-error">{error}</p> : null}
+      {error ? <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
 
       {foldersQuery.isLoading ? (
         <div className="flex justify-center py-10">

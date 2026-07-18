@@ -1,4 +1,4 @@
-import seedPins from "../../data/pins.json";
+import seedPins from "../../public/data/pins.json";
 import { normalizePinTitle } from "./pin-title.js";
 
 const KV_KEY = "pins";

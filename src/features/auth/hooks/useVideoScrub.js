@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
 import { isPhoneLayout } from "./isPhoneLayout.js";
-
-const LERP_FACTOR = 0.12;
-const SNAP_THRESHOLD = 0.001;
-const SEEK_THROTTLE_MS = 30;
-const ACTIVATE_RETRY_MS = 500;
-const LOAD_TIMEOUT_MS = 15000;
-
-function resolveSourceUrl(sourceUrl) {
-  if (!sourceUrl) return "";
-  if (/^https?:\/\//i.test(sourceUrl)) return sourceUrl;
-  const path = sourceUrl.startsWith("/") ? sourceUrl : `/${sourceUrl}`;
-  return new URL(path, window.location.origin).href;
-}
+import {
+  ACTIVATE_RETRY_MS,
+  LERP_FACTOR,
+  LOAD_TIMEOUT_MS,
+  SEEK_THROTTLE_MS,
+  SNAP_THRESHOLD,
+  hasFrameData,
+  hasValidDuration,
+  isFullyBuffered,
+  resolveSourceUrl,
+} from "./videoScrubUtils.js";
 
 export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
   const [tapToPlay, setTapToPlay] = useState(false);
@@ -51,24 +49,6 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
     video.setAttribute("webkit-playsinline", "");
     video.preload = "auto";
 
-    function hasValidDuration() {
-      return Number.isFinite(video.duration) && video.duration > 0;
-    }
-
-    function hasFrameData() {
-      return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
-    }
-
-    function isFullyBuffered() {
-      if (!hasValidDuration()) return false;
-      for (let i = 0; i < video.buffered.length; i++) {
-        if (video.buffered.start(i) <= 0.05 && video.buffered.end(i) >= video.duration - 0.05) {
-          return true;
-        }
-      }
-      return false;
-    }
-
     function stopRetry() {
       if (!retryTimer) return;
       window.clearInterval(retryTimer);
@@ -99,7 +79,7 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
     }
 
     function applySeek(time) {
-      if (!hasFrameData() || Math.abs(video.currentTime - time) <= 0.001) return;
+      if (!hasFrameData(video) || Math.abs(video.currentTime - time) <= 0.001) return;
       try {
         video.currentTime = time;
       } catch {
@@ -144,15 +124,15 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
     }
 
     function waitForFrameData(options) {
-      return waitForEvent(hasFrameData, ["loadeddata", "canplay", "canplaythrough"], options);
+      return waitForEvent(() => hasFrameData(video), ["loadeddata", "canplay", "canplaythrough"], options);
     }
 
     function waitForMetadata(options) {
-      return waitForEvent(hasValidDuration, ["loadedmetadata", "durationchange"], options);
+      return waitForEvent(() => hasValidDuration(video), ["loadedmetadata", "durationchange"], options);
     }
 
     async function paintFirstFrame() {
-      if (destroyed || !hasFrameData()) return;
+      if (destroyed || !hasFrameData(video)) return;
       try {
         const playPromise = video.play();
         if (playPromise) await playPromise;
@@ -223,7 +203,7 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
     }
 
     async function upgradeToBlob() {
-      if (phoneLayout || destroyed || blobUrl || upgrading || isFullyBuffered()) return;
+      if (phoneLayout || destroyed || blobUrl || upgrading || isFullyBuffered(video)) return;
 
       upgrading = true;
       blobAbort = new AbortController();
@@ -265,7 +245,7 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
       activating = true;
       try {
         const loaded = await startStreaming();
-        if (destroyed || !loaded || !hasValidDuration()) {
+        if (destroyed || !loaded || !hasValidDuration(video)) {
           scheduleRetry();
           return;
         }
@@ -278,7 +258,7 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
           return;
         }
 
-        if (!hasFrameData()) {
+        if (!hasFrameData(video)) {
           scheduleRetry();
           return;
         }
@@ -345,7 +325,7 @@ export function useVideoScrub(videoRef, sourceUrl, containerRef = null) {
     function scrubLoop(timestamp) {
       animationId = requestAnimationFrame(scrubLoop);
 
-      if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData() || phoneLayout) return;
+      if (!videoReady || videoDuration <= 0 || tabHidden || !hasFrameData(video) || phoneLayout) return;
 
       const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
       lastFrameTime = timestamp;

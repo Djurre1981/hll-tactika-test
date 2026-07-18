@@ -61,7 +61,7 @@ export function StratsPage({ hub = false }) {
         />
       </header>
 
-      {error ? <p className="hub-admin-status is-error">{error}</p> : null}
+      {error ? <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -95,7 +95,7 @@ export function StratsPage({ hub = false }) {
   );
 
   if (hub) {
-    return <div className="hub-admin-shell">{content}</div>;
+    return <div className="min-h-0 flex-1 overflow-auto">{content}</div>;
   }
 
   return content;

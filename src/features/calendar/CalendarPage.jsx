@@ -122,7 +122,7 @@ export function CalendarPage({ hub = false }) {
         style={sectionStyle}
       >
         {eventsQuery.error ? (
-          <p className="hub-admin-status is-error mb-3">{eventsQuery.error.message}</p>
+          <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{eventsQuery.error.message}</p>
         ) : null}
         <div className="grid h-auto min-h-0 flex-1 grid-cols-1 gap-5 overflow-auto lg:h-full lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.85fr)] lg:overflow-hidden">
           <section className="flex min-h-0 flex-col">

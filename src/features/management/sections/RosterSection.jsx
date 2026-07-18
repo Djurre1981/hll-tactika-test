@@ -116,13 +116,13 @@ export function RosterSection() {
               </option>
             ))}
           </select>
-          <button type="submit" className="hub-admin-action" disabled={pending}>
+          <button type="submit" className="glass-control" disabled={pending}>
             Add
           </button>
         </form>
       ) : null}
 
-      {error ? <p className="hub-admin-status is-error">{error}</p> : null}
+      {error ? <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
 
       {roster.isLoading ? (
         <div className="flex justify-center py-10">

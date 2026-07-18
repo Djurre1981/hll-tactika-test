@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import "../../../css/components/bye-page.css";
+import "./bye-page.css";
 import { hasPlayedOnce, markPlayedOnce } from "./hooks/oneShot.js";
 import { BYE_INTRO_TEXT, useTypewriter } from "./hooks/useTypewriter.js";
 import { useVideoScrub } from "./hooks/useVideoScrub.js";

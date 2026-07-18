@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import "../../../css/components/welcome-page.css";
+import "./welcome-page.css";
 import { AuthDialog } from "./AuthDialog.jsx";
 import { hasPlayedOnce, markPlayedOnce } from "./hooks/oneShot.js";
 import { useTypewriter, WELCOME_INTRO_TEXT } from "./hooks/useTypewriter.js";

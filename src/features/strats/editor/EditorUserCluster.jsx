@@ -7,7 +7,7 @@ function canManageTeam(role) {
   return role === "admin" || role === "owner";
 }
 
-/** Same chrome as home LegacyUserMenu — avatar + glass pill menu (no Dashboard). */
+/** Same chrome as home HubUserMenu — avatar + glass pill menu. */
 export function EditorUserCluster() {
   const user = useAuth();
   const logout = useLogoutMutation();

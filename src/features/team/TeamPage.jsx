@@ -90,9 +90,11 @@ export function TeamPage({ hub = false }) {
 
   const content = (
     <>
-      <header className="dashboard-page__header">
-        <h1 className="dashboard-page__greeting">Admin Panel</h1>
-        <p className="dashboard-page__tagline">
+      <header className="flex flex-col gap-1">
+        <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
+          Admin Panel
+        </h1>
+        <p className="m-0 max-w-xl text-[0.88rem] font-light tracking-wide text-white/50">
           {isOwner
             ? "Add or remove circle members. Owners can change roles, export pin backups, and test Discord alerts."
             : "Add or remove circle members and manage access."}
@@ -100,10 +102,10 @@ export function TeamPage({ hub = false }) {
       </header>
 
       {isOwner ? (
-        <div className="hub-admin-actions">
+        <div className="mb-4 flex flex-wrap gap-2.5">
           <button
             type="button"
-            className="hub-admin-action"
+            className="glass-control"
             onClick={handleExportPins}
             disabled={actionPending}
           >
@@ -111,7 +113,7 @@ export function TeamPage({ hub = false }) {
           </button>
           <button
             type="button"
-            className="hub-admin-action"
+            className="glass-control"
             onClick={handleTestAlert}
             disabled={actionPending}
           >
@@ -121,7 +123,7 @@ export function TeamPage({ hub = false }) {
       ) : null}
 
       {actionStatus.message ? (
-        <p className={`hub-admin-status${actionStatus.isError ? " is-error" : ""}`}>
+        <p className={`mb-3 min-h-[1.2rem] text-[0.82rem] text-white/55${actionStatus.isError ? " text-[#f0a8a8]" : ""}`}>
           {actionStatus.message}
         </p>
       ) : null}
@@ -139,7 +141,7 @@ export function TeamPage({ hub = false }) {
         </label>
         <button
           type="submit"
-          className="hub-admin-action"
+          className="glass-control"
           disabled={!steamId.trim() || actionPending}
         >
           Add member
@@ -168,7 +170,7 @@ export function TeamPage({ hub = false }) {
       </div>
 
       {error ? (
-        <p className="hub-admin-status is-error mb-3">{error}</p>
+        <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p>
       ) : null}
 
       {team.isLoading ? (
@@ -189,7 +191,7 @@ export function TeamPage({ hub = false }) {
   );
 
   if (hub) {
-    return <div className="hub-admin-shell">{content}</div>;
+    return <div className="min-h-0 flex-1 overflow-auto">{content}</div>;
   }
 
   return <section className="space-y-6">{content}</section>;
