@@ -125,6 +125,7 @@ export class CollabProvider {
         code: ev.code,
         reason: String(ev.reason || "").slice(0, 80),
         wasClean: ev.wasClean,
+        readyState: this.ws?.readyState,
       });
       // #endregion
       this.onStatus("disconnected");
@@ -132,7 +133,10 @@ export class CollabProvider {
 
     this.ws.addEventListener("error", () => {
       // #region agent log
-      dbgPresence("B", "provider.js:error", "ws error", { roomId });
+      dbgPresence("B", "provider.js:error", "ws error", {
+        roomId,
+        readyState: this.ws?.readyState,
+      });
       // #endregion
       // close always follows; avoid double reconnect scheduling from error+close
     });
