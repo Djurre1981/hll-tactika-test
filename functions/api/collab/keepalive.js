@@ -7,7 +7,7 @@ import { errorResponse, json } from "../../lib/response.js";
 export async function onRequestGet(context) {
   try {
     const wsUrl = getCollabWsUrl(context.env);
-    const healthUrl = `${wsUrl.replace(/^ws/i, "http")}/health`;
+  const healthUrl = `${String(wsUrl).replace(/^ws/i, "http")}/health`;
     const res = await fetch(healthUrl, {
       method: "GET",
       cf: { cacheTtl: 0, cacheEverything: false },

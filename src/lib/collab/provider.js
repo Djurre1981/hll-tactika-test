@@ -38,8 +38,31 @@ export class CollabProvider {
       this.awareness.setLocalState(awarenessState);
     }
 
-    const base = String(wsUrl || "").replace(/\/+$/, "");
+    // Normalize http(s) → ws(s); CF env sometimes stores https:// by mistake
+    const base = String(wsUrl || "")
+      .trim()
+      .replace(/^http/i, "ws")
+      .replace(/\/+$/, "");
     const url = `${base}/collab?room=${encodeURIComponent(roomId)}&token=${encodeURIComponent(token)}`;
+    // #region agent log
+    let wsProtocol = "";
+    try {
+      wsProtocol = new URL(url).protocol;
+    } catch {
+      wsProtocol = "invalid";
+    }
+    dbgPresence("B", "provider.js:ctor", "ws open attempt", {
+      roomId,
+      wsProtocol,
+      baseHost: (() => {
+        try {
+          return new URL(base).host;
+        } catch {
+          return String(base).slice(0, 40);
+        }
+      })(),
+    });
+    // #endregion
 
     this._updateHandler = (update, origin) => {
       if (origin === this || this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -74,6 +97,9 @@ export class CollabProvider {
     this.ws.binaryType = "arraybuffer";
 
     this.ws.addEventListener("open", () => {
+      // #region agent log
+      dbgPresence("B", "provider.js:open", "ws open", { roomId });
+      // #endregion
       this.onStatus("connected");
       // sync step 1
       const encoder = encoding.createEncoder();
@@ -92,11 +118,22 @@ export class CollabProvider {
       }, 15_000);
     });
 
-    this.ws.addEventListener("close", () => {
+    this.ws.addEventListener("close", (ev) => {
+      // #region agent log
+      dbgPresence("B", "provider.js:close", "ws close", {
+        roomId,
+        code: ev.code,
+        reason: String(ev.reason || "").slice(0, 80),
+        wasClean: ev.wasClean,
+      });
+      // #endregion
       this.onStatus("disconnected");
     });
 
     this.ws.addEventListener("error", () => {
+      // #region agent log
+      dbgPresence("B", "provider.js:error", "ws error", { roomId });
+      // #endregion
       // close always follows; avoid double reconnect scheduling from error+close
     });
 

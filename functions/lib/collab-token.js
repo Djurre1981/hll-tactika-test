@@ -28,12 +28,14 @@ export function getCollabPersistSecret(env) {
 }
 
 export function getCollabWsUrl(env) {
-  const url = String(env.COLLAB_WS_URL || "").trim().replace(/\/+$/, "");
+  let url = String(env.COLLAB_WS_URL || "").trim().replace(/\/+$/, "");
   if (!url) {
     throw new Error(
       "COLLAB_WS_URL is not configured (e.g. wss://collab.tactika.gg)."
     );
   }
+  // Browsers require ws:/wss: — https:/http: in the dashboard would never connect
+  url = url.replace(/^http/i, "ws");
   return url;
 }
 

@@ -181,14 +181,20 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
 
         // #region agent log
         let wsHost = "";
+        let wsProtocol = "";
         try {
-          wsHost = new URL(join.wsUrl).host;
+          const u = new URL(String(join.wsUrl || "").replace(/^http/i, "ws"));
+          wsHost = u.host;
+          wsProtocol = u.protocol;
         } catch {
           wsHost = String(join.wsUrl || "").slice(0, 40);
+          wsProtocol = "invalid";
         }
         dbgPresence("A", "useYjsRoom.js:connect", "join ok", {
           roomId,
           wsHost,
+          wsProtocol,
+          rawStartsWith: String(join.wsUrl || "").slice(0, 8),
           tokenLen: String(join.token || "").length,
         });
         // #endregion
@@ -197,7 +203,7 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         const local = buildLocalState();
         const provider = new CollabProvider({
           doc: ydoc,
-          wsUrl: join.wsUrl,
+          wsUrl: String(join.wsUrl || "").replace(/^http/i, "ws"),
           roomId,
           token: join.token,
           awarenessState: local,
