@@ -4,6 +4,25 @@ import { apiClient } from "../api-client.js";
 import { CollabProvider, PRESENCE_ROOM_ID } from "./provider.js";
 
 const KEEPALIVE_MS = 10 * 60 * 1000;
+/** Max time to wait on shared wake before opening the WebSocket anyway */
+const WAKE_WAIT_MS = 2_500;
+
+/** One in-flight wake shared by all rooms (editors open 2 sockets). */
+let sharedWake = null;
+let sharedWakeAt = 0;
+
+function wakeCollabServer() {
+  const now = Date.now();
+  // Reuse a successful wake for a minute so slide switches don't re-block
+  if (sharedWake && now - sharedWakeAt < 60_000) return sharedWake;
+  sharedWakeAt = now;
+  sharedWake = apiClient("/collab/keepalive")
+    .catch(() => null)
+    .finally(() => {
+      /* keep promise cached until TTL via sharedWakeAt */
+    });
+  return sharedWake;
+}
 
 /**
  * Join a collab room: JWT from CF → WS to Render.
@@ -33,7 +52,7 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     let cancelled = false;
     const ping = () => {
       if (cancelled) return;
-      void apiClient("/collab/keepalive").catch(() => {});
+      void wakeCollabServer();
     };
     ping();
     const id = window.setInterval(ping, KEEPALIVE_MS);
@@ -118,10 +137,10 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         setStatus((s) =>
           s === "connected" || s === "reconnecting" ? "reconnecting" : "joining"
         );
-        // Wake Render free tier before opening the WebSocket (cold start ~30–60s)
+        // Brief shared wake (editors open 2 rooms) — don't block 45s on cold start
         await Promise.race([
-          apiClient("/collab/keepalive").catch(() => null),
-          new Promise((resolve) => setTimeout(resolve, 45_000)),
+          wakeCollabServer(),
+          new Promise((resolve) => setTimeout(resolve, WAKE_WAIT_MS)),
         ]);
         if (!stillCurrent()) return;
 

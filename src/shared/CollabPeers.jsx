@@ -2,15 +2,21 @@
  * Small avatar stack of remote collab peers.
  */
 export function CollabPeers({ peers = [], status }) {
-  if (!peers.length && status !== "connected" && status !== "connecting" && status !== "joining") {
+  const pending =
+    status === "joining" ||
+    status === "connecting" ||
+    status === "reconnecting";
+  const live = status === "connected" || pending;
+
+  if (!peers.length && !live) {
     return null;
   }
 
   return (
     <div className="flex items-center gap-1.5" title="People in this room">
-      {status && status !== "connected" ? (
+      {pending ? (
         <span className="text-[0.65rem] uppercase tracking-wider text-white/35">
-          {status === "joining" || status === "connecting" ? "sync…" : status}
+          sync…
         </span>
       ) : null}
       <div className="flex -space-x-2">
