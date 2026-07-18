@@ -7,9 +7,6 @@
 - [x] Create D1 database with tables: `pins`, `users`, `strats`, `events`, `teams`, `strat_folders`
 - [x] Migrate existing KV `pins` and `users` data into D1 with a one‑time script
 - [x] Bind D1 and R2 to the Pages project in `wrangler.toml`
-- [ ] ~~Deploy Y‑WebSocket server on Oracle Always Free / Render free tier (Node.js, `y-websocket`, TLS)~~ *(skipped — revisit in Phase 8)*
-- [ ] ~~Add `functions/api/collab/join.js` – session‑validated JWT minting for room access~~ *(skipped — revisit in Phase 8)*
-- [ ] ~~Add `functions/api/collab/save.js` – binary snapshot persistence to KV namespace `COLLAB_SNAPSHOTS`~~ *(skipped — revisit in Phase 8)*
 - [x] Create staging environment (Cloudflare Pages preview deployments, separate D1 preview)
 - [x] Write initial `src/ai-context.md`
 
@@ -64,7 +61,7 @@
 - [x] Sticky / highlighter via Excalidraw tools (no kernel extensions)
 - [x] Mode chooser (Whiteboard / Slideshow) on `/tool/micro-prep`
 - [x] Slideshow: 16:9 letterboxed stage + right slides panel + multi-slide scene
-- Note: no Yjs / live collab until Phase 8
+
 
 ## Phase 8 – Live Collaboration
 - Deploy Y‑WebSocket server + `collab/join` + `collab/save` (deferred from Phase 0)
