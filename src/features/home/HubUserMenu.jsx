@@ -57,9 +57,6 @@ export function HubUserMenu() {
             )}
           </button>
         </div>
-        <span className="pointer-events-none absolute left-full top-2 ml-2.5 whitespace-nowrap text-[0.78rem] font-light tracking-wide text-white/70">
-          {name}
-        </span>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-4">

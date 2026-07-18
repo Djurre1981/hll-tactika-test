@@ -61,6 +61,7 @@ export class CollabProvider {
 
     this.doc.on("update", this._updateHandler);
     this.awareness.on("update", this._awarenessHandler);
+    this._heartbeat = null;
 
     this.onStatus("connecting");
     this.ws = new WebSocket(url);
@@ -75,21 +76,10 @@ export class CollabProvider {
       this.ws.send(encoding.toUint8Array(encoder));
 
       // Re-announce local awareness now that the socket is open
-      if (awarenessState) {
-        this.awareness.setLocalState({
-          ...(this.awareness.getLocalState() || {}),
-          ...awarenessState,
-        });
-      }
-      const encoder2 = encoding.createEncoder();
-      encoding.writeVarUint(encoder2, messageAwareness);
-      encoding.writeVarUint8Array(
-        encoder2,
-        awarenessProtocol.encodeAwarenessUpdate(this.awareness, [
-          this.doc.clientID,
-        ])
-      );
-      this.ws.send(encoding.toUint8Array(encoder2));
+      this._announceAwareness();
+      // y-protocols drops peers after ~30s without updates — refresh often
+      if (this._heartbeat) clearInterval(this._heartbeat);
+      this._heartbeat = setInterval(() => this._announceAwareness(), 15_000);
     });
 
     this.ws.addEventListener("close", () => {
@@ -137,8 +127,19 @@ export class CollabProvider {
     this.awareness.setLocalState({ ...prev, [field]: value });
   }
 
+  _announceAwareness() {
+    if (this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const prev = this.awareness.getLocalState() || {};
+    // Touch local state so lastUpdated refreshes on peers/server
+    this.awareness.setLocalState({ ...prev, _t: Date.now() });
+  }
+
   destroy({ silent = false } = {}) {
     this.closed = true;
+    if (this._heartbeat) {
+      clearInterval(this._heartbeat);
+      this._heartbeat = null;
+    }
     this.doc.off("update", this._updateHandler);
     this.awareness.off("update", this._awarenessHandler);
     awarenessProtocol.removeAwarenessStates(

@@ -10,21 +10,29 @@ export function OnlineNow({
   selfName,
   selfAvatar,
 }) {
+  const selfLive =
+    status === "connected" ||
+    status === "reconnecting" ||
+    status === "connecting" ||
+    status === "joining";
+  const selfPending = status === "connecting" || status === "joining";
+
   const onlineBySteam = new Map();
-  if (status === "connected" || status === "connecting" || status === "joining") {
+  if (selfLive) {
     onlineBySteam.set(selfSteamId || "__self__", {
       steamId: selfSteamId || "__self__",
       name: selfName || "You",
       avatar: selfAvatar || null,
       self: true,
-      online: status === "connected",
-      pending: status !== "connected",
+      online: true,
+      pending: selfPending,
     });
   }
   for (const peer of peers) {
-    if (!peer?.steamId || peer.steamId === selfSteamId) continue;
-    onlineBySteam.set(peer.steamId, {
+    if (!peer?.steamId || String(peer.steamId) === String(selfSteamId || "")) continue;
+    onlineBySteam.set(String(peer.steamId), {
       ...peer,
+      steamId: String(peer.steamId),
       self: false,
       online: true,
       pending: false,
@@ -33,8 +41,8 @@ export function OnlineNow({
 
   const offline = [];
   for (const member of members) {
-    if (!member?.steamId || member.steamId === selfSteamId) continue;
-    if (onlineBySteam.has(member.steamId)) continue;
+    if (!member?.steamId || String(member.steamId) === String(selfSteamId || "")) continue;
+    if (onlineBySteam.has(String(member.steamId))) continue;
     const last = member.lastSignedInAt;
     if (!last || last === "Never" || last === "unknown" || last === "Unknown") continue;
     offline.push({
@@ -95,7 +103,7 @@ export function OnlineNow({
             <div
               className={`relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition duration-300 group-hover:-translate-y-0.5 group-hover:border-white/35 ${
                 person.online ? "" : "opacity-50"
-              } ${person.pending ? "animate-pulse" : ""}`}
+              }`}
             >
               {person.avatar ? (
                 <img
@@ -111,12 +119,10 @@ export function OnlineNow({
                 </span>
               )}
             </div>
-            {person.online || person.pending ? (
+            {person.online ? (
               <span
-                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0c] ${
-                  person.pending
-                    ? "bg-amber-400"
-                    : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)]"
+                className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0a0a0c] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.65)] ${
+                  person.pending ? "animate-pulse" : ""
                 }`}
                 aria-label={person.pending ? "Connecting" : "Online"}
               />

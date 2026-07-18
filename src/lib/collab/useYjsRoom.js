@@ -3,6 +3,8 @@ import * as Y from "yjs";
 import { apiClient } from "../api-client.js";
 import { CollabProvider } from "./provider.js";
 
+const KEEPALIVE_MS = 10 * 60 * 1000;
+
 /**
  * Join a collab room: JWT from CF → WS to Render.
  * Reconnects on drop; identity/awareness updates do not tear down the socket.
@@ -22,6 +24,22 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
   awarenessRef.current = awarenessState;
   userRef.current = user;
 
+  // Keep Render free-tier warm while any collab socket is in use
+  useEffect(() => {
+    if (!enabled || !user?.steamId) return undefined;
+    let cancelled = false;
+    const ping = () => {
+      if (cancelled) return;
+      void apiClient("/collab/keepalive").catch(() => {});
+    };
+    ping();
+    const id = window.setInterval(ping, KEEPALIVE_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [enabled, user?.steamId]);
+
   useEffect(() => {
     if (!enabled || !roomId || !user?.steamId) {
       setStatus("idle");
@@ -40,11 +58,15 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
       const states = [];
       provider.awareness.getStates().forEach((value, clientId) => {
         if (clientId === ydoc.clientID) return;
-        if (value && value.steamId) states.push({ clientId, ...value });
+        if (value && value.steamId) {
+          const { _t, ...rest } = value;
+          void _t;
+          states.push({ clientId, ...rest });
+        }
       });
       const bySteam = new Map();
       for (const p of states) {
-        bySteam.set(p.steamId, p);
+        bySteam.set(String(p.steamId), p);
       }
       setPeers(Array.from(bySteam.values()));
     };
@@ -87,12 +109,21 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
               return;
             }
             if (s === "connecting") {
-              setStatus("connecting");
+              // Stay green during provider rebuild if we were already live
+              setStatus((prev) =>
+                prev === "connected" || prev === "reconnecting"
+                  ? "reconnecting"
+                  : "connecting"
+              );
               return;
             }
             // Dropped — schedule reconnect instead of sticky red
             if (s === "disconnected" || s === "error") {
-              setStatus("connecting");
+              setStatus((prev) =>
+                prev === "connected" || prev === "reconnecting"
+                  ? "reconnecting"
+                  : "connecting"
+              );
               if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
               reconnectTimer.current = setTimeout(() => {
                 void connect();
@@ -135,7 +166,7 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
   // Push awareness field updates without reconnecting
   useEffect(() => {
     const provider = providerRef.current;
-    if (!provider || status !== "connected") return;
+    if (!provider || (status !== "connected" && status !== "reconnecting")) return;
     const u = user;
     provider.awareness.setLocalState({
       steamId: u?.steamId || "",
@@ -143,6 +174,7 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
       avatar: u?.avatar || null,
       role: u?.role || "",
       ...(awarenessState || {}),
+      _t: Date.now(),
     });
   }, [
     status,
@@ -160,6 +192,6 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
     awareness,
     peers,
     provider: providerRef,
-    connected: status === "connected",
+    connected: status === "connected" || status === "reconnecting",
   };
 }

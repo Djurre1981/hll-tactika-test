@@ -17,6 +17,15 @@ npm start
 Health: `GET http://localhost:4080/health`  
 WS: `ws://localhost:4080/collab?room=...&token=...`
 
+## Keep-alive (Render free tier)
+
+Free web services sleep after ~15 min idle. While the hub is open the client
+hits `GET /api/collab/keepalive` every 10 minutes (CF → Render `/health`).
+
+For always-on without a browser, point any uptime pinger at:
+`https://hll-tactika-test.onrender.com/health` every 10 minutes
+(or the repo GitHub Action `keep-render-awake`).
+
 ## Render dashboard (existing service)
 
 | Setting | Value |
