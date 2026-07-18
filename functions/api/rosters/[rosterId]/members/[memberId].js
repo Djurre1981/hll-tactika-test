@@ -1,6 +1,6 @@
-import { requireAdmin } from "../../../../../lib/auth-request.js";
-import { getRoster, removeMemberFromRoster } from "../../../../../lib/rosters-store.js";
-import { errorResponse, json } from "../../../../../lib/response.js";
+import { requireAdmin } from "../../../../lib/auth-request.js";
+import { getRoster, removeMemberFromRoster } from "../../../../lib/rosters-store.js";
+import { errorResponse, json } from "../../../../lib/response.js";
 
 export async function onRequestDelete(context) {
   const auth = await requireAdmin(context);
