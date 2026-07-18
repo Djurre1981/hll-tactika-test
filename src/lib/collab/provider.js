@@ -3,7 +3,6 @@ import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
-import { dbgPresence } from "./debugPresence.js";
 
 const messageSync = 0;
 const messageAwareness = 1;
@@ -44,25 +43,6 @@ export class CollabProvider {
       .replace(/^http/i, "ws")
       .replace(/\/+$/, "");
     const url = `${base}/collab?room=${encodeURIComponent(roomId)}&token=${encodeURIComponent(token)}`;
-    // #region agent log
-    let wsProtocol = "";
-    try {
-      wsProtocol = new URL(url).protocol;
-    } catch {
-      wsProtocol = "invalid";
-    }
-    dbgPresence("B", "provider.js:ctor", "ws open attempt", {
-      roomId,
-      wsProtocol,
-      baseHost: (() => {
-        try {
-          return new URL(base).host;
-        } catch {
-          return String(base).slice(0, 40);
-        }
-      })(),
-    });
-    // #endregion
 
     this._updateHandler = (update, origin) => {
       if (origin === this || this.closed || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -97,9 +77,6 @@ export class CollabProvider {
     this.ws.binaryType = "arraybuffer";
 
     this.ws.addEventListener("open", () => {
-      // #region agent log
-      dbgPresence("B", "provider.js:open", "ws open", { roomId });
-      // #endregion
       this.onStatus("connected");
       // sync step 1
       const encoder = encoding.createEncoder();
@@ -118,26 +95,11 @@ export class CollabProvider {
       }, 15_000);
     });
 
-    this.ws.addEventListener("close", (ev) => {
-      // #region agent log
-      dbgPresence("B", "provider.js:close", "ws close", {
-        roomId,
-        code: ev.code,
-        reason: String(ev.reason || "").slice(0, 80),
-        wasClean: ev.wasClean,
-        readyState: this.ws?.readyState,
-      });
-      // #endregion
+    this.ws.addEventListener("close", () => {
       this.onStatus("disconnected");
     });
 
     this.ws.addEventListener("error", () => {
-      // #region agent log
-      dbgPresence("B", "provider.js:error", "ws error", {
-        roomId,
-        readyState: this.ws?.readyState,
-      });
-      // #endregion
       // close always follows; avoid double reconnect scheduling from error+close
     });
 
@@ -214,17 +176,6 @@ export class CollabProvider {
 
   _handlePresence(body) {
     if (!body || typeof body !== "object") return;
-    // #region agent log
-    dbgPresence("C", "provider.js:_handlePresence", "presence msg", {
-      roomId: this.roomId,
-      type: body.type,
-      peerCount: Array.isArray(body.peers) ? body.peers.length : undefined,
-      peerTail: body.peer?.steamId
-        ? String(body.peer.steamId).slice(-4)
-        : undefined,
-      leaveTail: body.steamId ? String(body.steamId).slice(-4) : undefined,
-    });
-    // #endregion
     if (body.type === "roster" && Array.isArray(body.peers)) {
       this._rosterPeers.clear();
       for (const peer of body.peers) {

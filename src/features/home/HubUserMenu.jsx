@@ -2,12 +2,10 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../auth/hooks/useAuthQuery.js";
 import { canManageTeam } from "../../lib/roles.js";
-import { dbgPresence } from "../../lib/collab/debugPresence.js";
 import { userMenuPill } from "../../shared/glassUi.js";
 import { OnlineNow } from "./OnlineNow.jsx";
 import { usePresenceMembersQuery } from "./hooks/usePresenceMembersQuery.js";
 import { useSitePresence } from "./hooks/useSitePresence.js";
-import { useEffect } from "react";
 
 /**
  * Profile chip (top-right) + presence bubbles under the avatar,
@@ -20,25 +18,6 @@ export function HubUserMenu() {
   const presence = useSitePresence();
   const membersQuery = usePresenceMembersQuery(Boolean(user?.steamId));
   const members = membersQuery.data?.users || [];
-
-  // #region agent log
-  useEffect(() => {
-    dbgPresence("E", "HubUserMenu.jsx", "presence ui state", {
-      status: presence.status,
-      peerCount: presence.peers?.length || 0,
-      peerTails: (presence.peers || []).map((p) =>
-        String(p.steamId || "").slice(-4)
-      ),
-      selfTail: String(user?.steamId || "").slice(-4),
-      memberCount: members.length,
-    });
-  }, [
-    presence.status,
-    presence.peers,
-    user?.steamId,
-    members.length,
-  ]);
-  // #endregion
 
   return (
     <div className="pointer-events-none fixed bottom-6 right-6 top-6 z-40 flex w-10 flex-col items-center">
