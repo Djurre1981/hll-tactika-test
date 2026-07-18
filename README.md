@@ -2,7 +2,7 @@
 
 Developed by The Circle community and kept strictly exclusive to our competitive team. The platform is a tailored strategy and planning platform for Hell Let Loose designed to scale as our team needs grow. 
 
-Its first release features an interactive climb and MG guide. A second module, **Strats**, adds map-based tactical planning with multi-slide presentations and drawing tools similar to StratSketch.
+Its first release features an interactive climb and MG guide. A second module, **Strats**, adds map-based tactical planning with multi-slide presentations and drawing tools similar to StratSketch, plus Hell Let Loose–specific placeables (garrisons, outposts, vehicles, and more) sized like Maps Let Loose.
 
 Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
 
@@ -92,8 +92,9 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 | **Rectangle** | Box shape (filled or outline) |
 | **Circle** | Ellipse / circle |
 | **Text** | Click map, enter label; double-click selected text to edit |
-| **Icons** | Place Font Awesome tactical markers with optional label |
-| **Ping** | Small highlight dot |
+| **Icons** | Place StratSketch-style tactical markers with optional label |
+| **HLL Objects** | Place Hell Let Loose markers (garrisons, OPs, vehicles, classes, …) |
+| **Ping** | Animated highlight rings on the map |
 | **Eraser** | Click a shape to remove it |
 
 **Color** — preset swatches plus a custom color picker apply to the active tool or the current selection.
@@ -104,7 +105,9 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 
 **Text options**: font size, regular/bold/italic, left/center/right alignment.
 
-**Icon options**: pick from 20 tactical icons, optional text label.
+**Icon options**: pick from the expanded StratSketch-compatible palette (~75 icons, including letter/number circles). Multi-layer icons use knockout fills so letters and details stay readable in the toolbar and on the map. Icons place as a resizable bounding box (same handle model as rectangles).
+
+**HLL Objects** — game-specific placeables inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/), using the HLL logo as the tool icon. Grouped as Spawn, Vehicle, Class, Buildable, Placeable, Marker, and Ability. Marker sizes follow Maps Let Loose’s 1920×1920 tacmap scale. Spawn markers can show or hide their lockout/radius art via **Show spawn radius**. Assets live under `public/assets/hll-objects/`.
 
 ### Drawing modifiers (Shift / Alt)
 
@@ -120,7 +123,7 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 
 With **Select** active, click a shape to select it. Selected shapes show a dashed outline and **resize handles**:
 
-- **8 box handles** on rectangles, circles, freehand, text, icons, and pings
+- **8 box handles** on rectangles, circles, freehand, text, icons, HLL objects, and pings
 - **2 endpoint handles** on lines and arrows
 
 While selected, the sidebar shows that object’s properties (color, stroke, fill, etc.). Edits apply live and auto-save.
@@ -157,22 +160,22 @@ All routes require Steam auth. Create/update/delete require editor role.
 | `POST` | `/api/strats/{stratId}/duplicate` | Duplicate entire strat |
 | `POST` | `/api/strats/{stratId}/slides/{slideId}/duplicate` | Duplicate slide (optionally into another strat) |
 
-Slide payloads include a sanitized `objects[]` array. Supported object types: `pen`, `line`, `arrow`, `rect`, `ellipse`, `text`, `icon`, `ping`. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
+Slide payloads include a sanitized `objects[]` array. Supported object types: `pen`, `line`, `arrow`, `rect`, `ellipse`, `text`, `icon`, `hll`, `ping`. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
 
 ### Strats file layout (for developers)
 
+v2 Stratmaker (React) lives under `src/features/strats/` with drawing in `map-kernel/`:
+
 | Path | Role |
 |------|------|
-| `js/ui/strats.js` | Main UI: tabs, slides, save, catalog, keyboard nav |
-| `js/ui/strats-tools.js` | Tool toolbar, options panels, selection sync |
-| `js/strats/strat-drawing.js` | Map interaction, undo/redo, clipboard, selection |
-| `js/strats/strat-draw-render.js` | SVG rendering for objects |
-| `js/strats/strat-draw-modifiers.js` | Shift/Alt constraint helpers |
-| `js/strats/strat-selection-handles.js` | Resize handles and hit testing |
-| `js/strats/strat-object-schema.js` | Client object schema and hit tests |
-| `js/api/strats.js` | Frontend API client |
+| `src/features/strats/editor/` | Stratmaker page, tools panel, canvas bridge |
+| `map-kernel/` | Map viewer, scene graph, canvas renderer, interaction |
+| `map-kernel/icons/` | StratSketch icon pack, resolve helpers, HLL object catalog |
+| `public/assets/hll-objects/` | HLL placeable PNGs (Maps Let Loose–compatible sizes) |
 | `functions/api/strats*.js` | Cloudflare Pages Functions handlers |
-| `css/components/strats-panel.css` | Strats panel and draw-layer styles |
+| `functions/lib/strat-objects.js` | Server-side object sanitization / allowlists |
+
+Legacy v1 strats paths under `js/strats/` / `js/ui/strats*.js` apply only to the older climbing-guide shell if still present.
 
 ## Roadmap
 

@@ -16,6 +16,9 @@ function toolSettingsFromStore(state) {
     textAlign: state.textAlign,
     iconId: state.iconId,
     iconLabel: state.iconLabel,
+    hllId: state.hllId,
+    hllShowRadius: state.hllShowRadius,
+    hllRadiusCheck: state.hllRadiusCheck,
   };
 }
 
@@ -48,6 +51,9 @@ export function CanvasWrapper({
       onSelectionChange: (selected) => {
         useEditorStore.getState().setSelectedObjectId(selected?.id || null);
         selectionCb.current?.(selected);
+      },
+      onRequestTool: (tool) => {
+        useToolStore.getState().setTool(tool);
       },
     });
     kernel.mount(host);

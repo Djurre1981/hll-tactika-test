@@ -1,12 +1,15 @@
 import { useEditorStore } from "../../../lib/stores/useEditorStore.js";
+import { useToolStore } from "../../../lib/stores/useToolStore.js";
 import { cx, glassIconBtn, glassIconBtnActive } from "./editorUi.js";
 
-/** Map chrome: fit / grid / strongpoints (kept out of the legacy tool grid). */
+/** Map chrome: fit / grid / strongpoints / HLL spawn radius. */
 export function MapChrome({ onFitView }) {
   const showGrid = useEditorStore((s) => s.showGrid);
   const showStrongpoints = useEditorStore((s) => s.showStrongpoints);
   const setShowGrid = useEditorStore((s) => s.setShowGrid);
   const setShowStrongpoints = useEditorStore((s) => s.setShowStrongpoints);
+  const hllShowRadius = useToolStore((s) => s.hllShowRadius);
+  const patch = useToolStore((s) => s.patch);
 
   return (
     <div
@@ -34,6 +37,15 @@ export function MapChrome({ onFitView }) {
         onClick={() => setShowStrongpoints(!showStrongpoints)}
       >
         <i className="fa-solid fa-globe text-sm" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        title="Show spawn radius"
+        aria-pressed={hllShowRadius}
+        className={cx(glassIconBtn, hllShowRadius && glassIconBtnActive)}
+        onClick={() => patch({ hllShowRadius: !hllShowRadius })}
+      >
+        <i className="fa-solid fa-circle-dot text-sm" aria-hidden="true" />
       </button>
     </div>
   );
