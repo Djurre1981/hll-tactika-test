@@ -33,7 +33,7 @@ export async function onRequestGet(context) {
       protocol = "invalid";
     }
 
-    const httpBase = wsBase.replace(/^ws/i, "http");
+    const httpBase = wsBase.replace(/^ws:/i, "http:").replace(/^wss:/i, "https:");
     const health = await fetch(`${httpBase}/health`, {
       method: "GET",
       cf: { cacheTtl: 0 },
@@ -41,7 +41,7 @@ export async function onRequestGet(context) {
     const healthText = (await health.text()).slice(0, 32);
 
     // Outbound WebSocket probe (Workers fetch upgrade)
-    const wsUrl = `${httpBase.replace(/^http/i, "https")}/collab?room=${encodeURIComponent(roomId)}&token=${encodeURIComponent(token)}`;
+    const wsUrl = `${httpBase}/collab?room=${encodeURIComponent(roomId)}&token=${encodeURIComponent(token)}`;
     let upgradeStatus = null;
     let upgradeError = null;
     try {
