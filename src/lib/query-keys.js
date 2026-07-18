@@ -12,6 +12,11 @@ export const queryKeys = {
   roster: {
     all: ["roster"],
   },
+  rosters: {
+    root: ["rosters"],
+    all: ["rosters", "list"],
+    members: (rosterId) => ["rosters", rosterId, "members"],
+  },
   folders: {
     all: ["folders"],
   },

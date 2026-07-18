@@ -1,4 +1,5 @@
 const NAV_ITEMS = [
+  { id: "overview", label: "Overview", icon: "overview" },
   { id: "roster", label: "Roster", icon: "people" },
   { id: "folders", label: "Folders", icon: "folders" },
   { id: "analytics", label: "Analytics", icon: "chart", placeholder: true },
@@ -10,6 +11,18 @@ export const MANAGEMENT_SECTIONS = NAV_ITEMS.filter((item) => !item.placeholder)
 
 function NavIcon({ name }) {
   const svgClass = "h-[1.1rem] w-[1.1rem]";
+
+  if (name === "overview") {
+    return (
+      <svg className={svgClass} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+        <rect x="13" y="4" width="7" height="4" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+        <rect x="13" y="10" width="7" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+        <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    );
+  }
+
   if (name === "people") {
     return (
       <svg className={svgClass} viewBox="0 0 24 24" fill="none" aria-hidden="true">

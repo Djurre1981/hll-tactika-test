@@ -3,11 +3,12 @@ import { useLocation } from "react-router-dom";
 import { useHub } from "../home/HubContext.jsx";
 import { ManagementNav, MANAGEMENT_SECTIONS } from "./ManagementNav.jsx";
 import { FoldersSection } from "./sections/FoldersSection.jsx";
+import { OverviewSection } from "./sections/OverviewSection.jsx";
 import { RosterSection } from "./sections/RosterSection.jsx";
 
 function sectionFromHash(hash) {
   const id = String(hash || "").replace(/^#/, "");
-  return MANAGEMENT_SECTIONS.some((section) => section.id === id) ? id : "roster";
+  return MANAGEMENT_SECTIONS.some((section) => section.id === id) ? id : "overview";
 }
 
 export function ManagementPage() {
@@ -49,6 +50,9 @@ export function ManagementPage() {
           className="absolute inset-0 transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-md:relative max-md:inset-auto"
           style={{ transform: `translateY(-${index * 100}%)` }}
         >
+          <div className="h-full overflow-auto px-1 pb-2 pt-1.5 box-border">
+            <OverviewSection />
+          </div>
           <div className="h-full overflow-auto px-1 pb-2 pt-1.5 box-border">
             <RosterSection />
           </div>
