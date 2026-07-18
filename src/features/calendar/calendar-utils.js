@@ -1,10 +1,8 @@
+import { canEditEvents } from "../../lib/roles.js";
+
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export const EDITOR_ROLES = ["editor", "assist", "admin", "owner"];
-
-export function canEditEvents(role) {
-  return EDITOR_ROLES.includes(role);
-}
+export { canEditEvents };
 
 export function startOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);

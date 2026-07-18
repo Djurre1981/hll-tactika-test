@@ -1,13 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../auth/hooks/useAuthQuery.js";
-
-function canManageTeam(role) {
-  return role === "admin" || role === "owner";
-}
-
-const menuItemClass =
-  "inline-flex min-h-10 w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.07] px-3.5 py-1.5 text-[0.72rem] font-light uppercase tracking-[0.1em] text-white/85 shadow-glass backdrop-blur-xl transition hover:bg-white/15 hover:text-white";
+import { canManageTeam } from "../../lib/roles.js";
+import { userMenuPill } from "../../shared/glassUi.js";
 
 export function HubUserMenu() {
   const user = useAuth();
@@ -19,13 +14,13 @@ export function HubUserMenu() {
       <div className="group relative flex items-center">
         <div className="invisible pointer-events-none absolute right-full top-0 flex w-max flex-col items-stretch gap-1.5 pr-2.5 transition-[visibility] group-hover:visible group-hover:pointer-events-auto group-focus-within:visible group-focus-within:pointer-events-auto">
           {canManageTeam(user.role) ? (
-            <Link className={menuItemClass} to="/team" role="menuitem">
+            <Link className={userMenuPill} to="/team" role="menuitem">
               Admin Panel
             </Link>
           ) : null}
           <button
             type="button"
-            className={menuItemClass}
+            className={userMenuPill}
             role="menuitem"
             onClick={() => logout.mutate()}
             disabled={logout.isPending}

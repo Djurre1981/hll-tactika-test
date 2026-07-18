@@ -1,5 +1,4 @@
 import { requireAdmin } from "../../lib/auth-request.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import {
   deleteRosterMember,
   updateRosterMember,
@@ -11,23 +10,14 @@ function memberIdFromContext(context) {
   return String(context.params?.memberId || "").trim();
 }
 
-async function requireRosterAdmin(context, endpoint) {
+async function requireRosterAdmin(context) {
   const auth = await requireAdmin(context);
   if (auth.error) return auth;
-
-  const access = await guardAccess(context, {
-    bucket: "roster",
-    endpoint,
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) return { error: access.error };
-
   return auth;
 }
 
 export async function onRequestPatch(context) {
-  const auth = await requireRosterAdmin(context, "roster.update");
+  const auth = await requireRosterAdmin(context);
   if (auth.error) return auth.error;
 
   const memberId = memberIdFromContext(context);
@@ -54,7 +44,7 @@ export async function onRequestPatch(context) {
 }
 
 export async function onRequestDelete(context) {
-  const auth = await requireRosterAdmin(context, "roster.delete");
+  const auth = await requireRosterAdmin(context);
   if (auth.error) return auth.error;
 
   const memberId = memberIdFromContext(context);

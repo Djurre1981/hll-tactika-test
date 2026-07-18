@@ -1,5 +1,4 @@
 import { isAppImageId } from "../../lib/app-media.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import { requireAuth } from "../../lib/auth-request.js";
 import { getR2ImageObject } from "../../lib/r2-media.js";
 import { errorResponse } from "../../lib/response.js";
@@ -11,15 +10,6 @@ export async function onRequestGet(context) {
   }
 
   // Images double as pin thumbnails — no bucket (rate limiting removed).
-  const access = await guardAccess(context, {
-    endpoint: "media.image",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return access.error;
-  }
-
   const imageId = String(context.params.imageId || "").trim();
   if (!isAppImageId(imageId)) {
     return errorResponse("Invalid image id", 400);

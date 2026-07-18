@@ -1,7 +1,5 @@
-import { guardAccess } from "../lib/access-guard.js";
-import { requireAuth } from "../lib/auth-request.js";
+import { requireAuth, requireEditor, readJsonBody } from "../lib/auth-request.js";
 import { listEvents, createEvent } from "../lib/events-store.js";
-import { canEnterEditorMode } from "../lib/pin-permissions.js";
 import { errorResponse, json } from "../lib/response.js";
 
 const EVENT_TYPES = ["scrim", "comp", "practice", "other"];
@@ -82,16 +80,6 @@ export async function onRequestGet(context) {
     return auth.error;
   }
 
-  const access = await guardAccess(context, {
-    bucket: "events",
-    endpoint: "events.list",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return access.error;
-  }
-
   const range = monthRange(new URL(context.request.url).searchParams);
   if (range.error) {
     return errorResponse(range.error, 400);
@@ -107,33 +95,17 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  const auth = await requireAuth(context);
+  const auth = await requireEditor(context);
   if (auth.error) {
     return auth.error;
   }
 
-  if (!canEnterEditorMode(auth.role)) {
-    return errorResponse("Editor access required", 403);
+  const parsed = await readJsonBody(context.request);
+  if (parsed.error) {
+    return parsed.error;
   }
 
-  const access = await guardAccess(context, {
-    bucket: "events",
-    endpoint: "events.create",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return access.error;
-  }
-
-  let body;
-  try {
-    body = await context.request.json();
-  } catch {
-    return errorResponse("Invalid JSON body", 400);
-  }
-
-  const sanitized = sanitizeEventBody(body || {});
+  const sanitized = sanitizeEventBody(parsed.body || {});
   if (sanitized.error) {
     return errorResponse(sanitized.error, 400);
   }

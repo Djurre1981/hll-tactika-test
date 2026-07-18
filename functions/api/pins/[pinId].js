@@ -3,7 +3,6 @@ import { mirrorPinMedia } from "../../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../../lib/media-urls.js";
 import { isValidMapId } from "../../lib/pin-fields.js";
 import { canEnterEditorMode, canModifyPin } from "../../lib/pin-permissions.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import { applyPinUpdates } from "../../lib/pin-mutate.js";
 import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -32,17 +31,6 @@ export async function onRequestPut(context) {
   }
   if (!isValidMapId(mapId)) {
     return errorResponse("Invalid mapId", 400);
-  }
-
-  const access = await guardAccess(context, {
-    endpoint: "pins.update",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    pinId,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const data = await loadPinsData(context.env);
@@ -99,17 +87,6 @@ export async function onRequestDelete(context) {
   }
   if (!isValidMapId(mapId)) {
     return errorResponse("Invalid mapId", 400);
-  }
-
-  const access = await guardAccess(context, {
-    endpoint: "pins.delete",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    pinId,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const data = await loadPinsData(context.env);

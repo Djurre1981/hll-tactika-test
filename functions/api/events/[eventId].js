@@ -1,7 +1,5 @@
-import { guardAccess } from "../../lib/access-guard.js";
-import { requireAuth } from "../../lib/auth-request.js";
+import { requireEditor, readJsonBody } from "../../lib/auth-request.js";
 import { deleteEvent, updateEvent } from "../../lib/events-store.js";
-import { canEnterEditorMode } from "../../lib/pin-permissions.js";
 import { errorResponse, json } from "../../lib/response.js";
 import { sanitizeEventBody } from "../events.js";
 
@@ -9,31 +7,8 @@ function eventIdFromContext(context) {
   return String(context.params?.eventId || "").trim();
 }
 
-async function requireEditor(context, endpoint) {
-  const auth = await requireAuth(context);
-  if (auth.error) {
-    return auth;
-  }
-
-  if (!canEnterEditorMode(auth.role)) {
-    return { error: errorResponse("Editor access required", 403) };
-  }
-
-  const access = await guardAccess(context, {
-    bucket: "events",
-    endpoint,
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return { error: access.error };
-  }
-
-  return auth;
-}
-
 export async function onRequestPatch(context) {
-  const auth = await requireEditor(context, "events.update");
+  const auth = await requireEditor(context);
   if (auth.error) {
     return auth.error;
   }
@@ -43,14 +18,12 @@ export async function onRequestPatch(context) {
     return errorResponse("Missing event id", 400);
   }
 
-  let body;
-  try {
-    body = await context.request.json();
-  } catch {
-    return errorResponse("Invalid JSON body", 400);
+  const parsed = await readJsonBody(context.request);
+  if (parsed.error) {
+    return parsed.error;
   }
 
-  const sanitized = sanitizeEventBody(body || {}, { partial: true });
+  const sanitized = sanitizeEventBody(parsed.body || {}, { partial: true });
   if (sanitized.error) {
     return errorResponse(sanitized.error, 400);
   }
@@ -68,7 +41,7 @@ export async function onRequestPatch(context) {
 }
 
 export async function onRequestDelete(context) {
-  const auth = await requireEditor(context, "events.delete");
+  const auth = await requireEditor(context);
   if (auth.error) {
     return auth.error;
   }

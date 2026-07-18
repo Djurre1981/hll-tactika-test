@@ -1,4 +1,3 @@
-import { guardAccess } from "../../../lib/access-guard.js";
 import { requireAuth } from "../../../lib/auth-request.js";
 import { createDetailToken } from "../../../lib/pin-detail-token.js";
 import { findPin, loadPinsData } from "../../../lib/pins-store.js";
@@ -21,18 +20,6 @@ export async function onRequestPost(context) {
   const mapId = String(body?.mapId || "").trim();
   if (!mapId) {
     return errorResponse("mapId is required in request body", 400);
-  }
-
-  const access = await guardAccess(context, {
-    bucket: "token",
-    endpoint: "pins.token",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    pinId,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const data = await loadPinsData(context.env);

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { ToolBtn } from "../../shared/toolChrome.jsx";
 import { applyDrawSettings, applyToolAndSettings } from "./applyDrawSettings.js";
 import { ToolSettings } from "./ToolSettings.jsx";
 import {
@@ -14,24 +15,7 @@ import {
   panelGlassFill,
   panelShell,
   sectionTitle,
-  toolBtn,
-  toolBtnActive,
 } from "./whiteboardUi.js";
-
-function ToolBtn({ active, disabled, title, icon, onClick }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      aria-pressed={active}
-      onClick={onClick}
-      className={cx(toolBtn, active && toolBtnActive)}
-    >
-      <i className={icon} aria-hidden="true" />
-    </button>
-  );
-}
 
 function dispatchEditKey(key, { shift = false } = {}) {
   window.dispatchEvent(

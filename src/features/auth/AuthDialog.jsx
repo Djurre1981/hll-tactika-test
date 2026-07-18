@@ -5,7 +5,7 @@ const DEFAULT_MESSAGE =
   "Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.";
 
 const STEAM_ICON = (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="block h-full w-full">
     <path d="M12 0C5.37 0 0 5.37 0 12c0 2.64.85 5.08 2.29 7.07L.1 24l5.08-1.33A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12S18.63 0 12 0zm6.49 7.38l-1.81 5.25-5.31-.09-4.12 3.81-.64-3.88 4.43-3.52 6-3.07z" />
   </svg>
 );
@@ -77,16 +77,26 @@ export function AuthDialog({
 
   return (
     <dialog ref={dialogRef} className="auth-gate" aria-labelledby="auth-gate-title">
-      <div className="auth-gate__card">
-        <button type="button" className="auth-gate__close" onClick={onClose} aria-label="Close">
+      <div className="relative px-[2.9rem] pb-[2.75rem] pt-[3.15rem] text-center">
+        <button
+          type="button"
+          className="absolute right-[0.9rem] top-[0.85rem] h-8 w-8 cursor-pointer rounded-full border-0 bg-transparent text-[1.35rem] font-light leading-none text-white/45 transition hover:bg-white/[0.08] hover:text-white"
+          onClick={onClose}
+          aria-label="Close"
+        >
           &times;
         </button>
-        <h2 id="auth-gate-title">{title}</h2>
-        <p className="auth-gate__message">{message}</p>
+        <h2
+          id="auth-gate-title"
+          className="mb-[1.2rem] font-sans text-[1.7rem] font-black uppercase tracking-[0.06em] text-[#f2f2f2]"
+        >
+          {title}
+        </h2>
+        <p className="mb-8 font-sans text-[1.05rem] font-normal leading-[1.45] text-white/72">{message}</p>
         {showLogin ? (
           <a ref={steamBtnRef} href="/api/auth/steam" className="btn--steam">
-            <span className="btn--steam__icon">{STEAM_ICON}</span>
-            <span className="btn--steam__label">Sign in with Steam</span>
+            <span className="relative z-[1] inline-flex h-5 w-5 shrink-0">{STEAM_ICON}</span>
+            <span className="relative z-[1]">Sign in with Steam</span>
           </a>
         ) : null}
       </div>

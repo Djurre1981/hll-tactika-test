@@ -1,11 +1,8 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../../auth/hooks/useAuthQuery.js";
+import { canManageTeam } from "../../../lib/roles.js";
 import { userMenuPill } from "./editorUi.js";
-
-function canManageTeam(role) {
-  return role === "admin" || role === "owner";
-}
 
 /** Same chrome as home HubUserMenu — avatar + glass pill menu. */
 export function EditorUserCluster() {

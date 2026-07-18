@@ -10,10 +10,7 @@ import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
 import { HubLayout } from "../features/home/HubLayout.jsx";
 import { HomePage } from "../features/home/HomePage.jsx";
-
-function canViewTeam(role) {
-  return role === "admin" || role === "owner";
-}
+import { canViewTeam } from "../lib/roles.js";
 
 /** Full-bleed shell for map editor / whiteboard. */
 function EditorShell() {

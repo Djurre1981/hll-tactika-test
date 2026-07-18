@@ -19,7 +19,7 @@
 - [x] Define all routes, scaffold pages
 - [x] Build shared UI primitives
 - [x] Alias map-kernel, enforce no direct React imports
-- Note: `home/` is deprecated in favor of the React SPA at `/`
+- Note: Climbing Guide stays under `climbing-guide-v1/`; hub lives at `src/features/home/`
 
 ## Phase 2 – Auth & Team
 - [x] Move auth to D1

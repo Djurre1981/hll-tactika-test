@@ -67,7 +67,7 @@ root
 - API base URL: `/api/`.
 
 ### State Management
-- **Server state → TanStack Query.** **UI state → Zustand** under `src/lib/stores/`.
+- **Server state → TanStack Query.** **UI state → Zustand** under `src/lib/stores/` (e.g. `useToolStore`, `useEditorStore`).
 
 ### Styling
 - Use Tailwind utility classes for layout/spacing/color.

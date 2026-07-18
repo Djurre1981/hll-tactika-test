@@ -1,5 +1,4 @@
 import { requireAdmin } from "../../lib/auth-request.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import { deleteFolder, getFolder, updateFolder } from "../../lib/folders-store.js";
 import { clearFolderFromStrats } from "../../lib/strats-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -9,23 +8,14 @@ function folderIdFromContext(context) {
   return String(context.params?.folderId || "").trim();
 }
 
-async function requireFolderAdmin(context, endpoint) {
+async function requireFolderAdmin(context) {
   const auth = await requireAdmin(context);
   if (auth.error) return auth;
-
-  const access = await guardAccess(context, {
-    bucket: "folders",
-    endpoint,
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) return { error: access.error };
-
   return auth;
 }
 
 export async function onRequestPatch(context) {
-  const auth = await requireFolderAdmin(context, "folders.update");
+  const auth = await requireFolderAdmin(context);
   if (auth.error) return auth.error;
 
   const folderId = folderIdFromContext(context);
@@ -60,7 +50,7 @@ export async function onRequestPatch(context) {
 }
 
 export async function onRequestDelete(context) {
-  const auth = await requireFolderAdmin(context, "folders.delete");
+  const auth = await requireFolderAdmin(context);
   if (auth.error) return auth.error;
 
   const folderId = folderIdFromContext(context);

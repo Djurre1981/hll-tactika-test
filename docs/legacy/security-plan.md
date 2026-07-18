@@ -50,7 +50,7 @@ Search: title / tag / position code only (no description search).
 | In-memory / KV rate limits (`RATE_LIMIT_*`, `rate-limit.js`) | **Removed** — `guardAccess` is a no-op |
 | Browse-time thumbnail auto-persist to KV | **Disabled** on the client; thumbnails persist on editor save |
 
-Legacy modules/config knobs may still exist (`audit-log.js`, `AUDIT_*`, `ALERT_DETAIL_*` in [`security-config.js`](../functions/lib/security-config.js)) but are **not driving browse behaviour**. Prefer leaving unused env vars unset.
+Legacy modules/config knobs for audit/rate-limit were removed in the pre–Phase 8 cleanup (`access-guard.js`, `audit-log.js`). Prefer leaving unused env vars unset.
 
 ---
 
@@ -133,7 +133,7 @@ Do not document unused alert-threshold envs as active behaviour.
 
 | Area | Path |
 |------|------|
-| Guard (no-op; legacy call sites) | [`functions/lib/access-guard.js`](../functions/lib/access-guard.js) |
+| Guard (removed) | Was no-op `access-guard.js` — deleted in pre–Phase 8 cleanup |
 | Config | [`functions/lib/security-config.js`](../functions/lib/security-config.js) |
 | Tokens | [`functions/lib/pin-detail-token.js`](../functions/lib/pin-detail-token.js) |
 | Discord probe helpers | [`functions/lib/alert-notify.js`](../functions/lib/alert-notify.js) |

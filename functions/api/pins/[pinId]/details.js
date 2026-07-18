@@ -1,4 +1,3 @@
-import { guardAccess } from "../../../lib/access-guard.js";
 import { requireAuth } from "../../../lib/auth-request.js";
 import { enrichPin } from "../../../lib/pin-creators.js";
 import { toPinDetail } from "../../../lib/pin-fields.js";
@@ -22,18 +21,6 @@ export async function onRequestGet(context) {
   }
   if (!token) {
     return errorResponse("token query parameter is required", 400);
-  }
-
-  const access = await guardAccess(context, {
-    bucket: "detail",
-    endpoint: "pins.detail",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    pinId,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const verification = await verifyDetailToken(context.env, token, {

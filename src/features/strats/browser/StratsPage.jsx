@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthGate.jsx";
+import { canEditStrats } from "../../../lib/roles.js";
 import { Spinner } from "../../../shared/Spinner.jsx";
 import { FolderTree } from "./FolderTree.jsx";
 import { StratList } from "./StratList.jsx";
@@ -8,10 +9,6 @@ import {
   useMoveStratMutation,
   useStratsMetaQuery,
 } from "./hooks/useStratsBrowserQuery.js";
-
-function canEditStrats(role) {
-  return role === "editor" || role === "assist" || role === "admin" || role === "owner";
-}
 
 export function StratsPage({ hub = false }) {
   const user = useAuth();

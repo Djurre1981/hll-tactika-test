@@ -1,4 +1,5 @@
 import { getUserRole, isStaffRole } from "./roles.js";
+import { canEnterEditorMode } from "./pin-permissions.js";
 import { errorResponse } from "./response.js";
 import { verifySession } from "./session.js";
 
@@ -40,4 +41,25 @@ export async function requireOwner(context) {
   }
 
   return auth;
+}
+
+export async function requireEditor(context) {
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth;
+  }
+
+  if (!canEnterEditorMode(auth.role)) {
+    return { error: errorResponse("Editor access required", 403) };
+  }
+
+  return auth;
+}
+
+export async function readJsonBody(request) {
+  try {
+    return { body: await request.json() };
+  } catch {
+    return { error: errorResponse("Invalid JSON body", 400) };
+  }
 }

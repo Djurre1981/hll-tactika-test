@@ -25,9 +25,6 @@ export function getEnvAdminSteamIds(env) {
   return parseSteamIds(env.ALLOWED_STEAM_IDS);
 }
 
-/** @deprecated Use getEnvAdminSteamIds */
-export const getAdminSteamIds = getEnvAdminSteamIds;
-
 export function getEnvAssistSteamIds(env) {
   return parseSteamIds(env.ASSIST_STEAM_IDS);
 }
@@ -43,14 +40,6 @@ export function getEnvViewerSteamIds(env) {
   }
   return parseSteamIds(env.USER_STEAM_IDS);
 }
-
-/** @deprecated Use getEnvViewerSteamIds */
-export function getEnvUserSteamIds(env) {
-  return getEnvViewerSteamIds(env);
-}
-
-/** @deprecated Use getEnvViewerSteamIds */
-export const getUserSteamIds = getEnvViewerSteamIds;
 
 function normalizeStoredRole(role) {
   if (role === "user") {

@@ -1,5 +1,4 @@
 import { requireAuth } from "../../lib/auth-request.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import {
   getUserPreferences,
   normalizeViewerPreferences,
@@ -12,16 +11,6 @@ export async function onRequestPatch(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
     return auth.error;
-  }
-
-  const access = await guardAccess(context, {
-    bucket: "prefs",
-    endpoint: "auth.preferences",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   let body;

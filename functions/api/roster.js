@@ -1,5 +1,4 @@
 import { requireAdmin } from "../lib/auth-request.js";
-import { guardAccess } from "../lib/access-guard.js";
 import { createRosterMember, listRosterMembers } from "../lib/roster-store.js";
 import { isValidSteamId64 } from "../lib/users-store.js";
 import { errorResponse, json } from "../lib/response.js";
@@ -71,14 +70,6 @@ export async function onRequestGet(context) {
   const auth = await requireAdmin(context);
   if (auth.error) return auth.error;
 
-  const access = await guardAccess(context, {
-    bucket: "roster",
-    endpoint: "roster.list",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-  });
-  if (access.error) return access.error;
-
   try {
     const members = await listRosterMembers(context.env);
     return json({ members });
@@ -91,15 +82,6 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const auth = await requireAdmin(context);
   if (auth.error) return auth.error;
-
-  const access = await guardAccess(context, {
-    bucket: "roster",
-    endpoint: "roster.create",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    statusOnSuccess: 201,
-  });
-  if (access.error) return access.error;
 
   let body;
   try {
