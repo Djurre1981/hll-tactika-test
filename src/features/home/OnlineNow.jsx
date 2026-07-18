@@ -90,7 +90,9 @@ export function OnlineNow({
             className="group relative"
             title={
               person.self
-                ? `${person.name} (you)${person.pending ? " · connecting…" : ""}`
+                ? `${person.name} (you)${
+                    person.pending ? " · connecting (waking server…)" : ""
+                  }`
                 : person.online
                   ? `${person.name || person.steamId}${
                       person.context && person.context !== "hub"

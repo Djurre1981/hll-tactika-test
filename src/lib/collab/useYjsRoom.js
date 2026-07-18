@@ -21,7 +21,6 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
   const userRef = useRef(user);
   const reconnectTimer = useRef(null);
   const generationRef = useRef(0);
-  const connectLock = useRef(false);
   const rosterRef = useRef([]);
   const awarenessPeersRef = useRef([]);
 
@@ -110,19 +109,27 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
       };
     };
 
+    const stillCurrent = () =>
+      !cancelled && generation === generationRef.current;
+
     const connect = async () => {
-      if (cancelled || generation !== generationRef.current) return;
-      if (connectLock.current) return;
-      connectLock.current = true;
+      if (!stillCurrent()) return;
       try {
         setStatus((s) =>
           s === "connected" || s === "reconnecting" ? "reconnecting" : "joining"
         );
+        // Wake Render free tier before opening the WebSocket (cold start ~30–60s)
+        await Promise.race([
+          apiClient("/collab/keepalive").catch(() => null),
+          new Promise((resolve) => setTimeout(resolve, 45_000)),
+        ]);
+        if (!stillCurrent()) return;
+
         const join = await apiClient("/collab/join", {
           method: "POST",
           body: JSON.stringify({ roomId }),
         });
-        if (cancelled || generation !== generationRef.current) return;
+        if (!stillCurrent()) return;
         if (!join || typeof join !== "object" || !join.token || !join.wsUrl) {
           throw new Error("Invalid join response");
         }
@@ -136,12 +143,12 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
           token: join.token,
           awarenessState: local,
           onRoster: (rosterPeers) => {
-            if (cancelled || generation !== generationRef.current) return;
+            if (!stillCurrent()) return;
             rosterRef.current = Array.isArray(rosterPeers) ? rosterPeers : [];
             publishPeers();
           },
           onStatus: (s) => {
-            if (cancelled || generation !== generationRef.current) return;
+            if (!stillCurrent()) return;
             if (s === "connected") {
               setStatus("connected");
               return;
@@ -167,6 +174,10 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
             }
           },
         });
+        if (!stillCurrent()) {
+          provider.destroy({ silent: true });
+          return;
+        }
         providerRef.current = provider;
         setDoc(ydoc);
         setAwareness(provider.awareness);
@@ -174,14 +185,12 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         refreshAwarenessPeers(provider);
       } catch (err) {
         console.error("[collab] join failed:", err);
-        if (cancelled || generation !== generationRef.current) return;
+        if (!stillCurrent()) return;
         setStatus("connecting");
         if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
         reconnectTimer.current = setTimeout(() => {
           void connect();
         }, 2500);
-      } finally {
-        connectLock.current = false;
       }
     };
 
