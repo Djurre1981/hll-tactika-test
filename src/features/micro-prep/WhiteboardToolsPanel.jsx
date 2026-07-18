@@ -155,17 +155,16 @@ export function WhiteboardToolsPanel({
           <Link
             to="/home"
             aria-label="Back to dashboard"
-            className="mb-3 inline-flex items-center gap-2 text-[0.72rem] font-light uppercase tracking-[0.08em] text-white/55 transition hover:text-white"
+            className="mb-5 block w-fit max-w-[14rem] opacity-[0.92] transition hover:opacity-80"
           >
-            <i className="fa-solid fa-arrow-left" aria-hidden="true" />
-            Hub
+            <img
+              src="/assets/logos/tactika-full-logo.svg"
+              alt="Hell Let Loose Tactika"
+              className="h-12 w-auto max-w-full object-contain object-left"
+            />
           </Link>
-          <img
-            src="/assets/logos/tactika-full-logo.svg"
-            alt="Tactika"
-            className="mb-3 h-7 w-auto opacity-90"
-          />
-          <div className="flex items-center justify-between gap-2">
+          <div className={panelDivider} role="presentation" />
+          <div className="flex items-center justify-between gap-2 pt-3">
             <p className={sectionTitle}>Micro Prep</p>
             <button
               type="button"
