@@ -137,7 +137,7 @@ export class CollabProvider {
     this.awareness.setLocalState({ ...prev, [field]: value });
   }
 
-  destroy() {
+  destroy({ silent = false } = {}) {
     this.closed = true;
     this.doc.off("update", this._updateHandler);
     this.awareness.off("update", this._awarenessHandler);
@@ -146,6 +146,9 @@ export class CollabProvider {
       [this.doc.clientID],
       "local"
     );
+    if (silent) {
+      this.onStatus = () => {};
+    }
     try {
       this.ws?.close();
     } catch {

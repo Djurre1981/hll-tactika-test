@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { OnlineNow } from "./OnlineNow.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
-import { useSitePresence } from "./hooks/useSitePresence.js";
 import { useHub } from "./HubContext.jsx";
 
 function formatEventMeta(event) {
@@ -46,7 +44,6 @@ export function HomePage() {
   const navigate = useNavigate();
   const { upcoming } = useDashboardQuery();
   const { showToast } = useHub();
-  const presence = useSitePresence();
   const name = user.name || "Operator";
   const events = upcoming.data?.events || [];
   const canStrats = user.role && user.role !== "viewer";
@@ -90,14 +87,7 @@ export function HomePage() {
         ];
 
   return (
-    <div className="relative min-h-0 flex-1">
-      <OnlineNow
-        peers={presence.peers}
-        status={presence.status}
-        selfName={name}
-        selfAvatar={user.avatar}
-      />
-
+    <>
       <header className="flex flex-col gap-1">
         <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
           Welcome back, {name}
@@ -207,6 +197,6 @@ export function HomePage() {
           </div>
         </section>
       </div>
-    </div>
+    </>
   );
 }
