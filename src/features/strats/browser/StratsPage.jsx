@@ -54,7 +54,7 @@ export function StratsPage({ hub = false }) {
     deleteStrat.error?.message;
 
   const content = (
-    <section className={hub ? "flex h-full min-h-0 flex-col" : ""}>
+    <section className={hub ? "flex h-full min-h-0 flex-col overflow-hidden" : ""}>
       <header className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="m-0 text-[1.75rem] font-medium text-white">My Strats</h1>
@@ -79,13 +79,13 @@ export function StratsPage({ hub = false }) {
         </div>
       ) : (
         <div
-          className={`grid grid-cols-1 gap-5 md:grid-cols-[minmax(180px,240px)_1fr] ${
-            hub ? "min-h-0 flex-1 overflow-hidden" : ""
+          className={`grid grid-cols-1 gap-5 md:grid-cols-[minmax(180px,240px)_minmax(0,1fr)] ${
+            hub ? "min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden" : ""
           }`}
         >
           <aside
             className={`rounded-[18px] border border-white/10 bg-white/[0.04] p-3.5 ${
-              hub ? "min-h-0 overflow-auto" : ""
+              hub ? "min-h-0 overflow-y-auto" : ""
             }`}
           >
             <h2 className="mb-3 text-[0.72rem] font-normal uppercase tracking-[0.12em] text-white/40">
@@ -99,7 +99,7 @@ export function StratsPage({ hub = false }) {
               canDrop={canEdit}
             />
           </aside>
-          <div className={hub ? "min-h-0 overflow-auto pr-1" : ""}>
+          <div className={hub ? "min-h-0 overflow-y-auto overscroll-contain pr-1" : ""}>
             <StratList
               strats={strats}
               foldersById={foldersById}
@@ -116,7 +116,7 @@ export function StratsPage({ hub = false }) {
   );
 
   if (hub) {
-    return <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{content}</div>;
+    return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{content}</div>;
   }
 
   return content;
