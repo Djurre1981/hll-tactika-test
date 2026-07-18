@@ -8,16 +8,18 @@ function HubMain() {
 
   return (
     <div
-      className={`relative z-[1] flex w-[min(calc(1520px+5.5rem),98vw)] max-w-full items-center justify-center gap-4 ${
-        rail ? "h-[min(82vh,870px)] items-stretch" : ""
+      className={`relative z-[1] mx-auto flex w-[min(1520px,94vw)] max-w-full flex-col items-center gap-3 md:block ${
+        rail ? "h-[min(82vh,870px)]" : ""
       }`}
     >
       {rail ? (
-        <aside className="relative z-[2] flex shrink-0 items-center self-center">{rail}</aside>
+        <aside className="relative z-[2] shrink-0 md:absolute md:right-full md:top-1/2 md:mr-4 md:-translate-y-1/2">
+          {rail}
+        </aside>
       ) : null}
       <div
-        className={`glass-panel flex min-h-[min(82vh,870px)] w-[min(1520px,94vw)] flex-col gap-4 rounded-[2rem] border border-white/10 bg-[rgba(22,22,26,0.42)] px-7 py-6 shadow-glass animate-[hub-shell-enter_0.65s_cubic-bezier(0.22,1,0.36,1)_both] ${
-          rail ? "m-0 h-full min-h-0 min-w-0 flex-1" : "mx-auto"
+        className={`glass-panel flex min-h-[min(82vh,870px)] w-full flex-col gap-4 rounded-[2rem] border border-white/10 bg-[rgba(22,22,26,0.42)] px-7 py-6 shadow-glass animate-[hub-shell-enter_0.65s_cubic-bezier(0.22,1,0.36,1)_both] ${
+          rail ? "h-full min-h-0 min-w-0 flex-1 md:flex-none md:h-full" : ""
         }`}
       >
         <Outlet />
@@ -30,7 +32,7 @@ function HubMain() {
 export function HubLayout() {
   return (
     <div
-      className="fixed inset-0 z-10 flex items-center justify-center overflow-auto px-[2vw] pb-6 pt-[5.25rem]"
+      className="fixed inset-0 z-10 flex items-center justify-center overflow-auto px-[max(2vw,4.25rem)] pb-6 pt-[5.25rem]"
       aria-label="Hub"
     >
       <div className="hub-page-bg pointer-events-none fixed inset-0 -z-[1] overflow-hidden bg-[#0a0a0c]" aria-hidden="true" />

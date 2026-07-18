@@ -95,7 +95,7 @@ function NavIcon({ name }) {
 export function ManagementNav({ activeSection, onSelect, onPlaceholder }) {
   return (
     <nav
-      className="flex flex-row items-center justify-center gap-1.5 rounded-full border border-white/12 bg-[rgba(20,22,26,0.72)] px-1.5 py-1 shadow-glass backdrop-blur-[18px] backdrop-saturate-150 md:flex-col md:px-1.5 md:py-2"
+      className="flex flex-row items-center justify-center gap-1.5 rounded-full border border-white/10 bg-[rgba(20,22,26,0.72)] px-1.5 py-1 shadow-glass backdrop-blur-[18px] backdrop-saturate-150 md:flex-col md:px-1.5 md:py-2"
       aria-label="Management sections"
     >
       {NAV_ITEMS.map((item) => (

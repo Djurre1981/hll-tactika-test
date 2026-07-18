@@ -31,3 +31,15 @@ export function useMoveStratMutation() {
     },
   });
 }
+
+export function useDeleteStratMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => apiClient(`/strats/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
+      queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
+    },
+  });
+}

@@ -1,6 +1,14 @@
 import { Link } from "react-router-dom";
 
-export function StratList({ strats, foldersById, canDrag = false, filter = "" }) {
+export function StratList({
+  strats,
+  foldersById,
+  canDrag = false,
+  canDelete = false,
+  filter = "",
+  onDelete,
+  deletePending = false,
+}) {
   const needle = filter.trim().toLowerCase();
   const filtered = needle
     ? strats.filter((strat) => {
@@ -24,7 +32,7 @@ export function StratList({ strats, foldersById, canDrag = false, filter = "" })
         return (
           <li key={strat.id}>
             <div
-              className="flex cursor-grab items-center rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 active:cursor-grabbing"
+              className="flex cursor-grab items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3.5 active:cursor-grabbing"
               draggable={canDrag}
               onDragStart={(event) => {
                 if (!canDrag) return;
@@ -32,7 +40,7 @@ export function StratList({ strats, foldersById, canDrag = false, filter = "" })
                 event.dataTransfer.effectAllowed = "move";
               }}
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <Link
                   className="text-base text-white no-underline transition hover:text-accent"
                   to={`/strats/${strat.id}`}
@@ -46,6 +54,21 @@ export function StratList({ strats, foldersById, canDrag = false, filter = "" })
                   {strat.slideCount != null ? ` · ${strat.slideCount} slides` : ""}
                 </p>
               </div>
+              {canDelete ? (
+                <button
+                  type="button"
+                  className="shrink-0 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[0.75rem] tracking-wide text-white/55 transition hover:border-red-400/35 hover:bg-red-500/10 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={deletePending}
+                  aria-label={`Delete ${strat.title || "strat"}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onDelete?.(strat);
+                  }}
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
           </li>
         );

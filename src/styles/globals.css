@@ -228,7 +228,8 @@ body {
 }
 
 .hub-nav-thumb {
-  width: calc((100% - 0.4rem) / 4);
+  /* Match hub-nav p-0.5 (0.125rem × 2) so the last tab sits flush with the pill edge */
+  width: calc((100% - 0.25rem) / 4);
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 

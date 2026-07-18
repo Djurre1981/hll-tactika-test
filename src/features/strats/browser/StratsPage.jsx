@@ -5,6 +5,7 @@ import { Spinner } from "../../../shared/Spinner.jsx";
 import { FolderTree } from "./FolderTree.jsx";
 import { StratList } from "./StratList.jsx";
 import {
+  useDeleteStratMutation,
   useFoldersListQuery,
   useMoveStratMutation,
   useStratsMetaQuery,
@@ -18,6 +19,7 @@ export function StratsPage({ hub = false }) {
   const foldersQuery = useFoldersListQuery();
   const stratsQuery = useStratsMetaQuery();
   const moveStrat = useMoveStratMutation();
+  const deleteStrat = useDeleteStratMutation();
 
   const folders = foldersQuery.data?.folders || [];
   const foldersById = useMemo(
@@ -37,12 +39,23 @@ export function StratsPage({ hub = false }) {
     moveStrat.mutate({ id: stratId, folderId });
   }
 
+  function handleDeleteStrat(strat) {
+    if (!canEdit) return;
+    const label = strat.title || "Untitled Strat";
+    if (!window.confirm(`Delete “${label}”? This cannot be undone.`)) return;
+    deleteStrat.mutate(strat.id);
+  }
+
   const loading = foldersQuery.isLoading || stratsQuery.isLoading;
-  const error = foldersQuery.error?.message || stratsQuery.error?.message || moveStrat.error?.message;
+  const error =
+    foldersQuery.error?.message ||
+    stratsQuery.error?.message ||
+    moveStrat.error?.message ||
+    deleteStrat.error?.message;
 
   const content = (
-    <section>
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+    <section className={hub ? "flex h-full min-h-0 flex-col" : ""}>
+      <header className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="m-0 text-[1.75rem] font-medium text-white">My Strats</h1>
           <p className="mt-1.5 text-[0.9rem] text-white/50">
@@ -58,15 +71,23 @@ export function StratsPage({ hub = false }) {
         />
       </header>
 
-      {error ? <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
+      {error ? <p className="mb-3 shrink-0 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
 
       {loading ? (
         <div className="flex justify-center py-12">
           <Spinner />
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(180px,240px)_1fr]">
-          <aside className="rounded-[18px] border border-white/10 bg-white/[0.04] p-3.5">
+        <div
+          className={`grid grid-cols-1 gap-5 md:grid-cols-[minmax(180px,240px)_1fr] ${
+            hub ? "min-h-0 flex-1 overflow-hidden" : ""
+          }`}
+        >
+          <aside
+            className={`rounded-[18px] border border-white/10 bg-white/[0.04] p-3.5 ${
+              hub ? "min-h-0 overflow-auto" : ""
+            }`}
+          >
             <h2 className="mb-3 text-[0.72rem] font-normal uppercase tracking-[0.12em] text-white/40">
               Folders
             </h2>
@@ -78,12 +99,15 @@ export function StratsPage({ hub = false }) {
               canDrop={canEdit}
             />
           </aside>
-          <div>
+          <div className={hub ? "min-h-0 overflow-auto pr-1" : ""}>
             <StratList
               strats={strats}
               foldersById={foldersById}
               canDrag={canEdit}
+              canDelete={canEdit}
               filter={filter}
+              onDelete={handleDeleteStrat}
+              deletePending={deleteStrat.isPending}
             />
           </div>
         </div>
@@ -92,7 +116,7 @@ export function StratsPage({ hub = false }) {
   );
 
   if (hub) {
-    return <div className="min-h-0 flex-1 overflow-auto">{content}</div>;
+    return <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{content}</div>;
   }
 
   return content;
