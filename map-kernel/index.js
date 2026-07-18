@@ -281,7 +281,20 @@ export class MapKernel {
 
   loadSlide(objects) {
     this.scene.load(objects || []);
+    this.renderer?.setSelectedId(null);
     this.renderer?.requestDraw(this.scene.getObjects());
+  }
+
+  /**
+   * Collab/Yjs inbound sync — preserves selection; skips no-op replaces.
+   * @returns {boolean} whether the scene changed
+   */
+  applyRemoteObjects(objects) {
+    const changed = this.scene.syncRemote(objects || []);
+    if (!changed) return false;
+    this.renderer?.setSelectedId(this.scene.selectedId);
+    this.renderer?.requestDraw(this.scene.getObjects());
+    return true;
   }
 
   getObjects() {
@@ -294,11 +307,13 @@ export class MapKernel {
 
   undo() {
     this.scene.undo();
+    this.renderer?.setSelectedId(this.scene.selectedId);
     this.renderer?.requestDraw(this.scene.getObjects());
   }
 
   redo() {
     this.scene.redo();
+    this.renderer?.setSelectedId(this.scene.selectedId);
     this.renderer?.requestDraw(this.scene.getObjects());
   }
 

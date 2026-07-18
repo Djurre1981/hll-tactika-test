@@ -14,15 +14,35 @@ export class SceneGraph {
   }
 
   load(objects) {
-    const prevSelected = this.selectedId;
     this.objects = normalizeStratObjects(objects);
     this.undoStack = [];
     this.redoStack = [];
-    // Keep selection when the object still exists (collab reload / Yjs apply).
+    this.selectedId = null;
+    this.emitSelection();
+    this.emitChange({ reason: "load" });
+  }
+
+  /**
+   * Apply peer/collab objects without wiping undo or selection.
+   * Used by Yjs bridge — never call load() for sync echoes.
+   * @returns {boolean} true if objects changed
+   */
+  syncRemote(objects, { resetHistory = true } = {}) {
+    const next = normalizeStratObjects(objects);
+    if (JSON.stringify(next) === JSON.stringify(this.objects)) {
+      return false;
+    }
+    const prevSelected = this.selectedId;
+    this.objects = next;
+    if (resetHistory) {
+      this.undoStack = [];
+      this.redoStack = [];
+    }
     this.selectedId =
       prevSelected && this.objects.some((o) => o.id === prevSelected) ? prevSelected : null;
     this.emitSelection();
-    this.emitChange({ reason: "load" });
+    this.emitChange({ reason: "remote-sync" });
+    return true;
   }
 
   getObjects() {
