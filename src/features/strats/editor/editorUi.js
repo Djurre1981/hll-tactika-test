@@ -1,5 +1,8 @@
 /** Stratmaker-specific tokens + re-exports of shared glass chrome. */
 
+import { STRAT_ICON_OPTIONS } from "@map-kernel/icons/strat-icon-catalog.js";
+import { HLL_OBJECT_OPTIONS } from "@map-kernel/icons/hll-object-catalog.js";
+
 export {
   actionBtn,
   actionBtnWide,
@@ -75,28 +78,8 @@ export const COLOR_PRESETS = [
   "#111111",
 ];
 
-export const ICON_OPTIONS = [
-  { id: "check", icon: "fa-check" },
-  { id: "xmark", icon: "fa-xmark" },
-  { id: "circle-question", icon: "fa-circle-question" },
-  { id: "circle-info", icon: "fa-circle-info" },
-  { id: "triangle-exclamation", icon: "fa-triangle-exclamation" },
-  { id: "house", icon: "fa-house" },
-  { id: "ban", icon: "fa-ban" },
-  { id: "binoculars", icon: "fa-binoculars" },
-  { id: "bomb", icon: "fa-bomb" },
-  { id: "car-side", icon: "fa-car-side" },
-  { id: "truck-pickup", icon: "fa-truck-pickup" },
-  { id: "jet-fighter", icon: "fa-jet-fighter" },
-  { id: "crosshairs", icon: "fa-crosshairs" },
-  { id: "flag", icon: "fa-flag" },
-  { id: "gun", icon: "fa-gun" },
-  { id: "shield", icon: "fa-shield" },
-  { id: "skull-crossbones", icon: "fa-skull-crossbones" },
-  { id: "person-rifle", icon: "fa-person-rifle" },
-  { id: "map-pin", icon: "fa-map-pin" },
-  { id: "location-dot", icon: "fa-location-dot" },
-];
+export const ICON_OPTIONS = STRAT_ICON_OPTIONS;
+export const HLL_OPTIONS = HLL_OBJECT_OPTIONS;
 
 export const TOOL_ITEMS = [
   { id: "select", icon: "fa-solid fa-arrow-pointer", title: "Select" },
@@ -108,5 +91,6 @@ export const TOOL_ITEMS = [
   { id: "text", icon: "fa-solid fa-font", title: "Text" },
   { id: "arrow", icon: "fa-solid fa-arrow-right-long", title: "Arrow" },
   { id: "icons", icon: "fa-solid fa-icons", title: "Icons" },
+  { id: "hll", iconSrc: "/assets/logos/hll-mark.png", title: "HLL Objects" },
   { id: "ping", icon: "fa-solid fa-bullseye", title: "Ping" },
 ];

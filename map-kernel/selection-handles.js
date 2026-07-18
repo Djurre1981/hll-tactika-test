@@ -90,7 +90,7 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
     return scalePenPoints(originalPoints, penOriginalBox, box);
   }
 
-  if (object.type === "text" || object.type === "icon" || object.type === "ping") {
+  if (object.type === "text" || object.type === "ping") {
     return [clampPoint(cursor)];
   }
 
@@ -107,6 +107,8 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
   if (handleId === "e" || handleId === "w") {
     /* keep y */
   }
+  if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
+  if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
 
   return [
     clampPoint({ x: box.x1, y: box.y1 }),

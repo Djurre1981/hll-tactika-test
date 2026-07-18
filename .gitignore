@@ -1,4 +1,5 @@
 _maps_source/
+tmp-maps-let-loose/
 secrets
 .env
 .env.*

@@ -6,6 +6,7 @@ const STRAT_OBJECT_TYPES = [
   "ellipse",
   "text",
   "icon",
+  "hll",
   "ping",
 ];
 
@@ -18,21 +19,133 @@ const ICON_IDS = new Set([
   "circle-question",
   "circle-info",
   "triangle-exclamation",
+  "message-exclamation",
+  "message-dots",
   "house",
   "ban",
   "binoculars",
   "bomb",
+  "burst",
   "car-side",
   "truck-pickup",
   "jet-fighter",
+  "face-smile",
+  "face-frown",
   "crosshairs",
   "flag",
+  "flag-pennant",
   "gun",
+  "sword",
   "shield",
-  "skull-crossbones",
-  "person-rifle",
-  "map-pin",
+  "tombstone",
+  "tree",
+  "gem",
+  "coin",
+  "box-open",
   "location-dot",
+  "location-exclamation",
+  "location-question",
+  "map-pin",
+  "person",
+  "person-rifle",
+  "skull-crossbones",
+  "square",
+  "triangle",
+  "diamond",
+  "circle",
+  "circle-dashed",
+  "circle-a",
+  "circle-b",
+  "circle-c",
+  "circle-d",
+  "circle-e",
+  "circle-f",
+  "circle-g",
+  "circle-h",
+  "circle-i",
+  "circle-j",
+  "circle-k",
+  "circle-l",
+  "circle-m",
+  "circle-n",
+  "circle-o",
+  "circle-p",
+  "circle-q",
+  "circle-r",
+  "circle-s",
+  "circle-t",
+  "circle-u",
+  "circle-v",
+  "circle-w",
+  "circle-x",
+  "circle-y",
+  "circle-z",
+  "circle-1",
+  "circle-2",
+  "circle-3",
+  "circle-4",
+  "circle-5",
+  "circle-6",
+  "circle-7",
+  "circle-8",
+  "circle-9",
+]);
+
+const HLL_IDS = new Set([
+  "garrison",
+  "airhead",
+  "halftrack",
+  "outpost",
+  "recon-outpost",
+  "forward",
+  "tank-heavy",
+  "tank-medium",
+  "tank-light",
+  "tank-recon",
+  "jeep",
+  "truck-supply",
+  "truck-transport",
+  "class-commander",
+  "class-officer",
+  "class-rifleman",
+  "class-assault",
+  "class-auto-rifleman",
+  "class-medic",
+  "class-support",
+  "class-machine-gunner",
+  "class-anti-tank",
+  "class-engineer",
+  "class-spotter",
+  "class-sniper",
+  "at-gun",
+  "repair-station",
+  "node-batch",
+  "node-manpower",
+  "node-munition",
+  "node-fuel",
+  "supplies-50",
+  "supplies-50x2",
+  "supplies-100",
+  "supplies-150",
+  "supplies-150x2",
+  "box-ammo",
+  "box-explosive",
+  "box-bandage",
+  "mine-at",
+  "mine-ap",
+  "arty-effect",
+  "enemy-garrison",
+  "enemy-infantry",
+  "enemy-outpost",
+  "enemy-tank",
+  "enemy-vehicle",
+  "supply-drop",
+  "ammo-drop",
+  "airhead-drop",
+  "reinforce",
+  "strafing-run",
+  "bombing-run",
+  "katyusha-strike",
 ]);
 
 const COORD_MIN = -20;
@@ -84,6 +197,10 @@ function normalizeMeta(meta = {}, type) {
       normalized.ssIconId = Number(meta.ssIconId);
     }
   }
+  if (type === "hll") {
+    normalized.hllId = HLL_IDS.has(meta.hllId) ? meta.hllId : "garrison";
+    normalized.showRadius = meta.showRadius !== false;
+  }
   return normalized;
 }
 
@@ -94,19 +211,41 @@ export function normalizeStratObject(raw, index = 0) {
   const id = String(raw.id || "").trim();
   if (!type || !id) return null;
 
-  const points = (Array.isArray(raw.points) ? raw.points : [])
+  let points = (Array.isArray(raw.points) ? raw.points : [])
     .map(normalizePoint)
     .filter(Boolean);
 
-  const minPoints = type === "pen" ? 2 : type === "text" || type === "icon" || type === "ping" ? 1 : 2;
+  const minPoints =
+    type === "pen" ? 2 : type === "text" || type === "icon" || type === "hll" || type === "ping" ? 1 : 2;
   if (points.length < minPoints) return null;
+
+  const style = normalizeStyle(raw.style, type);
+  const meta = normalizeMeta(raw.meta, type);
+
+  // Icons / HLL markers use a 2-point bbox (like rect/ellipse); upgrade legacy center-only.
+  if ((type === "icon" || type === "hll") && points.length === 1) {
+    const p = points[0];
+    let halfW = Math.max(0.9, (style.size || 3) * 0.275);
+    let halfH = halfW;
+    if (type === "hll") {
+      // Approximate catalog defaults without bundling the full client catalog in Workers.
+      halfW = meta.hllId === "garrison" && meta.showRadius !== false ? 9.9 : 1.3;
+      halfH = halfW;
+    }
+    points = [
+      { x: clamp(p.x - halfW, COORD_MIN, COORD_MAX), y: clamp(p.y - halfH, COORD_MIN, COORD_MAX) },
+      { x: clamp(p.x + halfW, COORD_MIN, COORD_MAX), y: clamp(p.y + halfH, COORD_MIN, COORD_MAX) },
+    ];
+  } else if ((type === "icon" || type === "hll") && points.length > 2) {
+    points = points.slice(0, 2);
+  }
 
   return {
     id,
     type,
     points,
-    style: normalizeStyle(raw.style, type),
-    meta: normalizeMeta(raw.meta, type),
+    style,
+    meta,
     zIndex: Number.isFinite(Number(raw.zIndex)) ? Number(raw.zIndex) : index,
   };
 }

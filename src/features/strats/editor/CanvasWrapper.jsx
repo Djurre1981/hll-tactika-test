@@ -16,6 +16,8 @@ function toolSettingsFromStore(state) {
     textAlign: state.textAlign,
     iconId: state.iconId,
     iconLabel: state.iconLabel,
+    hllId: state.hllId,
+    hllShowRadius: state.hllShowRadius,
   };
 }
 

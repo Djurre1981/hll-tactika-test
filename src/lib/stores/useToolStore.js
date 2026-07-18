@@ -12,6 +12,8 @@ export const useToolStore = create((set) => ({
   textAlign: "center",
   iconId: "check",
   iconLabel: "",
+  hllId: "garrison",
+  hllShowRadius: true,
   setTool: (tool) => set({ tool }),
   setColor: (color) => set({ color }),
   setStrokeWidth: (strokeWidth) => set({ strokeWidth }),
@@ -23,5 +25,7 @@ export const useToolStore = create((set) => ({
   setTextAlign: (textAlign) => set({ textAlign }),
   setIconId: (iconId) => set({ iconId }),
   setIconLabel: (iconLabel) => set({ iconLabel }),
+  setHllId: (hllId) => set({ hllId }),
+  setHllShowRadius: (hllShowRadius) => set({ hllShowRadius }),
   patch: (partial) => set(partial),
 }));

@@ -185,10 +185,29 @@ export class InteractionController {
     if (tool === "icons" || tool === "icon") {
       event.stopImmediatePropagation();
       event.preventDefault();
+      const style = settingsToObjectStyle(settings);
       const object = createStratObject("icon", {
+        // Single click → default square bbox (createStratObject expands to 2 points).
+        points: [point],
+        style,
+        meta: { iconId: settings.iconId || "check", iconLabel: settings.iconLabel || "" },
+      });
+      this.scene.addObject(object);
+      this.scene.setSelectedId(object.id);
+      this.refresh();
+      return;
+    }
+
+    if (tool === "hll") {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      const object = createStratObject("hll", {
         points: [point],
         style: settingsToObjectStyle(settings),
-        meta: { iconId: settings.iconId || "check", iconLabel: settings.iconLabel || "" },
+        meta: {
+          hllId: settings.hllId || "garrison",
+          showRadius: settings.hllShowRadius !== false,
+        },
       });
       this.scene.addObject(object);
       this.scene.setSelectedId(object.id);

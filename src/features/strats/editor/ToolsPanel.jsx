@@ -35,6 +35,8 @@ export function ToolsPanel({
   const textAlign = useToolStore((s) => s.textAlign);
   const iconId = useToolStore((s) => s.iconId);
   const iconLabel = useToolStore((s) => s.iconLabel);
+  const hllId = useToolStore((s) => s.hllId);
+  const hllShowRadius = useToolStore((s) => s.hllShowRadius);
   const patch = useToolStore((s) => s.patch);
 
   const isStroke = tool === "pen" || tool === "line" || tool === "arrow";
@@ -127,6 +129,7 @@ export function ToolsPanel({
                 key={item.id}
                 title={item.title}
                 icon={item.icon}
+                iconSrc={item.iconSrc}
                 disabled={disabled}
                 active={tool === item.id}
                 onClick={() => setTool(item.id)}
@@ -150,6 +153,8 @@ export function ToolsPanel({
           textAlign={textAlign}
           iconId={iconId}
           iconLabel={iconLabel}
+          hllId={hllId}
+          hllShowRadius={hllShowRadius}
           patch={patch}
           onPaste={onPaste}
           onCopy={onCopy}

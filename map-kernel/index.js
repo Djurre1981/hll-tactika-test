@@ -35,6 +35,8 @@ export class MapKernel {
       textAlign: "center",
       iconId: "check",
       iconLabel: "",
+      hllId: "garrison",
+      hllShowRadius: true,
     };
     this.onObjectsChange = options.onObjectsChange || null;
     this.onSelectionChange = options.onSelectionChange || null;
@@ -94,16 +96,22 @@ export class MapKernel {
       WebkitUserDrag: "none",
     });
 
-    this.canvas = document.createElement("canvas");
-    Object.assign(this.canvas.style, {
+    const overlayStyle = {
       position: "absolute",
       left: "0",
       top: "0",
       pointerEvents: "none",
-    });
+    };
+
+    this.canvas = document.createElement("canvas");
+    Object.assign(this.canvas.style, overlayStyle);
+
+    this.animCanvas = document.createElement("canvas");
+    Object.assign(this.animCanvas.style, overlayStyle);
 
     this.stage.appendChild(this.image);
     this.stage.appendChild(this.canvas);
+    this.stage.appendChild(this.animCanvas);
     this.viewport.appendChild(this.stage);
     el.appendChild(this.viewport);
 
@@ -115,7 +123,10 @@ export class MapKernel {
       this.onCameraChange?.(camera);
     };
 
-    this.renderer = new CanvasRenderer(this.canvas);
+    this.renderer = new CanvasRenderer(this.canvas, {
+      animCanvas: this.animCanvas,
+      getObjects: () => this.scene.getObjects(),
+    });
     this.interaction = new InteractionController({
       scene: this.scene,
       renderer: this.renderer,
@@ -146,6 +157,7 @@ export class MapKernel {
 
   destroy() {
     this.interaction?.detach();
+    this.renderer?.destroy();
     this.overlays?.destroy();
     this.viewer?.destroy();
     if (this.root) this.root.innerHTML = "";

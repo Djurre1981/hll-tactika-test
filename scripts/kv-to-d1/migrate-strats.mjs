@@ -18,6 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "../..");
 const DB_NAME = "hll-tactika-db";
 const KV_KEY = "strats";
+const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 
 const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
@@ -67,9 +68,9 @@ function loadFromKv() {
   const flag = remote ? "--remote" : "--local";
   try {
     const out = execFileSync(
-      "npx",
+      NPX,
       ["wrangler", "kv", "key", "get", KV_KEY, "--binding", "PINS_KV", flag],
-      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" }
     );
     const parsed = JSON.parse(out);
     return parsed.strats || [];
@@ -85,9 +86,9 @@ function applySql(sql) {
   fs.writeFileSync(tmp, sql, "utf8");
   try {
     execFileSync(
-      "npx",
+      NPX,
       ["wrangler", "d1", "execute", DB_NAME, flag, "--file", tmp],
-      { cwd: root, stdio: "inherit" }
+      { cwd: root, stdio: "inherit", shell: process.platform === "win32" }
     );
   } finally {
     fs.unlinkSync(tmp);

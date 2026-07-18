@@ -1,5 +1,19 @@
 /** Strat drawing object schema — map-% coords (−20…120). Vanilla only. */
 
+import { STRAT_ICON_IDS } from "./icons/strat-icon-catalog.js";
+import {
+  HLL_OBJECT_IDS,
+  resolveHllAsset,
+} from "./icons/hll-object-catalog.js";
+
+export { STRAT_ICON_IDS } from "./icons/strat-icon-catalog.js";
+export {
+  HLL_OBJECT_IDS,
+  HLL_OBJECT_OPTIONS,
+  getHllObjectDef,
+  resolveHllAsset,
+} from "./icons/hll-object-catalog.js";
+
 export const STRAT_OBJECT_TYPES = [
   "pen",
   "line",
@@ -8,59 +22,22 @@ export const STRAT_OBJECT_TYPES = [
   "ellipse",
   "text",
   "icon",
+  "hll",
   "ping",
 ];
 
-export const STRAT_ICON_IDS = [
-  "check",
-  "xmark",
-  "circle-question",
-  "circle-info",
-  "triangle-exclamation",
-  "house",
-  "ban",
-  "binoculars",
-  "bomb",
-  "car-side",
-  "truck-pickup",
-  "jet-fighter",
-  "crosshairs",
-  "flag",
-  "gun",
-  "shield",
-  "skull-crossbones",
-  "person-rifle",
-  "map-pin",
-  "location-dot",
-];
+/** Object types that need a continuous animation clock in CanvasRenderer. */
+export const ANIMATED_OBJECT_TYPES = new Set(["ping"]);
 
-export const ICON_GLYPHS = {
-  check: "✓",
-  xmark: "✕",
-  "circle-question": "?",
-  "circle-info": "i",
-  "triangle-exclamation": "!",
-  house: "⌂",
-  ban: "⊘",
-  binoculars: "◎",
-  bomb: "✹",
-  "car-side": "▣",
-  "truck-pickup": "▣",
-  "jet-fighter": "▲",
-  crosshairs: "+",
-  flag: "⚑",
-  gun: "╋",
-  shield: "⛨",
-  "skull-crossbones": "☠",
-  "person-rifle": "⚔",
-  "map-pin": "📍",
-  "location-dot": "•",
-};
+export function objectNeedsAnimation(object) {
+  return Boolean(object && ANIMATED_OBJECT_TYPES.has(object.type));
+}
 
 const LINE_TYPES = ["solid", "dashed", "dotted"];
 const END_TYPES = ["none", "start", "end"];
 const TEXT_ALIGNS = ["left", "center", "right"];
 const ICON_SET = new Set(STRAT_ICON_IDS);
+const HLL_SET = new Set(HLL_OBJECT_IDS);
 
 export const STRAT_COORD_MIN = -20;
 export const STRAT_COORD_MAX = 120;
@@ -111,7 +88,55 @@ function normalizeMeta(meta = {}, type) {
       normalized.ssIconId = Number(meta.ssIconId);
     }
   }
+  if (type === "hll") {
+    normalized.hllId = HLL_SET.has(meta.hllId) ? meta.hllId : "garrison";
+    normalized.showRadius = meta.showRadius !== false;
+  }
   return normalized;
+}
+
+/** Half-extent in map-% for a newly placed / legacy 1-point icon. */
+export function iconHalfExtentPct(size = 3) {
+  return Math.max(0.9, (Number(size) || 3) * 0.275);
+}
+
+/** Expand a center point into a square bbox (same model as rect/ellipse). */
+export function iconBoxFromCenter(center, size = 3) {
+  const p = normalizePoint(center);
+  if (!p) return [];
+  const half = iconHalfExtentPct(size);
+  return [
+    normalizePoint({ x: p.x - half, y: p.y - half }),
+    normalizePoint({ x: p.x + half, y: p.y + half }),
+  ].filter(Boolean);
+}
+
+/** Icons use a 2-point bbox; upgrade legacy single-point icons in place. */
+export function ensureIconBoxPoints(points, style = {}) {
+  const list = (Array.isArray(points) ? points : []).map(normalizePoint).filter(Boolean);
+  if (list.length >= 2) return list.slice(0, 2);
+  if (list.length === 1) return iconBoxFromCenter(list[0], style.size);
+  return list;
+}
+
+/** HLL markers use a 2-point bbox sized from the Maps Let Loose catalog. */
+export function hllBoxFromCenter(center, meta = {}) {
+  const p = normalizePoint(center);
+  if (!p) return [];
+  const asset = resolveHllAsset(meta);
+  const halfW = Math.max(0.35, (asset?.sizeWPct || 2.5) / 2);
+  const halfH = Math.max(0.35, (asset?.sizeHPct || asset?.sizeWPct || 2.5) / 2);
+  return [
+    normalizePoint({ x: p.x - halfW, y: p.y - halfH }),
+    normalizePoint({ x: p.x + halfW, y: p.y + halfH }),
+  ].filter(Boolean);
+}
+
+export function ensureHllBoxPoints(points, meta = {}) {
+  const list = (Array.isArray(points) ? points : []).map(normalizePoint).filter(Boolean);
+  if (list.length >= 2) return list.slice(0, 2);
+  if (list.length === 1) return hllBoxFromCenter(list[0], meta);
+  return list;
 }
 
 export function createStratObject(type, { points = [], style = {}, meta = {} } = {}) {
@@ -119,12 +144,21 @@ export function createStratObject(type, { points = [], style = {}, meta = {} } =
     throw new Error(`Unknown object type: ${type}`);
   }
 
+  const normalizedStyle = normalizeStyle(style, type);
+  const normalizedMeta = normalizeMeta(meta, type);
+  let normalizedPoints = points.map(normalizePoint).filter(Boolean);
+  if (type === "icon") {
+    normalizedPoints = ensureIconBoxPoints(normalizedPoints, normalizedStyle);
+  } else if (type === "hll") {
+    normalizedPoints = ensureHllBoxPoints(normalizedPoints, normalizedMeta);
+  }
+
   return {
     id: `obj-${crypto.randomUUID()}`,
     type,
-    points: points.map(normalizePoint).filter(Boolean),
-    style: normalizeStyle(style, type),
-    meta: normalizeMeta(meta, type),
+    points: normalizedPoints,
+    style: normalizedStyle,
+    meta: normalizedMeta,
   };
 }
 
@@ -139,20 +173,28 @@ export function normalizeStratObject(raw, index = 0) {
   const id = String(raw.id || "").trim();
   if (!type || !id) return null;
 
-  const points = (Array.isArray(raw.points) ? raw.points : [])
+  let points = (Array.isArray(raw.points) ? raw.points : [])
     .map(normalizePoint)
     .filter(Boolean);
 
   const minPoints =
-    type === "pen" ? 2 : type === "text" || type === "icon" || type === "ping" ? 1 : 2;
+    type === "pen" ? 2 : type === "text" || type === "icon" || type === "hll" || type === "ping" ? 1 : 2;
   if (points.length < minPoints) return null;
+
+  const style = normalizeStyle(raw.style, type);
+  const meta = normalizeMeta(raw.meta, type);
+  if (type === "icon") {
+    points = ensureIconBoxPoints(points, style);
+  } else if (type === "hll") {
+    points = ensureHllBoxPoints(points, meta);
+  }
 
   return {
     id,
     type,
     points,
-    style: normalizeStyle(raw.style, type),
-    meta: normalizeMeta(raw.meta, type),
+    style,
+    meta,
     zIndex: Number.isFinite(Number(raw.zIndex)) ? Number(raw.zIndex) : index,
   };
 }
@@ -180,8 +222,18 @@ export function getObjectBounds(object) {
     maxY = Math.max(maxY, point.y);
   }
 
+  // 2-point icons / HLL markers use the bbox itself (like rect/ellipse).
+  if ((object.type === "icon" || object.type === "hll") && object.points.length >= 2) {
+    return {
+      x: minX,
+      y: minY,
+      w: Math.max(0.5, maxX - minX),
+      h: Math.max(0.5, maxY - minY),
+    };
+  }
+
   const pad =
-    object.type === "text" || object.type === "icon" || object.type === "ping"
+    object.type === "text" || object.type === "icon" || object.type === "hll" || object.type === "ping"
       ? Math.max(1.5, (object.style?.fontSize || 10) * 0.15)
       : Math.max(0.4, (object.style?.size || 3) * 0.2);
 

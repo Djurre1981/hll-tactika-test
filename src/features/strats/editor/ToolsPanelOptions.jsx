@@ -3,10 +3,14 @@ import {
   actionBtnWide,
   cx,
   glassInput,
+  HLL_OPTIONS,
   ICON_OPTIONS,
   sectionTitle,
 } from "./editorUi.js";
+import { StratIcon } from "./StratIcon.jsx";
 import { Segmented, SizeOption } from "./ToolsPanelPrimitives.jsx";
+
+const HLL_GROUPS = [...new Set(HLL_OPTIONS.map((o) => o.group))];
 
 export function ToolsPanelOptions({
   tool,
@@ -23,6 +27,8 @@ export function ToolsPanelOptions({
   textAlign,
   iconId,
   iconLabel,
+  hllId,
+  hllShowRadius,
   patch,
   onPaste,
   onCopy,
@@ -229,7 +235,7 @@ export function ToolsPanelOptions({
             />
           </label>
           <div
-            className="grid max-h-40 grid-cols-5 gap-1 overflow-y-auto"
+            className="grid max-h-64 grid-cols-5 gap-1 overflow-y-auto [--strat-icon-knockout:#1c1c1c]"
             role="radiogroup"
             aria-label="Icon"
           >
@@ -246,8 +252,66 @@ export function ToolsPanelOptions({
                   iconId === opt.id && "border-white/[0.22] bg-white/12 text-white hover:bg-white/12"
                 )}
               >
-                <i className={`fa-solid ${opt.icon}`} aria-hidden="true" />
+                <StratIcon iconId={opt.id} className="h-[1.1rem] w-[1.1rem]" />
               </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {tool === "hll" && (
+        <>
+          <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>HLL Objects</h3>
+          <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
+            Click the map to place. Marker sizes match Maps Let Loose.
+          </p>
+          <label className="mb-2 flex items-center gap-2 text-[0.76rem] text-white/[0.72]">
+            <input
+              type="checkbox"
+              disabled={disabled}
+              checked={hllShowRadius}
+              onChange={(e) => patch({ hllShowRadius: e.target.checked })}
+              className="accent-white"
+            />
+            Show spawn radius
+          </label>
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5" role="radiogroup" aria-label="HLL object">
+            {HLL_GROUPS.map((group) => (
+              <div key={group}>
+                <p className="mb-1 text-[0.62rem] font-light uppercase tracking-[0.12em] text-white/40">
+                  {group}
+                </p>
+                <div className="grid grid-cols-4 gap-1">
+                  {HLL_OPTIONS.filter((o) => o.group === group).map((opt) => {
+                    const previewSrc =
+                      hllShowRadius && opt.hasRadius ? opt.src : opt.plainSrc || opt.src;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        title={opt.label}
+                        disabled={disabled}
+                        aria-pressed={hllId === opt.id}
+                        onClick={() => patch({ hllId: opt.id })}
+                        className={cx(
+                          "flex flex-col items-center gap-1 rounded-[10px] border border-solid border-white/10 bg-transparent px-1 py-1.5 text-white/[0.78] transition hover:bg-white/[0.08]",
+                          hllId === opt.id && "border-white/[0.22] bg-white/12 text-white"
+                        )}
+                      >
+                        <img
+                          src={previewSrc}
+                          alt=""
+                          className="h-7 w-7 object-contain"
+                          draggable={false}
+                        />
+                        <span className="line-clamp-2 text-center text-[0.58rem] leading-tight text-white/55">
+                          {opt.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </>
