@@ -17,6 +17,19 @@ USER_STEAM_IDS=
 # Admin alert-test only (browse traffic no longer posts Discord abuse alerts)
 ALERT_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...,https://discord.com/api/webhooks/...
 
+# Phase 8 – Live collaboration (must match Render + Cloudflare Pages)
+COLLAB_JWT_SECRET=replace-with-long-random-shared-secret
+COLLAB_PERSIST_SECRET=replace-with-different-long-random-secret
+# Local: ws://localhost:4080  |  Production: wss://hll-tactika-test.onrender.com
+COLLAB_WS_URL=ws://localhost:4080
+# COLLAB_TOKEN_TTL_MS=900000
+
+# Phase 9 – Discord bot (Render; leave empty until bot is implemented)
+# DISCORD_TOKEN=
+# DISCORD_CLIENT_ID=
+# DISCORD_GUILD_ID=
+# D1_API_KEY=
+
 # Optional legacy alert threshold envs (no longer used for per-request KV alerts)
 # ALERT_DETAIL_IN_WINDOW=100
 # ALERT_DETAIL_WINDOW_MIN=30

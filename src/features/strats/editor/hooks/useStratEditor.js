@@ -5,6 +5,9 @@ import { useAuth } from "../../../auth/AuthGate.jsx";
 import { useEditorStore } from "../../../../lib/stores/useEditorStore.js";
 import { apiClient } from "../../../../lib/api-client.js";
 import { queryKeys } from "../../../../lib/query-keys.js";
+import { useKernelYjsBridge } from "../../../../lib/collab/bridges.js";
+import { PRESENCE_ROOM_ID, stratSlideRoomId } from "../../../../lib/collab/provider.js";
+import { useYjsRoom } from "../../../../lib/collab/useYjsRoom.js";
 import { useMutateStrat } from "./useMutateStrat.js";
 import { useStratAutosave } from "./useStratAutosave.js";
 import { useStratQuery } from "./useStratQuery.js";
@@ -96,15 +99,48 @@ export function useStratEditor(stratId) {
     return { ...base, slides: localSlides || base.slides };
   }, [localSlides]);
 
+  const slideObjects = useMemo(() => activeSlide?.objects || [], [activeSlide]);
+
+  const collabRoomId =
+    stratId && activeSlide?.id ? stratSlideRoomId(stratId, activeSlide.id) : null;
+
+  const collab = useYjsRoom({
+    roomId: collabRoomId,
+    enabled: Boolean(strat && collabRoomId),
+    user,
+    awarenessState: {
+      path: `/strats/${stratId}`,
+      context: "stratmaker",
+    },
+  });
+
+  // Announce on site presence so the dashboard Online Now list includes editors
+  useYjsRoom({
+    roomId: PRESENCE_ROOM_ID,
+    enabled: Boolean(strat && user?.steamId),
+    user,
+    awarenessState: {
+      path: `/strats/${stratId}`,
+      context: "stratmaker",
+    },
+  });
+
+  useKernelYjsBridge({
+    doc: collab.doc,
+    kernelRef,
+    enabled: collab.connected,
+    canEdit,
+    seedObjects: slideObjects,
+  });
+
   useStratAutosave({
-    enabled: canEdit,
+    enabled: canEdit && !collab.connected,
     kernelRef,
     getStratSnapshot,
     activeSlideId: activeSlide?.id,
     mutateAsync: mutation.mutateAsync,
   });
 
-  const slideObjects = useMemo(() => activeSlide?.objects || [], [activeSlide]);
 
   const persistSlides = async (nextSlides) => {
     setLocalSlides(nextSlides);
@@ -294,5 +330,7 @@ export function useStratEditor(stratId) {
     handleDuplicateStrat,
     handleDeleteStrat,
     handleNewStrat,
+    collabPeers: collab.peers,
+    collabStatus: collab.status,
   };
 }

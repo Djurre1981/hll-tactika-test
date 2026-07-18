@@ -64,11 +64,11 @@
 
 
 ## Phase 8 – Live Collaboration
-- Deploy Y‑WebSocket server + `collab/join` + `collab/save` (deferred from Phase 0)
-- useYjsRoom hook (JWT → WS)
-- Sync Y.Doc objects with kernel / Excalidraw
-- Remote cursors via awareness
-- KV snapshots on idle/save/teardown
+- [x] Deploy Y‑WebSocket server + `rooms/join` + `rooms/save|load`
+- [x] useYjsRoom hook (JWT → WS)
+- [x] Sync Y.Doc objects with kernel / Excalidraw
+- [x] Remote peer presence via awareness (dashboard + editors)
+- [x] KV snapshots on idle/save/teardown
 
 ## Phase 9 - Discord Bot
 Build D1 tables & Cloudflare API endpoints.

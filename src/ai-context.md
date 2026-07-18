@@ -5,7 +5,7 @@
 - **v1** (climbing guide) remains self-contained in `climbing-guide-v1/` (js + css co-located). Do **not** modify after relocation.
 - **v2** is a React SPA adding dashboard, calendar, team management, strat browser/editor, and micro-prep whiteboard/slideshow.
 - **Goal:** Keep collaborative drawing smooth, stay within Cloudflare free tier, keep code AI‑friendly.
-- **Collab / Yjs:** deferred to Phase 8 (skipped for now).
+- **Collab / Yjs:** Phase 8 — Render Node process (`server/`) + CF `/api/rooms/*` + client `src/lib/collab/`.
 
 ## Directory Map
 ```
@@ -13,12 +13,13 @@ root
 ├── climbing-guide-v1/   # Vanilla v1 – do NOT modify (owns its js/ + css/)
 ├── map-kernel/          # Pure JS drawing engine – no React imports
 ├── functions/           # Cloudflare Pages Functions (REST API)
+├── server/              # Render Yjs WebSocket + (later) Discord bot
 ├── public/              # Static assets (maps/, assets/, data/)
 ├── src/                 # React SPA
 │   ├── app/             # Top-level shell, router, providers
 │   ├── features/        # Feature‑scoped code
 │   │   ├── auth/
-│   │   ├── home/        # Hub shell + dashboard home
+│   │   ├── home/        # Hub shell + dashboard home (+ presence)
 │   │   ├── calendar/
 │   │   ├── team/
 │   │   ├── management/  # Roster + folders (Phase 5)
@@ -27,7 +28,7 @@ root
 │   │   │   └── editor/
 │   │   └── micro-prep/
 │   ├── shared/
-│   ├── lib/
+│   ├── lib/             # includes lib/collab/ (Yjs provider + hooks)
 │   └── styles/
 ├── migrations/
 └── scripts/
@@ -87,3 +88,4 @@ root
 - Before modifying `map-kernel/`, keep it vanilla JS with no React dependency.
 - No barrel files — import directly from the source file.
 - No cross‑feature imports — use `shared/` or an explicit public API.
+- Collab: Yjs snapshots in KV (`yjs:{roomId}`); never store CRDT blobs in D1. Room join via `POST /api/rooms/join`; WS on Render `/collab`.

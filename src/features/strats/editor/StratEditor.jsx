@@ -4,6 +4,7 @@ import { CanvasWrapper } from "./CanvasWrapper.jsx";
 import { ToolsPanel } from "./ToolsPanel.jsx";
 import { StratsSidePanel } from "./StratsSidePanel.jsx";
 import { MapChrome } from "./MapChrome.jsx";
+import { CollabPeers } from "../../../shared/CollabPeers.jsx";
 import { EditorUserCluster } from "./EditorUserCluster.jsx";
 import { ImportStratSketchModal } from "./ImportStratSketchModal.jsx";
 import { STRAT_PANEL_WIDTH, useStratEditor } from "./hooks/useStratEditor.js";
@@ -30,6 +31,8 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     shellRef,
     leftRef,
     rightRef,
+    collabPeers,
+    collabStatus,
   } = editor;
 
   if (query.isLoading) {
@@ -118,7 +121,8 @@ export function StratEditor({ stratId, backTo = "/home" }) {
         <MapChrome onFitView={() => kernelRef.current?.fitToView()} />
       </div>
 
-      <div className="absolute right-6 top-6 z-30">
+      <div className="absolute right-6 top-6 z-30 flex items-start gap-3">
+        <CollabPeers peers={collabPeers} status={collabStatus} />
         <EditorUserCluster />
       </div>
 

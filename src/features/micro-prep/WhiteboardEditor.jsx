@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { useExcalidrawYjsBridge } from "../../lib/collab/bridges.js";
+import { PRESENCE_ROOM_ID, whiteboardRoomId } from "../../lib/collab/provider.js";
+import { useYjsRoom } from "../../lib/collab/useYjsRoom.js";
 import { apiClient } from "../../lib/api-client.js";
 import { Spinner } from "../../shared/Spinner.jsx";
+import { CollabPeers } from "../../shared/CollabPeers.jsx";
 import { ExcalidrawCanvas } from "./ExcalidrawCanvas.jsx";
 import { SlidesPanel } from "./SlidesPanel.jsx";
 import { WhiteboardToolsPanel } from "./WhiteboardToolsPanel.jsx";
@@ -78,6 +82,64 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     (["owner", "admin", "assist"].includes(user.role) ||
       board.createdBy === user.steamId);
 
+  const collab = useYjsRoom({
+    roomId: boardId ? whiteboardRoomId(boardId) : null,
+    enabled: Boolean(board && boardId),
+    user,
+    awarenessState: {
+      path: `/tool/micro-prep/${boardId}`,
+      context: "micro-prep",
+    },
+  });
+
+  useYjsRoom({
+    roomId: PRESENCE_ROOM_ID,
+    enabled: Boolean(board && user?.steamId),
+    user,
+    awarenessState: {
+      path: `/tool/micro-prep/${boardId}`,
+      context: "micro-prep",
+    },
+  });
+
+  const onRemoteScene = useCallback(
+    (scene) => {
+      if (!scene || typeof scene !== "object") return;
+      if (isSlideshow) {
+        if (Array.isArray(scene.slides)) {
+          setSlides(sortSlides(scene.slides));
+          slidesRef.current = sortSlides(scene.slides);
+        }
+        return;
+      }
+      const excalApi = apiRef.current;
+      if (!excalApi) return;
+      try {
+        excalApi.updateScene({
+          elements: scene.elements || [],
+          appState: {
+            ...(scene.appState || {}),
+            theme: "light",
+          },
+          collaborators: new Map(),
+        });
+        if (scene.files && typeof excalApi.addFiles === "function") {
+          excalApi.addFiles(Object.values(scene.files));
+        }
+      } catch (err) {
+        console.error("[collab] apply remote scene failed:", err);
+      }
+    },
+    [isSlideshow]
+  );
+
+  const { pushLocalScene } = useExcalidrawYjsBridge({
+    doc: collab.doc,
+    enabled: collab.connected,
+    seedScene: !isSlideshow ? board?.scene : board?.scene,
+    onRemoteScene,
+  });
+
   const getScene = useCallback(() => {
     if (isSlideshow) {
       const currentSlides = slidesRef.current;
@@ -106,7 +168,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   }, [isSlideshow, theme]);
 
   const { markDirty } = useWhiteboardAutosave({
-    enabled: canEdit,
+    enabled: canEdit && !collab.connected,
     getScene,
     backgroundUrl: displayBg,
     title: displayTitle,
@@ -120,7 +182,11 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
 
   const onChange = useCallback(() => {
     markDirty();
-  }, [markDirty]);
+    if (collab.connected && canEdit) {
+      const scene = getScene();
+      if (scene) pushLocalScene(scene);
+    }
+  }, [markDirty, collab.connected, canEdit, getScene, pushLocalScene]);
 
   const onTitleChange = (value) => {
     setTitle(value);
@@ -312,6 +378,10 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
       ) : (
         <div className="absolute inset-0 z-[1]">{canvas}</div>
       )}
+
+      <div className="absolute right-6 top-6 z-30">
+        <CollabPeers peers={collab.peers} status={collab.status} />
+      </div>
 
       <div
         className="pointer-events-none absolute bottom-6 left-6 top-6 z-20"

@@ -1,0 +1,31 @@
+# Render Blueprint – collab WebSocket (+ Phase 9 Discord in same process later)
+# https://render.com/docs/blueprint-spec
+#
+# After first deploy: copy COLLAB_* secrets into Cloudflare Pages too.
+# Dashboard override is fine if this service already exists.
+
+services:
+  - type: web
+    name: hll-tactika-test
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: COLLAB_JWT_SECRET
+        sync: false
+      - key: COLLAB_PERSIST_SECRET
+        sync: false
+      - key: API_BASE_URL
+        value: https://hll-tactika-test.pages.dev/api/rooms
+      # Phase 9 – set in dashboard when ready (bot not started yet)
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_GUILD_ID
+        sync: false
+      - key: D1_API_KEY
+        sync: false

@@ -1,6 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { OnlineNow } from "./OnlineNow.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
+import { useSitePresence } from "./hooks/useSitePresence.js";
 import { useHub } from "./HubContext.jsx";
 
 function formatEventMeta(event) {
@@ -44,6 +46,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const { upcoming } = useDashboardQuery();
   const { showToast } = useHub();
+  const presence = useSitePresence();
   const name = user.name || "Operator";
   const events = upcoming.data?.events || [];
   const canStrats = user.role && user.role !== "viewer";
@@ -139,6 +142,9 @@ export function HomePage() {
                 <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
               </article>
             ))}
+          </div>
+          <div className="mt-3 shrink-0 border-t border-white/10 pt-3">
+            <OnlineNow peers={presence.peers} status={presence.status} selfName={name} />
           </div>
         </aside>
 

@@ -17,6 +17,14 @@ export function assertSameOrigin(request) {
     return null;
   }
 
+  // Collab server (Render) persists via Bearer secret — not cookie CSRF.
+  if (
+    url.pathname.startsWith("/api/rooms/") &&
+    (url.pathname.endsWith("/save") || url.pathname.endsWith("/load"))
+  ) {
+    return null;
+  }
+
   const origin = request.headers.get("Origin");
   if (origin) {
     if (origin !== url.origin) {
