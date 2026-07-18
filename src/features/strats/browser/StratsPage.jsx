@@ -85,7 +85,7 @@ export function StratsPage({ hub = false }) {
         >
           <aside
             className={`rounded-[18px] border border-white/10 bg-white/[0.04] p-3.5 ${
-              hub ? "min-h-0 overflow-y-auto" : ""
+              hub ? "hub-scroll min-h-0 overflow-y-auto" : ""
             }`}
           >
             <h2 className="mb-3 text-[0.72rem] font-normal uppercase tracking-[0.12em] text-white/40">
@@ -99,7 +99,7 @@ export function StratsPage({ hub = false }) {
               canDrop={canEdit}
             />
           </aside>
-          <div className={hub ? "min-h-0 overflow-y-auto overscroll-contain pr-1" : ""}>
+          <div className={hub ? "hub-scroll min-h-0 overflow-y-auto overscroll-contain pr-1" : ""}>
             <StratList
               strats={strats}
               foldersById={foldersById}
