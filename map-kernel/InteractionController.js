@@ -205,13 +205,13 @@ export class InteractionController {
         if (handle) {
           event.stopImmediatePropagation();
           event.preventDefault();
-          this.scene.pushUndo();
           this.handleDrag = {
             objectId: selected.id,
             handleId: handle.id,
             originalPoints: structuredClone(selected.points),
             penOriginalBox:
               selected.type === "pen" ? getBoxFromObjectPoints(selected.points) : null,
+            undoPushed: false,
           };
           this.viewport.setPointerCapture?.(event.pointerId);
           this.getViewer()?.setBlockPan(true);
@@ -223,12 +223,12 @@ export class InteractionController {
       if (hit) {
         event.stopImmediatePropagation();
         event.preventDefault();
-        this.scene.pushUndo();
         this.scene.setSelectedId(hit.id);
         this.objectDrag = {
           objectId: hit.id,
           startPoint: point,
           originalPoints: structuredClone(hit.points),
+          undoPushed: false,
         };
         this.viewport.setPointerCapture?.(event.pointerId);
         this.getViewer()?.setBlockPan(true);
@@ -372,6 +372,10 @@ export class InteractionController {
     if (this.handleDrag) {
       event.stopPropagation();
       const point = this.mapPoint(event);
+      if (!this.handleDrag.undoPushed) {
+        this.scene.pushUndo();
+        this.handleDrag.undoPushed = true;
+      }
       this.scene.updateObject(this.handleDrag.objectId, (obj) => ({
         ...obj,
         points: applyHandleDrag(
@@ -391,6 +395,11 @@ export class InteractionController {
       const point = this.mapPoint(event);
       const dx = point.x - this.objectDrag.startPoint.x;
       const dy = point.y - this.objectDrag.startPoint.y;
+      if ((dx !== 0 || dy !== 0) && !this.objectDrag.undoPushed) {
+        this.scene.pushUndo();
+        this.objectDrag.undoPushed = true;
+      }
+      if (!this.objectDrag.undoPushed) return;
       this.scene.updateObject(this.objectDrag.objectId, (obj) => ({
         ...obj,
         points: nudgePoints(this.objectDrag.originalPoints, dx, dy),
@@ -416,9 +425,16 @@ export class InteractionController {
 
   onPointerUp(event) {
     if (this.handleDrag || this.objectDrag) {
+      const drag = this.handleDrag || this.objectDrag;
+      const current = this.scene.getObjects().find((o) => o.id === drag.objectId);
+      const moved =
+        current &&
+        drag.originalPoints &&
+        JSON.stringify(current.points) !== JSON.stringify(drag.originalPoints);
       this.handleDrag = null;
       this.objectDrag = null;
-      this.scene.emitChange({ reason: "drag-end" });
+      // Avoid no-op drag-end emits (select click) — they used to echo through Yjs and clear selection.
+      if (moved) this.scene.emitChange({ reason: "drag-end" });
       this.getViewer()?.setBlockPan(this.shouldBlockPan());
       this.refresh();
       return;

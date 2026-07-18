@@ -41,8 +41,10 @@ export function useKernelYjsBridge({ doc, kernelRef, enabled, canEdit = true, se
       }
     };
 
-    const observer = () => {
+    // Skip echoing local kernel writes — re-applying via loadSlide clears selection.
+    const observer = (_events, transaction) => {
       if (applyingRemote.current) return;
+      if (transaction?.origin === "local-kernel") return;
       applyToKernel();
     };
     yObjects.observeDeep(observer);

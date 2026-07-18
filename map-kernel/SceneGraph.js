@@ -14,10 +14,13 @@ export class SceneGraph {
   }
 
   load(objects) {
+    const prevSelected = this.selectedId;
     this.objects = normalizeStratObjects(objects);
     this.undoStack = [];
     this.redoStack = [];
-    this.selectedId = null;
+    // Keep selection when the object still exists (collab reload / Yjs apply).
+    this.selectedId =
+      prevSelected && this.objects.some((o) => o.id === prevSelected) ? prevSelected : null;
     this.emitSelection();
     this.emitChange({ reason: "load" });
   }
