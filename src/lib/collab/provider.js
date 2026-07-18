@@ -3,6 +3,7 @@ import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
+import { dbgPresence } from "./debugPresence.js";
 
 const messageSync = 0;
 const messageAwareness = 1;
@@ -172,6 +173,17 @@ export class CollabProvider {
 
   _handlePresence(body) {
     if (!body || typeof body !== "object") return;
+    // #region agent log
+    dbgPresence("C", "provider.js:_handlePresence", "presence msg", {
+      roomId: this.roomId,
+      type: body.type,
+      peerCount: Array.isArray(body.peers) ? body.peers.length : undefined,
+      peerTail: body.peer?.steamId
+        ? String(body.peer.steamId).slice(-4)
+        : undefined,
+      leaveTail: body.steamId ? String(body.steamId).slice(-4) : undefined,
+    });
+    // #endregion
     if (body.type === "roster" && Array.isArray(body.peers)) {
       this._rosterPeers.clear();
       for (const peer of body.peers) {

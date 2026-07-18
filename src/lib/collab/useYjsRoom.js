@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { apiClient } from "../api-client.js";
+import { dbgPresence } from "./debugPresence.js";
 import { CollabProvider, PRESENCE_ROOM_ID } from "./provider.js";
 
 const KEEPALIVE_MS = 10 * 60 * 1000;
@@ -96,7 +97,19 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
           }
         }
       }
-      setPeers(Array.from(bySteam.values()));
+      const next = Array.from(bySteam.values());
+      // #region agent log
+      dbgPresence("D", "useYjsRoom.js:publishPeers", "peers published", {
+        roomId,
+        useRoster,
+        rosterCount: rosterRef.current.length,
+        awarenessCount: awarenessPeersRef.current.length,
+        publishedCount: next.length,
+        rosterTails: rosterRef.current.map((p) => String(p.steamId || "").slice(-4)),
+        selfTail: self.slice(-4),
+      });
+      // #endregion
+      setPeers(next);
     };
 
     const refreshAwarenessPeers = (provider) => {
@@ -137,6 +150,12 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         setStatus((s) =>
           s === "connected" || s === "reconnecting" ? "reconnecting" : "joining"
         );
+        // #region agent log
+        dbgPresence("A", "useYjsRoom.js:connect", "connect start", {
+          roomId,
+          useRoster,
+        });
+        // #endregion
         // Brief shared wake (editors open 2 rooms) — don't block 45s on cold start
         await Promise.race([
           wakeCollabServer(),
@@ -150,8 +169,29 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         });
         if (!stillCurrent()) return;
         if (!join || typeof join !== "object" || !join.token || !join.wsUrl) {
+          // #region agent log
+          dbgPresence("A", "useYjsRoom.js:connect", "invalid join", {
+            roomId,
+            hasJoin: Boolean(join),
+            keys: join && typeof join === "object" ? Object.keys(join) : [],
+          });
+          // #endregion
           throw new Error("Invalid join response");
         }
+
+        // #region agent log
+        let wsHost = "";
+        try {
+          wsHost = new URL(join.wsUrl).host;
+        } catch {
+          wsHost = String(join.wsUrl || "").slice(0, 40);
+        }
+        dbgPresence("A", "useYjsRoom.js:connect", "join ok", {
+          roomId,
+          wsHost,
+          tokenLen: String(join.token || "").length,
+        });
+        // #endregion
 
         providerRef.current?.destroy({ silent: true });
         const local = buildLocalState();
@@ -164,10 +204,25 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
           onRoster: (rosterPeers) => {
             if (!stillCurrent()) return;
             rosterRef.current = Array.isArray(rosterPeers) ? rosterPeers : [];
+            // #region agent log
+            dbgPresence("C", "useYjsRoom.js:onRoster", "roster callback", {
+              roomId,
+              count: rosterRef.current.length,
+              tails: rosterRef.current.map((p) =>
+                String(p.steamId || "").slice(-4)
+              ),
+            });
+            // #endregion
             publishPeers();
           },
           onStatus: (s) => {
             if (!stillCurrent()) return;
+            // #region agent log
+            dbgPresence("B", "useYjsRoom.js:onStatus", "ws status", {
+              roomId,
+              status: s,
+            });
+            // #endregion
             if (s === "connected") {
               setStatus("connected");
               return;
@@ -204,6 +259,12 @@ export function useYjsRoom({ roomId, enabled = true, awarenessState, user }) {
         refreshAwarenessPeers(provider);
       } catch (err) {
         console.error("[collab] join failed:", err);
+        // #region agent log
+        dbgPresence("A", "useYjsRoom.js:connect", "join failed", {
+          roomId,
+          err: String(err?.message || err),
+        });
+        // #endregion
         if (!stillCurrent()) return;
         setStatus("connecting");
         if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
