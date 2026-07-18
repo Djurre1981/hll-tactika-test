@@ -4,6 +4,12 @@ pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[[d1_databases]]
+binding = "DB"
+database_name = "hll-tactika-db"
+database_id = "hll-tactika-db"
+preview_database_id = "hll-tactika-db-preview"
+
 [[kv_namespaces]]
 binding = "PINS_KV"
 id = "25a3a121f49e4bc082cfa7d565d0890d"

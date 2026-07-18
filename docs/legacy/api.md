@@ -24,6 +24,10 @@ Auth: HttpOnly cookie `hll-tactika-session` (7-day TTL), set after Steam OpenID.
 | `POST` | `/api/pins` | `editor`+ | `201` `{ pin, mapId }` — body: `{ mapId, pin }` |
 | `PUT` | `/api/pins/:pinId` | `editor`+ | `200` `{ pin, mapId }` — body: `{ mapId, pin: { …fields } }` (partial update) |
 | `DELETE` | `/api/pins/:pinId?mapId=` | `editor`+ | `200` `{ ok, mapId, pinId }` |
+| `GET` | `/api/events?year=&month=` or `/api/events?from=&to=` | allowlisted | `200` `{ events: Event[] }` |
+| `POST` | `/api/events` | `editor`+ | `201` `{ event }` — body: `{ title, description?, startsAt, endsAt?, eventType? }` |
+| `PATCH` | `/api/events/:eventId` | `editor`+ | `200` `{ event }` — partial event body |
+| `DELETE` | `/api/events/:eventId` | `editor`+ | `200` `{ ok, eventId }` |
 | `GET` | `/api/admin/users` | `admin`+ | `200` `{ users: [{ steamId, name, role, removable, roleEditable }] }` |
 | `POST` | `/api/admin/users` | `admin`+ | `201` `{ user }` — body: `{ steamId }` (17-digit ID64) |
 | `DELETE` | `/api/admin/users/:steamId` | `admin`+ | `200` `{ ok, steamId }` |

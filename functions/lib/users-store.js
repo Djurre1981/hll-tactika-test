@@ -1,11 +1,11 @@
+import { getDb, requireDb } from "./d1.js";
+
 function parseSteamIds(raw) {
   return (raw || "")
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
 }
-
-const KV_KEY = "users";
 
 let memoryStore = null;
 
@@ -37,20 +37,55 @@ function normalizeStoredRole(role) {
 }
 
 export async function loadUsersData(env) {
-  if (env.PINS_KV) {
-    const stored = await env.PINS_KV.get(KV_KEY, "json");
-    if (stored?.users) {
-      return migrateEnvUsers(env, stored);
-    }
+  if (getDb(env)) {
+    const db = requireDb(env);
+    const [usersResult, revokedResult] = await Promise.all([
+      db
+        .prepare(
+          `SELECT steam_id, role, display_name, avatar_url, preferences_json,
+                  created_at, updated_at, last_signed_in_at
+             FROM users
+            ORDER BY display_name COLLATE NOCASE, steam_id`
+        )
+        .all(),
+      db.prepare("SELECT steam_id FROM revoked_users ORDER BY steam_id").all(),
+    ]);
 
-    const initial = seedFromEnv(env);
-    return migrateEnvUsers(env, initial);
+    return migrateEnvUsers(env, {
+      users: (usersResult.results || []).map(rowToUser),
+      revoked: (revokedResult.results || []).map((row) => row.steam_id),
+    });
   }
 
   if (!memoryStore) {
     memoryStore = seedFromEnv(env);
   }
   return migrateEnvUsers(env, memoryStore);
+}
+
+function parseJsonObject(raw) {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function rowToUser(row) {
+  return {
+    steamId: String(row.steam_id),
+    role: normalizeStoredRole(row.role),
+    displayName: row.display_name || null,
+    avatarUrl: row.avatar_url || null,
+    preferences: parseJsonObject(row.preferences_json),
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+    lastSignedInAt: row.last_signed_in_at || null,
+  };
 }
 
 async function migrateEnvUsers(env, data) {
@@ -124,17 +159,94 @@ async function migrateEnvUsers(env, data) {
 }
 
 export async function saveUsersData(env, data) {
-  if (env.PINS_KV) {
-    await env.PINS_KV.put(KV_KEY, JSON.stringify(data));
+  if (getDb(env)) {
+    const db = requireDb(env);
+    const [existingUsers, existingRevoked] = await Promise.all([
+      db.prepare("SELECT steam_id FROM users").all(),
+      db.prepare("SELECT steam_id FROM revoked_users").all(),
+    ]);
+    const desiredUsers = new Set((data.users || []).map((user) => String(user.steamId).trim()));
+    const desiredRevoked = new Set((data.revoked || []).map((steamId) => String(steamId).trim()));
+    const statements = [];
+
+    for (const row of existingUsers.results || []) {
+      if (!desiredUsers.has(String(row.steam_id))) {
+        statements.push(db.prepare("DELETE FROM users WHERE steam_id = ?").bind(row.steam_id));
+      }
+    }
+
+    for (const user of data.users || []) {
+      const steamId = String(user.steamId).trim();
+      if (!steamId) continue;
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO users (
+               steam_id, role, display_name, avatar_url, preferences_json,
+               created_at, updated_at, last_signed_in_at
+             ) VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'), ?)
+             ON CONFLICT(steam_id) DO UPDATE SET
+               role = excluded.role,
+               display_name = COALESCE(excluded.display_name, users.display_name),
+               avatar_url = COALESCE(excluded.avatar_url, users.avatar_url),
+               preferences_json = excluded.preferences_json,
+               updated_at = datetime('now'),
+               last_signed_in_at = COALESCE(excluded.last_signed_in_at, users.last_signed_in_at)`
+          )
+          .bind(
+            steamId,
+            normalizeStoredRole(user.role),
+            user.displayName || null,
+            user.avatarUrl || null,
+            user.preferences ? JSON.stringify(user.preferences) : null,
+            user.createdAt || null,
+            user.lastSignedInAt || null
+          )
+      );
+    }
+
+    for (const row of existingRevoked.results || []) {
+      if (!desiredRevoked.has(String(row.steam_id))) {
+        statements.push(db.prepare("DELETE FROM revoked_users WHERE steam_id = ?").bind(row.steam_id));
+      }
+    }
+
+    for (const steamId of desiredRevoked) {
+      if (!steamId) continue;
+      statements.push(
+        db
+          .prepare("INSERT INTO revoked_users (steam_id) VALUES (?) ON CONFLICT(steam_id) DO NOTHING")
+          .bind(steamId)
+      );
+    }
+
+    if (statements.length > 0) {
+      await db.batch(statements);
+    }
     return;
   }
 
   memoryStore = data;
 }
 
-export async function recordUserLastSignedIn(steamId, env) {
+export async function saveUserProfile(steamId, env, profile = {}) {
   const id = String(steamId).trim();
   if (!id) {
+    return;
+  }
+
+  if (getDb(env)) {
+    const db = requireDb(env);
+    await db
+      .prepare(
+        `UPDATE users
+            SET display_name = COALESCE(?, display_name),
+                avatar_url = COALESCE(?, avatar_url),
+                updated_at = datetime('now')
+          WHERE steam_id = ?`
+      )
+      .bind(profile.name || null, profile.avatar || null, id)
+      .run();
     return;
   }
 
@@ -143,8 +255,48 @@ export async function recordUserLastSignedIn(steamId, env) {
   if (!member) {
     return;
   }
+  member.displayName = profile.name || member.displayName || null;
+  member.avatarUrl = profile.avatar || member.avatarUrl || null;
+  await saveUsersData(env, data);
+}
+
+export async function recordUserLastSignedIn(steamId, env, profile = {}, role = "viewer") {
+  const id = String(steamId).trim();
+  if (!id) {
+    return;
+  }
+
+  const nextRole = normalizeStoredRole(role) || "viewer";
+
+  if (getDb(env)) {
+    const db = requireDb(env);
+    // Upsert so env-allowlisted users (not yet in D1) can create sessions.
+    await db
+      .prepare(
+        `INSERT INTO users (
+           steam_id, role, display_name, avatar_url, last_signed_in_at, updated_at
+         ) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+         ON CONFLICT(steam_id) DO UPDATE SET
+           display_name = COALESCE(excluded.display_name, users.display_name),
+           avatar_url = COALESCE(excluded.avatar_url, users.avatar_url),
+           last_signed_in_at = datetime('now'),
+           updated_at = datetime('now')`
+      )
+      .bind(id, nextRole, profile.name || null, profile.avatar || null)
+      .run();
+    return;
+  }
+
+  const data = await loadUsersData(env);
+  let member = data.users.find((user) => String(user.steamId).trim() === id);
+  if (!member) {
+    member = { steamId: id, role: nextRole };
+    data.users.push(member);
+  }
 
   member.lastSignedInAt = new Date().toISOString();
+  member.displayName = profile.name || member.displayName || null;
+  member.avatarUrl = profile.avatar || member.avatarUrl || null;
   await saveUsersData(env, data);
 }
 

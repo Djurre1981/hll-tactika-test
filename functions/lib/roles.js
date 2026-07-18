@@ -25,9 +25,6 @@ export function getEnvAdminSteamIds(env) {
   return parseSteamIds(env.ALLOWED_STEAM_IDS);
 }
 
-/** @deprecated Use getEnvAdminSteamIds */
-export const getAdminSteamIds = getEnvAdminSteamIds;
-
 export function getEnvAssistSteamIds(env) {
   return parseSteamIds(env.ASSIST_STEAM_IDS);
 }
@@ -43,14 +40,6 @@ export function getEnvViewerSteamIds(env) {
   }
   return parseSteamIds(env.USER_STEAM_IDS);
 }
-
-/** @deprecated Use getEnvViewerSteamIds */
-export function getEnvUserSteamIds(env) {
-  return getEnvViewerSteamIds(env);
-}
-
-/** @deprecated Use getEnvViewerSteamIds */
-export const getUserSteamIds = getEnvViewerSteamIds;
 
 function normalizeStoredRole(role) {
   if (role === "user") {
@@ -84,21 +73,26 @@ function isRevokedId(revoked, steamId) {
   return (revoked || []).some((entry) => normalizeSteamId(entry) === id);
 }
 
-function memberListEntry(steamId, role, actorIsOwner) {
+function memberListEntry(steamId, role, actorIsOwner, stored = null) {
+  const base = {
+    steamId,
+    role,
+    name: stored?.displayName || null,
+    avatar: stored?.avatarUrl || null,
+    lastSignedInAt: stored?.lastSignedInAt || null,
+  };
   if (role === "owner") {
-    return { steamId, role, removable: false, roleEditable: false };
+    return { ...base, removable: false, roleEditable: false };
   }
   if (role === "admin") {
     return {
-      steamId,
-      role,
+      ...base,
       removable: actorIsOwner,
       roleEditable: actorIsOwner,
     };
   }
   return {
-    steamId,
-    role,
+    ...base,
     removable: true,
     roleEditable: actorIsOwner,
   };
@@ -205,13 +199,14 @@ export function isStaffRole(role) {
 export async function listAllMembers(env, actorRole) {
   const data = await loadUsersData(env);
   const revoked = new Set((data.revoked || []).map(normalizeSteamId));
+  const storedById = new Map(data.users.map((user) => [normalizeSteamId(user.steamId), user]));
   const members = [];
   const seen = new Set();
   const actorIsOwner = actorRole === "owner";
 
   for (const steamId of getEnvOwnerSteamIds(env)) {
     const id = normalizeSteamId(steamId);
-    members.push(memberListEntry(id, "owner", actorIsOwner));
+    members.push(memberListEntry(id, "owner", actorIsOwner, storedById.get(id)));
     seen.add(id);
   }
 
@@ -220,7 +215,7 @@ export async function listAllMembers(env, actorRole) {
     if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(id, "admin", actorIsOwner));
+    members.push(memberListEntry(id, "admin", actorIsOwner, storedById.get(id)));
     seen.add(id);
   }
 
@@ -229,7 +224,7 @@ export async function listAllMembers(env, actorRole) {
     if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(id, "assist", actorIsOwner));
+    members.push(memberListEntry(id, "assist", actorIsOwner, storedById.get(id)));
     seen.add(id);
   }
 
@@ -238,7 +233,7 @@ export async function listAllMembers(env, actorRole) {
     if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(id, "editor", actorIsOwner));
+    members.push(memberListEntry(id, "editor", actorIsOwner, storedById.get(id)));
     seen.add(id);
   }
 
@@ -247,7 +242,7 @@ export async function listAllMembers(env, actorRole) {
     if (seen.has(id) || revoked.has(id)) {
       continue;
     }
-    members.push(memberListEntry(id, "viewer", actorIsOwner));
+    members.push(memberListEntry(id, "viewer", actorIsOwner, storedById.get(id)));
     seen.add(id);
   }
 
@@ -258,7 +253,7 @@ export async function listAllMembers(env, actorRole) {
     }
 
     const role = normalizeStoredRole(user.role);
-    members.push(memberListEntry(id, role, actorIsOwner));
+    members.push(memberListEntry(id, role, actorIsOwner, user));
     seen.add(id);
   }
 

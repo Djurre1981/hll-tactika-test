@@ -1,5 +1,4 @@
 import { canEnterEditorMode } from "../../lib/pin-permissions.js";
-import { guardAccess } from "../../lib/access-guard.js";
 import { requireAuth } from "../../lib/auth-request.js";
 import { putUploadedImage } from "../../lib/r2-media.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -12,16 +11,6 @@ export async function onRequestPost(context) {
 
   if (!canEnterEditorMode(auth.role)) {
     return errorResponse("Editor access required", 403);
-  }
-
-  const access = await guardAccess(context, {
-    endpoint: "upload.image",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    statusOnSuccess: 201,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   let formData;

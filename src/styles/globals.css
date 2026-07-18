@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("/assets/fonts/TextaAlt-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("/assets/fonts/TextaAlt-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("/assets/fonts/TextaAlt-Regular.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Texta Alt";
+  src: url("/assets/fonts/TextaAlt-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --color-bg: 15 16 18;
+  --color-surface: 23 25 28;
+  --color-panel: 30 32 37;
+  --color-text: 232 235 230;
+  --color-muted: 154 168 158;
+  --color-accent: 196 163 90;
+  --color-neon: 57 255 20;
+  --color-border: 255 255 255;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-family: "Texta Alt", "Segoe UI", system-ui, sans-serif;
+  font-weight: 300;
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-[2rem] border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl;
+  }
+
+  .glass-surface {
+    @apply rounded-3xl border border-white/10 bg-white/[0.065] shadow-glass backdrop-blur-xl;
+  }
+
+  .glass-control {
+    @apply rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-sm text-text transition hover:border-accent/50 hover:bg-white/[0.11] focus:outline-none focus:ring-2 focus:ring-accent/40;
+  }
+
+  .glass-input {
+    @apply rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-text placeholder:text-muted/70 outline-none transition focus:border-accent/60 focus:ring-2 focus:ring-accent/20;
+  }
+}
+
+@keyframes auth-gate-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.auth-gate {
+  width: min(410px, calc(100vw - 2.5rem));
+  max-width: calc(100vw - 2.5rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f2f2f2;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  font-family: "Texta Alt", sans-serif;
+}
+
+.auth-gate[open] {
+  animation: auth-gate-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-gate::backdrop {
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: auth-backdrop-in 0.4s ease;
+}
+
+.btn--steam {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+  padding: 0.72rem 1.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+  font-family: "Texta Alt", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --mirror-x: 50%;
+  --mirror-y: 50%;
+  --mirror-opacity: 0;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.btn--steam::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--mirror-opacity);
+  background: radial-gradient(
+    circle 5rem at var(--mirror-x) var(--mirror-y),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.14) 22%,
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0.03) 62%,
+    rgba(255, 255, 255, 0.01) 78%,
+    transparent 100%
+  );
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.btn--steam:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Hub shell (Tailwind pages; keep bg + sliding thumb here) */
+@keyframes hub-chrome-enter {
+  from {
+    margin-top: -8px;
+  }
+  to {
+    margin-top: 0;
+  }
+}
+
+@keyframes hub-shell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hub-page-bg::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  background: url("/assets/dashboard-bg.jpg") center / cover no-repeat;
+  filter: blur(8px) saturate(0.95) brightness(0.78);
+  transform: scale(1.03);
+}
+
+.hub-page-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 8, 10, 0.38) 0%,
+    rgba(8, 8, 10, 0.48) 55%,
+    rgba(8, 8, 10, 0.62) 100%
+  );
+  pointer-events: none;
+}
+
+.hub-nav-thumb {
+  width: calc((100% - 0.4rem) / 4);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-nav[data-hub-index="1"] .hub-nav-thumb {
+  transform: translateX(100%);
+}
+.hub-nav[data-hub-index="2"] .hub-nav-thumb {
+  transform: translateX(200%);
+}
+.hub-nav[data-hub-index="3"] .hub-nav-thumb {
+  transform: translateX(300%);
+}

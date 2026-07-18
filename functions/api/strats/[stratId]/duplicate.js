@@ -3,7 +3,7 @@ import { resolveCreatorName } from "../../../lib/pin-creators.js";
 import { canEnterEditorMode } from "../../../lib/pin-permissions.js";
 import { normalizeStratTitle } from "../../../lib/strat-fields.js";
 import { canModifyStrat } from "../../../lib/strat-permissions.js";
-import { findStrat, loadStratsData, saveStratsData } from "../../../lib/strats-store.js";
+import { createStrat, getStrat } from "../../../lib/strats-store.js";
 import { errorResponse, json } from "../../../lib/response.js";
 
 function cloneSlide(slide, order) {
@@ -33,44 +33,40 @@ export async function onRequestPost(context) {
     body = {};
   }
 
-  const data = await loadStratsData(context.env);
-  const found = findStrat(data, stratId);
-  if (!found) {
-    return errorResponse("Strat not found", 404);
-  }
-
-  if (!canModifyStrat(found.strat, auth.session.steamId, auth.role)) {
-    return errorResponse("Not allowed to duplicate this strat", 403);
-  }
-
-  const createdByName = await resolveCreatorName(
-    auth.session.steamId,
-    context.env,
-    auth.session
-  );
-
-  const now = new Date().toISOString();
-  const duplicate = {
-    ...structuredClone(found.strat),
-    id: `strat-${crypto.randomUUID()}`,
-    title: normalizeStratTitle(body.title || `${found.strat.title} (copy)`),
-    slides: (found.strat.slides || []).map((slide, index) => cloneSlide(slide, index)),
-    createdBy: auth.session.steamId,
-    createdByName,
-    createdAt: now,
-    updatedAt: now,
-    locked: false,
-    lockedBy: null,
-  };
-
-  data.strats.push(duplicate);
-
   try {
-    await saveStratsData(context.env, data);
+    const source = await getStrat(context.env, stratId);
+    if (!source) {
+      return errorResponse("Strat not found", 404);
+    }
+
+    if (!canModifyStrat(source, auth.session.steamId, auth.role)) {
+      return errorResponse("Not allowed to duplicate this strat", 403);
+    }
+
+    const createdByName = await resolveCreatorName(
+      auth.session.steamId,
+      context.env,
+      auth.session
+    );
+
+    const now = new Date().toISOString();
+    const duplicate = {
+      ...structuredClone(source),
+      id: `strat-${crypto.randomUUID()}`,
+      title: normalizeStratTitle(body.title || `${source.title} (copy)`),
+      slides: (source.slides || []).map((slide, index) => cloneSlide(slide, index)),
+      createdBy: auth.session.steamId,
+      createdByName,
+      createdAt: now,
+      updatedAt: now,
+      locked: false,
+      lockedBy: null,
+    };
+
+    const strat = await createStrat(context.env, duplicate);
+    return json({ strat }, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error("POST /api/strats/:id/duplicate failed:", error);
     return errorResponse("Strat storage is not configured", 503);
   }
-
-  return json({ strat: duplicate }, { status: 201 });
 }

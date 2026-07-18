@@ -2,8 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC = path.join(root, "public");
 const STATIC_DIRS = ["assets", "maps", "data"];
 const STATIC_FILES = ["_headers", "_redirects"];
 const WRANGLER_API = "http://127.0.0.1:8788";
@@ -25,13 +27,8 @@ const MIME = {
   ".ttf": "font/ttf",
 };
 
-function copyStaticToDist() {
+function copyExtraToDist() {
   const dist = path.join(root, "dist");
-  for (const dir of STATIC_DIRS) {
-    const from = path.join(root, dir);
-    if (!fs.existsSync(from)) continue;
-    fs.cpSync(from, path.join(dist, dir), { recursive: true });
-  }
   for (const file of STATIC_FILES) {
     const from = path.join(root, file);
     if (!fs.existsSync(from)) continue;
@@ -41,7 +38,6 @@ function copyStaticToDist() {
 
 /** Keep /assets|/maps|/data URLs as public paths (no Vite fingerprinting). */
 function preserveStaticUrls() {
-  // Encode the path in the placeholder so multi-page builds can't race a shared map.
   return [
     {
       name: "preserve-static-urls-pre",
@@ -90,7 +86,7 @@ function sendStaticFile(req, res, filePath) {
       }
       end = Math.min(end, size - 1);
       res.statusCode = 206;
-      res.setHeader("Content-Range", `bytes ${start}-${end}/${size}`);
+      res.setHeader("Content-Range", `bytes ${start}-${end}`);
       res.setHeader("Content-Length", String(end - start + 1));
       fs.createReadStream(filePath, { start, end }).pipe(res);
       return;
@@ -111,17 +107,8 @@ function serveRepoStatic() {
         const url = qIndex >= 0 ? raw.slice(0, qIndex) : raw;
         const query = qIndex >= 0 ? raw.slice(qIndex) : "";
 
-        if (url === "/" || url === "") {
-          res.statusCode = 302;
-          res.setHeader("Location", `/home/${query}`);
-          res.end();
-          return;
-        }
-
         const barePages = {
-          "/home": "/home/",
-          "/tool/stratmaker": "/tool/stratmaker/",
-          "/tool/climbing-guide": "/tool/climbing-guide/",
+          "/climbing-guide-v1": "/climbing-guide-v1/",
         };
         if (barePages[url]) {
           res.statusCode = 302;
@@ -130,46 +117,74 @@ function serveRepoStatic() {
           return;
         }
 
+        // React owns /tool/stratmaker — SPA fallback handles refresh.
+
         const match = STATIC_DIRS.find(
           (dir) => url === `/${dir}` || url.startsWith(`/${dir}/`)
         );
-        if (!match) return next();
-        const filePath = path.join(root, decodeURIComponent(url.slice(1)));
-        if (
-          !filePath.startsWith(path.join(root, match)) ||
-          !fs.existsSync(filePath) ||
-          fs.statSync(filePath).isDirectory()
-        ) {
+        if (match) {
+          const filePath = path.join(PUBLIC, decodeURIComponent(url.slice(1)));
+          if (
+            filePath.startsWith(path.join(PUBLIC, match)) &&
+            fs.existsSync(filePath) &&
+            !fs.statSync(filePath).isDirectory()
+          ) {
+            sendStaticFile(req, res, filePath);
+            return;
+          }
           return next();
         }
-        sendStaticFile(req, res, filePath);
+
+        // SPA history fallback for React routes (MPA mode otherwise 404s on refresh).
+        const skipSpa =
+          url.startsWith("/api") ||
+          url.startsWith("/climbing-guide-v1") ||
+          url.startsWith("/src") ||
+          url.startsWith("/@") ||
+          url.startsWith("/node_modules") ||
+          /\.\w+$/.test(url);
+        if (!skipSpa && req.method === "GET") {
+          req.url = `/${query}`;
+        }
+        return next();
       });
     },
     closeBundle() {
-      copyStaticToDist();
+      copyExtraToDist();
     },
   };
 }
 
 export default defineConfig({
   root,
-  publicDir: false,
+  publicDir: "public",
   appType: "mpa",
-  plugins: [...preserveStaticUrls(), serveRepoStatic()],
+  plugins: [react(), ...preserveStaticUrls(), serveRepoStatic()],
+  resolve: {
+    alias: {
+      "@map-kernel": path.resolve(root, "map-kernel"),
+    },
+  },
+  optimizeDeps: {
+    include: ["@excalidraw/excalidraw"],
+  },
   build: {
     outDir: "dist",
-    emptyOutDir: true,
+    // Watch rebuilds must keep old hashed chunks so an open :8788 tab
+    // does not 404 mid-import (Excalidraw loads large lazy chunks).
+    emptyOutDir: !process.argv.includes("--watch"),
     rollupOptions: {
       input: {
-        home: path.resolve(root, "home/index.html"),
-        stratmaker: path.resolve(root, "tool/stratmaker/index.html"),
-        climbingGuide: path.resolve(root, "tool/climbing-guide/index.html"),
+        app: path.resolve(root, "index.html"),
+        climbingGuide: path.resolve(root, "climbing-guide-v1/index.html"),
       },
     },
   },
   server: {
+    host: true,
     port: 5173,
     strictPort: true,
+    open: "/",
     proxy: {
       "/api": {
         target: WRANGLER_API,

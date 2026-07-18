@@ -1,37 +1,40 @@
-import {
-  base64urlDecode,
-  base64urlEncode,
-  signPayload,
-  verifySignature,
-} from "./crypto.js";
+import { base64urlEncode } from "./crypto.js";
+import { requireDb } from "./d1.js";
 
 const COOKIE_NAME = "hll-tactika-session";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function getSessionSecret(env) {
-  const secret = env.SESSION_SECRET;
-  if (!secret) {
-    throw new Error("SESSION_SECRET is not configured");
-  }
-  return secret;
-}
 
 function cookieFlags(request) {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
   return `; Path=/; HttpOnly${secure}; SameSite=Lax`;
 }
 
-export async function createSessionCookie(user, secret, request) {
-  const payload = {
-    steamId: user.steamId,
-    name: user.name || null,
-    avatar: user.avatar || null,
-    exp: Date.now() + SESSION_TTL_MS,
-  };
-  const payloadB64 = base64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
-  const signature = await signPayload(payloadB64, secret);
-  const value = `${payloadB64}.${signature}`;
-  return `${COOKIE_NAME}=${value}${cookieFlags(request)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`;
+function createToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64urlEncode(bytes);
+}
+
+async function hashToken(token) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return base64urlEncode(new Uint8Array(digest));
+}
+
+export async function createSessionCookie(user, env, request) {
+  const db = requireDb(env);
+  const token = createToken();
+  const tokenHash = await hashToken(token);
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+
+  await db
+    .prepare(
+      `INSERT INTO sessions (token_hash, steam_id, expires_at)
+       VALUES (?, ?, ?)`
+    )
+    .bind(tokenHash, String(user.steamId), expiresAt)
+    .run();
+
+  return `${COOKIE_NAME}=${token}${cookieFlags(request)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`;
 }
 
 export function clearSessionCookie(request) {
@@ -50,26 +53,48 @@ export function readSessionCookie(request) {
 }
 
 export async function verifySession(request, env) {
-  const secret = getSessionSecret(env);
-  const raw = readSessionCookie(request);
-  if (!raw) return null;
+  const token = readSessionCookie(request);
+  if (!token) return null;
 
-  const dot = raw.lastIndexOf(".");
-  if (dot <= 0) return null;
-
-  const payloadB64 = raw.slice(0, dot);
-  const signature = raw.slice(dot + 1);
-  const valid = await verifySignature(payloadB64, signature, secret);
-  if (!valid) return null;
-
+  const db = requireDb(env);
+  const tokenHash = await hashToken(token);
   try {
-    const json = new TextDecoder().decode(base64urlDecode(payloadB64));
-    const payload = JSON.parse(json);
-    if (!payload.steamId || !payload.exp || payload.exp < Date.now()) {
+    const row = await db
+      .prepare(
+        `SELECT s.token_hash, s.steam_id, s.expires_at, u.display_name, u.avatar_url
+           FROM sessions s
+           JOIN users u ON u.steam_id = s.steam_id
+          WHERE s.token_hash = ?`
+      )
+      .bind(tokenHash)
+      .first();
+
+    if (!row || !row.expires_at || row.expires_at <= new Date().toISOString()) {
       return null;
     }
-    return payload;
-  } catch {
+
+    await db
+      .prepare("UPDATE sessions SET last_seen_at = datetime('now') WHERE token_hash = ?")
+      .bind(tokenHash)
+      .run();
+
+    return {
+      steamId: String(row.steam_id),
+      name: row.display_name || null,
+      avatar: row.avatar_url || null,
+      exp: Date.parse(row.expires_at),
+    };
+  } catch (error) {
+    console.error("Session verification failed:", error);
     return null;
   }
+}
+
+export async function destroySession(request, env) {
+  const token = readSessionCookie(request);
+  if (!token) return;
+
+  const db = requireDb(env);
+  const tokenHash = await hashToken(token);
+  await db.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
 }

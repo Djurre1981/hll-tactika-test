@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en" class="app-boot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HLL-Tactika</title>
+  <meta name="description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://hll-tactika.pages.dev/" />
+  <meta property="og:title" content="HLL-Tactika" />
+  <meta property="og:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta property="og:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="HLL-Tactika" />
+  <meta name="twitter:description" content="Tactika is The Circle's strategy platform for hell let loose. The project is developed by the community and kept strictly exclusive to its competitive team." />
+  <meta name="twitter:image" content="https://hll-tactika.pages.dev/assets/logos/pixellogo.png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/layout.css" />
+  <link rel="stylesheet" href="./css/utilities.css" />
+  <link rel="stylesheet" href="./css/fonts/texta.css" />
+  <link rel="stylesheet" href="./css/components/glass.css" />
+  <link rel="stylesheet" href="./css/components/auth-gate.css" />
+  <link rel="stylesheet" href="./css/components/mode-switch.css" />
+  <link rel="stylesheet" href="./css/components/user-menu.css" />
+  <link rel="stylesheet" href="./css/components/map-viewer.css" />
+  <link rel="stylesheet" href="./css/components/map-overlays.css" />
+  <link rel="stylesheet" href="./css/components/sidebar.css" />
+  <link rel="stylesheet" href="./css/components/sidebar-map-picker.css" />
+  <link rel="stylesheet" href="./css/components/sidebar-color-control.css" />
+  <link rel="stylesheet" href="./css/components/sidebar-pin-list.css" />
+  <link rel="stylesheet" href="./css/components/filter-bar.css" />
+  <link rel="stylesheet" href="./css/components/pin-marker.css" />
+  <link rel="stylesheet" href="./css/components/pin-preview.css" />
+  <link rel="stylesheet" href="./css/components/pin-modal.css" />
+  <link rel="stylesheet" href="./css/components/pin-editor.css" />
+  <link rel="stylesheet" href="./css/components/pin-editor-media.css" />
+  <link rel="stylesheet" href="./css/components/pin-editor-faction.css" />
+  <link rel="stylesheet" href="./css/components/context-menu.css" />
+  <link rel="stylesheet" href="./css/components/mg-spot-arrows.css" />
+  <link rel="stylesheet" href="./css/components/admin-panel.css" />
+  <link rel="stylesheet" href="./css/editor/editor.css" />
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("hll-tactika-authed") !== "1") return;
+        var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
+        if (!mapImage) {
+          var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
+          mapImage = "/maps/no-grid/" + mapId + "_NoGrid.webp";
+        }
+        if (mapImage.charAt(0) !== "/") mapImage = "/" + mapImage;
+        var preload = document.createElement("link");
+        preload.rel = "preload";
+        preload.as = "image";
+        preload.href = mapImage;
+        document.head.appendChild(preload);
+      } catch (_) {}
+    })();
+  </script>
+  <style>
+    #app-root.is-auth-pending .sidebar-shell,
+    #app-root.is-auth-pending .map-toolbar-shell {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+<dialog class="auth-gate" id="auth-gate">
+    <div class="auth-gate__card">
+      <button type="button" class="auth-gate__close" id="btn-auth-close" aria-label="Close">&times;</button>
+      <h2 id="auth-gate-title">CIRCLE COMP LOGIN</h2>
+      <p id="auth-gate-message" class="auth-gate__message">
+        Sign in with your Hell Let Loose Steam account to access the platform. Only approved Circle members can have access.
+      </p>
+      <a href="/api/auth/steam" class="btn btn--steam" id="btn-steam-login">
+        <span class="btn--steam__icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 2.64.85 5.08 2.29 7.07L.1 24l5.08-1.33A11.94 11.94 0 0012 24c6.63 0 12-5.37 12-12S18.63 0 12 0zm6.49 7.38l-1.81 5.25-5.31-.09-4.12 3.81-.64-3.88 4.43-3.52 6-3.07z"/>
+          </svg>
+        </span>
+        <span class="btn--steam__label">Sign in with Steam</span>
+      </a>
+    </div>
+  </dialog>
+
+  <div class="user-cluster hidden" id="user-cluster">
+    <div class="user-cluster__avatar-wrap">
+      <div class="user-cluster__menu" role="menu">
+        <button id="btn-dashboard-home" class="user-cluster__signout" type="button" role="menuitem">Dashboard</button>
+        <button id="btn-admin-panel" class="user-cluster__admin hidden" type="button" role="menuitem">Admin Panel</button>
+        <button id="btn-logout" class="user-cluster__signout" type="button" role="menuitem">Sign out</button>
+      </div>
+      <button type="button" class="user-cluster__avatar-btn" id="header-user-trigger" aria-label="Account">
+        <img id="user-avatar" class="user-cluster__avatar hidden" alt="" width="40" height="40" />
+      </button>
+    </div>
+    <span id="user-name" class="user-cluster__name"></span>
+  </div>
+
+  <div id="app-root" class="hidden is-auth-pending">
+  <main class="layout">
+    <div class="mode-switch hidden" id="mode-switch">
+      <div class="mode-switch__surface glass-surface" role="tablist" aria-label="Application mode">
+        <button type="button" class="mode-switch__tab" role="tab" data-mode="viewer" aria-selected="true">Viewer</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-mode="editor" aria-selected="false">Editor</button>
+        <button type="button" class="mode-switch__tab" role="tab" data-mode="strats" aria-selected="false">Strats</button>
+        <span class="mode-switch__thumb" aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="sidebar-shell" id="sidebar-shell">
+    <aside class="sidebar glass-panel" id="sidebar">
+      <div class="sidebar__brand">
+        <button type="button" class="sidebar__logo sidebar__logo--btn" id="sidebar-logo-home" aria-label="Back to dashboard">
+          <img src="/assets/logos/tactika-full-logo.svg" alt="HLL Tactika" width="246" height="62" />
+        </button>
+      </div>
+      <div class="sidebar__divider" role="presentation"></div>
+      <div class="sidebar__body">
+      <div id="sidebar-default">
+      <div class="sidebar__section" id="sidebar-map-section">
+        <h2>Map</h2>
+        <div class="map-picker sidebar__map-picker" id="map-select">
+          <button type="button" class="map-picker__chevron" aria-expanded="false" aria-label="Select map"></button>
+          <div class="map-picker__summary" role="button" tabindex="0" aria-label="Select map">
+            <span class="map-picker__label"></span>
+          </div>
+          <div class="map-picker__list-wrap">
+            <ul class="map-picker__list" role="listbox" aria-label="Maps"></ul>
+          </div>
+        </div>
+        <div class="sidebar__map-toggles">
+          <label class="toggle-pill" title="Grid">
+            <input type="checkbox" id="toggle-grid" checked />
+            <span>Grid</span>
+          </label>
+          <label class="toggle-pill" title="Strongpoints">
+            <input type="checkbox" id="toggle-strongpoints" checked />
+            <span>Points</span>
+          </label>
+          <label class="toggle-pill" title="Tooltip Preview">
+            <input type="checkbox" id="toggle-preview" checked />
+            <span>Tooltip</span>
+          </label>
+          <div class="map-color-control" id="map-color-control">
+            <label class="toggle-pill" title="Background Color">
+              <input type="checkbox" id="toggle-color" checked />
+              <span>Color</span>
+            </label>
+            <div class="map-color-control__picker">
+              <button
+                type="button"
+                class="toggle-pill map-color-control__hue-btn"
+                id="btn-bg-hue"
+                title="Pick hue"
+                aria-label="Pick background hue"
+                aria-expanded="false"
+                aria-controls="color-hue-popover"
+              >
+                <span class="map-color-control__swatch" aria-hidden="true"></span>
+              </button>
+              <div class="map-color-picker hidden" id="color-hue-popover" role="dialog" aria-label="Background hue">
+                <div class="map-color-picker__row">
+                  <input type="range" id="color-hue-slider" class="map-color-picker__hue" min="0" max="360" value="28" />
+                  <button
+                    type="button"
+                    class="map-color-picker__random"
+                    id="btn-bg-hue-random"
+                    title="Random color on map change"
+                    aria-label="Random color on map change"
+                    aria-pressed="true"
+                  >
+                    <span class="map-color-picker__wheel" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar__section sidebar__section--edit-tools hidden" id="sidebar-edit-tools">
+        <h2>Edit Tools</h2>
+        <button id="btn-add-mg" class="glass-pill-btn" type="button">Add MG Position</button>
+        <button id="btn-add-climb" class="glass-pill-btn" type="button">Add Infantry Climb</button>
+      </div>
+
+      <div class="sidebar__section" id="sidebar-spots-section">
+        <h2>Spots on this map</h2>
+        <p class="sidebar__pin-count" id="pin-count" aria-live="polite"></p>
+        <input type="text" class="sidebar__search glass-input" id="pin-search" placeholder="Search by name, code (#A3-12), tag..." />
+        <ul class="pin-list" id="pin-list"></ul>
+      </div>
+      </div>
+      <div class="sidebar__section sidebar__section--edit hidden" id="edit-panel">
+        <div class="edit-panel__header">
+          <button type="button" id="btn-edit-panel-back" class="edit-panel__back btn btn--icon" aria-label="Back to spot list">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+          </button>
+          <h2 id="edit-panel-title">EDIT POSITION</h2>
+        </div>
+        <form id="pin-form" class="pin-form">
+          <label>
+            Title
+            <input type="text" id="pin-title" class="glass-input" required placeholder="e.g. Chapel Roof" maxlength="14" />
+          </label>
+          <div class="pin-form__section-faction">
+            <legend>Faction</legend>
+            <div class="edit-faction-bar" id="edit-faction-bar" role="radiogroup" aria-label="Faction" data-current-faction="neutral">
+              <span class="edit-faction-bar__thumb" aria-hidden="true"></span>
+              <button type="button" class="edit-faction-bar__btn" data-faction="axis" aria-pressed="false" title="Axis">
+                <img class="edit-faction-bar__icon" src="/assets/logos/axis.svg" alt="" width="18" height="18" />
+                <span>Axis</span>
+              </button>
+              <button type="button" class="edit-faction-bar__btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
+                <img class="edit-faction-bar__icon" src="/assets/logos/neutral.svg" alt="" width="18" height="18" />
+                <span>Neutral</span>
+              </button>
+              <button type="button" class="edit-faction-bar__btn" data-faction="allies" aria-pressed="false" title="Allies">
+                <img class="edit-faction-bar__icon" src="/assets/logos/allies.svg" alt="" width="18" height="18" />
+                <span>Allies</span>
+              </button>
+            </div>
+          </div>
+          <fieldset class="pin-form__requires">
+            <legend>Requires</legend>
+            <div class="pin-form__requires-options" id="pin-requires-options">
+              <label class="requires-checkbox" data-requires="truck">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-truck" aria-hidden="true"></i>
+                <span>Truck</span>
+              </label>
+              <label class="requires-checkbox" data-requires="repair-station">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
+                <span>Repair</span>
+              </label>
+              <label class="requires-checkbox" data-requires="barricade">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-road-barrier" aria-hidden="true"></i>
+                <span>Barricade</span>
+              </label>
+              <label class="requires-checkbox" data-requires="depot">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i class="fa-solid fa-warehouse" aria-hidden="true"></i>
+                <span>Depot</span>
+              </label>
+              <label class="requires-checkbox requires-checkbox--faction hidden" data-requires="faction-specific">
+                <input type="checkbox" class="requires-checkbox__input" hidden />
+                <i id="requires-faction-icon" class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                <span id="requires-faction-label">Tank Hedgehog</span>
+              </label>
+            </div>
+          </fieldset>
+          <label>
+            Description
+            <textarea id="pin-description" class="glass-input pin-form__description" rows="3" placeholder="Short note about the trick"></textarea>
+          </label>
+          <fieldset class="pin-form__media" tabindex="-1">
+            <legend>Images &amp; Videos</legend>
+            <input
+              type="file"
+              id="pin-media-file"
+              class="pin-media-file hidden"
+              accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.ogg,image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
+            />
+            <div class="pin-media-list" id="pin-media-list"></div>
+          </fieldset>
+          <div class="pin-form__coords-label">Coordinates</div>
+          <div class="pin-form__coords" id="pin-coords">No position selected</div>
+          <div class="pin-form__coords-label">Position Code</div>
+          <div class="pin-form__position-code" id="pin-position-code"></div>
+        </form>
+      </div>
+      </div>
+    </aside>
+    <button
+      type="button"
+      class="sidebar__toggle"
+      id="btn-sidebar-toggle"
+      aria-label="Hide sidebar"
+      aria-expanded="true"
+      title="Hide sidebar"
+    ></button>
+    </div>
+
+    <div class="map-toolbar-shell" id="map-toolbar-shell">
+        <button
+          type="button"
+          class="map-toolbar__toggle"
+          id="btn-map-toolbar-toggle"
+          aria-label="Hide toolbar"
+          aria-expanded="true"
+          title="Hide toolbar"
+        ></button>
+        <div class="map-toolbar glass-panel" id="map-toolbar">
+        <div class="map-toolbar__zoom-row">
+          <button id="zoom-label" class="map-toolbar__zoom-label" type="button" title="Reset zoom and pan">100%</button>
+          <button id="btn-zoom-in" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom in">+</button>
+          <button id="btn-zoom-out" class="glass-btn glass-btn--icon map-toolbar__zoom-btn" type="button" title="Zoom out">−</button>
+        </div>
+        <span class="map-toolbar__sep"></span>
+        <div class="faction-slider" id="sidebar-faction-bar" role="radiogroup" aria-label="Filter by faction" data-current-faction="neutral">
+          <span class="faction-slider__thumb" aria-hidden="true"></span>
+          <button type="button" class="faction-slider__btn" data-faction="axis" aria-pressed="false" title="Axis">
+            <img class="faction-slider__icon" src="/assets/logos/axis.svg" alt="" width="15" height="15" />
+            <span>Axis</span>
+          </button>
+          <button type="button" class="faction-slider__btn is-active" data-faction="neutral" aria-pressed="true" title="Neutral">
+            <img class="faction-slider__icon" src="/assets/logos/neutral.svg" alt="" width="15" height="15" />
+            <span>Neutral</span>
+          </button>
+          <button type="button" class="faction-slider__btn" data-faction="allies" aria-pressed="false" title="Allies">
+            <img class="faction-slider__icon" src="/assets/logos/allies.svg" alt="" width="15" height="15" />
+            <span>Allies</span>
+          </button>
+        </div>
+        <span class="map-toolbar__sep"></span>
+        <div class="tag-filters tag-filters--two" id="tag-filters" role="group" aria-label="Filter by tag">
+          <button type="button" class="tag-filter tag-filter--mg-spot glass-btn is-active" data-tag="mg-spot" aria-pressed="true" title="MG Spot">
+            <i class="fa-solid fa-person-rifle tag-swatch tag-swatch--mg-spot" aria-hidden="true"></i>
+            <span>MG Spot</span>
+          </button>
+          <button type="button" class="tag-filter tag-filter--climb glass-btn is-active" data-tag="climb" aria-pressed="true" title="Climb">
+            <i class="fa-solid fa-map-pin tag-swatch tag-swatch--climb" aria-hidden="true"></i>
+            <span>Climb</span>
+          </button>
+          <button type="button" class="tag-filter tag-filter--labels glass-btn is-active" id="btn-toggle-map-labels" aria-pressed="true" title="Hide map labels">
+            <span class="tag-filter__letter" aria-hidden="true">T</span>
+            <span>Labels</span>
+          </button>
+        </div>
+        </div>
+      </div>
+
+    <section class="map-shell">
+      <button id="btn-reset-view" class="hidden" type="button" aria-hidden="true" tabindex="-1"></button>
+
+      <div class="map-viewport is-booting" id="map-viewport">
+        <div class="map-stage" id="map-stage">
+          <img
+            id="map-image"
+            class="map-image"
+            src=""
+            alt="Hell Let Loose tactical map"
+            draggable="false"
+          />
+          <script>
+            (function () {
+              try {
+                var mapImage = localStorage.getItem("hll-tactika-selected-map-image");
+                if (!mapImage) {
+                  var mapId = localStorage.getItem("hll-tactika-selected-map") || "SMDMV2";
+                  mapImage = "/maps/no-grid/" + mapId + "_NoGrid.webp";
+                }
+                if (mapImage.charAt(0) !== "/") mapImage = "/" + mapImage;
+                document.getElementById("map-image").src = mapImage;
+              } catch (_) {}
+            })();
+          </script>
+
+          <div class="map-pins" id="map-pins"></div>
+          <div class="map-pins-draft" id="map-pins-draft" aria-hidden="true">
+            <svg
+              class="map-mg-spots-layer map-mg-spots-layer--draft hidden"
+              id="map-draft-arrow"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            ></svg>
+            <div class="map-pin map-pin--draft hidden" id="map-draft-pin"></div>
+          </div>
+        </div>
+        <div class="map-crosshair hidden" id="map-crosshair" aria-hidden="true"></div>
+      </div>
+
+      <div class="pin-context-menu hidden" id="pin-context-menu">
+        <button type="button" class="pin-context-menu__btn" data-action="edit" title="Edit this pin">
+          <i class="fa-solid fa-pen-to-square"></i> Edit
+        </button>
+        <button type="button" class="pin-context-menu__btn pin-context-menu__btn--danger" data-action="delete" title="Delete this pin">
+          <i class="fa-solid fa-trash-can"></i> Delete
+        </button>
+      </div>
+
+      <div class="preview-tooltip" id="preview-tooltip" role="tooltip">
+        <div class="preview-tooltip__media" id="preview-media"></div>
+        <div class="preview-tooltip__body">
+          <div class="preview-tooltip__title-row">
+            <span class="preview-tooltip__faction hidden" id="preview-faction-part">
+              <img class="preview-tooltip__faction-logo" id="preview-faction-logo" src="" alt="" width="13" height="13" />
+              <span id="preview-faction-text"></span>
+            </span>
+            <span class="preview-tooltip__heading-sep" id="preview-faction-sep"> - </span>
+            <span class="preview-tooltip__tag" id="preview-tag"></span>
+            <span class="preview-tooltip__heading-sep" id="preview-title-sep"> - </span>
+            <span id="preview-title"></span>
+          </div>
+          <div class="preview-tooltip__sub-row">
+            <span class="preview-tooltip__position-code" id="preview-position-code"></span>
+            <div class="preview-tooltip__requires" id="preview-requires"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <dialog class="admin-panel" id="admin-panel">
+    <div class="admin-panel__inner">
+      <button class="admin-panel__close" id="btn-close-admin-panel" type="button" aria-label="Close">&times;</button>
+      <header class="admin-panel__header">
+        <h2>Admin Panel</h2>
+        <p>Add or remove circle members. Comp Admins cannot remove other Comp Admins. Owners can change roles and remove Comp Admins.</p>
+      </header>
+
+      <form id="admin-add-user-form" class="admin-panel__add-form">
+        <label>
+          Steam ID64
+          <input type="text" id="admin-steam-id" required placeholder="76561198…" inputmode="numeric" pattern="7656119[0-9]{10}" />
+        </label>
+        <button type="submit" class="btn btn--primary" id="btn-admin-add-user">Add user</button>
+      </form>
+
+      <p class="admin-panel__status" id="admin-panel-status" aria-live="polite"></p>
+
+      <div class="admin-panel__export hidden" id="admin-export-section">
+        <button type="button" class="btn btn--secondary" id="btn-admin-export-pins">Export full pin backup</button>
+        <button type="button" class="btn btn--secondary" id="btn-admin-alert-test">Test Discord alert</button>
+      </div>
+
+      <div class="admin-panel__table-wrap">
+        <table class="admin-panel__table">
+          <thead>
+            <tr>
+              <th scope="col">Username</th>
+              <th scope="col">Steam ID</th>
+              <th scope="col">Role</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="video-modal" id="video-modal" closedby="none">
+    <div class="video-modal__inner">
+      <button class="video-modal__close" id="btn-close-modal" type="button" aria-label="Close">&times;</button>
+      <div class="video-modal__header">
+        <div class="video-modal__header-row">
+          <h2 class="video-modal__heading">
+            <span class="video-modal__faction hidden" id="modal-faction-part">
+              <img class="video-modal__faction-logo" id="modal-faction-logo" src="" alt="" width="15" height="15" />
+              <span id="modal-faction-text"></span>
+            </span>
+            <span class="video-modal__heading-sep" id="modal-faction-sep">-</span>
+            <span class="video-modal__tag" id="modal-tag"></span>
+            <span class="video-modal__heading-sep" id="modal-title-sep">-</span>
+            <span id="modal-title"></span>
+          </h2>
+        </div>
+        <p class="video-modal__position-code">Position Code: <span id="modal-position-code"></span></p>
+        <div class="video-modal__requires hidden" id="modal-requires"></div>
+        <p id="modal-description"></p>
+      </div>
+      <div class="video-modal__player-wrap" id="modal-player-wrap">
+        <button
+          type="button"
+          class="video-modal__nav video-modal__nav--prev hidden"
+          id="modal-media-prev"
+          aria-label="Previous media"
+        >
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <div class="video-modal__player" id="modal-player"></div>
+        <button
+          type="button"
+          class="video-modal__fullscreen hidden"
+          id="modal-media-fullscreen"
+          aria-label="Enter fullscreen"
+        >
+          <i class="fa-solid fa-expand video-modal__fullscreen-icon" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="video-modal__nav video-modal__nav--next hidden"
+          id="modal-media-next"
+          aria-label="Next media"
+        >
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+        <span class="video-modal__media-counter hidden" id="modal-media-counter"></span>
+      </div>
+      <p id="modal-uploader" class="video-modal__uploader hidden"></p>
+    </div>
+  </dialog>
+
+  <script type="module" src="./js/entries/climbing-guide.js"></script>
+</body>
+</html>

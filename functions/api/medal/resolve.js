@@ -1,27 +1,11 @@
-import { isAllowedSteamId } from "../../lib/roles.js";
-import { guardAccess } from "../../lib/access-guard.js";
+import { requireAuth } from "../../lib/auth-request.js";
 import { resolveMedalClip } from "../../lib/medal.js";
 import { errorResponse, json } from "../../lib/response.js";
-import { verifySession } from "../../lib/session.js";
 
 export async function onRequestGet(context) {
-  const session = await verifySession(context.request, context.env);
-  if (!session) {
-    return errorResponse("Sign in required", 401);
-  }
-
-  if (!(await isAllowedSteamId(session.steamId, context.env))) {
-    return errorResponse("Not authorized for this circle", 403);
-  }
-
-  const access = await guardAccess(context, {
-    bucket: "medal",
-    endpoint: "medal.resolve",
-    steamId: session.steamId,
-    steamName: session.name,
-  });
-  if (access.error) {
-    return access.error;
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth.error;
   }
 
   const url = new URL(context.request.url).searchParams.get("url");

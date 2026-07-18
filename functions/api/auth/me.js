@@ -1,4 +1,3 @@
-import { fetchSteamProfile } from "../../lib/steam.js";
 import { getUserRole } from "../../lib/roles.js";
 import { getUserPreferences } from "../../lib/user-preferences.js";
 import { verifySession } from "../../lib/session.js";
@@ -15,19 +14,12 @@ export async function onRequestGet(context) {
     return json({ authenticated: false, forbidden: true }, { status: 403 });
   }
 
-  let { name, avatar } = session;
-  if (!name) {
-    const profile = await fetchSteamProfile(session.steamId, context.env);
-    name = profile.name;
-    avatar = profile.avatar || avatar;
-  }
-
   const preferences = await getUserPreferences(session.steamId, context.env);
   const body = {
     authenticated: true,
     steamId: session.steamId,
-    name,
-    avatar,
+    name: session.name,
+    avatar: session.avatar,
     role,
   };
   if (preferences) {

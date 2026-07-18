@@ -1,4 +1,3 @@
-import { guardAccess } from "../lib/access-guard.js";
 import { requireAuth } from "../lib/auth-request.js";
 import { mirrorPinMedia } from "../lib/discord-ingest.js";
 import { validatePinMediaFields } from "../lib/media-urls.js";
@@ -101,17 +100,6 @@ export async function onRequestGet(context) {
   try {
     assertPinDetailSecretConfigured(context.env);
 
-    const access = await guardAccess(context, {
-      bucket: "map",
-      endpoint: "pins.map",
-      steamId: auth.session.steamId,
-      steamName: auth.session.name,
-      mapId,
-    });
-    if (access.error) {
-      return access.error;
-    }
-
     const data = await loadPinsData(context.env);
     const mapPins = data.pins?.[mapId] || [];
     const mapsWithPins = Object.keys(data.pins || {}).filter(
@@ -167,17 +155,6 @@ export async function onRequestPost(context) {
 
   if (!isValidMapId(mapId)) {
     return errorResponse("Invalid mapId", 400);
-  }
-
-  const access = await guardAccess(context, {
-    endpoint: "pins.create",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-    statusOnSuccess: 201,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const built = buildPinFromBody(pin, auth.session.steamId);
@@ -256,16 +233,6 @@ export async function onRequestPatch(context) {
   }
   if (pinUpdates.length > 200) {
     return errorResponse("Too many pins in one batch (max 200)", 400);
-  }
-
-  const access = await guardAccess(context, {
-    endpoint: "pins.batch",
-    steamId: auth.session.steamId,
-    steamName: auth.session.name,
-    mapId,
-  });
-  if (access.error) {
-    return access.error;
   }
 
   const data = await loadPinsData(context.env);
