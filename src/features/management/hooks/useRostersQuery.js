@@ -30,6 +30,22 @@ export function useCreateRosterMutation() {
   });
 }
 
+export function useUpdateRosterMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...updates }) =>
+      apiClient(`/rosters/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
+    },
+  });
+}
+
 export function useDeleteRosterMutation() {
   const queryClient = useQueryClient();
 
@@ -85,6 +101,25 @@ export function useImportRosterCsvMutation(rosterId) {
       queryClient.invalidateQueries({ queryKey: queryKeys.rosters.members(rosterId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.rosters.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.roster.all });
+    },
+  });
+}
+
+export function useUpdateRosterMemberMutation(rosterId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...updates }) =>
+      apiClient(`/roster/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      }),
+    onSuccess: () => {
+      if (rosterId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rosters.members(rosterId) });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.roster.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
     },
   });
 }

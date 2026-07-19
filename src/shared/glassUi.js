@@ -57,7 +57,7 @@ export const optionRow =
 export const fieldLabel = "block text-[0.7rem] font-light text-white/45";
 
 export const userMenuPill =
-  "inline-flex min-h-10 w-full items-center justify-center whitespace-nowrap rounded-full border border-solid border-white/[0.14] bg-[rgba(50,50,50,0.85)] px-[0.9rem] py-[0.45rem] text-center text-[0.72rem] font-light uppercase tracking-[0.1em] text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-[20px] backdrop-saturate-[180%] transition hover:border-white/[0.22] hover:text-white disabled:opacity-40";
+  "inline-flex min-h-7 w-full items-center justify-center whitespace-nowrap rounded-full border border-solid border-white/[0.12] bg-[rgba(50,50,50,0.85)] px-3 py-1 text-center text-[0.62rem] font-light uppercase tracking-[0.08em] text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-[20px] backdrop-saturate-[180%] transition hover:border-white/[0.2] hover:text-white disabled:opacity-40";
 
 export function cx(...parts) {
   return parts.filter(Boolean).join(" ");

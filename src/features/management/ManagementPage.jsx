@@ -45,18 +45,18 @@ export function ManagementPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-hub-fill>
-      <div className="relative min-h-[28rem] flex-1 overflow-hidden md:min-h-0">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
-          className="absolute inset-0 transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-md:relative max-md:inset-auto"
+          className="absolute inset-0 transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-md:relative max-md:inset-auto max-md:h-full"
           style={{ transform: `translateY(-${index * 100}%)` }}
         >
-          <div className="h-full overflow-auto px-1 pb-2 pt-1.5 box-border">
+          <div className="box-border flex h-full min-h-0 flex-col overflow-auto">
             <OverviewSection />
           </div>
-          <div className="h-full overflow-auto px-1 pb-2 pt-1.5 box-border">
+          <div className="box-border flex h-full min-h-0 flex-col overflow-hidden">
             <RosterSection />
           </div>
-          <div className="h-full overflow-auto px-1 pb-2 pt-1.5 box-border">
+          <div className="box-border flex h-full min-h-0 flex-col overflow-auto">
             <FoldersSection />
           </div>
         </div>

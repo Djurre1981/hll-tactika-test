@@ -1,11 +1,19 @@
 import { requireDb } from "./d1.js";
-import { createRosterMember, getRosterMember, listRosterMembers } from "./roster-store.js";
+import {
+  backfillMemberAvatars,
+  createRosterMember,
+  getRosterMember,
+  listRosterMembers,
+  resolveSteamAvatarUrl,
+  updateRosterMember,
+} from "./roster-store.js";
 
 function rowToRoster(row) {
   return {
     id: row.id,
     name: row.name,
     tournament: row.tournament || null,
+    color: row.color || null,
     notes: row.notes || "",
     sortOrder: Number(row.sort_order) || 0,
     memberCount: Number(row.member_count) || 0,
@@ -15,13 +23,55 @@ function rowToRoster(row) {
   };
 }
 
+function parseTournaments(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map((t) => String(t).trim()).filter(Boolean);
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((t) => String(t).trim()).filter(Boolean);
+  } catch {
+    /* fall through */
+  }
+  return String(raw)
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+function parseRoles(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.map((r) => String(r).trim()).filter(Boolean);
+  }
+  const text = String(raw).trim();
+  if (!text) return [];
+  if (text.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed.map((r) => String(r).trim()).filter(Boolean);
+    } catch {
+      /* fall through */
+    }
+  }
+  if (text.includes(",")) {
+    return text.split(",").map((r) => r.trim()).filter(Boolean);
+  }
+  return [text];
+}
+
 function rowToMember(row) {
+  // Prefer member-level roles (supports multi-role JSON) over membership single role
+  const roles = parseRoles(row.roster_role || row.membership_role);
   return {
     id: row.id,
     displayName: row.display_name,
     steamId: row.steam_id || null,
+    t17Id: row.t17_id || null,
     avatarUrl: row.avatar_url || null,
-    rosterRole: row.membership_role || row.roster_role || null,
+    rosterRole: roles[0] || null,
+    rosterRoles: roles,
+    tournaments: parseTournaments(row.tournaments),
+    situation: row.situation || "member",
     status: row.status || "active",
     notes: row.notes || "",
     sortOrder: Number(row.membership_sort ?? row.sort_order) || 0,
@@ -35,7 +85,7 @@ export async function listRosters(env) {
   const db = requireDb(env);
   const result = await db
     .prepare(
-      `SELECT r.id, r.name, r.tournament, r.notes, r.sort_order,
+      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order,
               r.created_by, r.created_at, r.updated_at,
               COUNT(m.member_id) AS member_count
        FROM rosters r
@@ -52,7 +102,7 @@ export async function getRoster(env, rosterId) {
   const db = requireDb(env);
   const row = await db
     .prepare(
-      `SELECT r.id, r.name, r.tournament, r.notes, r.sort_order,
+      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order,
               r.created_by, r.created_at, r.updated_at,
               (SELECT COUNT(*) FROM roster_memberships m WHERE m.roster_id = r.id) AS member_count
        FROM rosters r
@@ -69,13 +119,14 @@ export async function createRoster(env, roster) {
   await db
     .prepare(
       `INSERT INTO rosters
-       (id, name, tournament, notes, sort_order, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, name, tournament, color, notes, sort_order, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       roster.id,
       roster.name,
       roster.tournament || null,
+      roster.color || null,
       roster.notes || null,
       roster.sortOrder ?? 0,
       roster.createdBy,
@@ -101,12 +152,13 @@ export async function updateRoster(env, rosterId, updates) {
   await db
     .prepare(
       `UPDATE rosters
-       SET name = ?, tournament = ?, notes = ?, sort_order = ?, updated_at = ?
+       SET name = ?, tournament = ?, color = ?, notes = ?, sort_order = ?, updated_at = ?
        WHERE id = ?`
     )
     .bind(
       next.name,
       next.tournament || null,
+      next.color || null,
       next.notes || null,
       next.sortOrder ?? 0,
       next.updatedAt,
@@ -130,8 +182,9 @@ export async function listRosterMembersInRoster(env, rosterId) {
   const db = requireDb(env);
   const result = await db
     .prepare(
-      `SELECT rm.id, rm.display_name, rm.steam_id, rm.avatar_url, rm.roster_role,
-              rm.status, rm.notes, rm.sort_order, rm.created_by, rm.created_at, rm.updated_at,
+      `SELECT rm.id, rm.display_name, rm.steam_id, rm.t17_id, rm.avatar_url, rm.roster_role,
+              rm.tournaments, rm.situation, rm.status, rm.notes, rm.sort_order, rm.created_by,
+              rm.created_at, rm.updated_at,
               m.roster_role AS membership_role, m.sort_order AS membership_sort
        FROM roster_memberships m
        JOIN roster_members rm ON rm.id = m.member_id
@@ -141,7 +194,8 @@ export async function listRosterMembersInRoster(env, rosterId) {
     .bind(rosterId)
     .all();
 
-  return (result.results || []).map(rowToMember);
+  const members = (result.results || []).map(rowToMember);
+  return backfillMemberAvatars(env, members);
 }
 
 export async function findMemberBySteamId(env, steamId) {
@@ -149,8 +203,8 @@ export async function findMemberBySteamId(env, steamId) {
   const db = requireDb(env);
   const row = await db
     .prepare(
-      `SELECT id, display_name, steam_id, avatar_url, roster_role, status, notes,
-              sort_order, created_by, created_at, updated_at
+      `SELECT id, display_name, steam_id, t17_id, avatar_url, roster_role, tournaments, situation,
+              status, notes, sort_order, created_by, created_at, updated_at
        FROM roster_members
        WHERE steam_id = ?
        LIMIT 1`
@@ -159,12 +213,17 @@ export async function findMemberBySteamId(env, steamId) {
     .first();
 
   if (!row) return null;
+  const roles = parseRoles(row.roster_role);
   return {
     id: row.id,
     displayName: row.display_name,
     steamId: row.steam_id || null,
+    t17Id: row.t17_id || null,
     avatarUrl: row.avatar_url || null,
-    rosterRole: row.roster_role || null,
+    rosterRole: roles[0] || null,
+    rosterRoles: roles,
+    tournaments: parseTournaments(row.tournaments),
+    situation: row.situation || "member",
     status: row.status || "active",
     notes: row.notes || "",
     sortOrder: Number(row.sort_order) || 0,
@@ -231,7 +290,15 @@ export async function ensureMemberAndAddToRoster(env, rosterId, memberData) {
   }
 
   if (!member) {
-    member = await createRosterMember(env, memberData);
+    const avatarUrl =
+      memberData.avatarUrl ||
+      (await resolveSteamAvatarUrl(env, memberData.steamId, null));
+    member = await createRosterMember(env, { ...memberData, avatarUrl });
+  } else if (member.steamId && !member.avatarUrl) {
+    const avatarUrl = await resolveSteamAvatarUrl(env, member.steamId, null);
+    if (avatarUrl) {
+      member = (await updateRosterMember(env, member.id, { avatarUrl })) || member;
+    }
   }
 
   return addMemberToRoster(env, rosterId, member.id, {

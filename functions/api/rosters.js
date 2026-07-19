@@ -25,6 +25,19 @@ export function sanitizeRosterMetaBody(body, { partial = false } = {}) {
     roster.notes = "";
   }
 
+  if (Object.hasOwn(body, "color") || (!partial && body.color !== undefined)) {
+    const raw = String(body.color || "").trim();
+    if (!raw) {
+      roster.color = null;
+    } else if (!/^#[0-9A-Fa-f]{6}$/.test(raw)) {
+      return { error: "Invalid roster color" };
+    } else {
+      roster.color = raw.toLowerCase();
+    }
+  } else if (!partial) {
+    roster.color = null;
+  }
+
   if (Object.hasOwn(body, "sortOrder")) {
     const sortOrder = Number(body.sortOrder);
     roster.sortOrder = Number.isFinite(sortOrder) ? Math.trunc(sortOrder) : 0;

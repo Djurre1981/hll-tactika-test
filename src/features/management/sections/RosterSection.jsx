@@ -1,25 +1,130 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "../../../shared/Spinner.jsx";
-import { RosterDetailPanel } from "../RosterDetailPanel.jsx";
-import { RosterMemberList } from "../RosterMemberList.jsx";
+import { PlayerCard } from "../PlayerCard.jsx";
+import { RosterTable } from "../RosterTable.jsx";
+import {
+  COMP_ROLES,
+  COMP_SITUATIONS,
+  getSituation,
+  isValidT17Id,
+  parseCompRoles,
+  parseTournaments,
+  ROSTER_COLOR_PRESETS,
+  T17_ID_LENGTH,
+} from "../rosterRoles.js";
 import {
   useAddRosterMemberToRosterMutation,
   useCreateRosterMutation,
+  useDeleteRosterMutation,
   useImportRosterCsvMutation,
   useRemoveMemberFromRosterMutation,
   useRosterMembersQuery,
   useRostersQuery,
+  useUpdateRosterMemberMutation,
+  useUpdateRosterMutation,
 } from "../hooks/useRostersQuery.js";
 
 const fieldClass =
-  "min-h-[2.4rem] min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-white/90";
+  "min-h-[2rem] min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90";
+
+const topBtnClass =
+  "rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-[0.8rem] text-white/80 transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-45";
+
+function useOutsideClose(open, onClose) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDoc(event) {
+      if (!ref.current?.contains(event.target)) onClose();
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, onClose]);
+  return ref;
+}
+
+function FilterDropdown({ label, options, selected, onToggle }) {
+  const [open, setOpen] = useState(false);
+  const ref = useOutsideClose(open, () => setOpen(false));
+  const count = selected.length;
+  const summary =
+    count === 0
+      ? label
+      : count === 1
+        ? options.find((o) => o.id === selected[0])?.label || selected[0]
+        : `${label} (${count})`;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        className={[
+          "inline-flex max-w-[9.5rem] items-center gap-1 rounded-full border px-2.5 py-1 text-[0.7rem] transition",
+          count > 0
+            ? "border-white/25 bg-white/12 text-white"
+            : "border-white/10 bg-white/[0.04] text-white/55 hover:text-white/80",
+        ].join(" ")}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="truncate">{summary}</span>
+        <svg className="h-3 w-3 shrink-0 opacity-50" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open ? (
+        <div
+          className="absolute right-0 top-[calc(100%+0.3rem)] z-30 min-w-[9.5rem] overflow-hidden rounded-xl border border-white/10 bg-[rgba(20,20,26,0.98)] p-1 shadow-xl"
+          role="menu"
+        >
+          {options.length === 0 ? (
+            <p className="m-0 px-2.5 py-2 text-[0.72rem] text-white/40">None yet</p>
+          ) : (
+            options.map((option) => {
+              const checked = selected.includes(option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={checked}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.72rem] text-white/80 hover:bg-white/[0.08]"
+                  onClick={() => onToggle(option.id)}
+                >
+                  <span
+                    className={[
+                      "grid h-3.5 w-3.5 place-items-center rounded border text-[0.55rem]",
+                      checked ? "border-white/40 bg-white/20 text-white" : "border-white/20 text-transparent",
+                    ].join(" ")}
+                  >
+                    ✓
+                  </span>
+                  {option.icon ? (
+                    <img
+                      src={option.icon}
+                      alt=""
+                      className="h-5 w-5 rounded-full object-contain"
+                      style={{ background: `${option.color || "#888"}33` }}
+                    />
+                  ) : null}
+                  <span className="truncate">{option.label}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function IconButton({ label, onClick, children }) {
   return (
     <button
       type="button"
       aria-label={label}
-      className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/[0.05] text-white/60 transition hover:bg-white/[0.1] hover:text-white"
+      className="grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-white/[0.05] text-white/60 transition hover:bg-white/[0.1] hover:text-white"
       onClick={onClick}
     >
       {children}
@@ -27,19 +132,51 @@ function IconButton({ label, onClick, children }) {
   );
 }
 
+function exportMembersCsv(members, rosterName) {
+  const rows = [
+    ["name", "steamid", "t17id", "role", "situation", "tournaments"],
+    ...members.map((m) => [
+      m.displayName || "",
+      m.steamId || "",
+      m.t17Id || "",
+      (m.rosterRoles?.length ? m.rosterRoles : [m.rosterRole]).filter(Boolean).join(";"),
+      m.situation || "member",
+      parseTournaments(m.tournaments).join(";"),
+    ]),
+  ];
+  const csv = rows
+    .map((row) =>
+      row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+    )
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${(rosterName || "roster").replace(/\s+/g, "-").toLowerCase()}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function RosterSection() {
   const [activeRosterId, setActiveRosterId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterSituations, setFilterSituations] = useState([]);
+  const [filterRoles, setFilterRoles] = useState([]);
+  const [filterTournaments, setFilterTournaments] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [showCreateRoster, setShowCreateRoster] = useState(false);
+  const [rosterMenuOpen, setRosterMenuOpen] = useState(false);
+  const [rosterMenuMode, setRosterMenuMode] = useState(null);
+  const [rosterNameDraft, setRosterNameDraft] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [steamId, setSteamId] = useState("");
-  const [newRosterName, setNewRosterName] = useState("");
-  const [newTournament, setNewTournament] = useState("");
+  const [t17Id, setT17Id] = useState("");
   const [importMessage, setImportMessage] = useState("");
   const fileInputRef = useRef(null);
+  const rosterMenuRef = useRef(null);
 
   const rostersQuery = useRostersQuery();
   const rosters = rostersQuery.data?.rosters || [];
@@ -50,71 +187,159 @@ export function RosterSection() {
     }
   }, [activeRosterId, rosters]);
 
+  useEffect(() => {
+    if (!rosterMenuOpen) {
+      setRosterMenuMode(null);
+      setRosterNameDraft("");
+      return undefined;
+    }
+    function onDocClick(event) {
+      if (!rosterMenuRef.current?.contains(event.target)) {
+        setRosterMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [rosterMenuOpen]);
+
   const membersQuery = useRosterMembersQuery(activeRosterId);
   const createRoster = useCreateRosterMutation();
+  const updateRoster = useUpdateRosterMutation();
+  const deleteRoster = useDeleteRosterMutation();
   const addMember = useAddRosterMemberToRosterMutation(activeRosterId);
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
+  const updateMember = useUpdateRosterMemberMutation(activeRosterId);
   const importCsv = useImportRosterCsvMutation(activeRosterId);
 
   const members = membersQuery.data?.members || [];
   const activeRoster = rosters.find((r) => r.id === activeRosterId) || null;
   const selected = members.find((m) => m.id === selectedId) || null;
+  const cardOpen = Boolean(selected);
+
+  const tournamentOptions = useMemo(() => {
+    const set = new Set();
+    for (const member of members) {
+      for (const name of parseTournaments(member.tournaments)) set.add(name);
+    }
+    if (activeRoster?.tournament) set.add(activeRoster.tournament);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [members, activeRoster?.tournament]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return members;
     return members.filter((member) => {
-      const haystack = [member.displayName, member.steamId, member.rosterRole, member.status]
+      if (filterSituations.length > 0) {
+        const situation = getSituation(member.situation).id;
+        if (!filterSituations.includes(situation)) return false;
+      }
+      if (filterRoles.length > 0) {
+        const roles = parseCompRoles(member.rosterRoles?.length ? member.rosterRoles : member.rosterRole);
+        if (!filterRoles.some((role) => roles.includes(role))) return false;
+      }
+      if (filterTournaments.length > 0) {
+        const tags = parseTournaments(member.tournaments);
+        if (!filterTournaments.some((t) => tags.includes(t))) return false;
+      }
+      if (!needle) return true;
+      const haystack = [
+        member.displayName,
+        member.steamId,
+        member.t17Id,
+        member.rosterRole,
+        member.situation,
+        ...(member.tournaments || []),
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(needle);
     });
-  }, [members, query]);
+  }, [members, query, filterSituations, filterRoles, filterTournaments]);
 
   useEffect(() => {
     setSelectedId(null);
     setImportMessage("");
   }, [activeRosterId]);
 
-  function handleCreateRoster(event) {
-    event.preventDefault();
-    const name = newRosterName.trim();
+  function handleCreateRoster() {
+    const name = rosterNameDraft.trim();
     if (!name) return;
     createRoster.mutate(
-      { name, tournament: newTournament.trim() || null },
+      { name, color: ROSTER_COLOR_PRESETS[0] },
       {
         onSuccess: (data) => {
-          setNewRosterName("");
-          setNewTournament("");
-          setShowCreateRoster(false);
+          setRosterMenuOpen(false);
           if (data?.roster?.id) setActiveRosterId(data.roster.id);
         },
       },
     );
   }
 
+  function handleRenameRoster() {
+    if (!activeRoster) return;
+    const name = rosterNameDraft.trim();
+    if (!name || name === activeRoster.name) return;
+    updateRoster.mutate(
+      { id: activeRoster.id, name },
+      { onSuccess: () => setRosterMenuOpen(false) },
+    );
+  }
+
+  function handleDeleteRoster() {
+    if (!activeRoster) return;
+    const id = activeRoster.id;
+    deleteRoster.mutate(id, {
+      onSuccess: () => {
+        setRosterMenuOpen(false);
+        const next = rosters.find((r) => r.id !== id);
+        setActiveRosterId(next?.id || null);
+      },
+    });
+  }
+
+  function handleSetRosterColor(color) {
+    if (!activeRoster) return;
+    updateRoster.mutate({ id: activeRoster.id, color });
+  }
+
   function handleAdd(event) {
     event.preventDefault();
     if (!activeRosterId) return;
+    if (!isValidT17Id(t17Id)) {
+      setImportMessage(`T17 ID must be exactly ${T17_ID_LENGTH} characters`);
+      return;
+    }
     addMember.mutate(
       {
         displayName: displayName.trim(),
         steamId: steamId.trim(),
+        t17Id: t17Id.trim() || null,
+        rosterRoles: ["infantry"],
+        situation: "member",
         status: "active",
       },
       {
         onSuccess: () => {
           setDisplayName("");
           setSteamId("");
+          setT17Id("");
           setShowAdd(false);
+          setImportMessage("");
         },
       },
     );
   }
 
-  function handleRemove(member) {
-    if (!window.confirm(`Remove ${member.displayName} from this roster?`)) return;
+  function handleSetRoles(member, nextRoles) {
+    updateMember.mutate({ id: member.id, rosterRoles: nextRoles });
+  }
+
+  function handleSetSituation(member, situation) {
+    updateMember.mutate({ id: member.id, situation });
+  }
+
+  function handleRemoveMember(member) {
+    if (!window.confirm(`Remove “${member.displayName}” from this roster?`)) return;
     removeMember.mutate(member.id, {
       onSuccess: () => {
         if (selectedId === member.id) setSelectedId(null);
@@ -122,11 +347,41 @@ export function RosterSection() {
     });
   }
 
+  function handleSetTournaments(member, tournaments) {
+    updateMember.mutate({ id: member.id, tournaments });
+  }
+
+  function handleSetT17Id(member, nextT17) {
+    if (!isValidT17Id(nextT17)) return;
+    updateMember.mutate({ id: member.id, t17Id: nextT17.trim() || null });
+  }
+
+  function handleSetDisplayName(member, nextName) {
+    const displayName = String(nextName || "").trim();
+    if (!displayName || displayName === member.displayName) return;
+    updateMember.mutate({ id: member.id, displayName });
+  }
+
+  function toggleFilterSituation(id) {
+    setFilterSituations((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function toggleFilterRole(id) {
+    setFilterRoles((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function toggleFilterTournament(name) {
+    setFilterTournaments((prev) =>
+      prev.includes(name) ? prev.filter((x) => x !== name) : [...prev, name],
+    );
+  }
+
   async function handleCsvFile(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !activeRosterId) return;
-
     const text = await file.text();
     setImportMessage("");
     importCsv.mutate(text, {
@@ -144,108 +399,336 @@ export function RosterSection() {
 
   const pending =
     createRoster.isPending ||
+    updateRoster.isPending ||
+    deleteRoster.isPending ||
     addMember.isPending ||
     removeMember.isPending ||
+    updateMember.isPending ||
     importCsv.isPending;
-
   const error =
     rostersQuery.error?.message ||
     membersQuery.error?.message ||
     createRoster.error?.message ||
+    updateRoster.error?.message ||
+    deleteRoster.error?.message ||
     addMember.error?.message ||
     removeMember.error?.message ||
+    updateMember.error?.message ||
     importCsv.error?.message;
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="m-0 text-[1.65rem] font-medium tracking-wide text-white">Roster editor</h2>
-          <p className="mt-1.5 text-[0.9rem] text-white/50">
-            Tournament rosters — members can belong to more than one.
-          </p>
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <header className="flex shrink-0 flex-col gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
+            The Circle - Comp Rosters
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[14rem] w-[min(18rem,70vw)]" ref={rosterMenuRef}>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-1.5 text-left text-[0.85rem] text-white/85 transition hover:bg-white/[0.1]"
+              aria-expanded={rosterMenuOpen}
+              aria-haspopup="menu"
+              onClick={() => setRosterMenuOpen((o) => !o)}
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
+                style={{ background: activeRoster?.color || "#5b8def" }}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1 truncate">
+                {activeRoster?.name || "Select roster"}
+                {activeRoster ? (
+                  <span className="text-white/40"> ({activeRoster.memberCount})</span>
+                ) : null}
+              </span>
+              <svg className="h-3.5 w-3.5 shrink-0 text-white/45" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
+
+            {rosterMenuOpen ? (
+              <div
+                className="absolute right-0 top-[calc(100%+0.4rem)] z-20 w-full min-w-[16rem] overflow-hidden rounded-2xl border border-white/12 bg-[rgba(22,22,28,0.96)] p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                role="menu"
+              >
+                {rostersQuery.isLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Spinner />
+                  </div>
+                ) : (
+                  <>
+                    {rosters.map((roster) => (
+                      <button
+                        key={roster.id}
+                        type="button"
+                        role="menuitem"
+                        className={[
+                          "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-[0.82rem] transition",
+                          roster.id === activeRosterId
+                            ? "bg-white/12 text-white"
+                            : "text-white/70 hover:bg-white/[0.06] hover:text-white",
+                        ].join(" ")}
+                        onClick={() => {
+                          setActiveRosterId(roster.id);
+                          setRosterMenuOpen(false);
+                        }}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ background: roster.color || "#5b8def" }}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{roster.name}</span>
+                        <span className="text-white/35">{roster.memberCount}</span>
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-white/10" />
+                    <div className="px-2 pb-1.5 pt-1">
+                      <p className="mb-1.5 text-[0.65rem] uppercase tracking-[0.12em] text-white/35">
+                        Color
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ROSTER_COLOR_PRESETS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            className={[
+                              "h-5 w-5 rounded-full border transition",
+                              activeRoster?.color === color
+                                ? "border-white scale-110"
+                                : "border-white/20 hover:border-white/50",
+                            ].join(" ")}
+                            style={{ background: color }}
+                            aria-label={`Set roster color ${color}`}
+                            disabled={!activeRoster || pending}
+                            onClick={() => handleSetRosterColor(color)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="my-1 border-t border-white/10" />
+                    {rosterMenuMode === "create" ? (
+                      <form
+                        className="flex gap-1.5 px-1.5 py-1.5"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          handleCreateRoster();
+                        }}
+                      >
+                        <input
+                          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-[0.82rem] text-white"
+                          value={rosterNameDraft}
+                          autoFocus
+                          placeholder="Roster name"
+                          maxLength={80}
+                          onChange={(event) => setRosterNameDraft(event.target.value)}
+                        />
+                        <button
+                          type="submit"
+                          className="shrink-0 rounded-lg bg-white/15 px-2.5 text-[0.78rem] text-white disabled:opacity-40"
+                          disabled={pending || !rosterNameDraft.trim()}
+                        >
+                          Add
+                        </button>
+                      </form>
+                    ) : rosterMenuMode === "rename" ? (
+                      <form
+                        className="flex gap-1.5 px-1.5 py-1.5"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          handleRenameRoster();
+                        }}
+                      >
+                        <input
+                          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/[0.05] px-2.5 py-1.5 text-[0.82rem] text-white"
+                          value={rosterNameDraft}
+                          autoFocus
+                          placeholder="Roster name"
+                          maxLength={80}
+                          onChange={(event) => setRosterNameDraft(event.target.value)}
+                        />
+                        <button
+                          type="submit"
+                          className="shrink-0 rounded-lg bg-white/15 px-2.5 text-[0.78rem] text-white disabled:opacity-40"
+                          disabled={pending || !rosterNameDraft.trim()}
+                        >
+                          Save
+                        </button>
+                      </form>
+                    ) : rosterMenuMode === "delete" ? (
+                      <div className="flex items-center gap-1.5 px-1.5 py-1.5">
+                        <p className="m-0 min-w-0 flex-1 text-[0.78rem] text-white/55">
+                          Delete “{activeRoster?.name}”?
+                        </p>
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg px-2.5 py-1.5 text-[0.78rem] text-white/60 hover:bg-white/[0.06]"
+                          onClick={() => setRosterMenuMode(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-lg bg-[#f0a8a8]/20 px-2.5 py-1.5 text-[0.78rem] text-[#f0a8a8] disabled:opacity-40"
+                          disabled={pending}
+                          onClick={handleDeleteRoster}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-xl px-2.5 py-2 text-left text-[0.82rem] text-white/75 hover:bg-white/[0.06] hover:text-white"
+                          onClick={() => {
+                            setRosterMenuMode("create");
+                            setRosterNameDraft("");
+                          }}
+                        >
+                          Add roster
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-xl px-2.5 py-2 text-left text-[0.82rem] text-white/75 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+                          disabled={!activeRoster}
+                          onClick={() => {
+                            setRosterMenuMode("rename");
+                            setRosterNameDraft(activeRoster?.name || "");
+                          }}
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-xl px-2.5 py-2 text-left text-[0.82rem] text-[#f0a8a8] hover:bg-white/[0.06] disabled:opacity-40"
+                          disabled={!activeRoster}
+                          onClick={() => setRosterMenuMode("delete")}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className={topBtnClass}
+            disabled={!activeRosterId || pending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Import CSV
+          </button>
+          <button
+            type="button"
+            className={topBtnClass}
+            disabled={!activeRosterId || members.length === 0}
+            onClick={() => exportMembersCsv(members, activeRoster?.name)}
+          >
+            Export CSV
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleCsvFile}
+          />
+          </div>
         </div>
-        <button
-          type="button"
-          className="glass-control"
-          onClick={() => setShowCreateRoster((open) => !open)}
-        >
-          New roster
-        </button>
       </header>
 
-      {showCreateRoster ? (
-        <form className="glass-surface flex flex-wrap gap-2.5 p-3" onSubmit={handleCreateRoster}>
-          <input
-            required
-            className={fieldClass}
-            value={newRosterName}
-            onChange={(event) => setNewRosterName(event.target.value)}
-            placeholder="Roster name"
-            maxLength={80}
-          />
-          <input
-            className={fieldClass}
-            value={newTournament}
-            onChange={(event) => setNewTournament(event.target.value)}
-            placeholder="Tournament (optional)"
-            maxLength={120}
-          />
-          <button type="submit" className="glass-control" disabled={pending}>
-            Create
-          </button>
-        </form>
-      ) : null}
+      {error ? <p className="mt-2 shrink-0 text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
+      {importMessage ? <p className="mt-2 shrink-0 text-[0.82rem] text-white/55">{importMessage}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        {rostersQuery.isLoading ? (
-          <Spinner />
-        ) : rosters.length === 0 ? (
-          <p className="m-0 text-[0.9rem] text-white/45">No rosters yet — create one to start.</p>
-        ) : (
-          rosters.map((roster) => {
-            const active = roster.id === activeRosterId;
-            return (
-              <button
-                key={roster.id}
-                type="button"
-                className={[
-                  "rounded-full border px-3.5 py-1.5 text-[0.85rem] transition",
-                  active
-                    ? "border-white/25 bg-white/15 text-white"
-                    : "border-white/12 bg-white/[0.04] text-white/65 hover:bg-white/[0.08] hover:text-white",
-                ].join(" ")}
-                onClick={() => setActiveRosterId(roster.id)}
-              >
-                {roster.name}
-                {roster.tournament ? (
-                  <span className="ml-1.5 text-white/40">· {roster.tournament}</span>
-                ) : null}
-                <span className="ml-1.5 text-white/35">({roster.memberCount})</span>
-              </button>
-            );
-          })
-        )}
-      </div>
-
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(16rem,1fr)]">
-        <div className="glass-panel flex min-h-[22rem] flex-col overflow-hidden p-5 md:p-6">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="m-0 text-[1.2rem] font-medium text-white">
-                {activeRoster?.name || "Members"}
+      <div
+        className={[
+          "mt-4 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden transition-[grid-template-columns] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          cardOpen
+            ? "grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,22rem)]"
+            : "grid-cols-1 gap-0",
+        ].join(" ")}
+      >
+        <div className="glass-surface flex min-h-0 flex-col overflow-hidden rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4">
+          <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="m-0 truncate text-[0.95rem] font-medium text-white">
+                {filtered.length === members.length
+                  ? `Total ${members.length}`
+                  : `Total ${filtered.length} out of ${members.length}`}
               </h3>
-              <p className="mt-1 text-[0.82rem] text-white/45">
-                {activeRoster?.tournament
-                  ? `Tournament · ${activeRoster.tournament}`
-                  : `${filtered.length} member${filtered.length === 1 ? "" : "s"}`}
-              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+              {showFilters ? (
+                <div className="flex max-w-[min(36rem,70vw)] flex-wrap items-center justify-end gap-1.5">
+                  <FilterDropdown
+                    label="Situation"
+                    options={COMP_SITUATIONS}
+                    selected={filterSituations}
+                    onToggle={toggleFilterSituation}
+                  />
+                  <FilterDropdown
+                    label="Role"
+                    options={COMP_ROLES}
+                    selected={filterRoles}
+                    onToggle={toggleFilterRole}
+                  />
+                  <FilterDropdown
+                    label="Tournament"
+                    options={tournamentOptions.map((name) => ({ id: name, label: name }))}
+                    selected={filterTournaments}
+                    onToggle={toggleFilterTournament}
+                  />
+                </div>
+              ) : null}
+              <IconButton
+                label="Filter by situation, role, or tournament"
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="8"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    className={
+                      showFilters ||
+                      filterSituations.length ||
+                      filterRoles.length ||
+                      filterTournaments.length
+                        ? "opacity-100"
+                        : "opacity-80"
+                    }
+                  />
+                  <path
+                    d="M8 9.5h8l-2.6 3.1v2.8L11 16.5v-3.9L8 9.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinejoin="round"
+                    fill={
+                      showFilters ||
+                      filterSituations.length ||
+                      filterRoles.length ||
+                      filterTournaments.length
+                        ? "currentColor"
+                        : "none"
+                    }
+                    fillOpacity="0.25"
+                  />
+                </svg>
+              </IconButton>
               {showSearch ? (
                 <input
                   type="search"
-                  className={`${fieldClass} w-[min(200px,42vw)]`}
+                  className={`${fieldClass} w-[min(180px,40vw)]`}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search"
@@ -253,19 +736,19 @@ export function RosterSection() {
                 />
               ) : null}
               <IconButton label="Search members" onClick={() => setShowSearch((v) => !v)}>
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.6" />
                   <path d="M16 16l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
               </IconButton>
               <IconButton label="Add member" onClick={() => setShowAdd((v) => !v)}>
-                <span className="text-lg leading-none">+</span>
+                <span className="text-base leading-none">+</span>
               </IconButton>
             </div>
           </div>
 
           {showAdd ? (
-            <form className="mb-4 flex flex-wrap gap-2.5" onSubmit={handleAdd}>
+            <form className="mb-3 flex shrink-0 flex-wrap gap-2" onSubmit={handleAdd}>
               <input
                 required
                 className={fieldClass}
@@ -281,55 +764,52 @@ export function RosterSection() {
                 onChange={(event) => setSteamId(event.target.value)}
                 placeholder="Steam ID"
               />
+              <input
+                className={fieldClass}
+                value={t17Id}
+                onChange={(event) => setT17Id(event.target.value)}
+                placeholder={`T17 ID (${T17_ID_LENGTH} chars)`}
+                maxLength={T17_ID_LENGTH}
+              />
               <button type="submit" className="glass-control" disabled={pending || !activeRosterId}>
                 Add
               </button>
             </form>
           ) : null}
 
-          {error ? <p className="mb-3 text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}
-          {importMessage ? (
-            <p className="mb-3 text-[0.82rem] text-white/55">{importMessage}</p>
-          ) : null}
-
-          <div className="min-h-0 flex-1 overflow-auto">
-            {!activeRosterId ? (
-              <p className="my-8 text-center text-[0.92rem] text-white/45">Select or create a roster.</p>
-            ) : membersQuery.isLoading ? (
-              <div className="flex justify-center py-10">
-                <Spinner />
-              </div>
-            ) : (
-              <RosterMemberList
-                members={filtered}
-                selectedId={selectedId}
-                onSelect={(member) => setSelectedId(member.id)}
-                onRemove={handleRemove}
-                actionPending={pending}
-              />
-            )}
-          </div>
-
-          <div className="mt-4 flex justify-center">
-            <button
-              type="button"
-              className="rounded-full border border-white/20 bg-white/[0.04] px-6 py-2.5 text-[0.88rem] text-white/85 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-45"
-              disabled={!activeRosterId || pending}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Import roster from CSV
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              className="hidden"
-              onChange={handleCsvFile}
+          {!activeRosterId ? (
+            <p className="my-8 text-center text-[0.92rem] text-white/45">Select or create a roster.</p>
+          ) : membersQuery.isLoading ? (
+            <div className="flex justify-center py-10">
+              <Spinner />
+            </div>
+          ) : (
+            <RosterTable
+              members={filtered}
+              selectedId={selectedId}
+              tournamentOptions={tournamentOptions}
+              onOpenCard={(member) => setSelectedId(member.id)}
+              onSetRoles={handleSetRoles}
+              onSetSituation={handleSetSituation}
+              onSetTournaments={handleSetTournaments}
+              onSetT17Id={handleSetT17Id}
+              onSetDisplayName={handleSetDisplayName}
+              onRemoveMember={handleRemoveMember}
+              actionPending={pending}
             />
-          </div>
+          )}
         </div>
 
-        <RosterDetailPanel member={selected} />
+        <div
+          className={[
+            "min-h-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            cardOpen
+              ? "max-h-[100%] translate-x-0 opacity-100"
+              : "pointer-events-none max-h-0 translate-x-8 opacity-0 lg:max-h-none lg:w-0 lg:translate-x-6 lg:opacity-0",
+          ].join(" ")}
+        >
+          {cardOpen ? <PlayerCard member={selected} onClose={() => setSelectedId(null)} /> : null}
+        </div>
       </div>
     </section>
   );

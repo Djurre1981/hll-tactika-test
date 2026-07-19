@@ -1,6 +1,8 @@
 import { requireAdmin } from "../../lib/auth-request.js";
 import {
   deleteRosterMember,
+  getRosterMember,
+  resolveSteamAvatarUrl,
   updateRosterMember,
 } from "../../lib/roster-store.js";
 import { errorResponse, json } from "../../lib/response.js";
@@ -34,7 +36,28 @@ export async function onRequestPatch(context) {
   if (sanitized.error) return errorResponse(sanitized.error, 400);
 
   try {
-    const member = await updateRosterMember(context.env, memberId, sanitized.member);
+    const existing = await getRosterMember(context.env, memberId);
+    if (!existing) return errorResponse("Member not found", 404);
+
+    const updates = { ...sanitized.member };
+    const nextSteamId =
+      Object.hasOwn(updates, "steamId") ? updates.steamId : existing.steamId;
+    const steamChanged =
+      Object.hasOwn(updates, "steamId") && updates.steamId !== existing.steamId;
+    const needsAvatar =
+      nextSteamId &&
+      (steamChanged || !existing.avatarUrl) &&
+      !Object.hasOwn(updates, "avatarUrl");
+
+    if (needsAvatar) {
+      updates.avatarUrl = await resolveSteamAvatarUrl(
+        context.env,
+        nextSteamId,
+        steamChanged ? null : existing.avatarUrl,
+      );
+    }
+
+    const member = await updateRosterMember(context.env, memberId, updates);
     if (!member) return errorResponse("Member not found", 404);
     return json({ member });
   } catch (error) {
