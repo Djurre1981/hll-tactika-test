@@ -95,7 +95,6 @@ export const TOOL_ITEMS = [
   { id: "rect", icon: "fa-regular fa-square", title: "Rectangle" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },
   { id: "text", icon: "fa-solid fa-font", title: "Text" },
-  { id: "arrow", icon: "fa-solid fa-arrow-right-long", title: "Arrow" },
   { id: "icons", icon: "fa-solid fa-icons", title: "Icons" },
   { id: "hll", iconSrc: "/assets/logos/hll-mark.png", title: "HLL Objects" },
   { id: "ping", icon: "fa-solid fa-bullseye", title: "Ping" },

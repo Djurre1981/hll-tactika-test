@@ -322,8 +322,8 @@ export class InteractionController {
       return;
     }
 
-    const drawType = tool === "arrow" ? "arrow" : tool;
-    if (!["pen", "line", "curve", "arrow", "rect", "ellipse"].includes(drawType)) return;
+    const drawType = tool === "arrow" ? "line" : tool;
+    if (!["pen", "line", "curve", "rect", "ellipse"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
     event.preventDefault();

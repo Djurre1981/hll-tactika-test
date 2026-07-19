@@ -89,9 +89,8 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 |------|-----|
 | **Select** | Click to select; drag to move; edit with handles |
 | **Pen** | Freehand stroke |
-| **Line** | Straight segment |
-| **Curved line** | Cubic Bézier (two endpoints + two control points) |
-| **Arrow** | Line with arrowhead(s) |
+| **Line** | Straight segment; optional arrowheads via **End type** |
+| **Curved line** | Cubic Bézier (two endpoints + two control points); optional arrowheads |
 | **Rectangle** | Box shape (filled or outline) |
 | **Circle** | Ellipse / circle |
 | **Text** | Click map, enter label; double-click selected text to edit |
@@ -104,7 +103,7 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 
 **Color** — preset swatches plus a custom color picker apply to the active tool or the current selection.
 
-**Stroke options** (pen, line, curve, arrow): size, solid/dashed/dotted, arrow ends (none / start / end / both) where applicable.
+**Stroke options** (pen, line, curve): size, solid/dashed/dotted. **End type** (line, curve): none / start / end / both arrowheads.
 
 **Shape options** (rectangle, circle): size, border style, filled toggle.
 
@@ -132,7 +131,7 @@ Bottom-center toolbar on the strat map:
 
 | Modifier | Effect |
 |----------|--------|
-| **Shift** (while drawing line/arrow/curve) | Snap angle to 45° increments (endpoints) |
+| **Shift** (while drawing line/curve) | Snap angle to 45° increments (endpoints) |
 | **Shift** (while drawing rect/circle) | Keep square / perfect circle |
 | **Alt** (while drawing rect/circle) | Draw from center |
 | **Shift** (while dragging selection) | Lock movement to horizontal or vertical |
@@ -143,7 +142,7 @@ Bottom-center toolbar on the strat map:
 With **Select** active, click a shape to select it:
 
 - **8 box handles** on rectangles, circles, freehand, text, icons, HLL objects, and pings (dashed outline)
-- **2 endpoint handles** on lines and arrows
+- **2 endpoint handles** on lines (including lines with arrowheads)
 - **4 Bézier handles** on curved lines (endpoints + control points; zoom-aware hit size)
 
 While selected, the sidebar shows that object’s properties (color, stroke, fill, etc.). Edits apply live.
@@ -179,7 +178,7 @@ All routes require Steam auth. Create/update/delete require editor role.
 | `POST` | `/api/strats/{stratId}/duplicate` | Duplicate entire strat |
 | `POST` | `/api/strats/{stratId}/slides/{slideId}/duplicate` | Duplicate slide (optionally into another strat) |
 
-Slide payloads include a sanitized `objects[]` array. Supported object types: `pen`, `line`, `curve`, `arrow`, `rect`, `ellipse`, `text`, `icon`, `hll`, `ping`. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
+Slide payloads include a sanitized `objects[]` array. Supported object types: `pen`, `line`, `curve`, `rect`, `ellipse`, `text`, `icon`, `hll`, `ping`. Legacy `arrow` objects are normalized to `line` with an end arrowhead. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
 
 Related APIs: folders (`/api/folders`), StratSketch import (`/api/strats/import-stratsketch`).
 

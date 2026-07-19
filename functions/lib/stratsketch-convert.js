@@ -91,8 +91,8 @@ function convertLine(entity, { arrow = false } = {}) {
   ];
   const endType = arrow
     ? entity.settings.endType === "none" ? "end" : entity.settings.endType
-    : "none";
-  return makeObject(arrow ? "arrow" : "line", {
+    : entity.settings.endType || "none";
+  return makeObject("line", {
     points,
     style: {
       color: entity.settings.color,

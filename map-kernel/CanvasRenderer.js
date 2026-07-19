@@ -553,14 +553,18 @@ export class CanvasRenderer {
       ctx.moveTo(this.pctToPx(a.x), this.pctToPx(a.y));
       ctx.lineTo(this.pctToPx(b.x), this.pctToPx(b.y));
       ctx.stroke();
-      if (type === "arrow") {
+      // Arrowheads follow style.endType (legacy `arrow` objects default to an end head).
+      const endType =
+        type === "arrow" && (!style.endType || style.endType === "none")
+          ? "end"
+          : style.endType || "none";
+      if (endType === "end" || endType === "both") {
         ctx.setLineDash([]);
-        if (style.endType === "end" || style.endType === "none" || style.endType === "both") {
-          this.drawArrowHead(ctx, a, b, style, false);
-        }
-        if (style.endType === "start" || style.endType === "both") {
-          this.drawArrowHead(ctx, a, b, style, true);
-        }
+        this.drawArrowHead(ctx, a, b, style, false);
+      }
+      if (endType === "start" || endType === "both") {
+        ctx.setLineDash([]);
+        this.drawArrowHead(ctx, a, b, style, true);
       }
     } else if (type === "curve" && points.length >= 4) {
       const [p0, cp1, cp2, p1] = points;

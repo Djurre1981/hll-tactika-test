@@ -126,7 +126,9 @@ export function ToolsPanelOptions({
           <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
             {tool === "curve"
               ? "Drag to place a spline; select and pull the red discs to bend. Vertices are larger, control points smaller. Shift snaps the chord to 45°."
-              : "Shift snaps lines and arrows to 45°."}
+              : tool === "line"
+                ? "Shift snaps to 45°. Use End type for arrowheads."
+                : "Shift snaps freehand strokes while drawing."}
           </p>
           <SizeOption
             label="Size"
@@ -149,20 +151,22 @@ export function ToolsPanelOptions({
               ]}
             />
           </div>
-          <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
-            <span>End type</span>
-            <Segmented
-              disabled={disabled}
-              value={endType}
-              onChange={(v) => patch({ endType: v })}
-              options={[
-                { value: "none", title: "None", label: <i className="fa-solid fa-minus" /> },
-                { value: "start", title: "Start arrow", label: <i className="fa-solid fa-arrow-left" /> },
-                { value: "end", title: "End arrow", label: <i className="fa-solid fa-arrow-right" /> },
-                { value: "both", title: "Both arrows", label: <i className="fa-solid fa-arrows-left-right" /> },
-              ]}
-            />
-          </div>
+          {(tool === "line" || tool === "curve") && (
+            <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
+              <span>End type</span>
+              <Segmented
+                disabled={disabled}
+                value={endType}
+                onChange={(v) => patch({ endType: v })}
+                options={[
+                  { value: "none", title: "None", label: <i className="fa-solid fa-minus" /> },
+                  { value: "start", title: "Start arrow", label: <i className="fa-solid fa-arrow-left" /> },
+                  { value: "end", title: "End arrow", label: <i className="fa-solid fa-arrow-right" /> },
+                  { value: "both", title: "Both arrows", label: <i className="fa-solid fa-arrows-left-right" /> },
+                ]}
+              />
+            </div>
+          )}
         </>
       )}
 

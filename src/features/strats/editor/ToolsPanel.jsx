@@ -56,14 +56,15 @@ export function ToolsPanel({
   const hllRadiusCheck = useToolStore((s) => s.hllRadiusCheck);
   const patch = useToolStore((s) => s.patch);
 
-  const isStroke = tool === "pen" || tool === "line" || tool === "curve" || tool === "arrow";
+  const isStroke = tool === "pen" || tool === "line" || tool === "curve";
   const isShape = tool === "rect" || tool === "ellipse";
   const isPreset = COLOR_PRESETS.some((c) => c.toLowerCase() === color.toLowerCase());
   const selectedColor = selected?.style?.color || color;
 
   const setTool = (id) => {
-    if (id === "arrow" && endType === "none") {
-      patch({ tool: id, endType: "end" });
+    // Legacy: if something still requests the removed arrow tool, use Line with an end head.
+    if (id === "arrow") {
+      patch({ tool: "line", endType: endType === "none" ? "end" : endType });
       return;
     }
     patch({ tool: id });

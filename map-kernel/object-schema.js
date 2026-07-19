@@ -223,9 +223,12 @@ export function cloneStratObject(object) {
 export function normalizeStratObject(raw, index = 0) {
   if (!raw || typeof raw !== "object") return null;
 
-  const type = STRAT_OBJECT_TYPES.includes(raw.type) ? raw.type : null;
+  let type = STRAT_OBJECT_TYPES.includes(raw.type) ? raw.type : null;
   const id = String(raw.id || "").trim();
   if (!type || !id) return null;
+
+  // Legacy `arrow` tool → line with end caps (toolbar merge).
+  if (type === "arrow") type = "line";
 
   let points = (Array.isArray(raw.points) ? raw.points : [])
     .map(normalizePoint)
@@ -241,7 +244,7 @@ export function normalizeStratObject(raw, index = 0) {
           : 2;
   if (points.length < minPoints) return null;
 
-  const style = normalizeStyle(raw.style, type);
+  const style = normalizeStyle(raw.style, raw.type === "arrow" ? "arrow" : type);
   const meta = normalizeMeta(raw.meta, type);
   if (type === "icon") {
     points = ensureIconBoxPoints(points, style);
