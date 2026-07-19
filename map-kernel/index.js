@@ -4,6 +4,7 @@ import { CanvasRenderer } from "./CanvasRenderer.js";
 import { InteractionController } from "./InteractionController.js";
 import { MapOverlays } from "./MapOverlays.js";
 import { getHllObjectDef, hllBoxFromCenter } from "./object-schema.js";
+import { TextInlineEditor } from "./text-inline-editor.js";
 
 function mapUrlForId(mapId) {
   if (!mapId) return "";
@@ -40,6 +41,17 @@ export class MapKernel {
       fontSize: 10,
       textStyle: 0,
       textAlign: "center",
+      fontFamily: "Inter",
+      bold: false,
+      italic: false,
+      underline: false,
+      textVAlign: "middle",
+      outlineColor: "none",
+      outlineWidth: 0,
+      shadow: "none",
+      padding: 2,
+      rotation: 0,
+      eyedropTarget: null,
       iconId: "check",
       iconLabel: "",
       hllId: "garrison",
@@ -50,6 +62,7 @@ export class MapKernel {
     this.onSelectionChange = options.onSelectionChange || null;
     this.onCameraChange = options.onCameraChange || null;
     this.onRequestTool = options.onRequestTool || null;
+    this.onEyedrop = options.onEyedrop || null;
 
     this.scene.onChange = (objects, meta) => {
       this.renderer?.requestDraw(objects);
@@ -81,6 +94,7 @@ export class MapKernel {
       overflow: "hidden",
       cursor: "grab",
     });
+    this.viewport.tabIndex = -1;
 
     this.stage = document.createElement("div");
     this.stage.className = "map-kernel-stage";
@@ -130,6 +144,12 @@ export class MapKernel {
     this.viewer.onTransform = (camera) => {
       this.renderer?.setViewScale(camera?.zoom);
       this.syncPanBlock();
+      if (this.textEditor?.active) {
+        const editing = this.scene
+          .getObjects()
+          .find((o) => o.id === this.textEditor.objectId);
+        this.textEditor.syncLayout(editing);
+      }
       this.onCameraChange?.(camera);
     };
 
@@ -138,6 +158,41 @@ export class MapKernel {
       getObjects: () => this.scene.getObjects(),
       getToolSettings: () => this.toolSettings,
     });
+
+    this.textEditor = new TextInlineEditor({
+      viewport: this.viewport,
+      getViewer: () => this.viewer,
+      getMapSize: () => this.renderer?.mapSize || 1920,
+      onEditingChange: (id) => {
+        this.renderer?.setEditingTextId(id);
+        this.renderer?.requestDraw(this.scene.getObjects());
+        this.syncPanBlock();
+      },
+      onCommit: (id, text) => {
+        const obj = this.scene.getObjects().find((o) => o.id === id);
+        if (!obj) return;
+        const prev = String(obj.meta?.text || "");
+        if (prev === text) {
+          this.renderer?.requestDraw(this.scene.getObjects());
+          return;
+        }
+        this.scene.updateObject(
+          id,
+          (o) => ({ ...o, meta: { ...o.meta, text } }),
+          { pushUndo: true }
+        );
+        this.renderer?.requestDraw(this.scene.getObjects());
+      },
+      onCancel: (id, original) => {
+        this.scene.updateObject(
+          id,
+          (o) => ({ ...o, meta: { ...o.meta, text: original } }),
+          { pushUndo: false }
+        );
+        this.renderer?.requestDraw(this.scene.getObjects());
+      },
+    });
+
     this.interaction = new InteractionController({
       scene: this.scene,
       renderer: this.renderer,
@@ -145,6 +200,10 @@ export class MapKernel {
       getToolSettings: () => this.toolSettings,
       onRequestRender: () => this.renderer.requestDraw(this.scene.getObjects()),
       onRequestTool: (tool) => this.onRequestTool?.(tool),
+      onEyedrop: (hex, target) => this.onEyedrop?.(hex, target),
+      sampleColorAt: (clientX, clientY) => this.sampleColorAt(clientX, clientY),
+      beginTextEdit: (object, opts) => this.textEditor?.start(object, opts),
+      isTextEditing: () => Boolean(this.textEditor?.active),
     });
     this.interaction.attach(this.viewport);
 
@@ -168,6 +227,8 @@ export class MapKernel {
   }
 
   destroy() {
+    this.textEditor?.destroy();
+    this.textEditor = null;
     this.interaction?.detach();
     this.renderer?.destroy();
     this.overlays?.destroy();
@@ -225,6 +286,41 @@ export class MapKernel {
 
   getCamera() {
     return this.viewer?.getCamera() || { x: 0, y: 0, zoom: 1 };
+  }
+
+  /** Sample map pixel under a client coordinate → #rrggbb or null. */
+  sampleColorAt(clientX, clientY) {
+    const img = this.image;
+    const viewer = this.viewer;
+    if (!img?.naturalWidth || !viewer) return null;
+    const pct = viewer.screenToMapPercent?.(clientX, clientY);
+    if (!pct) return null;
+    const x = Math.floor((pct.x / 100) * img.naturalWidth);
+    const y = Math.floor((pct.y / 100) * img.naturalHeight);
+    if (x < 0 || y < 0 || x >= img.naturalWidth || y >= img.naturalHeight) return null;
+    try {
+      if (!this._sampleCanvas) {
+        this._sampleCanvas = document.createElement("canvas");
+        this._sampleCtx = this._sampleCanvas.getContext("2d", { willReadFrequently: true });
+      }
+      const c = this._sampleCanvas;
+      const ctx = this._sampleCtx;
+      if (c.width !== img.naturalWidth || c.height !== img.naturalHeight) {
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        ctx.drawImage(img, 0, 0);
+        this._sampleSrc = img.src;
+      } else if (this._sampleSrc !== img.src) {
+        ctx.clearRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0);
+        this._sampleSrc = img.src;
+      }
+      const data = ctx.getImageData(x, y, 1, 1).data;
+      const hex = (n) => n.toString(16).padStart(2, "0");
+      return `#${hex(data[0])}${hex(data[1])}${hex(data[2])}`;
+    } catch {
+      return null;
+    }
   }
 
   setTool(settings = {}) {

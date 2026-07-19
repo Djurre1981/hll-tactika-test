@@ -7,7 +7,6 @@ import {
 } from "@map-kernel/line-caps.js";
 import {
   actionBtn,
-  actionBtnWide,
   cx,
   glassInput,
   HLL_OPTIONS,
@@ -18,6 +17,7 @@ import {
 import { CapSelect, DashSelect } from "./LineStyleSelects.jsx";
 import { StratIcon } from "./StratIcon.jsx";
 import { Segmented, SizeOption, SliderField } from "./ToolsPanelPrimitives.jsx";
+import { TextToolOptions } from "./TextToolOptions.jsx";
 
 const HLL_GROUPS = [...new Set(HLL_OPTIONS.map((o) => o.group))];
 
@@ -168,15 +168,25 @@ export function ToolsPanelOptions({
   fontSize,
   textStyle,
   textAlign,
+  fontFamily = "Inter",
+  bold = false,
+  italic = false,
+  underline = false,
+  textVAlign = "middle",
+  outlineColor = "none",
+  outlineWidth = 0,
+  shadow = "none",
+  padding = 2,
+  color = "#ffffff",
   iconId,
   iconLabel,
   hllId,
   hllRadiusCheck,
   patch,
-  onPaste,
   onUpdateSelected,
   onApplyStyle,
   onSetBezier,
+  onEyedrop,
   onUndo,
   onRedo,
 }) {
@@ -224,45 +234,6 @@ export function ToolsPanelOptions({
 
   return (
     <section className="mt-1 border-t border-solid border-white/[0.08] pt-3">
-      {tool === "select" && (
-        <>
-          <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Select</h3>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onPaste}
-            className={cx(actionBtnWide, "mb-2")}
-            title="Paste (Ctrl+V)"
-          >
-            <i className="fa-solid fa-paste" aria-hidden="true" />
-            <span>Paste</span>
-          </button>
-
-          {selected ? (
-            <div className="space-y-2">
-              <p className="m-0 text-[0.68rem] leading-relaxed text-white/45">
-                Selected object actions are under Tools. Copy Ctrl+C, cut Ctrl+X, duplicate Ctrl+D.
-              </p>
-              {selected.type === "text" && (
-                <textarea
-                  className="min-h-[56px] w-full rounded-[10px] border border-white/10 bg-black/40 p-2 text-xs text-white outline-none focus:border-white/25"
-                  defaultValue={selected.meta?.text || ""}
-                  key={selected.id}
-                  disabled={disabled}
-                  onBlur={(e) =>
-                    onUpdateSelected?.({ meta: { text: e.target.value.slice(0, 200) } })
-                  }
-                />
-              )}
-            </div>
-          ) : (
-            <p className="m-0 text-[0.76rem] leading-relaxed text-white/45">
-              Click a shape to select. Copy Ctrl+C, cut Ctrl+X, paste Ctrl+V, duplicate Ctrl+D.
-            </p>
-          )}
-        </>
-      )}
-
       {isLineStroke && (
         <LineStrokeOptions
           disabled={disabled}
@@ -374,40 +345,24 @@ export function ToolsPanelOptions({
       {(tool === "text" || selected?.type === "text") && (
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Text</h3>
-          <SizeOption
-            label="Font size"
-            value={fontSize}
-            min={8}
-            max={48}
+          <TextToolOptions
             disabled={disabled}
-            onChange={(v) => setStyle({ fontSize: v }, { fontSize: v })}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            color={color}
+            outlineColor={outlineColor}
+            outlineWidth={outlineWidth}
+            shadow={shadow}
+            bold={bold}
+            italic={italic}
+            underline={underline}
+            textAlign={textAlign}
+            textVAlign={textVAlign}
+            opacity={opacity}
+            padding={padding}
+            setStyle={setStyle}
+            onEyedrop={onEyedrop}
           />
-          <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
-            <span>Text type</span>
-            <Segmented
-              disabled={disabled}
-              value={textStyle}
-              onChange={(v) => setStyle({ textStyle: v }, { textStyle: v })}
-              options={[
-                { value: 0, title: "Regular", label: "Aa" },
-                { value: 1, title: "Italic", label: <em>I</em> },
-                { value: 2, title: "Bold", label: <strong>B</strong> },
-              ]}
-            />
-          </div>
-          <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
-            <span>Alignment</span>
-            <Segmented
-              disabled={disabled}
-              value={textAlign}
-              onChange={(v) => setStyle({ textAlign: v }, { textAlign: v })}
-              options={[
-                { value: "left", title: "Left", label: <i className="fa-solid fa-align-left" /> },
-                { value: "center", title: "Center", label: <i className="fa-solid fa-align-center" /> },
-                { value: "right", title: "Right", label: <i className="fa-solid fa-align-right" /> },
-              ]}
-            />
-          </div>
         </>
       )}
 

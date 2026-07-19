@@ -35,10 +35,10 @@ export const glassSurface =
   "relative rounded-[16px] border border-solid border-white/10 bg-[rgba(50,50,50,0.85)] shadow-[0_24px_80px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.18),inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-[20px] backdrop-saturate-[180%]";
 
 export const toolBtn =
-  "flex aspect-square items-center justify-center rounded-[10px] border border-solid border-white/10 bg-transparent text-[0.9rem] text-white/[0.72] outline-none transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35";
+  "box-border flex aspect-square items-center justify-center rounded-[10px] border border-solid border-white/10 bg-transparent text-[0.9rem] text-white/[0.72] outline-none transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35";
 
 export const toolBtnActive =
-  "border-white/20 bg-white/12 text-white hover:border-white/20 hover:bg-white/12";
+  "border-2 border-white/45 bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] hover:border-white/45 hover:bg-white/12";
 
 export const actionBtn =
   "inline-flex h-8 items-center justify-center gap-2 rounded-[10px] border border-solid border-white/10 bg-transparent px-2.5 text-[0.72rem] text-white/[0.72] outline-none transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus:outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35";

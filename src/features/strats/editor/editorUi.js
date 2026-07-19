@@ -86,11 +86,11 @@ export const ICON_OPTIONS = STRAT_ICON_OPTIONS;
 export const HLL_OPTIONS = HLL_OBJECT_OPTIONS;
 export { getHllObjectDef, getHllToolbarPreviewSrc };
 
+/** Icon/title for FA tools; `line` uses a custom glyph in ToolsPanel. */
 export const TOOL_ITEMS = [
   { id: "select", icon: "fa-solid fa-arrow-pointer", title: "Select" },
   { id: "pen", icon: "fa-solid fa-pen", title: "Draw" },
-  { id: "line", icon: "fa-solid fa-minus", title: "Line" },
-  { id: "curve", icon: "fa-solid fa-bezier-curve", title: "Curved line" },
+  { id: "line", title: "Line / curve / arrow" },
   { id: "ellipse", icon: "fa-regular fa-circle", title: "Circle" },
   { id: "rect", icon: "fa-regular fa-square", title: "Rectangle" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },

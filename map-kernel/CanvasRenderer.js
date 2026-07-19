@@ -3,6 +3,7 @@ import { resolveIconDef } from "./icons/resolve-icon.js";
 import { resolveHllAsset } from "./icons/hll-object-catalog.js";
 import { curveHandleDrawSizes } from "./selection-handles.js";
 import { lineDashForType, paintLineCap, capStrokeInset, movePointToward, normalizeLineCaps } from "./line-caps.js";
+import { drawTextObject } from "./text-draw.js";
 
 /** Match legacy CSS: strat-ping-pulse 1.2s ease-out infinite, delay ring*0.35s */
 const PING_PERIOD_MS = 1200;
@@ -51,6 +52,7 @@ export class CanvasRenderer {
     this.viewScale = 1;
     this.preview = null;
     this.selectedId = null;
+    this.editingTextId = null;
     this._getObjects = typeof options.getObjects === "function" ? options.getObjects : null;
     this._getToolSettings =
       typeof options.getToolSettings === "function" ? options.getToolSettings : null;
@@ -99,6 +101,11 @@ export class CanvasRenderer {
 
   setSelectedId(id) {
     this.selectedId = id || null;
+    this.requestDraw();
+  }
+
+  setEditingTextId(id) {
+    this.editingTextId = id || null;
     this.requestDraw();
   }
 
@@ -521,6 +528,7 @@ export class CanvasRenderer {
   drawObject(ctx, object) {
     const { type, points, style, meta } = object;
     if (!points?.length) return;
+    if (type === "text" && object.id && object.id === this.editingTextId) return;
 
     ctx.save();
     this.strokeStyle(ctx, style);
@@ -607,15 +615,10 @@ export class CanvasRenderer {
       }
       ctx.stroke();
     } else if (type === "text") {
-      const [p] = points;
-      const fontPx = style.fontSize * 0.22 * (this.mapSize / 100);
-      const weight = style.textStyle === 2 ? "700" : "400";
-      const italic = style.textStyle === 1 ? "italic " : "";
-      ctx.font = `${italic}${weight} ${fontPx}px sans-serif`;
-      ctx.fillStyle = style.color;
-      ctx.textAlign = style.textAlign || "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(meta?.text || "Text", this.pctToPx(p.x), this.pctToPx(p.y));
+      drawTextObject(ctx, object, {
+        pctToPx: (n) => this.pctToPx(n),
+        mapSize: this.mapSize,
+      });
     } else if (type === "icon") {
       this.drawIcon(ctx, object);
     } else if (type === "hll") {
@@ -625,6 +628,25 @@ export class CanvasRenderer {
     }
 
     ctx.restore();
+  }
+
+  _drawHandleDisc(ctx, p, radius, fill, strokeWidth) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
+  }
+
+  _drawHandleCores(ctx, points, coreRadius) {
+    for (const p of points) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, coreRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.fill();
+    }
   }
 
   drawCurveEditChrome(ctx, object, { dim = false } = {}) {
@@ -665,37 +687,47 @@ export class CanvasRenderer {
     ctx.lineTo(b1.x, b1.y);
     ctx.stroke();
 
-    const drawDisc = (p, radius, fill) => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-      ctx.lineWidth = sizes.stroke;
-      ctx.stroke();
-    };
-
     // CVs first (smaller), then vertices on top (Plasticity hierarchy).
-    drawDisc(a1, sizes.control, "#ef4444");
-    drawDisc(b1, sizes.control, "#ef4444");
-    drawDisc(a0, sizes.endpoint, "#dc2626");
-    drawDisc(b0, sizes.endpoint, "#dc2626");
-
-    // Tiny white core for grab affordance.
-    const core = Math.max(1.2, sizes.control * 0.28);
-    for (const p of [a1, b1, a0, b0]) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, core, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-      ctx.fill();
-    }
+    this._drawHandleDisc(ctx, a1, sizes.control, "#ef4444", sizes.stroke);
+    this._drawHandleDisc(ctx, b1, sizes.control, "#ef4444", sizes.stroke);
+    this._drawHandleDisc(ctx, a0, sizes.endpoint, "#dc2626", sizes.stroke);
+    this._drawHandleDisc(ctx, b0, sizes.endpoint, "#dc2626", sizes.stroke);
+    this._drawHandleCores(ctx, [a1, b1, a0, b0], Math.max(1.2, sizes.control * 0.28));
 
     ctx.restore();
   }
 
+  /** Endpoint discs matching curve chrome — straight lines use the same grab affordance. */
+  drawLineEditChrome(ctx, object, { dim = false } = {}) {
+    if (!object?.points || object.points.length < 2) return;
+    const toPx = (p) => ({ x: this.pctToPx(p.x), y: this.pctToPx(p.y) });
+    const a = toPx(object.points[0]);
+    const b = toPx(object.points[1]);
+    const sizes = curveHandleDrawSizes(this.viewScale);
+
+    ctx.save();
+    ctx.globalAlpha = dim ? 0.55 : 1;
+    this._drawHandleDisc(ctx, a, sizes.endpoint, "#dc2626", sizes.stroke);
+    this._drawHandleDisc(ctx, b, sizes.endpoint, "#dc2626", sizes.stroke);
+    this._drawHandleCores(ctx, [a, b], Math.max(1.2, sizes.control * 0.28));
+    ctx.restore();
+  }
+
   drawSelection(ctx, object) {
+    if (object?.id && object.id === this.editingTextId) return;
+
     if (object?.type === "curve" && object.points?.length >= 4) {
       this.drawCurveEditChrome(ctx, object);
+      return;
+    }
+
+    if ((object?.type === "line" || object?.type === "arrow") && object.points?.length >= 2) {
+      this.drawLineEditChrome(ctx, object);
+      return;
+    }
+
+    if (object?.type === "text" && object.points?.length >= 2) {
+      this.drawTextEditChrome(ctx, object);
       return;
     }
 
@@ -726,6 +758,56 @@ export class CanvasRenderer {
     for (const [hx, hy] of handles) {
       ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
     }
+    ctx.restore();
+  }
+
+  /** Text box: dashed frame, red discs (line-style), green rotation handle. */
+  drawTextEditChrome(ctx, object) {
+    const bounds = getObjectBounds(object);
+    if (!bounds) return;
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const x = this.pctToPx(bounds.x);
+    const y = this.pctToPx(bounds.y);
+    const w = this.pctToPx(bounds.w);
+    const h = this.pctToPx(bounds.h);
+    const lift = Math.max(sizes.endpoint * 2.2, h * 0.12 + sizes.endpoint * 1.6);
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = sizes.armWidth;
+    ctx.setLineDash([Math.max(3, sizes.armWidth * 2.5), Math.max(3, sizes.armWidth * 2)]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+
+    const corners = [
+      [x, y],
+      [x + w / 2, y],
+      [x + w, y],
+      [x + w, y + h / 2],
+      [x + w, y + h],
+      [x + w / 2, y + h],
+      [x, y + h],
+      [x, y + h / 2],
+    ];
+    for (const [hx, hy] of corners) {
+      this._drawHandleDisc(ctx, { x: hx, y: hy }, sizes.endpoint, "#dc2626", sizes.stroke);
+    }
+    this._drawHandleCores(
+      ctx,
+      corners.map(([hx, hy]) => ({ x: hx, y: hy })),
+      Math.max(1.2, sizes.control * 0.28)
+    );
+
+    const rx = x + w / 2;
+    const ry = y - lift;
+    ctx.strokeStyle = "rgba(74, 222, 128, 0.9)";
+    ctx.lineWidth = sizes.armWidth;
+    ctx.beginPath();
+    ctx.moveTo(rx, y);
+    ctx.lineTo(rx, ry);
+    ctx.stroke();
+    this._drawHandleDisc(ctx, { x: rx, y: ry }, sizes.endpoint, "#22c55e", sizes.stroke);
+    this._drawHandleCores(ctx, [{ x: rx, y: ry }], Math.max(1.2, sizes.control * 0.28));
     ctx.restore();
   }
 

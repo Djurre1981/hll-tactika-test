@@ -3,8 +3,13 @@ import { clamp, getObjectBounds, STRAT_COORD_MAX, STRAT_COORD_MIN } from "./obje
 const HANDLE_HIT = 0.95;
 const BOX_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 const CURVE_HANDLE_IDS = ["p0", "cp1", "cp2", "p1"];
-/** Target on-screen radius (px) for curve handle hit / draw at any zoom. */
+const LINE_HANDLE_IDS = ["p0", "p1"];
+/** Target on-screen radius (px) for curve/line handle hit / draw at any zoom. */
 const CURVE_HANDLE_SCREEN_PX = 14;
+
+function isLineStrokeType(type) {
+  return type === "line" || type === "arrow";
+}
 
 export function getBoxFromObjectPoints(points) {
   const xs = points.map((p) => p.x);
@@ -32,9 +37,30 @@ function handlePosition(box, id) {
   }[id];
 }
 
+/** Green rotation handle above the box (map-%). */
+export function getRotationHandle(object) {
+  if (object?.type !== "text") return null;
+  const bounds = getObjectBounds(object);
+  if (!bounds) return null;
+  const lift = Math.max(1.8, bounds.h * 0.2 + 1.4);
+  return {
+    id: "rotate",
+    x: bounds.x + bounds.w / 2,
+    y: bounds.y - lift,
+  };
+}
+
 export function getSelectionHandles(object) {
   if (object?.type === "curve" && object.points?.length >= 4) {
     return CURVE_HANDLE_IDS.map((id, index) => ({
+      id,
+      x: object.points[index].x,
+      y: object.points[index].y,
+    }));
+  }
+
+  if (isLineStrokeType(object?.type) && object.points?.length >= 2) {
+    return LINE_HANDLE_IDS.map((id, index) => ({
       id,
       x: object.points[index].x,
       y: object.points[index].y,
@@ -49,7 +75,10 @@ export function getSelectionHandles(object) {
     x2: bounds.x + bounds.w,
     y2: bounds.y + bounds.h,
   };
-  return BOX_HANDLES.map((id) => ({ id, ...handlePosition(box, id) }));
+  const handles = BOX_HANDLES.map((id) => ({ id, ...handlePosition(box, id) }));
+  const rot = getRotationHandle(object);
+  if (rot) handles.push(rot);
+  return handles;
 }
 
 export function hitTestSelectionHandle(handles, point, threshold = HANDLE_HIT) {
@@ -97,16 +126,22 @@ function scalePenPoints(points, fromBox, toBox) {
 }
 
 export function applyHandleDrag(object, handleId, cursor, originalPoints, penOriginalBox) {
+  if (handleId === "rotate") return originalPoints;
+
   if (object.type === "curve" && originalPoints.length >= 4) {
     const index = CURVE_HANDLE_IDS.indexOf(handleId);
     if (index < 0) return originalPoints;
     return originalPoints.map((p, i) => (i === index ? clampPoint(cursor) : p));
   }
 
+  if (isLineStrokeType(object.type) && originalPoints.length >= 2) {
+    const index = LINE_HANDLE_IDS.indexOf(handleId);
+    if (index < 0) return originalPoints;
+    return originalPoints.map((p, i) => (i === index ? clampPoint(cursor) : p));
+  }
+
   if (object.type === "pen" && penOriginalBox) {
     const box = { ...penOriginalBox };
-    const cx = (box.x1 + box.x2) / 2;
-    const cy = (box.y1 + box.y2) / 2;
     if (handleId.includes("n")) box.y1 = cursor.y;
     if (handleId.includes("s")) box.y2 = cursor.y;
     if (handleId.includes("w")) box.x1 = cursor.x;
@@ -124,7 +159,7 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
     return scalePenPoints(originalPoints, penOriginalBox, box);
   }
 
-  if (object.type === "text" || object.type === "ping") {
+  if (object.type === "ping") {
     return [clampPoint(cursor)];
   }
 
@@ -135,12 +170,6 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
   if (handleId.includes("s")) box.y2 = cursor.y;
   if (handleId.includes("w")) box.x1 = cursor.x;
   if (handleId.includes("e")) box.x2 = cursor.x;
-  if (handleId === "n" || handleId === "s") {
-    /* keep x */
-  }
-  if (handleId === "e" || handleId === "w") {
-    /* keep y */
-  }
   if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
   if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
 
@@ -148,6 +177,16 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
     clampPoint({ x: box.x1, y: box.y1 }),
     clampPoint({ x: box.x2, y: box.y2 }),
   ];
+}
+
+/** Angle in degrees from box center to cursor (0 = up, clockwise). */
+export function rotationDegreesFromCursor(object, cursor) {
+  const bounds = getObjectBounds(object);
+  if (!bounds || !cursor) return 0;
+  const cx = bounds.x + bounds.w / 2;
+  const cy = bounds.y + bounds.h / 2;
+  const rad = Math.atan2(cursor.x - cx, cy - cursor.y);
+  return (rad * 180) / Math.PI;
 }
 
 export function nudgePoints(points, dx, dy) {

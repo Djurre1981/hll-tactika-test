@@ -20,6 +20,17 @@ function toolSettingsFromStore(state) {
     fontSize: state.fontSize,
     textStyle: state.textStyle,
     textAlign: state.textAlign,
+    fontFamily: state.fontFamily,
+    bold: state.bold,
+    italic: state.italic,
+    underline: state.underline,
+    textVAlign: state.textVAlign,
+    outlineColor: state.outlineColor,
+    outlineWidth: state.outlineWidth,
+    shadow: state.shadow,
+    padding: state.padding,
+    rotation: state.rotation,
+    eyedropTarget: state.eyedropTarget,
     iconId: state.iconId,
     iconLabel: state.iconLabel,
     hllId: state.hllId,
@@ -60,6 +71,23 @@ export function CanvasWrapper({
       },
       onRequestTool: (tool) => {
         useToolStore.getState().setTool(tool);
+      },
+      onEyedrop: (hex, target) => {
+        const store = useToolStore.getState();
+        const stylePartial =
+          target === "outline" ? { outlineColor: hex } : { color: hex };
+        store.patch({ ...stylePartial, eyedropTarget: null });
+        const selected = kernel.scene?.getSelected?.();
+        if (selected?.type === "text") {
+          kernel.scene.updateObject(
+            selected.id,
+            (obj) => ({
+              ...obj,
+              style: { ...obj.style, ...stylePartial },
+            }),
+            { pushUndo: true }
+          );
+        }
       },
     });
     kernel.mount(host);

@@ -108,6 +108,13 @@ freePort(SIDECAR_PORT);
 freePort(API_PORT);
 freePort(VITE_PORT);
 
+console.log("Applying local D1 migrations...");
+execFileSync("npx", ["wrangler", "d1", "migrations", "apply", "hll-tactika-db", "--local"], {
+  cwd: root,
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
+
 runBuildOnce();
 
 // Open Vite directly — wrangler pages dev serves `dist` on :8788.

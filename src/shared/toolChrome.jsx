@@ -7,7 +7,7 @@ import {
   toolBtnActive,
 } from "./glassUi.js";
 
-export function ToolBtn({ active, disabled, title, icon, iconSrc, onClick }) {
+export function ToolBtn({ active, disabled, title, icon, iconSrc, iconNode, onClick }) {
   return (
     <button
       type="button"
@@ -19,6 +19,8 @@ export function ToolBtn({ active, disabled, title, icon, iconSrc, onClick }) {
     >
       {iconSrc ? (
         <img src={iconSrc} alt="" className="h-[1.15rem] w-[1.15rem] object-contain" draggable={false} />
+      ) : iconNode ? (
+        iconNode
       ) : (
         <i className={icon} aria-hidden="true" />
       )}

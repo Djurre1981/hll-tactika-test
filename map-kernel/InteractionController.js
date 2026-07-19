@@ -5,6 +5,7 @@ import {
   cloneStratObject,
   normalizePoint,
   cubicPointsFromEndpoints,
+  textBoxFromCenter,
 } from "./object-schema.js";
 import {
   applyHandleDrag,
@@ -13,6 +14,7 @@ import {
   hitTestSelectionHandle,
   curveHandleHitPct,
   nudgePoints,
+  rotationDegreesFromCursor,
 } from "./selection-handles.js";
 import { isGarrisonPlacementValid } from "./icons/hll-object-catalog.js";
 
@@ -34,13 +36,28 @@ function resolveTwoPoint(start, end, { shift = false, aspect = 1 } = {}) {
 
 /** Pointer / keyboard interaction for drawing tools. */
 export class InteractionController {
-  constructor({ scene, renderer, getViewer, getToolSettings, onRequestRender, onRequestTool }) {
+  constructor({
+    scene,
+    renderer,
+    getViewer,
+    getToolSettings,
+    onRequestRender,
+    onRequestTool,
+    onEyedrop,
+    sampleColorAt,
+    beginTextEdit,
+    isTextEditing,
+  }) {
     this.scene = scene;
     this.renderer = renderer;
     this.getViewer = getViewer;
     this.getToolSettings = getToolSettings;
     this.onRequestRender = onRequestRender;
     this.onRequestTool = onRequestTool || null;
+    this.onEyedrop = onEyedrop || null;
+    this.sampleColorAt = sampleColorAt || null;
+    this.beginTextEdit = beginTextEdit || null;
+    this.isTextEditing = isTextEditing || (() => false);
 
     this.drawSession = null;
     this.objectDrag = null;
@@ -96,7 +113,8 @@ export class InteractionController {
       tool === "eraser" ||
       Boolean(this.drawSession) ||
       Boolean(this.objectDrag) ||
-      Boolean(this.handleDrag)
+      Boolean(this.handleDrag) ||
+      this.isTextEditing()
     );
   }
 
@@ -175,6 +193,10 @@ export class InteractionController {
 
   onPointerDown(event) {
     if (this.locked) return;
+    if (this.isTextEditing()) {
+      // Let the textarea handle its own events; outside clicks blur → commit.
+      if (event.target?.tagName === "TEXTAREA") return;
+    }
     if (event.button === 2) {
       event.stopImmediatePropagation();
       event.preventDefault();
@@ -186,6 +208,14 @@ export class InteractionController {
     if (!viewer) return;
 
     const settings = this.getToolSettings();
+    if (settings.eyedropTarget && this.sampleColorAt && this.onEyedrop) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      const hex = this.sampleColorAt(event.clientX, event.clientY);
+      if (hex) this.onEyedrop(hex, settings.eyedropTarget);
+      return;
+    }
+
     const tool = settings.tool;
     const point = this.mapPoint(event);
     if (!point) return;
@@ -194,7 +224,10 @@ export class InteractionController {
       const selected = this.scene.getSelected();
       if (selected) {
         const handleHit =
-          selected.type === "curve"
+          selected.type === "curve" ||
+          selected.type === "line" ||
+          selected.type === "arrow" ||
+          selected.type === "text"
             ? curveHandleHitPct(this.getViewer()?.getCamera?.()?.zoom, this.renderer?.mapSize)
             : undefined;
         const handle = hitTestSelectionHandle(
@@ -209,6 +242,7 @@ export class InteractionController {
             objectId: selected.id,
             handleId: handle.id,
             originalPoints: structuredClone(selected.points),
+            originalRotation: Number(selected.style?.rotation) || 0,
             penOriginalBox:
               selected.type === "pen" ? getBoxFromObjectPoints(selected.points) : null,
             undoPushed: false,
@@ -249,22 +283,6 @@ export class InteractionController {
         this.scene.removeObject(hit.id);
         this.refresh();
       }
-      return;
-    }
-
-    if (tool === "text") {
-      event.stopImmediatePropagation();
-      event.preventDefault();
-      const text = window.prompt("Text", "Text");
-      if (text == null) return;
-      const object = createStratObject("text", {
-        points: [point],
-        style: settingsToObjectStyle(settings),
-        meta: { text: text.slice(0, 200) },
-      });
-      this.scene.addObject(object);
-      this.scene.setSelectedId(object.id);
-      this.refresh();
       return;
     }
 
@@ -328,7 +346,7 @@ export class InteractionController {
         : tool === "line" && settings.lineBezier
           ? "curve"
           : tool;
-    if (!["pen", "line", "curve", "rect", "ellipse"].includes(drawType)) return;
+    if (!["pen", "line", "curve", "rect", "ellipse", "text"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
     event.preventDefault();
@@ -363,6 +381,14 @@ export class InteractionController {
         points: cubicPointsFromEndpoints(session.start, end),
         style,
       });
+    } else if (session.type === "text") {
+      const end = resolveTwoPoint(session.start, point, { shift: shiftKey, aspect });
+      session.preview = createStratObject("text", {
+        points: [session.start, end],
+        style,
+        meta: { text: "add text here" },
+      });
+      session.preview.meta.draft = true;
     } else {
       const end = resolveTwoPoint(session.start, point, { shift: shiftKey, aspect });
       session.preview = createStratObject(session.type, {
@@ -381,16 +407,27 @@ export class InteractionController {
         this.scene.pushUndo();
         this.handleDrag.undoPushed = true;
       }
-      this.scene.updateObject(this.handleDrag.objectId, (obj) => ({
-        ...obj,
-        points: applyHandleDrag(
-          obj,
-          this.handleDrag.handleId,
-          point,
-          this.handleDrag.originalPoints,
-          this.handleDrag.penOriginalBox
-        ),
-      }));
+      if (this.handleDrag.handleId === "rotate") {
+        const deg = rotationDegreesFromCursor(
+          { points: this.handleDrag.originalPoints, type: "text" },
+          point
+        );
+        this.scene.updateObject(this.handleDrag.objectId, (obj) => ({
+          ...obj,
+          style: { ...obj.style, rotation: deg },
+        }));
+      } else {
+        this.scene.updateObject(this.handleDrag.objectId, (obj) => ({
+          ...obj,
+          points: applyHandleDrag(
+            obj,
+            this.handleDrag.handleId,
+            point,
+            this.handleDrag.originalPoints,
+            this.handleDrag.penOriginalBox
+          ),
+        }));
+      }
       this.refresh();
       return;
     }
@@ -432,14 +469,17 @@ export class InteractionController {
     if (this.handleDrag || this.objectDrag) {
       const drag = this.handleDrag || this.objectDrag;
       const current = this.scene.getObjects().find((o) => o.id === drag.objectId);
-      const moved =
+      const pointsMoved =
         current &&
         drag.originalPoints &&
         JSON.stringify(current.points) !== JSON.stringify(drag.originalPoints);
+      const rotationMoved =
+        drag.handleId === "rotate" &&
+        current &&
+        (Number(current.style?.rotation) || 0) !== (Number(drag.originalRotation) || 0);
       this.handleDrag = null;
       this.objectDrag = null;
-      // Avoid no-op drag-end emits (select click) — they used to echo through Yjs and clear selection.
-      if (moved) this.scene.emitChange({ reason: "drag-end" });
+      if (pointsMoved || rotationMoved) this.scene.emitChange({ reason: "drag-end" });
       this.getViewer()?.setBlockPan(this.shouldBlockPan());
       this.refresh();
       return;
@@ -462,6 +502,26 @@ export class InteractionController {
           this.refresh();
           return;
         }
+      } else if (preview.type === "text") {
+        let points = preview.points;
+        const [a, b] = points || [];
+        if (!a || !b || Math.hypot(b.x - a.x, b.y - a.y) < 0.15) {
+          points = textBoxFromCenter(session.start, preview.style);
+        }
+        if (!points?.length) {
+          this.refresh();
+          return;
+        }
+        const object = createStratObject("text", {
+          points,
+          style: preview.style,
+          meta: { text: "" },
+        });
+        this.scene.addObject(object);
+        this.scene.setSelectedId(object.id);
+        this.refresh();
+        this.beginTextEdit?.(object, { selectAll: false });
+        return;
       } else if (preview.type !== "pen") {
         const [a, b] = preview.points;
         if (a && b && Math.hypot(b.x - a.x, b.y - a.y) < 0.15) {
@@ -481,14 +541,10 @@ export class InteractionController {
     const hit = this.scene.findTopAt(point, hitTestObject);
     if (hit?.type === "text") {
       event.stopPropagation();
-      const next = window.prompt("Text", hit.meta?.text || "Text");
-      if (next == null) return;
-      this.scene.updateObject(
-        hit.id,
-        (obj) => ({ ...obj, meta: { ...obj.meta, text: next.slice(0, 200) } }),
-        { pushUndo: true }
-      );
+      event.preventDefault();
+      this.scene.setSelectedId(hit.id);
       this.refresh();
+      this.beginTextEdit?.(hit, { selectAll: true });
     }
   }
 

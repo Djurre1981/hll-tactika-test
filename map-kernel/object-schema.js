@@ -10,6 +10,7 @@ import {
   endTypeFromCaps,
   normalizeLineCaps,
 } from "./line-caps.js";
+import { normalizeTextFields } from "./text-style.js";
 
 export { STRAT_ICON_IDS } from "./icons/strat-icon-catalog.js";
 export {
@@ -28,6 +29,13 @@ export {
   endTypeFromCaps,
   normalizeLineCaps,
 } from "./line-caps.js";
+export {
+  TEXT_FONTS,
+  TEXT_SHADOW_CELLS,
+  buildCanvasFont,
+  isOutlineNone,
+  shadowOffsetPct,
+} from "./text-style.js";
 
 export const STRAT_OBJECT_TYPES = [
   "pen",
@@ -87,9 +95,9 @@ export function normalizeStyle(style = {}, type) {
     startSize: clamp(Number(style.startSize) || 5, 1, 24),
     endSize: clamp(Number(style.endSize) || 6, 1, 24),
     filled: Boolean(style.filled),
-    fontSize: clamp(Number(style.fontSize) || 10, 6, 48),
-    textStyle: clamp(Number(style.textStyle) || 0, 0, 2),
+    fontSize: clamp(Number(style.fontSize) || 10, 6, 72),
     textAlign: TEXT_ALIGNS.includes(style.textAlign) ? style.textAlign : "center",
+    ...normalizeTextFields(style),
   };
 
   if (type === "arrow") {
@@ -168,6 +176,26 @@ export function ensureHllBoxPoints(points, meta = {}) {
   return list;
 }
 
+/** Default text box from center (map-%). */
+export function textBoxFromCenter(center, style = {}) {
+  const p = normalizePoint(center);
+  if (!p) return [];
+  const fs = Number(style.fontSize) || 10;
+  const halfW = Math.max(2.5, fs * 0.55);
+  const halfH = Math.max(1.2, fs * 0.22);
+  return [
+    normalizePoint({ x: p.x - halfW, y: p.y - halfH }),
+    normalizePoint({ x: p.x + halfW, y: p.y + halfH }),
+  ].filter(Boolean);
+}
+
+export function ensureTextBoxPoints(points, style = {}) {
+  const list = (Array.isArray(points) ? points : []).map(normalizePoint).filter(Boolean);
+  if (list.length >= 2) return list.slice(0, 2);
+  if (list.length === 1) return textBoxFromCenter(list[0], style);
+  return list;
+}
+
 /** Cubic Bézier [p0, cp1, cp2, p1] from chord endpoints.
  * CVs sit slightly off the chord (Plasticity-style) so handles are visible immediately.
  */
@@ -226,6 +254,8 @@ export function createStratObject(type, { points = [], style = {}, meta = {} } =
     normalizedPoints = ensureIconBoxPoints(normalizedPoints, normalizedStyle);
   } else if (type === "hll") {
     normalizedPoints = ensureHllBoxPoints(normalizedPoints, normalizedMeta);
+  } else if (type === "text") {
+    normalizedPoints = ensureTextBoxPoints(normalizedPoints, normalizedStyle);
   } else if (type === "curve") {
     normalizedPoints = ensureCurvePoints(normalizedPoints);
   }
@@ -273,6 +303,8 @@ export function normalizeStratObject(raw, index = 0) {
     points = ensureIconBoxPoints(points, style);
   } else if (type === "hll") {
     points = ensureHllBoxPoints(points, meta);
+  } else if (type === "text") {
+    points = ensureTextBoxPoints(points, style);
   } else if (type === "curve") {
     points = ensureCurvePoints(points);
     if (points.length < 4) return null;
@@ -311,8 +343,11 @@ export function getObjectBounds(object) {
     maxY = Math.max(maxY, point.y);
   }
 
-  // 2-point icons / HLL markers use the bbox itself (like rect/ellipse).
-  if ((object.type === "icon" || object.type === "hll") && object.points.length >= 2) {
+  // 2-point icons / HLL / text use the bbox itself (like rect/ellipse).
+  if (
+    (object.type === "icon" || object.type === "hll" || object.type === "text") &&
+    object.points.length >= 2
+  ) {
     return {
       x: minX,
       y: minY,
@@ -399,5 +434,15 @@ export function settingsToObjectStyle(settings) {
     fontSize: settings.fontSize,
     textStyle: settings.textStyle,
     textAlign: settings.textAlign,
+    fontFamily: settings.fontFamily,
+    bold: settings.bold,
+    italic: settings.italic,
+    underline: settings.underline,
+    textVAlign: settings.textVAlign,
+    outlineColor: settings.outlineColor,
+    outlineWidth: settings.outlineWidth,
+    shadow: settings.shadow,
+    padding: settings.padding,
+    rotation: settings.rotation,
   };
 }
