@@ -2,6 +2,7 @@ import { getObjectBounds, objectNeedsAnimation } from "./object-schema.js";
 import { resolveIconDef } from "./icons/resolve-icon.js";
 import { resolveHllAsset } from "./icons/hll-object-catalog.js";
 import { curveHandleDrawSizes } from "./selection-handles.js";
+import { lineDashForType, paintLineCap, capStrokeInset, movePointToward, normalizeLineCaps } from "./line-caps.js";
 
 /** Match legacy CSS: strat-ping-pulse 1.2s ease-out infinite, delay ring*0.35s */
 const PING_PERIOD_MS = 1200;
@@ -248,17 +249,38 @@ export class CanvasRenderer {
   }
 
   strokeStyle(ctx, style) {
+    const opacity = Number.isFinite(Number(style.opacity)) ? Number(style.opacity) : 100;
+    ctx.globalAlpha = Math.max(0, Math.min(1, opacity / 100));
     ctx.strokeStyle = style.color;
+    ctx.fillStyle = style.color;
     ctx.lineWidth = Math.max(1, style.size * 0.12 * (this.mapSize / 100));
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    if (style.lineType === "dashed") {
-      ctx.setLineDash([ctx.lineWidth * 3, ctx.lineWidth * 2]);
-    } else if (style.lineType === "dotted") {
-      ctx.setLineDash([ctx.lineWidth, ctx.lineWidth * 1.5]);
-    } else {
-      ctx.setLineDash([]);
-    }
+    ctx.setLineDash(lineDashForType(style.lineType, ctx.lineWidth));
+  }
+
+  resolveCaps(style, type) {
+    // Normalize each side independently so a set startCap can't leave endCap as none.
+    const caps = normalizeLineCaps(style || {});
+    let startCap = caps.startCap;
+    let endCap = caps.endCap;
+    if (type === "arrow" && (!endCap || endCap === "none")) endCap = "arrow";
+    return { startCap, endCap };
+  }
+
+  drawLineCap(ctx, from, to, style, atStart) {
+    const caps = this.resolveCaps(style);
+    const cap = atStart ? caps.startCap : caps.endCap;
+    if (!cap || cap === "none") return;
+    const capSize = Number(atStart ? style.startSize : style.endSize) || 5;
+    // paintLineCap always draws at `to`; flip endpoints for start caps.
+    const a = atStart ? to : from;
+    const b = atStart ? from : to;
+    paintLineCap(ctx, a, b, cap, style.size, capSize, style.color, (p) => this.pctToPx(p));
+  }
+
+  drawArrowHead(ctx, from, to, style, atStart) {
+    this.drawLineCap(ctx, from, to, { ...style, startCap: "arrow", endCap: "arrow" }, atStart);
   }
 
   getCachedPath(pathD) {
@@ -307,34 +329,6 @@ export class CanvasRenderer {
     }
     sc.globalCompositeOperation = "source-over";
     ctx.drawImage(this._iconScratch, 0, 0);
-  }
-
-  drawArrowHead(ctx, from, to, style, atStart) {
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const length = Math.hypot(dx, dy) || 1;
-    const ux = dx / length;
-    const uy = dy / length;
-    const px = -uy;
-    const py = ux;
-    const tip = atStart ? from : to;
-    const base = atStart
-      ? { x: from.x + ux * 1.2, y: from.y + uy * 1.2 }
-      : { x: to.x - ux * 1.2, y: to.y - uy * 1.2 };
-    const headSize = Math.max(0.45, style.size * 0.18);
-    ctx.beginPath();
-    ctx.moveTo(this.pctToPx(tip.x), this.pctToPx(tip.y));
-    ctx.lineTo(
-      this.pctToPx(base.x + px * headSize),
-      this.pctToPx(base.y + py * headSize)
-    );
-    ctx.lineTo(
-      this.pctToPx(base.x - px * headSize),
-      this.pctToPx(base.y - py * headSize)
-    );
-    ctx.closePath();
-    ctx.fillStyle = style.color;
-    ctx.fill();
   }
 
   getCachedImage(src) {
@@ -549,45 +543,41 @@ export class CanvasRenderer {
       ctx.stroke();
     } else if (type === "line" || type === "arrow") {
       const [a, b] = points;
+      const caps = this.resolveCaps(style, type);
+      const startInset = capStrokeInset(caps.startCap, style.size, style.startSize);
+      const endInset = capStrokeInset(caps.endCap, style.size, style.endSize);
+      const strokeStart = movePointToward(a, b, startInset);
+      const strokeEnd = movePointToward(b, a, endInset);
+      // Butt caps so the shaft ends flush under the marker (no round nub).
+      if (startInset > 0 || endInset > 0) ctx.lineCap = "butt";
       ctx.beginPath();
-      ctx.moveTo(this.pctToPx(a.x), this.pctToPx(a.y));
-      ctx.lineTo(this.pctToPx(b.x), this.pctToPx(b.y));
+      ctx.moveTo(this.pctToPx(strokeStart.x), this.pctToPx(strokeStart.y));
+      ctx.lineTo(this.pctToPx(strokeEnd.x), this.pctToPx(strokeEnd.y));
       ctx.stroke();
-      // Arrowheads follow style.endType (legacy `arrow` objects default to an end head).
-      const endType =
-        type === "arrow" && (!style.endType || style.endType === "none")
-          ? "end"
-          : style.endType || "none";
-      if (endType === "end" || endType === "both") {
-        ctx.setLineDash([]);
-        this.drawArrowHead(ctx, a, b, style, false);
-      }
-      if (endType === "start" || endType === "both") {
-        ctx.setLineDash([]);
-        this.drawArrowHead(ctx, a, b, style, true);
-      }
+      if (caps.endCap !== "none") this.drawLineCap(ctx, a, b, { ...style, ...caps }, false);
+      if (caps.startCap !== "none") this.drawLineCap(ctx, a, b, { ...style, ...caps }, true);
     } else if (type === "curve" && points.length >= 4) {
       const [p0, cp1, cp2, p1] = points;
+      const caps = this.resolveCaps(style, type);
+      const startInset = capStrokeInset(caps.startCap, style.size, style.startSize);
+      const endInset = capStrokeInset(caps.endCap, style.size, style.endSize);
+      // Pull endpoints along end tangents so markers cover the shaft.
+      const strokeP0 = movePointToward(p0, cp1, startInset);
+      const strokeP1 = movePointToward(p1, cp2, endInset);
+      if (startInset > 0 || endInset > 0) ctx.lineCap = "butt";
       ctx.beginPath();
-      ctx.moveTo(this.pctToPx(p0.x), this.pctToPx(p0.y));
+      ctx.moveTo(this.pctToPx(strokeP0.x), this.pctToPx(strokeP0.y));
       ctx.bezierCurveTo(
         this.pctToPx(cp1.x),
         this.pctToPx(cp1.y),
         this.pctToPx(cp2.x),
         this.pctToPx(cp2.y),
-        this.pctToPx(p1.x),
-        this.pctToPx(p1.y)
+        this.pctToPx(strokeP1.x),
+        this.pctToPx(strokeP1.y)
       );
       ctx.stroke();
-      const endType = style.endType || "none";
-      if (endType === "end" || endType === "both") {
-        ctx.setLineDash([]);
-        this.drawArrowHead(ctx, cp2, p1, style, false);
-      }
-      if (endType === "start" || endType === "both") {
-        ctx.setLineDash([]);
-        this.drawArrowHead(ctx, p0, cp1, style, true);
-      }
+      if (caps.endCap !== "none") this.drawLineCap(ctx, cp2, p1, { ...style, ...caps }, false);
+      if (caps.startCap !== "none") this.drawLineCap(ctx, p0, cp1, { ...style, ...caps }, true);
     } else if (type === "rect") {
       const [a, b] = points;
       const x = this.pctToPx(Math.min(a.x, b.x));

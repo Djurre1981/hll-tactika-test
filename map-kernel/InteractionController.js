@@ -322,7 +322,12 @@ export class InteractionController {
       return;
     }
 
-    const drawType = tool === "arrow" ? "line" : tool;
+    const drawType =
+      tool === "arrow"
+        ? "line"
+        : tool === "line" && settings.lineBezier
+          ? "curve"
+          : tool;
     if (!["pen", "line", "curve", "rect", "ellipse"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
@@ -588,11 +593,49 @@ export class InteractionController {
       selected.id,
       (obj) => ({
         ...obj,
-        style: { ...obj.style, ...partial.style },
+        ...(partial.type ? { type: partial.type } : {}),
+        ...(partial.points ? { points: partial.points } : {}),
+        style: partial.style ? { ...obj.style, ...partial.style } : obj.style,
         meta: partial.meta ? { ...obj.meta, ...partial.meta } : obj.meta,
       }),
       { pushUndo: true }
     );
+    this.refresh();
+  }
+
+  setSelectedBezier(enabled) {
+    const selected = this.scene.getSelected();
+    if (!selected || !["line", "curve", "arrow"].includes(selected.type)) return;
+
+    if (enabled && selected.type !== "curve") {
+      const a = selected.points?.[0];
+      const b = selected.points?.[selected.points.length - 1];
+      if (!a || !b) return;
+      this.scene.updateObject(
+        selected.id,
+        (obj) => ({
+          ...obj,
+          type: "curve",
+          points: cubicPointsFromEndpoints(a, b),
+        }),
+        { pushUndo: true }
+      );
+    } else if (!enabled && selected.type === "curve") {
+      const p0 = selected.points?.[0];
+      const p1 = selected.points?.[selected.points.length - 1];
+      if (!p0 || !p1) return;
+      this.scene.updateObject(
+        selected.id,
+        (obj) => ({
+          ...obj,
+          type: "line",
+          points: [p0, p1],
+        }),
+        { pushUndo: true }
+      );
+    } else {
+      return;
+    }
     this.refresh();
   }
 }

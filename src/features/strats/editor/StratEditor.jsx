@@ -113,6 +113,10 @@ export function StratEditor({ stratId, backTo = "/home" }) {
               kernelRef.current?.updateSelected(partial);
               setSelected(kernelRef.current?.getSelected() || null);
             }}
+            onSetBezier={(enabled) => {
+              kernelRef.current?.setSelectedBezier(enabled);
+              setSelected(kernelRef.current?.getSelected() || null);
+            }}
           />
         </div>
       </div>

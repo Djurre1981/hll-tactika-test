@@ -30,6 +30,12 @@ export class MapKernel {
       size: 3,
       lineType: "solid",
       endType: "none",
+      startCap: "none",
+      endCap: "none",
+      opacity: 100,
+      startSize: 5,
+      endSize: 6,
+      lineBezier: false,
       filled: true,
       fontSize: 10,
       textStyle: 0,
@@ -343,6 +349,10 @@ export class MapKernel {
 
   updateSelected(partial) {
     this.interaction?.updateSelectedStyle(partial);
+  }
+
+  setSelectedBezier(enabled) {
+    this.interaction?.setSelectedBezier(enabled);
   }
 
   getSelected() {

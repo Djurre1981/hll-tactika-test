@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { normalizeLineCaps } from "@map-kernel/line-caps.js";
 import { useToolStore } from "../../../lib/stores/useToolStore.js";
 import {
   COLOR_PRESETS,
@@ -14,6 +16,10 @@ import {
 } from "./editorUi.js";
 import { ToolBtn } from "./ToolsPanelPrimitives.jsx";
 import { ToolsPanelOptions } from "./ToolsPanelOptions.jsx";
+
+const STROKE_TYPES = new Set(["pen", "line", "curve", "arrow"]);
+const LINE_STROKE_TYPES = new Set(["line", "curve", "arrow"]);
+const SHAPE_TYPES = new Set(["rect", "ellipse"]);
 
 function selectionLabel(selected) {
   if (!selected) return "";
@@ -40,12 +46,19 @@ export function ToolsPanel({
   onDeleteSelected,
   selected,
   onUpdateSelected,
+  onSetBezier,
 }) {
   const tool = useToolStore((s) => s.tool);
   const color = useToolStore((s) => s.color);
   const strokeWidth = useToolStore((s) => s.strokeWidth);
   const lineType = useToolStore((s) => s.lineType);
   const endType = useToolStore((s) => s.endType);
+  const startCap = useToolStore((s) => s.startCap);
+  const endCap = useToolStore((s) => s.endCap);
+  const opacity = useToolStore((s) => s.opacity);
+  const startSize = useToolStore((s) => s.startSize);
+  const endSize = useToolStore((s) => s.endSize);
+  const lineBezier = useToolStore((s) => s.lineBezier);
   const filled = useToolStore((s) => s.filled);
   const fontSize = useToolStore((s) => s.fontSize);
   const textStyle = useToolStore((s) => s.textStyle);
@@ -56,23 +69,117 @@ export function ToolsPanel({
   const hllRadiusCheck = useToolStore((s) => s.hllRadiusCheck);
   const patch = useToolStore((s) => s.patch);
 
-  const isStroke = tool === "pen" || tool === "line" || tool === "curve";
-  const isShape = tool === "rect" || tool === "ellipse";
-  const isPreset = COLOR_PRESETS.some((c) => c.toLowerCase() === color.toLowerCase());
-  const selectedColor = selected?.style?.color || color;
+  const selectedIsStroke = Boolean(selected && STROKE_TYPES.has(selected.type));
+  const selectedIsLineStroke = Boolean(selected && LINE_STROKE_TYPES.has(selected.type));
+  const selectedIsShape = Boolean(selected && SHAPE_TYPES.has(selected.type));
+  const selectedIsText = selected?.type === "text";
+  const showLineStroke =
+    selectedIsLineStroke ||
+    ((tool === "line" || tool === "curve") && !selectedIsStroke);
+  const showStroke =
+    (tool === "pen" || (selectedIsStroke && !selectedIsLineStroke)) && !showLineStroke;
+  const showShape = tool === "rect" || tool === "ellipse" || selectedIsShape;
+
+  const activeColor = selected?.style?.color || color;
+  const activeStrokeWidth = selectedIsStroke
+    ? Number(selected.style?.size) || strokeWidth
+    : strokeWidth;
+  const activeLineType = selectedIsStroke
+    ? selected.style?.lineType || lineType
+    : lineType;
+  const selectionCaps = selectedIsLineStroke
+    ? normalizeLineCaps(selected.style || {})
+    : null;
+  const activeStartCap = selectionCaps?.startCap || startCap;
+  const activeEndCap = selectionCaps?.endCap || endCap;
+  const activeEndType = selectedIsLineStroke
+    ? selected.style?.endType || endType
+    : endType;
+  const activeOpacity = selectedIsLineStroke
+    ? Number.isFinite(Number(selected.style?.opacity))
+      ? Number(selected.style.opacity)
+      : opacity
+    : opacity;
+  const activeStartSize = selectedIsLineStroke
+    ? Number(selected.style?.startSize) || startSize
+    : startSize;
+  const activeEndSize = selectedIsLineStroke
+    ? Number(selected.style?.endSize) || endSize
+    : endSize;
+  const activeBezier = selectedIsLineStroke
+    ? selected.type === "curve"
+    : tool === "curve"
+      ? true
+      : lineBezier;
+  const activeFilled = selectedIsShape ? Boolean(selected.style?.filled) : filled;
+  const activeFontSize = selectedIsText
+    ? Number(selected.style?.fontSize) || fontSize
+    : fontSize;
+  const activeTextStyle = selectedIsText
+    ? Number(selected.style?.textStyle) || textStyle
+    : textStyle;
+  const activeTextAlign = selectedIsText
+    ? selected.style?.textAlign || textAlign
+    : textAlign;
+
+  const isPreset = COLOR_PRESETS.some((c) => c.toLowerCase() === activeColor.toLowerCase());
+
+  useEffect(() => {
+    if (!selected?.style) return;
+    const style = selected.style;
+    const next = {};
+    if (style.color) next.color = style.color;
+    if (STROKE_TYPES.has(selected.type) || SHAPE_TYPES.has(selected.type)) {
+      if (Number.isFinite(Number(style.size))) next.strokeWidth = Number(style.size);
+      if (style.lineType) next.lineType = style.lineType;
+    }
+    if (LINE_STROKE_TYPES.has(selected.type)) {
+      const caps = normalizeLineCaps(style);
+      next.startCap = caps.startCap;
+      next.endCap = caps.endCap;
+      if (style.endType) next.endType = style.endType;
+      if (Number.isFinite(Number(style.opacity))) next.opacity = Number(style.opacity);
+      if (Number.isFinite(Number(style.startSize))) next.startSize = Number(style.startSize);
+      if (Number.isFinite(Number(style.endSize))) next.endSize = Number(style.endSize);
+      next.lineBezier = selected.type === "curve";
+    }
+    if (SHAPE_TYPES.has(selected.type)) next.filled = Boolean(style.filled);
+    if (selected.type === "text") {
+      if (Number.isFinite(Number(style.fontSize))) next.fontSize = Number(style.fontSize);
+      if (Number.isFinite(Number(style.textStyle))) next.textStyle = Number(style.textStyle);
+      if (style.textAlign) next.textAlign = style.textAlign;
+    }
+    if (Object.keys(next).length) patch(next);
+  }, [selected?.id, selected?.type, selected?.style, patch]);
 
   const setTool = (id) => {
-    // Legacy: if something still requests the removed arrow tool, use Line with an end head.
     if (id === "arrow") {
-      patch({ tool: "line", endType: endType === "none" ? "end" : endType });
+      patch({
+        tool: "line",
+        endCap: endCap === "none" ? "arrow" : endCap,
+        endType: endType === "none" ? "end" : endType,
+      });
       return;
     }
     patch({ tool: id });
   };
 
+  const applyStyle = (stylePartial, storePartial = {}) => {
+    patch(storePartial);
+    if (selected) onUpdateSelected?.({ style: stylePartial });
+  };
+
   const applyColor = (next) => {
-    patch({ color: next });
-    if (selected) onUpdateSelected?.({ style: { color: next } });
+    applyStyle({ color: next }, { color: next });
+  };
+
+  const handleSetBezier = (checked) => {
+    if (selectedIsLineStroke) {
+      onSetBezier?.(checked);
+      patch({ lineBezier: checked });
+      return;
+    }
+    patch({ lineBezier: checked });
   };
 
   return (
@@ -113,11 +220,11 @@ export function ToolsPanel({
               <span className="sr-only">Pick any color</span>
               <span
                 className="block h-full w-full rounded-full border-2 border-white/[0.22] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.25)]"
-                style={{ background: color }}
+                style={{ background: activeColor }}
               />
               <input
                 type="color"
-                value={color}
+                value={activeColor}
                 disabled={disabled}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 onChange={(e) => applyColor(e.target.value)}
@@ -133,7 +240,7 @@ export function ToolsPanel({
                   onClick={() => applyColor(c)}
                   className={cx(
                     "h-[1.15rem] w-[1.15rem] rounded-full border border-white/[0.16] transition hover:scale-105",
-                    color.toLowerCase() === c.toLowerCase() &&
+                    activeColor.toLowerCase() === c.toLowerCase() &&
                       "shadow-[0_0_0_2px_rgba(255,255,255,0.38)]"
                   )}
                   style={{ background: c }}
@@ -164,8 +271,8 @@ export function ToolsPanel({
             >
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
-                style={{ background: selectedColor }}
-                title={selectedColor}
+                style={{ background: activeColor }}
+                title={activeColor}
               />
               <span className="min-w-0 flex-1 truncate text-[0.68rem] text-white/[0.78]">
                 <span className="text-white/90">{selectionLabel(selected)}</span>
@@ -211,15 +318,25 @@ export function ToolsPanel({
           tool={tool}
           disabled={disabled}
           selected={selected}
-          isStroke={isStroke}
-          isShape={isShape}
-          strokeWidth={strokeWidth}
-          lineType={lineType}
-          endType={endType}
-          filled={filled}
-          fontSize={fontSize}
-          textStyle={textStyle}
-          textAlign={textAlign}
+          isStroke={showStroke}
+          isLineStroke={showLineStroke}
+          isShape={showShape}
+          editingSelection={Boolean(
+            selected && (selectedIsStroke || selectedIsShape || selectedIsText)
+          )}
+          strokeWidth={activeStrokeWidth}
+          lineType={activeLineType}
+          endType={activeEndType}
+          startCap={activeStartCap}
+          endCap={activeEndCap}
+          opacity={activeOpacity}
+          startSize={activeStartSize}
+          endSize={activeEndSize}
+          lineBezier={activeBezier}
+          filled={activeFilled}
+          fontSize={activeFontSize}
+          textStyle={activeTextStyle}
+          textAlign={activeTextAlign}
           iconId={iconId}
           iconLabel={iconLabel}
           hllId={hllId}
@@ -227,6 +344,8 @@ export function ToolsPanel({
           patch={patch}
           onPaste={onPaste}
           onUpdateSelected={onUpdateSelected}
+          onApplyStyle={applyStyle}
+          onSetBezier={handleSetBezier}
           onUndo={onUndo}
           onRedo={onRedo}
         />

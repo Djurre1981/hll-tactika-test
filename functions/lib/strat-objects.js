@@ -11,9 +11,55 @@ const STRAT_OBJECT_TYPES = [
   "ping",
 ];
 
-const LINE_TYPES = ["solid", "dashed", "dotted"];
+const LINE_TYPES = ["solid", "dashed", "dotted", "dashDot", "dashDotDot"];
+const LINE_CAPS = [
+  "none",
+  "arrow",
+  "arrowMd",
+  "arrowSm",
+  "chevron",
+  "butt",
+  "round",
+  "circle",
+  "square",
+  "diamond",
+  "tee",
+];
 const END_TYPES = ["none", "start", "end", "both"];
 const TEXT_ALIGNS = ["left", "center", "right"];
+
+function capsFromEndType(endType) {
+  switch (endType) {
+    case "start":
+      return { startCap: "arrow", endCap: "none" };
+    case "end":
+      return { startCap: "none", endCap: "arrow" };
+    case "both":
+      return { startCap: "arrow", endCap: "arrow" };
+    default:
+      return { startCap: "none", endCap: "none" };
+  }
+}
+
+function endTypeFromCaps(startCap, endCap) {
+  const s = startCap && startCap !== "none";
+  const e = endCap && endCap !== "none";
+  if (s && e) return "both";
+  if (s) return "start";
+  if (e) return "end";
+  return "none";
+}
+
+function normalizeLineCaps(style = {}) {
+  let startCap = LINE_CAPS.includes(style.startCap) ? style.startCap : null;
+  let endCap = LINE_CAPS.includes(style.endCap) ? style.endCap : null;
+  if (!startCap || !endCap) {
+    const fromLegacy = capsFromEndType(style.endType || "none");
+    startCap = startCap || fromLegacy.startCap;
+    endCap = endCap || fromLegacy.endCap;
+  }
+  return { startCap, endCap };
+}
 const ICON_IDS = new Set([
   "check",
   "xmark",
@@ -168,19 +214,29 @@ function normalizePoint(point) {
 }
 
 function normalizeStyle(style = {}, type) {
+  const caps = normalizeLineCaps(style);
   const normalized = {
     color: String(style.color || "#ffffff").slice(0, 32),
     size: clamp(Number(style.size) || 3, 1, 48),
     lineType: LINE_TYPES.includes(style.lineType) ? style.lineType : "solid",
-    endType: END_TYPES.includes(style.endType) ? style.endType : "none",
+    endType: END_TYPES.includes(style.endType)
+      ? style.endType
+      : endTypeFromCaps(caps.startCap, caps.endCap),
+    startCap: caps.startCap,
+    endCap: caps.endCap,
+    opacity: clamp(Number.isFinite(Number(style.opacity)) ? Number(style.opacity) : 100, 0, 100),
+    startSize: clamp(Number(style.startSize) || 5, 1, 24),
+    endSize: clamp(Number(style.endSize) || 6, 1, 24),
     filled: Boolean(style.filled),
     fontSize: clamp(Number(style.fontSize) || 10, 6, 48),
     textStyle: clamp(Number(style.textStyle) || 0, 0, 2),
     textAlign: TEXT_ALIGNS.includes(style.textAlign) ? style.textAlign : "center",
   };
 
-  if (type === "arrow" && normalized.endType === "none") {
-    normalized.endType = "end";
+  if (type === "arrow") {
+    if (normalized.endType === "none") normalized.endType = "end";
+    if (normalized.endCap === "none") normalized.endCap = "arrow";
+    normalized.endType = endTypeFromCaps(normalized.startCap, normalized.endCap);
   }
 
   return normalized;

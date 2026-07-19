@@ -189,6 +189,14 @@ export default defineConfig({
       "/api": {
         target: WRANGLER_API,
         changeOrigin: true,
+        // Browser Origin stays :5173; Pages same-origin guard compares it to
+        // the wrangler URL (:8788) and 403s mutating requests without this.
+        configure(proxy) {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("Origin", WRANGLER_API);
+            proxyReq.setHeader("Referer", `${WRANGLER_API}/`);
+          });
+        },
       },
     },
   },

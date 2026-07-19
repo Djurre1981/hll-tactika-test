@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
 import {
+  LINE_CAP_OPTIONS,
+  LINE_DASH_OPTIONS,
+  endTypeFromCaps,
+  normalizeLineCaps,
+} from "@map-kernel/line-caps.js";
+import {
   actionBtn,
   actionBtnWide,
   cx,
@@ -9,8 +15,9 @@ import {
   getHllToolbarPreviewSrc,
   sectionTitle,
 } from "./editorUi.js";
+import { CapSelect, DashSelect } from "./LineStyleSelects.jsx";
 import { StratIcon } from "./StratIcon.jsx";
-import { Segmented, SizeOption } from "./ToolsPanelPrimitives.jsx";
+import { Segmented, SizeOption, SliderField } from "./ToolsPanelPrimitives.jsx";
 
 const HLL_GROUPS = [...new Set(HLL_OPTIONS.map((o) => o.group))];
 
@@ -21,15 +28,142 @@ function matchesQuery(haystack, query) {
     .includes(query);
 }
 
+function LineStrokeOptions({
+  disabled,
+  editingSelection,
+  tool,
+  strokeWidth,
+  lineType,
+  startCap,
+  endCap,
+  opacity,
+  startSize,
+  endSize,
+  lineBezier,
+  bezierLocked = false,
+  setStyle,
+  onSetBezier,
+}) {
+  const setCap = (partial) => {
+    const nextStart = partial.startCap ?? startCap;
+    const nextEnd = partial.endCap ?? endCap;
+    const endType = endTypeFromCaps(nextStart, nextEnd);
+    setStyle(
+      { startCap: nextStart, endCap: nextEnd, endType },
+      { startCap: nextStart, endCap: nextEnd, endType }
+    );
+  };
+
+  const startOptions =
+    startCap === "none"
+      ? [{ value: "none", title: "None" }, ...LINE_CAP_OPTIONS]
+      : LINE_CAP_OPTIONS;
+  const endOptions =
+    endCap === "none"
+      ? [{ value: "none", title: "None" }, ...LINE_CAP_OPTIONS]
+      : LINE_CAP_OPTIONS;
+
+  return (
+    <>
+      <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Line</h3>
+      <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
+        {editingSelection
+          ? "Changes apply to the selected line."
+          : tool === "curve"
+            ? "Drag to place a spline; select and pull the red discs to bend. Shift snaps the chord to 45°."
+            : "Shift snaps to 45°. Caps and sizes apply to new lines and the selection."}
+      </p>
+
+      <div className="mb-[0.65rem] flex gap-1.5">
+        <CapSelect
+          label="Start"
+          side="start"
+          value={startCap === "none" ? "none" : startCap}
+          options={startOptions}
+          disabled={disabled}
+          onChange={(v) => setCap({ startCap: v })}
+        />
+        <DashSelect
+          label="Type"
+          value={lineType}
+          options={LINE_DASH_OPTIONS}
+          disabled={disabled}
+          onChange={(v) => setStyle({ lineType: v }, { lineType: v })}
+        />
+        <CapSelect
+          label="End"
+          side="end"
+          value={endCap === "none" ? "none" : endCap}
+          options={endOptions}
+          disabled={disabled}
+          onChange={(v) => setCap({ endCap: v })}
+        />
+      </div>
+
+      <SliderField
+        label="Width"
+        value={strokeWidth}
+        min={1}
+        max={24}
+        disabled={disabled}
+        onChange={(v) => setStyle({ size: v }, { strokeWidth: v })}
+      />
+      <SliderField
+        label="Opacity"
+        value={opacity}
+        min={0}
+        max={100}
+        disabled={disabled}
+        onChange={(v) => setStyle({ opacity: v }, { opacity: v })}
+      />
+      <SliderField
+        label="Start size"
+        value={startSize}
+        min={1}
+        max={24}
+        disabled={disabled || startCap === "none"}
+        onChange={(v) => setStyle({ startSize: v }, { startSize: v })}
+      />
+      <SliderField
+        label="End size"
+        value={endSize}
+        min={1}
+        max={24}
+        disabled={disabled || endCap === "none"}
+        onChange={(v) => setStyle({ endSize: v }, { endSize: v })}
+      />
+
+      <label className="mb-[0.55rem] flex items-center gap-[0.45rem] text-[0.76rem] text-white/[0.72]">
+        <input
+          type="checkbox"
+          checked={lineBezier}
+          disabled={disabled || bezierLocked}
+          onChange={(e) => onSetBezier?.(e.target.checked)}
+        />
+        <span>Bezier Curve</span>
+      </label>
+    </>
+  );
+}
+
 export function ToolsPanelOptions({
   tool,
   disabled,
   selected,
   isStroke,
+  isLineStroke = false,
   isShape,
+  showEndCaps = false,
+  editingSelection = false,
   strokeWidth,
   lineType,
   endType,
+  startCap = "none",
+  endCap = "none",
+  opacity = 100,
+  startSize = 5,
+  endSize = 6,
+  lineBezier = false,
   filled,
   fontSize,
   textStyle,
@@ -41,6 +175,8 @@ export function ToolsPanelOptions({
   patch,
   onPaste,
   onUpdateSelected,
+  onApplyStyle,
+  onSetBezier,
   onUndo,
   onRedo,
 }) {
@@ -78,6 +214,13 @@ export function ToolsPanelOptions({
       return next;
     });
   };
+
+  const setStyle = (stylePartial, storePartial) => {
+    if (onApplyStyle) onApplyStyle(stylePartial, storePartial);
+    else patch(storePartial);
+  };
+
+  const caps = normalizeLineCaps({ startCap, endCap, endType });
 
   return (
     <section className="mt-1 border-t border-solid border-white/[0.08] pt-3">
@@ -120,15 +263,32 @@ export function ToolsPanelOptions({
         </>
       )}
 
-      {isStroke && (
+      {isLineStroke && (
+        <LineStrokeOptions
+          disabled={disabled}
+          editingSelection={editingSelection}
+          tool={tool}
+          strokeWidth={strokeWidth}
+          lineType={lineType}
+          startCap={caps.startCap}
+          endCap={caps.endCap}
+          opacity={opacity}
+          startSize={startSize}
+          endSize={endSize}
+          lineBezier={lineBezier}
+          bezierLocked={tool === "curve" && !editingSelection}
+          setStyle={setStyle}
+          onSetBezier={onSetBezier}
+        />
+      )}
+
+      {isStroke && !isLineStroke && (
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Stroke</h3>
           <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
-            {tool === "curve"
-              ? "Drag to place a spline; select and pull the red discs to bend. Vertices are larger, control points smaller. Shift snaps the chord to 45°."
-              : tool === "line"
-                ? "Shift snaps to 45°. Use End type for arrowheads."
-                : "Shift snaps freehand strokes while drawing."}
+            {editingSelection
+              ? "Changes apply to the selected stroke."
+              : "Shift snaps freehand strokes while drawing."}
           </p>
           <SizeOption
             label="Size"
@@ -136,14 +296,14 @@ export function ToolsPanelOptions({
             min={1}
             max={24}
             disabled={disabled}
-            onChange={(v) => patch({ strokeWidth: v })}
+            onChange={(v) => setStyle({ size: v }, { strokeWidth: v })}
           />
           <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
             <span>Line type</span>
             <Segmented
               disabled={disabled}
               value={lineType}
-              onChange={(v) => patch({ lineType: v })}
+              onChange={(v) => setStyle({ lineType: v }, { lineType: v })}
               options={[
                 { value: "solid", title: "Solid", label: <i className="fa-solid fa-minus" /> },
                 { value: "dashed", title: "Dashed", label: <i className="fa-solid fa-grip-lines" /> },
@@ -151,13 +311,13 @@ export function ToolsPanelOptions({
               ]}
             />
           </div>
-          {(tool === "line" || tool === "curve") && (
+          {showEndCaps && (
             <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
               <span>End type</span>
               <Segmented
                 disabled={disabled}
                 value={endType}
-                onChange={(v) => patch({ endType: v })}
+                onChange={(v) => setStyle({ endType: v }, { endType: v })}
                 options={[
                   { value: "none", title: "None", label: <i className="fa-solid fa-minus" /> },
                   { value: "start", title: "Start arrow", label: <i className="fa-solid fa-arrow-left" /> },
@@ -174,7 +334,9 @@ export function ToolsPanelOptions({
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Shape</h3>
           <p className="mb-2 text-[0.76rem] leading-relaxed text-white/45">
-            Shift keeps circles round and squares square. Alt draws from center.
+            {editingSelection
+              ? "Changes apply to the selected shape."
+              : "Shift keeps circles round and squares square. Alt draws from center."}
           </p>
           <SizeOption
             label="Size"
@@ -182,14 +344,14 @@ export function ToolsPanelOptions({
             min={1}
             max={24}
             disabled={disabled}
-            onChange={(v) => patch({ strokeWidth: v })}
+            onChange={(v) => setStyle({ size: v }, { strokeWidth: v })}
           />
           <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
             <span>Line type</span>
             <Segmented
               disabled={disabled}
               value={lineType}
-              onChange={(v) => patch({ lineType: v })}
+              onChange={(v) => setStyle({ lineType: v }, { lineType: v })}
               options={[
                 { value: "solid", title: "Solid", label: <i className="fa-solid fa-minus" /> },
                 { value: "dashed", title: "Dashed", label: <i className="fa-solid fa-grip-lines" /> },
@@ -202,14 +364,14 @@ export function ToolsPanelOptions({
               type="checkbox"
               checked={filled}
               disabled={disabled}
-              onChange={(e) => patch({ filled: e.target.checked })}
+              onChange={(e) => setStyle({ filled: e.target.checked }, { filled: e.target.checked })}
             />
             <span>Filled</span>
           </label>
         </>
       )}
 
-      {tool === "text" && (
+      {(tool === "text" || selected?.type === "text") && (
         <>
           <h3 className={cx(sectionTitle, "mb-[0.55rem]")}>Text</h3>
           <SizeOption
@@ -218,14 +380,14 @@ export function ToolsPanelOptions({
             min={8}
             max={48}
             disabled={disabled}
-            onChange={(v) => patch({ fontSize: v })}
+            onChange={(v) => setStyle({ fontSize: v }, { fontSize: v })}
           />
           <div className="mb-[0.55rem] flex flex-wrap items-center justify-between gap-2 text-[0.76rem] text-white/[0.72]">
             <span>Text type</span>
             <Segmented
               disabled={disabled}
               value={textStyle}
-              onChange={(v) => patch({ textStyle: v })}
+              onChange={(v) => setStyle({ textStyle: v }, { textStyle: v })}
               options={[
                 { value: 0, title: "Regular", label: "Aa" },
                 { value: 1, title: "Italic", label: <em>I</em> },
@@ -238,7 +400,7 @@ export function ToolsPanelOptions({
             <Segmented
               disabled={disabled}
               value={textAlign}
-              onChange={(v) => patch({ textAlign: v })}
+              onChange={(v) => setStyle({ textAlign: v }, { textAlign: v })}
               options={[
                 { value: "left", title: "Left", label: <i className="fa-solid fa-align-left" /> },
                 { value: "center", title: "Center", label: <i className="fa-solid fa-align-center" /> },
@@ -328,7 +490,6 @@ export function ToolsPanelOptions({
                 setHllQuery(next);
                 const q = next.trim().toLowerCase();
                 if (!q) return;
-                // Auto-expand groups that have matches while filtering.
                 setOpenHllGroups((prev) => {
                   const nextOpen = new Set(prev);
                   for (const group of HLL_GROUPS) {

@@ -5,6 +5,11 @@ import {
   HLL_OBJECT_IDS,
   resolveHllAsset,
 } from "./icons/hll-object-catalog.js";
+import {
+  LINE_DASH_TYPES,
+  endTypeFromCaps,
+  normalizeLineCaps,
+} from "./line-caps.js";
 
 export { STRAT_ICON_IDS } from "./icons/strat-icon-catalog.js";
 export {
@@ -14,6 +19,15 @@ export {
   getHllToolbarPreviewSrc,
   resolveHllAsset,
 } from "./icons/hll-object-catalog.js";
+export {
+  LINE_CAP_TYPES,
+  LINE_CAP_OPTIONS,
+  LINE_DASH_TYPES,
+  LINE_DASH_OPTIONS,
+  capsFromEndType,
+  endTypeFromCaps,
+  normalizeLineCaps,
+} from "./line-caps.js";
 
 export const STRAT_OBJECT_TYPES = [
   "pen",
@@ -35,7 +49,6 @@ export function objectNeedsAnimation(object) {
   return Boolean(object && ANIMATED_OBJECT_TYPES.has(object.type));
 }
 
-const LINE_TYPES = ["solid", "dashed", "dotted"];
 const END_TYPES = ["none", "start", "end", "both"];
 const TEXT_ALIGNS = ["left", "center", "right"];
 const ICON_SET = new Set(STRAT_ICON_IDS);
@@ -60,19 +73,29 @@ export function normalizePoint(point) {
 }
 
 export function normalizeStyle(style = {}, type) {
+  const caps = normalizeLineCaps(style);
   const normalized = {
     color: String(style.color || "#ffffff").slice(0, 32),
     size: clamp(Number(style.size) || 3, 1, 48),
-    lineType: LINE_TYPES.includes(style.lineType) ? style.lineType : "solid",
-    endType: END_TYPES.includes(style.endType) ? style.endType : "none",
+    lineType: LINE_DASH_TYPES.includes(style.lineType) ? style.lineType : "solid",
+    endType: END_TYPES.includes(style.endType)
+      ? style.endType
+      : endTypeFromCaps(caps.startCap, caps.endCap),
+    startCap: caps.startCap,
+    endCap: caps.endCap,
+    opacity: clamp(Number.isFinite(Number(style.opacity)) ? Number(style.opacity) : 100, 0, 100),
+    startSize: clamp(Number(style.startSize) || 5, 1, 24),
+    endSize: clamp(Number(style.endSize) || 6, 1, 24),
     filled: Boolean(style.filled),
     fontSize: clamp(Number(style.fontSize) || 10, 6, 48),
     textStyle: clamp(Number(style.textStyle) || 0, 0, 2),
     textAlign: TEXT_ALIGNS.includes(style.textAlign) ? style.textAlign : "center",
   };
 
-  if (type === "arrow" && normalized.endType === "none") {
-    normalized.endType = "end";
+  if (type === "arrow") {
+    if (normalized.endType === "none") normalized.endType = "end";
+    if (normalized.endCap === "none") normalized.endCap = "arrow";
+    normalized.endType = endTypeFromCaps(normalized.startCap, normalized.endCap);
   }
 
   return normalized;
@@ -357,11 +380,21 @@ export function hitTestObject(object, point, threshold = 1.2) {
 }
 
 export function settingsToObjectStyle(settings) {
+  const caps = normalizeLineCaps({
+    startCap: settings.startCap,
+    endCap: settings.endCap,
+    endType: settings.endType,
+  });
   return {
     color: settings.color,
     size: settings.size,
     lineType: settings.lineType,
-    endType: settings.endType,
+    endType: endTypeFromCaps(caps.startCap, caps.endCap),
+    startCap: caps.startCap,
+    endCap: caps.endCap,
+    opacity: settings.opacity,
+    startSize: settings.startSize,
+    endSize: settings.endSize,
     filled: settings.filled,
     fontSize: settings.fontSize,
     textStyle: settings.textStyle,

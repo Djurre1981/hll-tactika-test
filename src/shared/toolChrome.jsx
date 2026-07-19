@@ -63,3 +63,32 @@ export function SizeOption({ label, value, min, max, disabled, onChange }) {
     </label>
   );
 }
+
+/** Slider with editable number field (StratSketch-style Width / Opacity rows). */
+export function SliderField({ label, value, min, max, disabled, onChange }) {
+  const clamp = (n) => Math.min(max, Math.max(min, Number(n) || min));
+  return (
+    <label className="mb-[0.55rem] grid grid-cols-[4.25rem_minmax(0,1fr)_2.6rem] items-center gap-[0.45rem] text-[0.76rem] text-white/[0.72]">
+      <span className="truncate">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        disabled={disabled}
+        className="w-full accent-white"
+        onChange={(e) => onChange(clamp(e.target.value))}
+      />
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        disabled={disabled}
+        aria-label={label}
+        className="w-full rounded-[8px] border border-solid border-white/10 bg-black/35 px-1 py-[0.2rem] text-center text-[0.72rem] tabular-nums text-white/85 outline-none focus:border-white/25 disabled:opacity-35"
+        onChange={(e) => onChange(clamp(e.target.value))}
+      />
+    </label>
+  );
+}
