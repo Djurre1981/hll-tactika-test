@@ -60,6 +60,7 @@ export class InteractionController {
     this.isTextEditing = isTextEditing || (() => false);
 
     this.drawSession = null;
+    this.strokeChain = null;
     this.objectDrag = null;
     this.handleDrag = null;
     this.clipboard = null;
@@ -112,6 +113,7 @@ export class InteractionController {
       this.isDrawingTool(tool) ||
       tool === "eraser" ||
       Boolean(this.drawSession) ||
+      Boolean(this.strokeChain) ||
       Boolean(this.objectDrag) ||
       Boolean(this.handleDrag) ||
       this.isTextEditing()
@@ -124,7 +126,9 @@ export class InteractionController {
 
   refresh() {
     this.renderer.setSelectedId(this.scene.selectedId);
-    this.renderer.setPreview(this.drawSession?.preview || this.hllPlacementPreview || null);
+    this.renderer.setPreview(
+      this.strokeChain?.preview || this.drawSession?.preview || this.hllPlacementPreview || null
+    );
     this.onRequestRender();
   }
 
@@ -143,9 +147,80 @@ export class InteractionController {
   }
 
   onToolSettingsChanged() {
+    if (!this.isStrokeChainTool()) {
+      this.cancelStrokeChain();
+    }
     if (!this.isHllGarrisonRadiusCheckActive()) {
       this.clearHllPlacementPreview();
     }
+  }
+
+  /** Line / curve / arrow place as click-chains (next LMB continues). */
+  isStrokeChainTool(settings = this.getToolSettings()) {
+    const tool = settings.tool;
+    return tool === "line" || tool === "curve" || tool === "arrow";
+  }
+
+  strokeChainObjectType(settings = this.getToolSettings()) {
+    const tool = settings.tool;
+    if (tool === "arrow") return "line";
+    if (tool === "line" && settings.lineBezier) return "curve";
+    return tool === "curve" ? "curve" : "line";
+  }
+
+  cancelStrokeChain() {
+    if (!this.strokeChain) return;
+    this.strokeChain = null;
+    this.renderer.setPreview(null);
+    this.getViewer()?.setBlockPan(this.shouldBlockPan());
+    this.refresh();
+  }
+
+  updateStrokeChainPreview(point, shiftKey = false) {
+    const chain = this.strokeChain;
+    if (!chain || !point) return;
+    const settings = this.getToolSettings();
+    const style = settingsToObjectStyle(settings);
+    const aspect = this.getViewer()?.getMapAspect() || 1;
+    const end = resolveTwoPoint(chain.lastPoint, point, { shift: shiftKey, aspect });
+    if (chain.type === "curve") {
+      chain.preview = createStratObject("curve", {
+        points: cubicPointsFromEndpoints(chain.lastPoint, end),
+        style,
+      });
+    } else {
+      chain.preview = createStratObject("line", {
+        points: [chain.lastPoint, end],
+        style,
+      });
+    }
+    this.refresh();
+  }
+
+  placeStrokeChainSegment(point, shiftKey = false) {
+    const chain = this.strokeChain;
+    if (!chain || !point) return;
+    const settings = this.getToolSettings();
+    const style = settingsToObjectStyle(settings);
+    const aspect = this.getViewer()?.getMapAspect() || 1;
+    const end = resolveTwoPoint(chain.lastPoint, point, { shift: shiftKey, aspect });
+    const dist = Math.hypot(end.x - chain.lastPoint.x, end.y - chain.lastPoint.y);
+    if (dist >= 0.15) {
+      const object =
+        chain.type === "curve"
+          ? createStratObject("curve", {
+              points: cubicPointsFromEndpoints(chain.lastPoint, end),
+              style,
+            })
+          : createStratObject("line", {
+              points: [chain.lastPoint, end],
+              style,
+            });
+      this.scene.addObject(object);
+      this.scene.setSelectedId(object.id);
+    }
+    chain.lastPoint = end;
+    this.updateStrokeChainPreview(point, shiftKey);
   }
 
   updateHllPlacementPreview(point) {
@@ -174,6 +249,7 @@ export class InteractionController {
       this.drawSession = null;
       this.renderer.setPreview(null);
     }
+    this.cancelStrokeChain();
     this.clearHllPlacementPreview();
     this.handleDrag = null;
     this.objectDrag = null;
@@ -343,7 +419,29 @@ export class InteractionController {
         : tool === "line" && settings.lineBezier
           ? "curve"
           : tool;
-    if (!["pen", "line", "curve", "rect", "ellipse", "text"].includes(drawType)) return;
+
+    // Line / curve / arrow: click-chain — each LMB places a segment and continues.
+    if (this.isStrokeChainTool(settings)) {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      const chainType = this.strokeChainObjectType(settings);
+      if (!this.strokeChain) {
+        this.strokeChain = {
+          type: chainType,
+          lastPoint: normalizePoint(point),
+          preview: null,
+        };
+        this.getViewer()?.setBlockPan(true);
+        this.updateStrokeChainPreview(point, event.shiftKey);
+      } else {
+        // Tool options may change mid-chain (e.g. Bezier toggle).
+        this.strokeChain.type = chainType;
+        this.placeStrokeChainSegment(point, event.shiftKey);
+      }
+      return;
+    }
+
+    if (!["pen", "rect", "ellipse", "text"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
     event.preventDefault();
@@ -453,6 +551,15 @@ export class InteractionController {
       return;
     }
 
+    if (this.strokeChain) {
+      const point = this.mapPoint(event);
+      if (point) {
+        event.stopPropagation();
+        this.updateStrokeChainPreview(point, event.shiftKey);
+      }
+      return;
+    }
+
     if (this.isHllGarrisonRadiusCheckActive()) {
       const point = this.mapPoint(event);
       if (point) this.updateHllPlacementPreview(point);
@@ -550,6 +657,20 @@ export class InteractionController {
     const target = event.target;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
       return;
+    }
+
+    if (event.key === "Escape") {
+      if (this.strokeChain || this.drawSession) {
+        event.preventDefault();
+        this.cancelStrokeChain();
+        if (this.drawSession) {
+          this.drawSession = null;
+          this.renderer.setPreview(null);
+          this.getViewer()?.setBlockPan(this.shouldBlockPan());
+          this.refresh();
+        }
+        return;
+      }
     }
 
     const mod = event.ctrlKey || event.metaKey;

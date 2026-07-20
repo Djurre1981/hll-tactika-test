@@ -815,6 +815,8 @@ export class CanvasRenderer {
       this.drawObject(ctx, this.preview);
       if (this.preview.type === "curve") {
         this.drawCurveEditChrome(ctx, this.preview, { dim: true });
+      } else if (this.preview.type === "line" || this.preview.type === "arrow") {
+        this.drawLineEditChrome(ctx, this.preview, { dim: true });
       }
     }
     const selected = this.findSelected(objects);
