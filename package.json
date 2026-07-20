@@ -36,6 +36,8 @@
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@tanstack/react-query": "^5.101.2",
     "lib0": "^0.2.117",
     "react": "^18.3.1",

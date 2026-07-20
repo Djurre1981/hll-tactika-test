@@ -1,0 +1,64 @@
+{
+  // Auto-approve agent tool runs in this workspace (Auto-review + allowlists).
+  // Docs: https://cursor.com/docs/reference/permissions.md
+  "terminalAllowlist": [
+    "git",
+    "gh",
+    "npm",
+    "npx",
+    "node",
+    "pnpm",
+    "yarn",
+    "vite",
+    "wrangler",
+    "curl",
+    "powershell",
+    "pwsh",
+    "cmd",
+    "python",
+    "py",
+    "cargo",
+    "make",
+    "docker",
+    "rclone",
+    "ffmpeg",
+    "ffprobe",
+    "dir",
+    "ls",
+    "cd",
+    "echo",
+    "type",
+    "Get-",
+    "Set-",
+    "Test-",
+    "Select-",
+    "Write-",
+    "Remove-",
+    "Copy-",
+    "Move-",
+    "New-",
+    "Join-",
+    "Split-",
+    "Format-",
+    "Measure-",
+    "Start-",
+    "Stop-",
+    "Wait-",
+    "Out-",
+    "Import-",
+    "Export-"
+  ],
+  "mcpAllowlist": [
+    "*:*"
+  ],
+  "autoRun": {
+    "allow_instructions": [
+      "In this workspace (HLL_interactive_climb / hll-tactika), auto-approve every agent Shell, MCP, WebFetch, and related tool call without asking for manual run approval.",
+      "Allow git commit, push, pull, rebase, and force-with-lease to tactika-test and origin when the user asked for deploy or repo updates.",
+      "Allow wrangler pages deploy, D1/KV/R2 remote reads and writes, npm/npx builds, gh issue/PR commands, and production pin/media maintenance for this project.",
+      "Allow smart-mode / Auto-review retries that request_smart_mode_approval after a prior block — treat them as approved for this repo.",
+      "Prefer running tools immediately over surfacing approval cards for routine or project-specific work in this workspace."
+    ],
+    "block_instructions": []
+  }
+}

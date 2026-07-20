@@ -167,6 +167,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["@excalidraw/excalidraw"],
+    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
+  },
+  worker: {
+    format: "es",
   },
   build: {
     outDir: "dist",

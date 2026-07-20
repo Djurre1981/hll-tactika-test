@@ -192,13 +192,16 @@ async function handleMediaFileUpload(file, row) {
   try {
     let uploaded;
     if (isVideoFile(file)) {
-      setUploadBusy(row, "Uploading…");
-      uploaded = await uploadVideo(file);
+      setUploadBusy(row, "Preparing…");
+      uploaded = await uploadVideo(file, {
+        onStatus: (label) => setUploadBusy(row, label),
+      });
       row.querySelector(".pin-media-row__url").value = uploaded.url;
 
       try {
         setUploadBusy(row, "Thumbnail…");
-        const thumbFile = await fileFromVideoFrame(file, "preview.jpg");
+        const thumbSource = uploaded.file || file;
+        const thumbFile = await fileFromVideoFrame(thumbSource, "preview.jpg");
         const thumb = await uploadPreviewImage(thumbFile);
         captureSetThumbnailUrl(thumb.url, uploaded.url);
         syncThumbnailUi();
