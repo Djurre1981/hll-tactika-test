@@ -731,38 +731,11 @@ export class CanvasRenderer {
       return;
     }
 
-    const bounds = getObjectBounds(object);
-    if (!bounds) return;
-    const x = this.pctToPx(bounds.x);
-    const y = this.pctToPx(bounds.y);
-    const w = this.pctToPx(bounds.w);
-    const h = this.pctToPx(bounds.h);
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(x, y, w, h);
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#fff";
-    const handles = [
-      [x, y],
-      [x + w / 2, y],
-      [x + w, y],
-      [x + w, y + h / 2],
-      [x + w, y + h],
-      [x + w / 2, y + h],
-      [x, y + h],
-      [x, y + h / 2],
-    ];
-    const r = 4;
-    for (const [hx, hy] of handles) {
-      ctx.fillRect(hx - r, hy - r, r * 2, r * 2);
-    }
-    ctx.restore();
+    this.drawBoxEditChrome(ctx, object);
   }
 
-  /** Text box: dashed frame, red discs (line-style), green rotation handle. */
-  drawTextEditChrome(ctx, object) {
+  /** Shared resize chrome: dashed frame + red discs (line/curve style). */
+  drawBoxEditChrome(ctx, object) {
     const bounds = getObjectBounds(object);
     if (!bounds) return;
     const sizes = curveHandleDrawSizes(this.viewScale);
@@ -770,7 +743,6 @@ export class CanvasRenderer {
     const y = this.pctToPx(bounds.y);
     const w = this.pctToPx(bounds.w);
     const h = this.pctToPx(bounds.h);
-    const lift = Math.max(sizes.endpoint * 2.2, h * 0.12 + sizes.endpoint * 1.6);
 
     ctx.save();
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
@@ -797,7 +769,22 @@ export class CanvasRenderer {
       corners.map(([hx, hy]) => ({ x: hx, y: hy })),
       Math.max(1.2, sizes.control * 0.28)
     );
+    ctx.restore();
+  }
 
+  /** Text box: dashed frame, red discs (line-style), green rotation handle. */
+  drawTextEditChrome(ctx, object) {
+    this.drawBoxEditChrome(ctx, object);
+    const bounds = getObjectBounds(object);
+    if (!bounds) return;
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const x = this.pctToPx(bounds.x);
+    const y = this.pctToPx(bounds.y);
+    const w = this.pctToPx(bounds.w);
+    const h = this.pctToPx(bounds.h);
+    const lift = Math.max(sizes.endpoint * 2.2, h * 0.12 + sizes.endpoint * 1.6);
+
+    ctx.save();
     const rx = x + w / 2;
     const ry = y - lift;
     ctx.strokeStyle = "rgba(74, 222, 128, 0.9)";

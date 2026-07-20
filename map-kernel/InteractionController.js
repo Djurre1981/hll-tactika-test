@@ -223,13 +223,10 @@ export class InteractionController {
     if (tool === "select") {
       const selected = this.scene.getSelected();
       if (selected) {
-        const handleHit =
-          selected.type === "curve" ||
-          selected.type === "line" ||
-          selected.type === "arrow" ||
-          selected.type === "text"
-            ? curveHandleHitPct(this.getViewer()?.getCamera?.()?.zoom, this.renderer?.mapSize)
-            : undefined;
+        const handleHit = curveHandleHitPct(
+          this.getViewer()?.getCamera?.()?.zoom,
+          this.renderer?.mapSize
+        );
         const handle = hitTestSelectionHandle(
           getSelectionHandles(selected),
           point,

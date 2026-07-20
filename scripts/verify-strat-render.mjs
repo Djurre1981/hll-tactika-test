@@ -164,6 +164,20 @@ check("curve places as cubic and control handle moves", () => {
   assert(moved[0].x === original[0].x && moved[3].y === original[3].y, "other points stay");
 });
 
+check("line uses endpoint handles instead of resize box", () => {
+  const line = createStratObject("line", {
+    points: [
+      { x: 10, y: 20 },
+      { x: 40, y: 60 },
+    ],
+    style: { color: "#fff", size: 3 },
+  });
+  const original = structuredClone(line.points);
+  const moved = applyHandleDrag(line, "p1", { x: 55, y: 70 }, original, null);
+  assert(moved[0].x === original[0].x && moved[0].y === original[0].y, "p0 stays");
+  assert(moved[1].x === 55 && moved[1].y === 70, "p1 moves");
+});
+
 check("CanvasRenderer layers: static once, anim every frame", () => {
   const ops = [];
   const staticCtx = makeCtx(ops, "static");
