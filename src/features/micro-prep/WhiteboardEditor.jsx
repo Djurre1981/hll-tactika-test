@@ -279,7 +279,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
         setPageUrl(url);
       }
       kernelRef.current?.setPageImage(url);
-      kernelRef.current?.resetFreeformView();
+      kernelRef.current?.fitToView();
       scheduleMetaSave();
     } catch (error) {
       console.error("Page upload failed:", error);

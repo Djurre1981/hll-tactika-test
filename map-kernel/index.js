@@ -308,7 +308,11 @@ export class MapKernel {
         this.renderer.setMapSize(size);
       }
       this.overlays?.syncSize();
-      this.viewer?.resetFreeformView();
+      if (this.pageUrl) {
+        this.viewer?.fitToView();
+      } else {
+        this.viewer?.resetFreeformView();
+      }
     } else {
       this.image.style.width = `${w}px`;
       this.image.style.height = `${h}px`;
@@ -356,7 +360,11 @@ export class MapKernel {
     }
     if (this.image.src === url || this.image.getAttribute("src") === url) {
       if (this.pageMode === "freeform") {
-        this.viewer?.resetFreeformView();
+        if (this.pageUrl) {
+          this.viewer?.fitToView();
+        } else {
+          this.viewer?.resetFreeformView();
+        }
       } else {
         this.viewer?.fitToView();
       }
@@ -380,7 +388,7 @@ export class MapKernel {
   }
 
   fitToView() {
-    if (this.pageMode === "freeform") {
+    if (this.pageMode === "freeform" && !this.pageUrl) {
       this.viewer?.resetFreeformView();
       return;
     }
