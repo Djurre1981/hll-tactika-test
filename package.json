@@ -23,12 +23,15 @@
     "migrate:videos:upload": "node scripts/video-migration/3-upload-r2.mjs",
     "migrate:videos:apply": "node scripts/video-migration/4-apply-kv.mjs",
     "stratsketch:spike": "node scripts/stratsketch-spike.mjs",
-    "stratsketch:icons": "node scripts/build-stratsketch-icon-pack.mjs"
+    "stratsketch:icons": "node scripts/build-stratsketch-icon-pack.mjs",
+    "vectorize:hll-objects": "node scripts/vectorize-hll-objects.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.5.4",
+    "imagetracerjs": "^1.2.6",
     "postcss": "^8.5.19",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.19",
     "vite": "^6.0.0",
     "wrangler": "^4.0.0",

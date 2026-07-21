@@ -395,6 +395,11 @@ export class CanvasRenderer {
     const heightPx = Math.max(1, this.pctToPx(y2 - y1));
     const img = this.getCachedImage(asset.src);
     if (img) {
+      // Vector SVGs stay sharp when enlarged; keep smoothing on for clean edges.
+      const prevSmooth = ctx.imageSmoothingEnabled;
+      const prevQuality = ctx.imageSmoothingQuality;
+      ctx.imageSmoothingEnabled = true;
+      if (prevQuality !== undefined) ctx.imageSmoothingQuality = "high";
       if (object.meta?.placementPreview) {
         const tw = Math.max(1, Math.ceil(widthPx));
         const th = Math.max(1, Math.ceil(heightPx));
@@ -403,6 +408,8 @@ export class CanvasRenderer {
         if (off.width !== tw) off.width = tw;
         if (off.height !== th) off.height = th;
         const octx = off.getContext("2d");
+        octx.imageSmoothingEnabled = true;
+        if (octx.imageSmoothingQuality !== undefined) octx.imageSmoothingQuality = "high";
         octx.clearRect(0, 0, tw, th);
         octx.drawImage(img, 0, 0, widthPx, heightPx);
         octx.globalCompositeOperation = "source-atop";
@@ -416,10 +423,12 @@ export class CanvasRenderer {
       } else {
         ctx.drawImage(img, left, top, widthPx, heightPx);
       }
+      ctx.imageSmoothingEnabled = prevSmooth;
+      if (prevQuality !== undefined) ctx.imageSmoothingQuality = prevQuality;
       return;
     }
 
-    // Placeholder while the PNG loads.
+    // Placeholder while the SVG/image loads.
     ctx.save();
     ctx.strokeStyle = "rgba(255,255,255,0.45)";
     ctx.lineWidth = Math.max(1, this.mapSize * 0.001);
