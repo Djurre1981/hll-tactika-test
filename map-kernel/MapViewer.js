@@ -148,11 +148,6 @@ export class MapViewer {
   }
 
   fitToView() {
-    if (this.boundsMode === "freeform") {
-      this.resetFreeformView();
-      return;
-    }
-
     const rect = this.viewport.getBoundingClientRect();
     const { imgW, imgH } = this.getImageSize();
     if (!rect.width || !rect.height || !imgW || !imgH) return;

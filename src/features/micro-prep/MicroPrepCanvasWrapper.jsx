@@ -47,7 +47,7 @@ function applyPageToKernel(kernel, { pageUrl, theme, slideshow }) {
   }
   if (pageUrl) {
     kernel.setPageImage(pageUrl);
-    kernel.resetFreeformView();
+    kernel.fitToView();
     return;
   }
   kernel.setFreeformBlankPage(theme);
@@ -128,6 +128,8 @@ export function MicroPrepCanvasWrapper({
       if (!fittedRef.current && host.clientWidth > 0 && host.clientHeight > 0) {
         fittedRef.current = true;
         if (slideshow) {
+          kernel.fitToView();
+        } else if (pageUrlRef.current) {
           kernel.fitToView();
         } else {
           kernel.resetFreeformView();
