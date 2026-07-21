@@ -114,6 +114,65 @@ function clampPoint(point) {
   };
 }
 
+function isCornerHandle(handleId) {
+  return handleId === "nw" || handleId === "ne" || handleId === "se" || handleId === "sw";
+}
+
+/**
+ * Lock resize to a width/height ratio (map-%), anchored on the opposite corner.
+ * @param {number} ratio map-% width / height (for visual 1:1 use 1/mapAspect)
+ */
+function constrainCornerBox(origBox, handleId, cursor, ratio) {
+  const anchor = {
+    nw: { x: origBox.x2, y: origBox.y2 },
+    ne: { x: origBox.x1, y: origBox.y2 },
+    se: { x: origBox.x1, y: origBox.y1 },
+    sw: { x: origBox.x2, y: origBox.y1 },
+  }[handleId];
+  if (!anchor || !cursor) return null;
+
+  const safeRatio = Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+  let dx = cursor.x - anchor.x;
+  let dy = cursor.y - anchor.y;
+  if (dx === 0 && dy === 0) {
+    dx = Math.sign(origBox.x2 - origBox.x1) || 1;
+    dy = Math.sign(origBox.y2 - origBox.y1) || 1;
+  }
+
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  let w;
+  let h;
+  if (absDx >= absDy * safeRatio) {
+    w = absDx;
+    h = w / safeRatio;
+  } else {
+    h = absDy;
+    w = h * safeRatio;
+  }
+
+  const x2 = anchor.x + Math.sign(dx || 1) * w;
+  const y2 = anchor.y + Math.sign(dy || 1) * h;
+  return {
+    x1: Math.min(anchor.x, x2),
+    y1: Math.min(anchor.y, y2),
+    x2: Math.max(anchor.x, x2),
+    y2: Math.max(anchor.y, y2),
+  };
+}
+
+/** Map-% width/height target while Shift-resizing a corner. */
+function shiftResizeRatio(object, origBox, mapAspect) {
+  const aspect = Number.isFinite(mapAspect) && mapAspect > 0 ? mapAspect : 1;
+  // Icons / HLL markers are meant to stay visually square (1:1 on the tacmap).
+  if (object?.type === "icon" || object?.type === "hll") {
+    return 1 / aspect;
+  }
+  const w = Math.abs(origBox.x2 - origBox.x1) || 1;
+  const h = Math.abs(origBox.y2 - origBox.y1) || 1;
+  return w / h;
+}
+
 function scalePenPoints(points, fromBox, toBox) {
   const fromW = fromBox.x2 - fromBox.x1 || 1;
   const fromH = fromBox.y2 - fromBox.y1 || 1;
@@ -125,8 +184,18 @@ function scalePenPoints(points, fromBox, toBox) {
   );
 }
 
-export function applyHandleDrag(object, handleId, cursor, originalPoints, penOriginalBox) {
+export function applyHandleDrag(
+  object,
+  handleId,
+  cursor,
+  originalPoints,
+  penOriginalBox,
+  options = {}
+) {
   if (handleId === "rotate") return originalPoints;
+
+  const shift = Boolean(options.shift);
+  const mapAspect = options.aspect ?? 1;
 
   if (object.type === "curve" && originalPoints.length >= 4) {
     const index = CURVE_HANDLE_IDS.indexOf(handleId);
@@ -141,21 +210,31 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
   }
 
   if (object.type === "pen" && penOriginalBox) {
-    const box = { ...penOriginalBox };
-    if (handleId.includes("n")) box.y1 = cursor.y;
-    if (handleId.includes("s")) box.y2 = cursor.y;
-    if (handleId.includes("w")) box.x1 = cursor.x;
-    if (handleId.includes("e")) box.x2 = cursor.x;
-    if (handleId === "n" || handleId === "s") {
-      box.x1 = penOriginalBox.x1;
-      box.x2 = penOriginalBox.x2;
+    let box = { ...penOriginalBox };
+    if (shift && isCornerHandle(handleId)) {
+      const locked = constrainCornerBox(
+        penOriginalBox,
+        handleId,
+        cursor,
+        shiftResizeRatio(object, penOriginalBox, mapAspect)
+      );
+      if (locked) box = locked;
+    } else {
+      if (handleId.includes("n")) box.y1 = cursor.y;
+      if (handleId.includes("s")) box.y2 = cursor.y;
+      if (handleId.includes("w")) box.x1 = cursor.x;
+      if (handleId.includes("e")) box.x2 = cursor.x;
+      if (handleId === "n" || handleId === "s") {
+        box.x1 = penOriginalBox.x1;
+        box.x2 = penOriginalBox.x2;
+      }
+      if (handleId === "e" || handleId === "w") {
+        box.y1 = penOriginalBox.y1;
+        box.y2 = penOriginalBox.y2;
+      }
+      if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
+      if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
     }
-    if (handleId === "e" || handleId === "w") {
-      box.y1 = penOriginalBox.y1;
-      box.y2 = penOriginalBox.y2;
-    }
-    if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
-    if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
     return scalePenPoints(originalPoints, penOriginalBox, box);
   }
 
@@ -165,13 +244,25 @@ export function applyHandleDrag(object, handleId, cursor, originalPoints, penOri
 
   if (originalPoints.length < 2) return originalPoints;
 
-  const box = getBoxFromObjectPoints(originalPoints);
-  if (handleId.includes("n")) box.y1 = cursor.y;
-  if (handleId.includes("s")) box.y2 = cursor.y;
-  if (handleId.includes("w")) box.x1 = cursor.x;
-  if (handleId.includes("e")) box.x2 = cursor.x;
-  if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
-  if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
+  const origBox = getBoxFromObjectPoints(originalPoints);
+  let box = { ...origBox };
+
+  if (shift && isCornerHandle(handleId)) {
+    const locked = constrainCornerBox(
+      origBox,
+      handleId,
+      cursor,
+      shiftResizeRatio(object, origBox, mapAspect)
+    );
+    if (locked) box = locked;
+  } else {
+    if (handleId.includes("n")) box.y1 = cursor.y;
+    if (handleId.includes("s")) box.y2 = cursor.y;
+    if (handleId.includes("w")) box.x1 = cursor.x;
+    if (handleId.includes("e")) box.x2 = cursor.x;
+    if (box.x2 < box.x1) [box.x1, box.x2] = [box.x2, box.x1];
+    if (box.y2 < box.y1) [box.y1, box.y2] = [box.y2, box.y1];
+  }
 
   return [
     clampPoint({ x: box.x1, y: box.y1 }),

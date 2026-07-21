@@ -135,7 +135,7 @@ Bottom-center toolbar on the strat map:
 | **Shift** (while drawing rect/circle) | Keep square / perfect circle |
 | **Alt** (while drawing rect/circle) | Draw from center |
 | **Shift** (while dragging selection) | Lock movement to horizontal or vertical |
-| **Shift** (while resizing corner handle) | Proportional resize |
+| **Shift** (while resizing corner handle) | Proportional resize (icons / HLL stay 1:1) |
 
 ### Selection, handles, and editing
 

@@ -154,6 +154,46 @@ check("icon places as 2-point bbox and handle drag stretches", () => {
   assert(Math.abs(stretched[1].y - original[1].y) < 0.001, "east handle should not move bottom");
 });
 
+check("Shift+corner keeps icon 1:1 when resizing", () => {
+  const icon = createStratObject("icon", {
+    points: [{ x: 40, y: 40 }],
+    style: { color: "#fff", size: 6 },
+    meta: { iconId: "crosshairs" },
+  });
+  const original = structuredClone(icon.points);
+  const resized = applyHandleDrag(
+    icon,
+    "se",
+    { x: original[1].x + 10, y: original[1].y + 3 },
+    original,
+    null,
+    { shift: true, aspect: 1 }
+  );
+  const w = Math.abs(resized[1].x - resized[0].x);
+  const h = Math.abs(resized[1].y - resized[0].y);
+  assert(Math.abs(w - h) < 0.001, `expected square icon, got ${w}×${h}`);
+  assert(w > Math.abs(original[1].x - original[0].x) - 0.001, "should grow from drag");
+});
+
+check("Shift+corner keeps HLL object 1:1 when resizing", () => {
+  const hll = createStratObject("hll", {
+    points: [{ x: 50, y: 50 }],
+    meta: { hllId: "tank-heavy", showRadius: false },
+  });
+  const original = structuredClone(hll.points);
+  const resized = applyHandleDrag(
+    hll,
+    "nw",
+    { x: original[0].x - 8, y: original[0].y - 2 },
+    original,
+    null,
+    { shift: true, aspect: 1 }
+  );
+  const w = Math.abs(resized[1].x - resized[0].x);
+  const h = Math.abs(resized[1].y - resized[0].y);
+  assert(Math.abs(w - h) < 0.001, `expected square HLL, got ${w}×${h}`);
+});
+
 check("curve places as cubic and control handle moves", () => {
   const curve = createStratObject("curve", {
     points: [

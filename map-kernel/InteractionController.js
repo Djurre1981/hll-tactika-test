@@ -519,7 +519,11 @@ export class InteractionController {
             this.handleDrag.handleId,
             point,
             this.handleDrag.originalPoints,
-            this.handleDrag.penOriginalBox
+            this.handleDrag.penOriginalBox,
+            {
+              shift: event.shiftKey,
+              aspect: this.getViewer()?.getMapAspect() || 1,
+            }
           ),
         }));
       }
