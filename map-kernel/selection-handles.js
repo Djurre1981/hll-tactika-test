@@ -1,4 +1,4 @@
-import { clamp, getObjectBounds, STRAT_COORD_MAX, STRAT_COORD_MIN } from "./object-schema.js";
+import { clamp, getCoordLimits, getObjectBounds } from "./object-schema.js";
 
 const HANDLE_HIT = 0.95;
 const BOX_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -108,9 +108,10 @@ export function curveHandleDrawSizes(viewScale) {
 }
 
 function clampPoint(point) {
+  const { min, max } = getCoordLimits();
   return {
-    x: clamp(point.x, STRAT_COORD_MIN, STRAT_COORD_MAX),
-    y: clamp(point.y, STRAT_COORD_MIN, STRAT_COORD_MAX),
+    x: clamp(point.x, min, max),
+    y: clamp(point.y, min, max),
   };
 }
 

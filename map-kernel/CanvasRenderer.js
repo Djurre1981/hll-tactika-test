@@ -596,13 +596,6 @@ export class CanvasRenderer {
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
-      if (style.filled && points.length >= 3) {
-        ctx.closePath();
-        ctx.fillStyle = style.color;
-        ctx.globalAlpha = 0.25;
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
       ctx.stroke();
     } else if (type === "line" || type === "arrow") {
       const [a, b] = points;
@@ -858,6 +851,11 @@ export class CanvasRenderer {
     return objects.find((o) => o.id === this.selectedId) || null;
   }
 
+  _shouldShowSelectionChrome() {
+    const tool = this._getToolSettings?.()?.tool;
+    return tool === "select" && Boolean(this.selectedId);
+  }
+
   /** Dirty-only: non-animated scene + static preview/selection. */
   drawStatic(objects) {
     const ctx = this.ctx;
@@ -868,14 +866,16 @@ export class CanvasRenderer {
     }
     if (this.preview && !objectNeedsAnimation(this.preview)) {
       this.drawObject(ctx, this.preview);
-      if (this.preview.type === "curve") {
-        this.drawCurveEditChrome(ctx, this.preview, { dim: true });
-      } else if (this.preview.type === "line" || this.preview.type === "arrow") {
-        this.drawLineEditChrome(ctx, this.preview, { dim: true });
+      if (this._shouldShowSelectionChrome()) {
+        if (this.preview.type === "curve") {
+          this.drawCurveEditChrome(ctx, this.preview, { dim: true });
+        } else if (this.preview.type === "line" || this.preview.type === "arrow") {
+          this.drawLineEditChrome(ctx, this.preview, { dim: true });
+        }
       }
     }
     const selected = this.findSelected(objects);
-    if (selected && !objectNeedsAnimation(selected)) {
+    if (selected && !objectNeedsAnimation(selected) && this._shouldShowSelectionChrome()) {
       this.drawSelection(ctx, selected);
     }
   }
@@ -889,7 +889,7 @@ export class CanvasRenderer {
       this.drawObject(ctx, this.preview);
     }
     const selected = this.findSelected(objects);
-    if (selected && objectNeedsAnimation(selected)) {
+    if (selected && objectNeedsAnimation(selected) && this._shouldShowSelectionChrome()) {
       this.drawSelection(ctx, selected);
     }
   }

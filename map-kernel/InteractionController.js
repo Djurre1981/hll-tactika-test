@@ -41,6 +41,7 @@ export class InteractionController {
     renderer,
     getViewer,
     getToolSettings,
+    shouldAutoSelectOnCreate,
     onRequestRender,
     onRequestTool,
     onEyedrop,
@@ -52,6 +53,7 @@ export class InteractionController {
     this.renderer = renderer;
     this.getViewer = getViewer;
     this.getToolSettings = getToolSettings;
+    this.shouldAutoSelectOnCreate = shouldAutoSelectOnCreate || (() => true);
     this.onRequestRender = onRequestRender;
     this.onRequestTool = onRequestTool || null;
     this.onEyedrop = onEyedrop || null;
@@ -130,6 +132,12 @@ export class InteractionController {
       this.strokeChain?.preview || this.drawSession?.preview || this.hllPlacementPreview || null
     );
     this.onRequestRender();
+  }
+
+  maybeSelectAfterCreate(id) {
+    if (this.shouldAutoSelectOnCreate()) {
+      this.scene.setSelectedId(id);
+    }
   }
 
   isHllGarrisonRadiusCheckActive(settings = this.getToolSettings()) {
@@ -217,7 +225,7 @@ export class InteractionController {
               style,
             });
       this.scene.addObject(object);
-      this.scene.setSelectedId(object.id);
+      this.maybeSelectAfterCreate(object.id);
     }
     chain.lastPoint = end;
     this.updateStrokeChainPreview(point, shiftKey);
@@ -370,7 +378,7 @@ export class InteractionController {
         meta: { iconId: settings.iconId || "check", iconLabel: settings.iconLabel || "" },
       });
       this.scene.addObject(object);
-      this.scene.setSelectedId(object.id);
+      this.maybeSelectAfterCreate(object.id);
       this.refresh();
       return;
     }
@@ -396,7 +404,7 @@ export class InteractionController {
         },
       });
       this.scene.addObject(object);
-      this.scene.setSelectedId(object.id);
+      this.maybeSelectAfterCreate(object.id);
       this.updateHllPlacementPreview(point);
       return;
     }
@@ -626,7 +634,7 @@ export class InteractionController {
           meta: { text: "" },
         });
         this.scene.addObject(object);
-        this.scene.setSelectedId(object.id);
+        this.maybeSelectAfterCreate(object.id);
         this.refresh();
         this.beginTextEdit?.(object, { selectAll: false });
         return;
@@ -638,7 +646,7 @@ export class InteractionController {
         }
       }
       this.scene.addObject(preview);
-      this.scene.setSelectedId(preview.id);
+      this.maybeSelectAfterCreate(preview.id);
     }
     this.refresh();
   }
@@ -760,7 +768,7 @@ export class InteractionController {
     copy.id = `obj-${crypto.randomUUID()}`;
     copy.points = nudgePoints(copy.points, offset, offset);
     this.scene.addObject(copy);
-    this.scene.setSelectedId(copy.id);
+    this.maybeSelectAfterCreate(copy.id);
     this.refresh();
   }
 

@@ -1,6 +1,11 @@
 const MAX_SCALE = 5;
 const ZOOM_STEP = 1.15;
 const MIN_SCALE = 0.05;
+const BOUNDED_ZOOM_MAX = 1.75;
+/** Default whiteboard zoom: 4× wider view than 1:1 map pixels (objects draw smaller on screen). */
+const FREEFORM_INIT_SCALE = 0.25;
+
+/** @typedef {"map" | "freeform" | "bounded"} ViewerBoundsMode */
 
 /**
  * Pan/zoom map stage. Coords: map-% via screenToMapPercent / mapPercentToScreen.
@@ -12,6 +17,11 @@ export class MapViewer {
     this.viewport = viewport;
     this.stage = stage;
     this.image = image;
+
+    /** @type {ViewerBoundsMode} */
+    this.boundsMode = "map";
+    this.virtualW = 0;
+    this.virtualH = 0;
 
     this.scale = 1;
     this.translateX = 0;
@@ -31,6 +41,11 @@ export class MapViewer {
     this._onPointerMove = (e) => this.onPointerMove(e);
     this._onPointerUp = (e) => this.onPointerUp(e);
     this._onResize = () => {
+      if (this.boundsMode === "freeform") {
+        this.scale = this.clampScale(this.scale);
+        this.applyTransform();
+        return;
+      }
       // Keep at least fit-scale; if we were at min (fit), re-center.
       const min = this.getFitScale();
       const wasFit = Math.abs(this.scale - min) < 0.002 || this.scale <= min + 0.001;
@@ -77,7 +92,20 @@ export class MapViewer {
     };
   }
 
+  /** @param {ViewerBoundsMode} mode */
+  setBoundsMode(mode) {
+    this.boundsMode = mode === "freeform" || mode === "bounded" ? mode : "map";
+  }
+
+  setVirtualSize(width, height) {
+    this.virtualW = Math.max(0, Number(width) || 0);
+    this.virtualH = Math.max(0, Number(height) || 0);
+  }
+
   getImageSize() {
+    if (this.virtualW > 0 && this.virtualH > 0) {
+      return { imgW: this.virtualW, imgH: this.virtualH };
+    }
     const imgW = this.image.naturalWidth || this.image.width || 0;
     const imgH = this.image.naturalHeight || this.image.height || 0;
     return { imgW, imgH };
@@ -120,6 +148,11 @@ export class MapViewer {
   }
 
   fitToView() {
+    if (this.boundsMode === "freeform") {
+      this.resetFreeformView();
+      return;
+    }
+
     const rect = this.viewport.getBoundingClientRect();
     const { imgW, imgH } = this.getImageSize();
     if (!rect.width || !rect.height || !imgW || !imgH) return;
@@ -132,8 +165,32 @@ export class MapViewer {
     this.applyTransform();
   }
 
+  /** Micro-prep whiteboard: zoomed-out init, centered on canvas — not height-fit like Strat maps. */
+  resetFreeformView() {
+    const rect = this.viewport.getBoundingClientRect();
+    const { imgW, imgH } = this.getImageSize();
+    if (!rect.width || !rect.height || !imgW || !imgH) return;
+
+    this.scale = FREEFORM_INIT_SCALE;
+    this.translateX = rect.width / 2 - (imgW * this.scale) / 2;
+    this.translateY = rect.height / 2 - (imgH * this.scale) / 2;
+    this.applyTransform();
+  }
+
+  getMinScale() {
+    if (this.boundsMode === "freeform") return MIN_SCALE;
+    return this.getFitScale();
+  }
+
+  getMaxScale() {
+    if (this.boundsMode === "bounded") {
+      return this.getFitScale() * BOUNDED_ZOOM_MAX;
+    }
+    return MAX_SCALE;
+  }
+
   clampScale(scale) {
-    return Math.min(MAX_SCALE, Math.max(this.getFitScale(), scale));
+    return Math.min(this.getMaxScale(), Math.max(this.getMinScale(), scale));
   }
 
   clampAxisWithHalfOverscroll(value, contentSize, viewportSize) {
@@ -149,11 +206,19 @@ export class MapViewer {
   }
 
   clampTranslation() {
+    if (this.boundsMode === "freeform") return;
+
     const rect = this.viewport.getBoundingClientRect();
     const { imgW, imgH } = this.getImageSize();
     if (!imgW || !imgH) return;
     const contentW = imgW * this.scale;
     const contentH = imgH * this.scale;
+
+    if (this.boundsMode === "bounded") {
+      this.translateX = this.clampAxisToMapEdges(this.translateX, contentW, rect.width);
+      this.translateY = this.clampAxisToMapEdges(this.translateY, contentH, rect.height);
+      return;
+    }
 
     this.translateX = this.clampAxisWithHalfOverscroll(
       this.translateX,

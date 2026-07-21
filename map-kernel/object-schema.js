@@ -80,6 +80,29 @@ const HLL_SET = new Set(HLL_OBJECT_IDS);
 
 export const STRAT_COORD_MIN = -20;
 export const STRAT_COORD_MAX = 120;
+export const FREEFORM_COORD_MIN = -100;
+export const FREEFORM_COORD_MAX = 200;
+
+let activeCoordMin = STRAT_COORD_MIN;
+let activeCoordMax = STRAT_COORD_MAX;
+
+export function setCoordLimits(min, max) {
+  activeCoordMin = min;
+  activeCoordMax = max;
+}
+
+export function resetCoordLimits() {
+  activeCoordMin = STRAT_COORD_MIN;
+  activeCoordMax = STRAT_COORD_MAX;
+}
+
+export function getCoordLimits() {
+  return { min: activeCoordMin, max: activeCoordMax };
+}
+
+export function getCoordSpan() {
+  return activeCoordMax - activeCoordMin;
+}
 
 export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -91,8 +114,8 @@ export function normalizePoint(point) {
   const y = Number(point.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   return {
-    x: clamp(x, STRAT_COORD_MIN, STRAT_COORD_MAX),
-    y: clamp(y, STRAT_COORD_MIN, STRAT_COORD_MAX),
+    x: clamp(x, activeCoordMin, activeCoordMax),
+    y: clamp(y, activeCoordMin, activeCoordMax),
   };
 }
 
@@ -120,6 +143,11 @@ export function normalizeStyle(style = {}, type) {
     if (normalized.endType === "none") normalized.endType = "end";
     if (normalized.endCap === "none") normalized.endCap = "arrow";
     normalized.endType = endTypeFromCaps(normalized.startCap, normalized.endCap);
+  }
+
+  // Freehand pen is stroke-only (never auto-close like a polygon).
+  if (type === "pen") {
+    normalized.filled = false;
   }
 
   return normalized;
