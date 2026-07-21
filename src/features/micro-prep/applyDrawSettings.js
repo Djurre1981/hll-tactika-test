@@ -105,7 +105,9 @@ export function applyToolAndSettings(api, toolId, settings) {
       ? "rectangle"
       : toolId === "highlighter"
         ? "freedraw"
-        : toolId;
+        : toolId === "hll-map"
+          ? "selection"
+          : toolId;
 
   api.setActiveTool({ type: excalTool });
 

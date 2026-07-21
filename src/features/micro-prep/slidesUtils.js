@@ -1,61 +1,46 @@
-/** Slideshow scene helpers for Excalidraw-backed micro-prep boards. */
+/** Slideshow + whiteboard scene helpers for map-kernel micro-prep boards. */
+
+import { MICRO_PREP_SCENE_VERSION, defaultPageUrl } from "./microPrepPages.js";
 
 export function sortSlides(slides) {
   return [...(slides || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-export function emptySlide(order = 0, name) {
+export function emptySlide(order = 0, name, theme = "dark") {
   return {
     id: `slide-${crypto.randomUUID()}`,
     name: name || `Slide ${order + 1}`,
     order,
-    elements: [],
-    appState: { theme: "dark" },
-    files: {},
+    objects: [],
+    appState: { theme },
+    pageUrl: null,
   };
 }
 
-export function ensureSlideshowScene(scene) {
-  const slides = sortSlides(scene?.slides);
-  if (slides.length > 0) {
-    return { slides };
+export function ensureSlideshowScene(scene, theme = "dark") {
+  if (scene?.sceneVersion === MICRO_PREP_SCENE_VERSION && Array.isArray(scene?.slides)) {
+    const slides = sortSlides(scene.slides);
+    if (slides.length > 0) return { slides, sceneVersion: MICRO_PREP_SCENE_VERSION };
   }
-  return { slides: [emptySlide(0, "Slide 1")] };
+  return { slides: [emptySlide(0, "Slide 1", theme)], sceneVersion: MICRO_PREP_SCENE_VERSION };
 }
 
-export function slideToExcalidrawScene(slide, theme = "dark") {
-  return {
-    elements: Array.isArray(slide?.elements) ? slide.elements : [],
-    appState: {
-      ...(slide?.appState || {}),
-      // Chrome preference only — ExcalidrawCanvas forces light at runtime.
-      theme,
-    },
-    files: slide?.files && typeof slide.files === "object" ? slide.files : {},
-  };
+export function slidePageUrl(slide, theme = "dark") {
+  return slide?.pageUrl || defaultPageUrl(theme, true);
 }
 
-export function captureSlideFromApi(api, theme = "dark") {
-  if (!api) {
+export function captureSlideFromKernel(kernel, theme = "dark") {
+  if (!kernel) {
     return {
-      elements: [],
+      objects: [],
       appState: { theme },
-      files: {},
+      pageUrl: null,
     };
   }
-  const appState = api.getAppState?.() || {};
   return {
-    elements: api.getSceneElements?.() || [],
-    appState: {
-      viewBackgroundColor: appState.viewBackgroundColor,
-      gridSize: appState.gridSize,
-      // Chrome theme for our shell — Excalidraw runtime theme stays light.
-      theme,
-      scrollX: appState.scrollX,
-      scrollY: appState.scrollY,
-      zoom: appState.zoom,
-    },
-    files: api.getFiles?.() || {},
+    objects: kernel.getObjects?.() || [],
+    appState: { theme },
+    pageUrl: kernel.getPageUrl?.() || null,
   };
 }
 
@@ -64,10 +49,17 @@ export function mergeActiveSlide(slides, activeSlideId, captured) {
     slide.id === activeSlideId
       ? {
           ...slide,
-          elements: captured.elements,
+          objects: captured.objects,
           appState: captured.appState,
-          files: captured.files,
+          pageUrl: captured.pageUrl,
         }
       : slide
   );
+}
+
+export function getSlideObjects(slide) {
+  if (slide?.sceneVersion !== MICRO_PREP_SCENE_VERSION && !Array.isArray(slide?.objects)) {
+    return [];
+  }
+  return Array.isArray(slide?.objects) ? slide.objects : [];
 }

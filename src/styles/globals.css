@@ -60,6 +60,22 @@ body {
 }
 
 @layer components {
+  /* Native select list — dark fill for readable map/tool picks on glass panels */
+  .glass-select {
+    color-scheme: dark;
+  }
+
+  .glass-select option {
+    background-color: rgb(22, 22, 26);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .glass-select option:checked,
+  .glass-select option:hover {
+    background-color: rgb(38, 38, 44);
+    color: #fff;
+  }
+
   .glass-panel {
     @apply rounded-[2rem] border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl;
   }

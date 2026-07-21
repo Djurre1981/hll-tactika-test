@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { ToolBtn } from "../../shared/toolChrome.jsx";
+import { getDefaultMapId } from "../strats/editor/mapIds.js";
 import { applyDrawSettings, applyToolAndSettings } from "./applyDrawSettings.js";
+import { insertHllMapImage } from "./insertMapImage.js";
 import { ToolSettings } from "./ToolSettings.jsx";
 import {
   DEFAULT_DRAW_SETTINGS,
@@ -71,6 +73,10 @@ export function WhiteboardToolsPanel({
 }) {
   const fileRef = useRef(null);
   const [tool, setTool] = useState(activeTool || "selection");
+  const [hllMapId, setHllMapId] = useState(() => getDefaultMapId());
+  const [hllMapShowGrid, setHllMapShowGrid] = useState(false);
+  const [hllMapShowStrongpoints, setHllMapShowStrongpoints] = useState(false);
+  const [insertingHllMap, setInsertingHllMap] = useState(false);
   const [settings, setSettings] = useState(() => ({
     ...DEFAULT_DRAW_SETTINGS,
     strokeColor: theme === "light" ? "#1e1e1e" : "#ffffff",
@@ -107,6 +113,22 @@ export function WhiteboardToolsPanel({
   const onSettingsChange = (next) => {
     setSettings(next);
     applyDrawSettings(api, tool, next);
+  };
+
+  const handleInsertHllMap = async () => {
+    if (!api || !hllMapId || disabled || insertingHllMap) return;
+    setInsertingHllMap(true);
+    try {
+      await insertHllMapImage(api, hllMapId, {
+        showGrid: hllMapShowGrid,
+        showStrongpoints: hllMapShowStrongpoints,
+      });
+      selectTool("selection");
+    } catch (err) {
+      console.error("[micro-prep] insert HLL map failed:", err);
+    } finally {
+      setInsertingHllMap(false);
+    }
   };
 
   const handleThemeChange = (next) => {
@@ -233,6 +255,14 @@ export function WhiteboardToolsPanel({
           settings={settings}
           disabled={disabled}
           onChange={onSettingsChange}
+          hllMapId={hllMapId}
+          onHllMapIdChange={setHllMapId}
+          hllMapShowGrid={hllMapShowGrid}
+          onHllMapShowGridChange={setHllMapShowGrid}
+          hllMapShowStrongpoints={hllMapShowStrongpoints}
+          onHllMapShowStrongpointsChange={setHllMapShowStrongpoints}
+          onInsertHllMap={handleInsertHllMap}
+          insertingHllMap={insertingHllMap}
         />
 
         <div className={panelDivider} />
@@ -270,7 +300,7 @@ export function WhiteboardToolsPanel({
             </button>
           ) : null}
           <p className="mt-2 text-[0.65rem] font-light leading-snug text-white/35">
-            Use the Image tool above to place pictures on the canvas.
+            Use the Image or HLL Map tools above to place pictures on the canvas.
           </p>
         </div>
       </div>

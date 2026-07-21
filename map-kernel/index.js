@@ -25,6 +25,8 @@ export class MapKernel {
     this.scene = new SceneGraph();
     this.interaction = null;
     this.currentMapId = null;
+    this.pageUrl = null;
+    this.pageMode = "square";
     this.toolSettings = {
       tool: "select",
       color: "#ffffff",
@@ -253,11 +255,39 @@ export class MapKernel {
     const url = mapUrlForId(mapId);
     if (!url || !this.image) return;
     this.currentMapId = mapId;
+    this.pageUrl = url;
     this.overlays?.setMapId(mapId);
-    if (this.image.src.endsWith(url) || this.image.getAttribute("src") === url) {
+    this._assignImageSrc(url);
+  }
+
+  /** Custom page image (background upload, composed HLL map, blank page). */
+  setPageImage(url, { mapId = null, showOverlays = false } = {}) {
+    if (!url || !this.image) return;
+    this.pageUrl = url;
+    this.currentMapId = mapId;
+    if (mapId && showOverlays) {
+      this.overlays?.setMapId(mapId);
+    } else {
+      this.overlays?.setToggles({ grid: false, strongpoints: false });
+    }
+    this._assignImageSrc(url);
+  }
+
+  setPageMode(mode = "square") {
+    this.pageMode = mode === "slideshow" ? "slideshow" : "square";
+  }
+
+  getPageUrl() {
+    return this.pageUrl || "";
+  }
+
+  _assignImageSrc(url) {
+    if (!this.image) return;
+    if (this.image.src === url || this.image.getAttribute("src") === url) {
       this.viewer?.fitToView();
       return;
     }
+    this._sampleSrc = null;
     this.image.src = url;
   }
 

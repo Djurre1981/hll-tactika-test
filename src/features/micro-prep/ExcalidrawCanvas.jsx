@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { Spinner } from "../../shared/Spinner.jsx";
+import { enforceHllMapAspectRatio } from "./insertMapImage.js";
 import "@excalidraw/excalidraw/index.css";
 import "./excalidraw-theme.css";
 
@@ -87,6 +88,7 @@ export function ExcalidrawCanvas({
   const initialRef = useRef(null);
   const themeRef = useRef(theme);
   const clampingRef = useRef(false);
+  const aspectFixRef = useRef(false);
 
   if (!initialRef.current) {
     initialRef.current = buildInitialData(scene, hasBackground, theme, bounded);
@@ -120,7 +122,22 @@ export function ExcalidrawCanvas({
   );
 
   const handleChange = useCallback(
-    (elements, appState, files) => {
+    async (elements, appState, files) => {
+      if (!aspectFixRef.current && apiRef.current) {
+        const { newElementWith, CaptureUpdateAction } = await import("@excalidraw/excalidraw");
+        const nextElements = await enforceHllMapAspectRatio(elements, newElementWith);
+        if (nextElements) {
+          aspectFixRef.current = true;
+          apiRef.current.updateScene({
+            elements: nextElements,
+            captureUpdate: CaptureUpdateAction.NEVER,
+          });
+          requestAnimationFrame(() => {
+            aspectFixRef.current = false;
+          });
+          return;
+        }
+      }
       onChange?.(elements, appState, files);
     },
     [onChange]

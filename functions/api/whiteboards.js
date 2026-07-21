@@ -21,17 +21,20 @@ function boardListItem(board) {
   };
 }
 
+const MICRO_PREP_SCENE_VERSION = 2;
+
 function emptySlideshowScene() {
   const id = `slide-${crypto.randomUUID()}`;
   return {
+    sceneVersion: MICRO_PREP_SCENE_VERSION,
     slides: [
       {
         id,
         name: "Slide 1",
         order: 0,
-        elements: [],
+        objects: [],
         appState: { theme: "dark" },
-        files: {},
+        pageUrl: null,
       },
     ],
   };
@@ -90,7 +93,12 @@ export async function onRequestPost(context) {
   const defaultScene =
     mode === "slideshow"
       ? emptySlideshowScene()
-      : { elements: [], appState: { theme: "dark" }, files: {} };
+      : {
+          sceneVersion: MICRO_PREP_SCENE_VERSION,
+          objects: [],
+          appState: { theme: "dark" },
+          pageUrl: null,
+        };
 
   const now = new Date().toISOString();
   const board = {

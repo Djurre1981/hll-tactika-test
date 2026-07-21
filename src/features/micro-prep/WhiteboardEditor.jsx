@@ -1,39 +1,58 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { useExcalidrawYjsBridge } from "../../lib/collab/bridges.js";
+import { useKernelYjsBridge } from "../../lib/collab/bridges.js";
 import { PRESENCE_ROOM_ID, whiteboardRoomId } from "../../lib/collab/provider.js";
 import { useYjsRoom } from "../../lib/collab/useYjsRoom.js";
 import { apiClient } from "../../lib/api-client.js";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { CollabPeers } from "../../shared/CollabPeers.jsx";
-import { ExcalidrawCanvas } from "./ExcalidrawCanvas.jsx";
+import { MicroPrepCanvasWrapper } from "./MicroPrepCanvasWrapper.jsx";
+import { MicroPrepToolsPanel } from "./MicroPrepToolsPanel.jsx";
 import { SlidesPanel } from "./SlidesPanel.jsx";
-import { WhiteboardToolsPanel } from "./WhiteboardToolsPanel.jsx";
 import { useMutateWhiteboard } from "./hooks/useMutateWhiteboard.js";
-import { useWhiteboardAutosave } from "./hooks/useWhiteboardAutosave.js";
+import { useMicroPrepKernelAutosave } from "./hooks/useMicroPrepKernelAutosave.js";
 import { useWhiteboardQuery } from "./hooks/useWhiteboardQuery.js";
+import { insertHllMapPage } from "./insertMapImage.js";
 import {
-  captureSlideFromApi,
+  MICRO_PREP_SCENE_VERSION,
+  defaultPageUrl,
+  normalizeWhiteboardScene,
+} from "./microPrepPages.js";
+import {
+  captureSlideFromKernel,
   emptySlide,
   ensureSlideshowScene,
+  getSlideObjects,
   mergeActiveSlide,
-  slideToExcalidrawScene,
+  slidePageUrl,
   sortSlides,
 } from "./slidesUtils.js";
 
-const PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
+export const MICRO_PREP_PANEL_GAP = 16;
+export const MICRO_PREP_PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
 
 export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   const user = useAuth();
-  const [api, setApi] = useState(null);
-  const apiRef = useRef(null);
+  const kernelRef = useRef(null);
+  const shellRef = useRef(null);
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+
   const [title, setTitle] = useState(null);
-  const [backgroundUrl, setBackgroundUrl] = useState(undefined);
+  const [pageUrl, setPageUrl] = useState(undefined);
   const [uploading, setUploading] = useState(false);
-  const [activeTool, setActiveTool] = useState("selection");
   const [theme, setTheme] = useState("dark");
+  const [selected, setSelected] = useState(null);
+  const [panelInsets, setPanelInsets] = useState({
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  });
+
   const themeHydrated = useRef(false);
+  const pageUrlHydrated = useRef(false);
 
   const [slides, setSlides] = useState(null);
   const [activeSlideId, setActiveSlideId] = useState(null);
@@ -57,12 +76,25 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   }, [board]);
 
   useEffect(() => {
+    if (!board || pageUrlHydrated.current) return;
+    pageUrlHydrated.current = true;
+    if (board.mode === "slideshow") return;
+    const normalized = normalizeWhiteboardScene(board.scene, theme);
+    const initial =
+      normalized.pageUrl ||
+      (typeof board.backgroundUrl === "string" && board.backgroundUrl
+        ? board.backgroundUrl
+        : null);
+    setPageUrl(initial);
+  }, [board, theme]);
+
+  useEffect(() => {
     if (!board || board.mode !== "slideshow" || slidesHydrated.current) return;
     slidesHydrated.current = true;
-    const { slides: next } = ensureSlideshowScene(board.scene);
+    const { slides: next } = ensureSlideshowScene(board.scene, theme);
     setSlides(next);
     setActiveSlideId(next[0].id);
-  }, [board]);
+  }, [board, theme]);
 
   useEffect(() => {
     slidesRef.current = slides;
@@ -73,14 +105,56 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   }, [activeSlideId]);
 
   const displayTitle = title ?? board?.title ?? "";
-  const displayBg =
-    backgroundUrl !== undefined ? backgroundUrl : board?.backgroundUrl ?? null;
+  const activeSlide = sortSlides(slides || []).find((s) => s.id === activeSlideId);
+
+  const resolvedPageUrl = isSlideshow
+    ? activeSlide?.pageUrl ?? null
+    : pageUrl !== undefined
+      ? pageUrl
+      : normalizeWhiteboardScene(board?.scene, theme).pageUrl;
+
+  const hasCustomPage = isSlideshow
+    ? Boolean(activeSlide?.pageUrl)
+    : Boolean(resolvedPageUrl);
 
   const canEdit =
     Boolean(board) &&
     ["owner", "admin", "editor", "assist"].includes(user.role) &&
     (["owner", "admin", "assist"].includes(user.role) ||
       board.createdBy === user.steamId);
+
+  const measureInsets = useCallback(() => {
+    const shell = shellRef.current;
+    const left = leftRef.current;
+    const right = rightRef.current;
+    if (!shell) return;
+    const shellRect = shell.getBoundingClientRect();
+    const leftRect = left?.getBoundingClientRect();
+    const rightRect = right?.getBoundingClientRect();
+    setPanelInsets({
+      left: leftRect
+        ? Math.max(0, leftRect.right - shellRect.left + MICRO_PREP_PANEL_GAP)
+        : 0,
+      right: rightRect
+        ? Math.max(0, shellRect.right - rightRect.left + MICRO_PREP_PANEL_GAP)
+        : 0,
+      top: isSlideshow ? 24 : 0,
+      bottom: isSlideshow ? 24 : 0,
+    });
+  }, [isSlideshow]);
+
+  useLayoutEffect(() => {
+    measureInsets();
+    const ro = new ResizeObserver(() => measureInsets());
+    if (shellRef.current) ro.observe(shellRef.current);
+    if (leftRef.current) ro.observe(leftRef.current);
+    if (rightRef.current) ro.observe(rightRef.current);
+    window.addEventListener("resize", measureInsets);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measureInsets);
+    };
+  }, [measureInsets, board, isSlideshow]);
 
   const collab = useYjsRoom({
     roomId: boardId ? whiteboardRoomId(boardId) : null,
@@ -102,95 +176,84 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     },
   });
 
-  const onRemoteScene = useCallback(
-    (scene) => {
-      if (!scene || typeof scene !== "object") return;
-      if (isSlideshow) {
-        if (Array.isArray(scene.slides)) {
-          setSlides(sortSlides(scene.slides));
-          slidesRef.current = sortSlides(scene.slides);
-        }
-        return;
-      }
-      const excalApi = apiRef.current;
-      if (!excalApi) return;
-      try {
-        excalApi.updateScene({
-          elements: scene.elements || [],
-          appState: {
-            ...(scene.appState || {}),
-            theme: "light",
-          },
-          collaborators: new Map(),
-        });
-        if (scene.files && typeof excalApi.addFiles === "function") {
-          excalApi.addFiles(Object.values(scene.files));
-        }
-      } catch (err) {
-        console.error("[collab] apply remote scene failed:", err);
-      }
-    },
-    [isSlideshow]
+  const slideObjects = useMemo(
+    () => (isSlideshow ? getSlideObjects(activeSlide) : []),
+    [isSlideshow, activeSlide]
   );
 
-  const { pushLocalScene } = useExcalidrawYjsBridge({
+  const whiteboardObjects = useMemo(() => {
+    if (isSlideshow || !board) return [];
+    return normalizeWhiteboardScene(board.scene, theme).objects;
+  }, [isSlideshow, board, theme]);
+
+  const seedObjects = isSlideshow ? slideObjects : whiteboardObjects;
+
+  useKernelYjsBridge({
     doc: collab.doc,
+    kernelRef,
     enabled: collab.connected,
-    seedScene: !isSlideshow ? board?.scene : board?.scene,
-    onRemoteScene,
+    canEdit,
+    seedObjects,
   });
 
-  const getScene = useCallback(() => {
+  const buildScenePayload = useCallback(() => {
+    const kernel = kernelRef.current;
+    const captured = captureSlideFromKernel(kernel, theme);
+
     if (isSlideshow) {
       const currentSlides = slidesRef.current;
       const slideId = activeSlideIdRef.current;
-      if (!currentSlides?.length || !slideId) return null;
-      if (!apiRef.current) {
-        return { slides: currentSlides };
+      if (!currentSlides?.length || !slideId) {
+        return {
+          sceneVersion: MICRO_PREP_SCENE_VERSION,
+          slides: currentSlides || [],
+        };
       }
-      const captured = captureSlideFromApi(apiRef.current, theme);
-      return { slides: mergeActiveSlide(currentSlides, slideId, captured) };
+      return {
+        sceneVersion: MICRO_PREP_SCENE_VERSION,
+        slides: mergeActiveSlide(currentSlides, slideId, captured),
+      };
     }
 
-    const excalApi = apiRef.current;
-    if (!excalApi) return null;
-    const appState = excalApi.getAppState();
     return {
-      elements: excalApi.getSceneElements(),
-      appState: {
-        viewBackgroundColor: appState?.viewBackgroundColor,
-        gridSize: appState?.gridSize,
-        // Persist our chrome theme (Excalidraw itself stays light).
-        theme,
-      },
-      files: excalApi.getFiles() || {},
+      sceneVersion: MICRO_PREP_SCENE_VERSION,
+      objects: captured.objects,
+      appState: { theme },
+      pageUrl: captured.pageUrl ?? resolvedPageUrl ?? null,
     };
-  }, [isSlideshow, theme]);
+  }, [isSlideshow, theme, resolvedPageUrl]);
 
-  const { markDirty } = useWhiteboardAutosave({
+  const getPersistPayload = useCallback(
+    () => ({
+      title: displayTitle,
+      scene: buildScenePayload(),
+    }),
+    [displayTitle, buildScenePayload]
+  );
+
+  useMicroPrepKernelAutosave({
     enabled: canEdit && !collab.connected,
-    getScene,
-    backgroundUrl: displayBg,
-    title: displayTitle,
+    kernelRef,
+    getPersistPayload,
     mutateAsync: mutation.mutateAsync,
   });
 
-  const onApiReady = useCallback((nextApi) => {
-    apiRef.current = nextApi;
-    setApi(nextApi);
-  }, []);
-
-  const onChange = useCallback(() => {
-    markDirty();
-    if (collab.connected && canEdit) {
-      const scene = getScene();
-      if (scene) pushLocalScene(scene);
-    }
-  }, [markDirty, collab.connected, canEdit, getScene, pushLocalScene]);
+  const scheduleMetaSave = useCallback(() => {
+    if (!canEdit || collab.connected) return;
+    mutation.mutate(getPersistPayload());
+  }, [canEdit, collab.connected, mutation, getPersistPayload]);
 
   const onTitleChange = (value) => {
     setTitle(value);
-    markDirty();
+    scheduleMetaSave();
+  };
+
+  const onThemeChange = (next) => {
+    setTheme(next);
+    if (!hasCustomPage && !isSlideshow) {
+      setPageUrl(null);
+    }
+    scheduleMetaSave();
   };
 
   const onBackgroundUpload = async (file) => {
@@ -203,30 +266,71 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
         method: "POST",
         body: form,
       });
-      setBackgroundUrl(result.url);
-      markDirty();
+      const url = result.url;
+      if (isSlideshow) {
+        flushActiveSlide();
+        const slideId = activeSlideIdRef.current;
+        const next = (slidesRef.current || []).map((s) =>
+          s.id === slideId ? { ...s, pageUrl: url } : s
+        );
+        setSlides(next);
+        slidesRef.current = next;
+      } else {
+        setPageUrl(url);
+      }
+      kernelRef.current?.setPageImage(url);
+      kernelRef.current?.fitToView();
+      scheduleMetaSave();
     } catch (error) {
-      console.error("Background upload failed:", error);
+      console.error("Page upload failed:", error);
     } finally {
       setUploading(false);
     }
   };
 
-  const onClearBackground = () => {
-    setBackgroundUrl(null);
-    markDirty();
+  const onClearPageImage = () => {
+    if (!canEdit) return;
+    const blank = defaultPageUrl(theme, isSlideshow);
+    if (isSlideshow) {
+      flushActiveSlide();
+      const slideId = activeSlideIdRef.current;
+      const next = (slidesRef.current || []).map((s) =>
+        s.id === slideId ? { ...s, pageUrl: null } : s
+      );
+      setSlides(next);
+      slidesRef.current = next;
+    } else {
+      setPageUrl(null);
+    }
+    kernelRef.current?.setPageImage(blank);
+    kernelRef.current?.fitToView();
+    scheduleMetaSave();
   };
 
-  const onThemeChange = (next) => {
-    setTheme(next);
-    markDirty();
+  const onInsertHllMap = async (mapId, overlayOptions) => {
+    const kernel = kernelRef.current;
+    if (!kernel) return null;
+    const url = await insertHllMapPage(kernel, mapId, overlayOptions);
+    if (isSlideshow) {
+      flushActiveSlide();
+      const slideId = activeSlideIdRef.current;
+      const next = (slidesRef.current || []).map((s) =>
+        s.id === slideId ? { ...s, pageUrl: url } : s
+      );
+      setSlides(next);
+      slidesRef.current = next;
+    } else {
+      setPageUrl(url);
+    }
+    scheduleMetaSave();
+    return url;
   };
 
   const flushActiveSlide = useCallback(() => {
     const current = slidesRef.current;
     const slideId = activeSlideIdRef.current;
     if (!current?.length || !slideId) return current;
-    const captured = captureSlideFromApi(apiRef.current, theme);
+    const captured = captureSlideFromKernel(kernelRef.current, theme);
     const next = mergeActiveSlide(current, slideId, captured);
     setSlides(next);
     slidesRef.current = next;
@@ -236,23 +340,21 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   const onSelectSlide = (slideId) => {
     if (slideId === activeSlideIdRef.current) return;
     flushActiveSlide();
-    apiRef.current = null;
-    setApi(null);
     setActiveSlideId(slideId);
-    markDirty();
+    setSelected(null);
+    scheduleMetaSave();
   };
 
   const onAddSlide = () => {
     if (!canEdit) return;
     const current = flushActiveSlide() || [];
-    const nextSlide = emptySlide(current.length);
+    const nextSlide = emptySlide(current.length, undefined, theme);
     const next = [...sortSlides(current), nextSlide];
     setSlides(next);
     slidesRef.current = next;
-    apiRef.current = null;
-    setApi(null);
     setActiveSlideId(nextSlide.id);
-    markDirty();
+    setSelected(null);
+    scheduleMetaSave();
   };
 
   const onRemoveSlide = (slideId) => {
@@ -271,11 +373,10 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     setSlides(next);
     slidesRef.current = next;
     if (switching) {
-      apiRef.current = null;
-      setApi(null);
       setActiveSlideId(nextActive);
+      setSelected(null);
     }
-    markDirty();
+    scheduleMetaSave();
   };
 
   const onRenameSlide = (slideId, name) => {
@@ -284,7 +385,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     const next = current.map((s) => (s.id === slideId ? { ...s, name } : s));
     setSlides(next);
     slidesRef.current = next;
-    markDirty();
+    scheduleMetaSave();
   };
 
   const letterboxBg = theme === "light" ? "bg-[#e8e8ea]" : "bg-[#2e2e32]";
@@ -295,10 +396,12 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
       : "bg-[#0f0f0f]";
   const mutedText = theme === "light" ? "text-black/50" : "text-white/50";
   const stageBg = theme === "light" ? "bg-white" : "bg-[#0f0f0f]";
-  const activeSlide = sortSlides(slides || []).find((s) => s.id === activeSlideId);
-  const canvasScene = isSlideshow
-    ? slideToExcalidrawScene(activeSlide, theme)
-    : board?.scene;
+
+  const canvasSlideKey = isSlideshow ? activeSlideId : boardId;
+  const canvasObjects = isSlideshow ? slideObjects : whiteboardObjects;
+  const canvasPageUrl = isSlideshow
+    ? slidePageUrl(activeSlide, theme)
+    : resolvedPageUrl;
 
   if (query.isLoading) {
     return (
@@ -330,48 +433,34 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   }
 
   const canvas = (
-    <ExcalidrawCanvas
-      key={isSlideshow ? activeSlideId : boardId}
-      scene={canvasScene}
-      hasBackground={Boolean(displayBg)}
+    <MicroPrepCanvasWrapper
+      kernelRef={kernelRef}
+      slideKey={canvasSlideKey}
+      objects={canvasObjects}
+      pageUrl={canvasPageUrl}
       theme={theme}
-      bounded={isSlideshow}
-      viewModeEnabled={!canEdit}
-      onApiReady={onApiReady}
-      onChange={onChange}
+      slideshow={isSlideshow}
+      locked={!canEdit}
+      panelInsets={panelInsets}
+      onSelectionChange={setSelected}
     />
   );
 
   return (
-    <div className={`relative h-full w-full overflow-hidden ${shellBg}`}>
-      {!isSlideshow && displayBg ? (
-        <div
-          className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${displayBg})` }}
-          aria-hidden="true"
-        />
-      ) : null}
-
+    <div ref={shellRef} className={`relative h-full w-full overflow-hidden ${shellBg}`}>
       {isSlideshow ? (
         <div
           className={`absolute inset-0 z-[1] flex items-center justify-center ${letterboxBg}`}
           style={{
             paddingTop: "1.5rem",
             paddingBottom: "1.5rem",
-            paddingLeft: "calc(1.5rem + min(320px, calc(100vw - 3rem)))",
-            paddingRight: "calc(1.5rem + min(320px, calc(100vw - 3rem)))",
+            paddingLeft: `calc(1.5rem + ${MICRO_PREP_PANEL_WIDTH})`,
+            paddingRight: `calc(1.5rem + ${MICRO_PREP_PANEL_WIDTH})`,
           }}
         >
           <div
             className={`relative aspect-video max-h-full w-full overflow-hidden rounded-sm shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${stageBg}`}
           >
-            {displayBg ? (
-              <div
-                className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url(${displayBg})` }}
-                aria-hidden="true"
-              />
-            ) : null}
             <div className="absolute inset-0 z-[1]">{canvas}</div>
           </div>
         </div>
@@ -384,32 +473,34 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
       </div>
 
       <div
+        ref={leftRef}
         className="pointer-events-none absolute bottom-6 left-6 top-6 z-20"
-        style={{ width: PANEL_WIDTH }}
+        style={{ width: MICRO_PREP_PANEL_WIDTH }}
       >
         <div className="pointer-events-auto h-full">
-          <WhiteboardToolsPanel
+          <MicroPrepToolsPanel
             disabled={!canEdit}
+            kernelRef={kernelRef}
             title={displayTitle}
             onTitleChange={onTitleChange}
-            activeTool={activeTool}
-            onToolChange={setActiveTool}
-            api={api}
             theme={theme}
             onThemeChange={onThemeChange}
             onBackgroundUpload={onBackgroundUpload}
             uploading={uploading}
-            hasBackground={Boolean(displayBg)}
-            onClearBackground={onClearBackground}
-            lockPan={isSlideshow}
+            hasPageImage={hasCustomPage}
+            onClearPageImage={onClearPageImage}
+            onInsertHllMap={onInsertHllMap}
+            selected={selected}
+            onSelectionChange={setSelected}
           />
         </div>
       </div>
 
       {isSlideshow ? (
         <div
+          ref={rightRef}
           className="pointer-events-none absolute bottom-6 right-6 top-6 z-20"
-          style={{ width: PANEL_WIDTH }}
+          style={{ width: MICRO_PREP_PANEL_WIDTH }}
         >
           <div className="pointer-events-auto h-full">
             <SlidesPanel
