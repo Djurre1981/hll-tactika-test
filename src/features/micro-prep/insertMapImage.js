@@ -1,11 +1,10 @@
 import { apiClient } from "../../lib/api-client.js";
 import { rememberMapId } from "../strats/editor/mapIds.js";
-import { composeHllMapDataUrl } from "./composeHllMapImage.js";
+import { composeHllMapBlob } from "./composeHllMapImage.js";
 
-async function uploadComposedMapPng(dataURL, mapId) {
-  const blob = await fetch(dataURL).then((r) => r.blob());
+async function uploadComposedMap(blob, mapId) {
   const form = new FormData();
-  form.append("file", blob, `hll-map-${mapId}.png`);
+  form.append("file", blob, `hll-map-${mapId}.jpg`);
   const result = await apiClient("/uploads/image", {
     method: "POST",
     body: form,
@@ -24,8 +23,8 @@ export async function insertHllMapPage(
 ) {
   if (!kernel || !mapId) return null;
 
-  const dataURL = await composeHllMapDataUrl(mapId, { showGrid, showStrongpoints });
-  const url = await uploadComposedMapPng(dataURL, mapId);
+  const blob = await composeHllMapBlob(mapId, { showGrid, showStrongpoints });
+  const url = await uploadComposedMap(blob, mapId);
   kernel.setPageImage(url, { mapId, showOverlays: false });
   kernel.fitToView();
   rememberMapId(mapId);
