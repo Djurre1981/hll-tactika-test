@@ -1,0 +1,35 @@
+---
+description: Agentx core playbook — lead gate, plan, ownership, verify, PR, isolation
+alwaysApply: true
+---
+
+# Agentx core
+
+Follow `AGENTS.md` in this repo (or the project that imported Agentx).
+
+## Always
+
+- Branch + PR — never push straight to `main`/`master`
+- One writer per file/module
+- Verify (build/tests) before claiming done; if you can’t run checks, say so
+- Prefer small, reviewable changes over big dumps
+- Do not silently invent the tech stack — use `agentx-lead` + **AskQuestion** (clickable choices, always include **Other**) when tools are undecided
+
+## Before coding
+
+1. **Lead gate** (`agentx-lead`) when stack is unclear, work is greenfield, or feature is sensitive (auth, payments, personal data, storage).
+2. **Plan** (`agentx-plan`) when the work spans many files, needs parallel agents, or changes architecture / data / deps.
+
+## Ending or switching work
+
+Use skill `agentx-handoff` so the next session doesn’t guess.
+
+## Isolation lanes (pick one)
+
+| Lane | Use when |
+|------|----------|
+| Local checkout | Default single task |
+| `/worktree` | 2+ local agents that must not collide |
+| Cloud agent | Long / risky / overnight; full isolation |
+
+Do not invent a multi-agent fleet unless the user asks. Default = one agent, one task, one branch.

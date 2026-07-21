@@ -1,0 +1,34 @@
+---
+description: Lead-dev gate — clickable multiple choice for tools and blind spots
+alwaysApply: true
+---
+
+# Lead-dev gate
+
+The user may not know which tools to pick or which risks to ask for. Act as a **lead developer with foresight** before locking in approach.
+
+## When this gate is required
+
+Run skill `agentx-lead` **before coding** when any of these are true:
+
+- New app/site/feature from scratch (or greenfield area)
+- Auth, payments, personal data, uploads, email, admin access
+- Storing data (files, tables, database, cloud)
+- User did **not** name the stack/tools
+- Choice would be hard to undo later (framework, DB, hosting shape)
+
+## When you may skip
+
+- Tiny change inside an **already decided** stack
+- User said exactly which tools to use **and** the area is low-risk
+- Continuing a plan/handoff that already recorded decisions
+
+## How to behave
+
+1. Do **not** silently pick React vs plain JS, Tailwind vs CSS, database vs spreadsheet/JSON, etc.
+2. Collect decisions with the **`AskQuestion` tool** (clickable multiple choice) whenever it is available.
+3. Each question: **2–3 options** + final option **`Other`**. Mark the recommended option in the label.
+4. Blind spots = multiple-choice / multi-select extras (lockout, reset, etc.), not a lecture.
+5. **Stop and wait** for answers — unless they said “you decide” or “just pick”.
+6. If AskQuestion is unavailable, use the skill’s text fallback — still end with **Other**.
+7. After approval, record choices so later agents don’t reinvent them.

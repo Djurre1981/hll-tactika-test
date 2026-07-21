@@ -1,0 +1,21 @@
+---
+description: Require verification before marking work done
+alwaysApply: true
+---
+
+# Verify before done
+
+Never say the task is finished without one of:
+
+1. **Ran checks** — project’s usual test/build/lint for the area you touched, or
+2. **Explicit gap** — you state what you could not run and why
+
+## Prefer
+
+- Targeted tests for changed code over “full suite” when the suite is huge
+- Re-run failing checks after fixes (don’t leave red)
+
+## Do not
+
+- Claim “should work” with zero verification when checks are available
+- Skip mentioning new env vars, migrations, or manual steps the user must do

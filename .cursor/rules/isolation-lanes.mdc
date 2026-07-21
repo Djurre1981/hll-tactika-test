@@ -1,0 +1,43 @@
+---
+description: When to use local checkout vs git worktree vs Cursor cloud agent
+alwaysApply: true
+---
+
+# Isolation lanes
+
+Escalate only when needed. More isolation = safer, but more setup.
+
+## Local (same folder) — default
+
+Use for one focused task while the user watches.
+
+**Avoid if:** another agent is already editing overlapping files.
+
+## Worktree — parallel on your machine
+
+Use `/worktree` when:
+
+- two or more agents run locally at once, or
+- you must keep the user’s main checkout clean
+
+Each agent gets its own checkout + branch. After review: `/apply-worktree` or open a PR from that worktree.
+
+**Still watch:** localhost ports (don’t all bind `:3000`), shared Docker daemons, global tools.
+
+## Cloud agent — maximum isolation
+
+Use when the task is:
+
+- long-running, or
+- installs/changes deps, migrations, heavy builds, or
+- should continue while the laptop is closed
+
+Cloud agents need a working environment (install + test commands). If the env can’t run tests, say that up front.
+
+## Decision cheat sheet
+
+```
+One small task?           → local
+Two independent tasks?    → plan + worktrees (or two branches)
+Risky / long / overnight? → cloud agent → PR
+```

@@ -1,0 +1,27 @@
+---
+description: File ownership, no main pushes, PR-first shipping
+alwaysApply: true
+---
+
+# Ownership and PRs
+
+## File ownership
+
+- At plan time, list which files/folders each agent may **write**
+- Others may **read** those files but must not edit them
+- Need a shared file? Only the designated owner edits it, or serialize the work
+
+## Git
+
+- Create a descriptive branch: `agentx/<short-topic>`
+- Do not force-push shared branches unless the user asks
+- Do not merge your own PR unless the user asks
+
+## Shipping
+
+- Prefer a PR with a short summary + test plan (skill `agentx-ship`)
+- Call out: lockfile changes, migrations, env vars, breaking API changes
+
+## Shared-config warning
+
+If you change root instructions, lockfiles, env templates, or CI config, **stop and tell the user** — other sessions may be stale until refreshed.
