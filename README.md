@@ -111,7 +111,7 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 
 **Icon options**: pick from the expanded StratSketch-compatible palette (~75 icons, including letter/number circles). Multi-layer icons use knockout fills so letters and details stay readable in the toolbar and on the map. Icons place as a resizable bounding box (same handle model as rectangles).
 
-**HLL Objects** — game-specific placeables inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/), using the HLL logo as the tool icon. Grouped as Spawn, Vehicle, Class, Buildable, Placeable, Marker, and Ability. Marker sizes follow Maps Let Loose’s 1920×1920 tacmap scale. Assets live under `public/assets/hll-objects/`.
+**HLL Objects** — game-specific placeables inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/), using the HLL logo as the tool icon. Grouped as Spawn, Vehicle, Class, Buildable, Placeable, Marker, and Ability. Marker sizes follow Maps Let Loose’s 1920×1920 tacmap scale. Assets live under `public/assets/hll-objects/` as scalable SVGs (regenerate with `npm run vectorize:hll-objects` from the PNG sources).
 
 - **Show spawn radius** (map chrome): toggles lockout/radius art on spawn markers already on the slide (and for new placements).
 - **Radius check** (HLL tool options, garrison): mouse-follow preview turns green/red; invalid garrison placements are blocked.
@@ -135,7 +135,7 @@ Bottom-center toolbar on the strat map:
 | **Shift** (while drawing rect/circle) | Keep square / perfect circle |
 | **Alt** (while drawing rect/circle) | Draw from center |
 | **Shift** (while dragging selection) | Lock movement to horizontal or vertical |
-| **Shift** (while resizing corner handle) | Proportional resize |
+| **Shift** (while resizing corner handle) | Proportional resize (icons / HLL stay 1:1) |
 
 ### Selection, handles, and editing
 
@@ -192,7 +192,7 @@ v2 Stratmaker (React) lives under `src/features/strats/` with drawing in `map-ke
 | `src/features/strats/editor/` | Stratmaker page, tools panel, map chrome, canvas bridge |
 | `map-kernel/` | Map viewer, scene graph, canvas renderer, interaction, selection handles |
 | `map-kernel/icons/` | StratSketch icon pack, resolve helpers, HLL object catalog |
-| `public/assets/hll-objects/` | HLL placeable PNGs (Maps Let Loose–compatible sizes) |
+| `public/assets/hll-objects/` | HLL placeable SVGs (Maps Let Loose–compatible sizes; PNGs kept as vectorize sources) |
 | `src/lib/collab/` | Yjs provider + kernel/whiteboard bridges |
 | `functions/api/strats*.js` | Cloudflare Pages Functions handlers |
 | `functions/lib/strats-store.js` | D1 persistence for strats |

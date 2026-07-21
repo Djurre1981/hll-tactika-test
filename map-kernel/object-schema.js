@@ -1,6 +1,8 @@
 /** Strat drawing object schema — map-% coords (−20…120). Vanilla only. */
 
 import { STRAT_ICON_IDS } from "./icons/strat-icon-catalog.js";
+import { animatedIconMotionId } from "./icons/animated-icon-ids.js";
+import { resolveIconDef } from "./icons/resolve-icon.js";
 import {
   HLL_OBJECT_IDS,
   resolveHllAsset,
@@ -50,11 +52,25 @@ export const STRAT_OBJECT_TYPES = [
   "ping",
 ];
 
-/** Object types that need a continuous animation clock in CanvasRenderer. */
+/** Object types that always need a continuous animation clock in CanvasRenderer. */
 export const ANIMATED_OBJECT_TYPES = new Set(["ping"]);
 
+export { ANIMATED_ICON_MOTIONS, animatedIconMotionId } from "./icons/animated-icon-ids.js";
+
+/** Resolve motion for an icon object (toolbar iconId or StratSketch pack name). */
+export function iconAnimationMotion(object) {
+  if (!object || object.type !== "icon") return null;
+  const meta = object.meta || {};
+  const byId = animatedIconMotionId(meta.iconId);
+  if (byId) return byId;
+  const def = resolveIconDef(meta);
+  return animatedIconMotionId(def?.name) || null;
+}
+
 export function objectNeedsAnimation(object) {
-  return Boolean(object && ANIMATED_OBJECT_TYPES.has(object.type));
+  if (!object) return false;
+  if (ANIMATED_OBJECT_TYPES.has(object.type)) return true;
+  return Boolean(iconAnimationMotion(object));
 }
 
 const END_TYPES = ["none", "start", "end", "both"];
