@@ -26,7 +26,7 @@ export const glassInput =
   "w-full rounded-full border border-solid border-white/10 bg-black/20 px-3.5 py-[0.55rem] text-[0.78rem] font-light tracking-[0.02em] text-white/90 outline-none transition placeholder:text-white/35 focus:border-white/25 focus:bg-black/30 focus:outline-none disabled:opacity-35";
 
 export const glassSelect =
-  "w-full appearance-none rounded-full border border-solid border-white/10 bg-black/25 py-[0.55rem] pl-3.5 pr-8 text-[0.78rem] font-light tracking-[0.04em] text-white/90 outline-none transition focus:border-white/25 focus:outline-none disabled:opacity-35";
+  "glass-select w-full appearance-none rounded-full border border-solid border-white/10 bg-[rgba(18,18,20,0.92)] py-[0.55rem] pl-3.5 pr-8 text-[0.78rem] font-light tracking-[0.04em] text-white/90 outline-none transition focus:border-white/25 focus:bg-[rgba(12,12,14,0.96)] focus:outline-none disabled:opacity-35";
 
 export const glassPillBtn =
   "flex w-full items-center justify-center rounded-full border border-solid border-white/10 bg-white/[0.07] px-4 py-[0.65rem] text-[0.78rem] font-light uppercase tracking-[0.1em] text-white/90 transition hover:border-white/20 hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-40";

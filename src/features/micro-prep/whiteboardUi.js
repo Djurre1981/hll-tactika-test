@@ -5,6 +5,7 @@ export {
   actionBtnWide,
   cx,
   glassInput,
+  glassSelect,
   optionRow,
   panelBody,
   panelDivider,
@@ -17,7 +18,21 @@ export {
   toolBtnActive,
 } from "../../shared/glassUi.js";
 
-/** Maps to Excalidraw setActiveTool({ type }) */
+/** Micro-prep kernel tool list (Strat drawing subset + HLL map page insert). */
+export const MICRO_PREP_TOOL_ITEMS = [
+  { id: "select", icon: "fa-solid fa-arrow-pointer", title: "Select" },
+  { id: "pen", icon: "fa-solid fa-pen", title: "Draw" },
+  { id: "highlighter", icon: "fa-solid fa-highlighter", title: "Highlighter" },
+  { id: "line", title: "Line / curve / arrow" },
+  { id: "ellipse", icon: "fa-regular fa-circle", title: "Ellipse" },
+  { id: "rect", icon: "fa-regular fa-square", title: "Rectangle" },
+  { id: "sticky", icon: "fa-solid fa-note-sticky", title: "Sticky note" },
+  { id: "text", icon: "fa-solid fa-font", title: "Text" },
+  { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },
+  { id: "hll-map", icon: "fa-solid fa-map-location-dot", title: "HLL Map" },
+];
+
+/** @deprecated Excalidraw tool list — kept for reference during migration cleanup */
 export const WB_TOOL_ITEMS = [
   { id: "selection", icon: "fa-solid fa-arrow-pointer", title: "Select" },
   { id: "freedraw", icon: "fa-solid fa-pen", title: "Draw" },
@@ -29,6 +44,7 @@ export const WB_TOOL_ITEMS = [
   { id: "sticky", icon: "fa-solid fa-note-sticky", title: "Sticky note" },
   { id: "text", icon: "fa-solid fa-font", title: "Text" },
   { id: "image", icon: "fa-regular fa-image", title: "Image" },
+  { id: "hll-map", icon: "fa-solid fa-map-location-dot", title: "HLL Map" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },
   { id: "hand", icon: "fa-regular fa-hand", title: "Pan" },
 ];

@@ -200,6 +200,56 @@ v2 Stratmaker (React) lives under `src/features/strats/` with drawing in `map-ke
 
 Legacy v1 strats paths under `js/strats/` / `js/ui/strats*.js` apply only to the older climbing-guide shell if still present.
 
+## Micro Prep mode (whiteboard & slideshow)
+
+**Micro Prep** is a freeform planning workspace for match prep notes, diagrams, and slide decks. It uses the same **map-kernel** drawing engine and Strat-grade tools (pen, lines with caps/bezier/arrowheads, shapes, text with outline/shadow, eraser) instead of the previous Excalidraw embed.
+
+Open **Micro Prep** from the hub. Choose **Whiteboard** (square canvas) or **Slideshow** (16:9 letterboxed stage with a slide list).
+
+### Scene format (v2)
+
+Boards persist as `sceneVersion: 2` with kernel `objects[]` and an optional `pageUrl` (uploaded image or composed HLL map). **Existing boards saved in the old Excalidraw format open empty** — redraw or re-import content as needed.
+
+| Mode | Scene shape |
+|------|-------------|
+| **Whiteboard** | `{ sceneVersion: 2, objects: [], appState: { theme }, pageUrl: null }` |
+| **Slideshow** | `{ sceneVersion: 2, slides: [{ id, name, order, objects: [], appState: { theme }, pageUrl: null }] }` |
+
+Theme (dark/light) is stored in `appState`. Page backgrounds (upload or HLL map) are stored per board or per slide as `pageUrl` (R2 URL), not as inline data URLs.
+
+### Tools
+
+| Tool | Notes |
+|------|-------|
+| **Select** | Move, resize, edit selection via sidebar |
+| **Draw / Highlighter / Line / Shapes / Text / Eraser** | Same kernel tool model as Strats (highlighter = pen preset; sticky note = yellow filled rect preset) |
+| **HLL Map** | Composes tactical map + optional grid/strongpoints overlays, uploads PNG to R2, sets kernel page |
+| **Page background** | Upload image → kernel page (replaces blank square or 16:9 page asset) |
+
+Strat-only tools (**Icons**, **HLL placeables**, **Ping**) are not included in Micro Prep.
+
+### Slideshow
+
+Each slide has its own `objects[]` and optional `pageUrl`. Switching slides flushes the active slide to storage and loads the next without remounting the canvas. The stage stays letterboxed 16:9 with panel-aware fit.
+
+### Live collaboration
+
+When collab is connected, object edits sync over Yjs `objects[]` (same bridge as Strat slides). Slide list / title / page metadata save via the API when offline from collab.
+
+### Micro Prep file layout (for developers)
+
+| Path | Role |
+|------|------|
+| `src/features/micro-prep/` | Editor, tools panel, canvas wrapper, slides helpers |
+| `src/features/micro-prep/MicroPrepCanvasWrapper.jsx` | React bridge to map-kernel with custom page images |
+| `src/features/micro-prep/MicroPrepToolsPanel.jsx` | Strat `ToolsPanelOptions` + micro-prep chrome |
+| `src/features/micro-prep/microPrepPages.js` | Scene v2 defaults and normalization |
+| `src/features/micro-prep/composeHllMapImage.js` | Bake HLL map + overlays for page insert |
+| `public/assets/micro-prep/` | Blank square / 16:9 page SVG assets |
+| `functions/api/whiteboards.js` | Create/list whiteboards (v2 default scene) |
+
+Legacy Excalidraw files under `src/features/micro-prep/` (`ExcalidrawCanvas.jsx`, etc.) are unused and may be removed in a follow-up cleanup.
+
 ## Roadmap
 
 - Fixing any bugs after release.
@@ -334,6 +384,7 @@ Map images live in `maps/no-grid/`. Spawn data is in `data/map-spawns.json` (gen
 | Action | Input |
 |--------|-------|
 | Open Strats | App navigation / Strats browser |
+| Open Micro Prep | Hub → Micro Prep |
 | Select / draw | Left sidebar tools |
 | Finish draw → Select | **Right-click** on the map |
 | Pan map | Drag (blocked while drawing or dragging a selection) |
