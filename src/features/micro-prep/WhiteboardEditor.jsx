@@ -279,7 +279,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
         setPageUrl(url);
       }
       kernelRef.current?.setPageImage(url);
-      kernelRef.current?.fitToView();
+      kernelRef.current?.resetFreeformView();
       scheduleMetaSave();
     } catch (error) {
       console.error("Page upload failed:", error);
@@ -290,7 +290,6 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
 
   const onClearPageImage = () => {
     if (!canEdit) return;
-    const blank = defaultPageUrl(theme, isSlideshow);
     if (isSlideshow) {
       flushActiveSlide();
       const slideId = activeSlideIdRef.current;
@@ -299,11 +298,12 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
       );
       setSlides(next);
       slidesRef.current = next;
+      kernelRef.current?.setPageImage(defaultPageUrl(theme, true));
+      kernelRef.current?.fitToView();
     } else {
       setPageUrl(null);
+      kernelRef.current?.setFreeformBlankPage(theme);
     }
-    kernelRef.current?.setPageImage(blank);
-    kernelRef.current?.fitToView();
     scheduleMetaSave();
   };
 

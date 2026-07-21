@@ -39,6 +39,20 @@ function toolSettingsFromStore(state) {
   };
 }
 
+function applyPageToKernel(kernel, { pageUrl, theme, slideshow }) {
+  if (slideshow) {
+    kernel.setPageImage(pageUrl || defaultPageUrl(theme, true));
+    kernel.fitToView();
+    return;
+  }
+  if (pageUrl) {
+    kernel.setPageImage(pageUrl);
+    kernel.resetFreeformView();
+    return;
+  }
+  kernel.setFreeformBlankPage(theme);
+}
+
 /**
  * Map-kernel bridge for micro-prep whiteboard / slideshow (custom page image, not HLL map id).
  */
@@ -60,7 +74,9 @@ export function MicroPrepCanvasWrapper({
   selectionCb.current = onSelectionChange;
   const fittedRef = useRef(false);
   const pageUrlRef = useRef(pageUrl);
+  const themeRef = useRef(theme);
   pageUrlRef.current = pageUrl;
+  themeRef.current = theme;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -68,6 +84,7 @@ export function MicroPrepCanvasWrapper({
 
     fittedRef.current = false;
     const kernel = new MapKernel({
+      autoSelectOnCreate: false,
       onSelectionChange: (selected) => {
         selectionCb.current?.(selected);
       },
@@ -93,11 +110,13 @@ export function MicroPrepCanvasWrapper({
       },
     });
     kernel.mount(host);
-    kernel.setPageMode(slideshow ? "slideshow" : "square");
+    kernel.setPageMode(slideshow ? "slideshow" : "freeform");
     kernel.setTool(toolSettingsFromStore(useToolStore.getState()));
-    const initialPage =
-      pageUrlRef.current || defaultPageUrl(theme, slideshow);
-    kernel.setPageImage(initialPage);
+    applyPageToKernel(kernel, {
+      pageUrl: pageUrlRef.current,
+      theme: themeRef.current,
+      slideshow,
+    });
     localKernel.current = kernel;
     if (kernelRef) kernelRef.current = kernel;
 
@@ -108,7 +127,11 @@ export function MicroPrepCanvasWrapper({
     const ro = new ResizeObserver(() => {
       if (!fittedRef.current && host.clientWidth > 0 && host.clientHeight > 0) {
         fittedRef.current = true;
-        kernel.fitToView();
+        if (slideshow) {
+          kernel.fitToView();
+        } else {
+          kernel.resetFreeformView();
+        }
       }
     });
     ro.observe(host);
@@ -134,9 +157,12 @@ export function MicroPrepCanvasWrapper({
   useEffect(() => {
     const kernel = localKernel.current;
     if (!kernel) return;
-    const url = pageUrl || defaultPageUrl(theme, slideshow);
-    kernel.setPageImage(url);
-    kernel.fitToView();
+    if (slideshow) {
+      applyPageToKernel(kernel, { pageUrl, theme, slideshow: true });
+      return;
+    }
+    kernel.setViewportTheme(theme);
+    applyPageToKernel(kernel, { pageUrl, theme, slideshow: false });
   }, [pageUrl, theme, slideshow]);
 
   useEffect(() => {

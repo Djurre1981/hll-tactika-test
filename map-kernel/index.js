@@ -3,7 +3,7 @@ import { SceneGraph } from "./SceneGraph.js";
 import { CanvasRenderer } from "./CanvasRenderer.js";
 import { InteractionController } from "./InteractionController.js";
 import { MapOverlays } from "./MapOverlays.js";
-import { getHllObjectDef, hllBoxFromCenter } from "./object-schema.js";
+import { getHllObjectDef, hllBoxFromCenter, resetCoordLimits, setCoordLimits, getCoordSpan, FREEFORM_COORD_MIN, FREEFORM_COORD_MAX } from "./object-schema.js";
 import { TextInlineEditor } from "./text-inline-editor.js";
 
 function mapUrlForId(mapId) {
@@ -11,6 +11,9 @@ function mapUrlForId(mapId) {
   if (mapId.startsWith("/") || mapId.startsWith("http")) return mapId;
   return `/maps/no-grid/${mapId}_NoGrid.webp`;
 }
+
+/** Logical unit for micro-prep freeform workspace sizing (map-% span × unit = px). */
+const FREEFORM_UNIT_PX = 4096;
 
 /**
  * Imperative map + drawing kernel. React must only touch this via CanvasWrapper.
@@ -27,6 +30,7 @@ export class MapKernel {
     this.currentMapId = null;
     this.pageUrl = null;
     this.pageMode = "square";
+    this.autoSelectOnCreate = options.autoSelectOnCreate !== false;
     this.toolSettings = {
       tool: "select",
       color: "#ffffff",
@@ -200,6 +204,7 @@ export class MapKernel {
       renderer: this.renderer,
       getViewer: () => this.viewer,
       getToolSettings: () => this.toolSettings,
+      shouldAutoSelectOnCreate: () => this.autoSelectOnCreate !== false,
       onRequestRender: () => this.renderer.requestDraw(this.scene.getObjects()),
       onRequestTool: (tool) => this.onRequestTool?.(tool),
       onEyedrop: (hex, target) => this.onEyedrop?.(hex, target),
@@ -210,17 +215,7 @@ export class MapKernel {
     this.interaction.attach(this.viewport);
 
     this.image.addEventListener("load", () => {
-      const w = this.image.naturalWidth || 4096;
-      const h = this.image.naturalHeight || w;
-      // Intrinsic size only — never force a fake 1920 box (maps are 4096²).
-      this.image.removeAttribute("width");
-      this.image.removeAttribute("height");
-      this.image.style.width = `${w}px`;
-      this.image.style.height = `${h}px`;
-      this.renderer.setMapSize(w);
-      this.overlays?.syncSize();
-      this.viewer.fitToView();
-      this.renderer.requestDraw(this.scene.getObjects());
+      this._applyPageLayout();
     });
 
     if (this.options.mapId) {
@@ -274,7 +269,80 @@ export class MapKernel {
   }
 
   setPageMode(mode = "square") {
+    if (mode === "freeform") {
+      this.pageMode = "freeform";
+      this.viewer?.setBoundsMode("freeform");
+      setCoordLimits(FREEFORM_COORD_MIN, FREEFORM_COORD_MAX);
+      return;
+    }
+    if (mode === "slideshow") {
+      this.pageMode = "slideshow";
+      this.viewer?.setBoundsMode("bounded");
+      resetCoordLimits();
+      return;
+    }
     this.pageMode = mode === "slideshow" ? "slideshow" : "square";
+    this.viewer?.setBoundsMode("map");
+    resetCoordLimits();
+  }
+
+  _applyPageLayout() {
+    const w = this.image.naturalWidth || FREEFORM_UNIT_PX;
+    const h = this.image.naturalHeight || w;
+    this.image.removeAttribute("width");
+    this.image.removeAttribute("height");
+    this.image.style.display = "block";
+    this.viewer?.setVirtualSize(0, 0);
+
+    if (this.pageMode === "freeform") {
+      if (this.pageUrl) {
+        resetCoordLimits();
+        this.image.style.width = `${w}px`;
+        this.image.style.height = `${h}px`;
+        this.renderer.setMapSize(w);
+      } else {
+        setCoordLimits(FREEFORM_COORD_MIN, FREEFORM_COORD_MAX);
+        const size = Math.ceil(FREEFORM_UNIT_PX * getCoordSpan() / 100);
+        this.image.style.display = "none";
+        this.viewer?.setVirtualSize(size, size);
+        this.renderer.setMapSize(size);
+      }
+      this.overlays?.syncSize();
+      this.viewer?.resetFreeformView();
+    } else {
+      this.image.style.width = `${w}px`;
+      this.image.style.height = `${h}px`;
+      this.renderer.setMapSize(w);
+      this.overlays?.syncSize();
+      this.viewer?.fitToView();
+    }
+
+    this.renderer.requestDraw(this.scene.getObjects());
+  }
+
+  /** Blank infinite-style whiteboard workspace (no page image). */
+  setFreeformBlankPage(theme = "dark") {
+    this.pageUrl = null;
+    this.currentMapId = null;
+    this.overlays?.setToggles({ grid: false, strongpoints: false });
+    this.image.style.display = "none";
+    this.image.removeAttribute("src");
+    if (this.viewport) {
+      this.viewport.style.background = theme === "light" ? "#ffffff" : "#0f0f0f";
+    }
+    setCoordLimits(FREEFORM_COORD_MIN, FREEFORM_COORD_MAX);
+    const size = Math.ceil(FREEFORM_UNIT_PX * getCoordSpan() / 100);
+    this.viewer?.setVirtualSize(size, size);
+    this.renderer.setMapSize(size);
+    this.viewer?.resetFreeformView();
+    this.renderer.requestDraw(this.scene.getObjects());
+  }
+
+  setViewportTheme(theme = "dark") {
+    if (this.pageMode !== "freeform" || this.pageUrl) return;
+    if (this.viewport) {
+      this.viewport.style.background = theme === "light" ? "#ffffff" : "#0f0f0f";
+    }
   }
 
   getPageUrl() {
@@ -283,17 +351,26 @@ export class MapKernel {
 
   _assignImageSrc(url) {
     if (!this.image) return;
+    if (this.viewport && this.pageMode === "freeform") {
+      this.viewport.style.background = "transparent";
+    }
     if (this.image.src === url || this.image.getAttribute("src") === url) {
-      this.viewer?.fitToView();
+      if (this.pageMode === "freeform") {
+        this.viewer?.resetFreeformView();
+      } else {
+        this.viewer?.fitToView();
+      }
       return;
     }
     this._sampleSrc = null;
+    this.image.style.display = "block";
     this.image.src = url;
   }
 
   setPanelInsets(insets) {
     this.viewer?.setPanelInsets(insets);
     if (!this.viewer) return;
+    if (this.pageMode === "freeform") return;
     const { imgW } = this.viewer.getImageSize();
     if (!imgW) return;
     const bounds = this.viewer.getVisibleBounds();
@@ -303,7 +380,15 @@ export class MapKernel {
   }
 
   fitToView() {
+    if (this.pageMode === "freeform") {
+      this.viewer?.resetFreeformView();
+      return;
+    }
     this.viewer?.fitToView();
+  }
+
+  resetFreeformView() {
+    this.viewer?.resetFreeformView();
   }
 
   setOverlays(toggles) {
@@ -358,6 +443,9 @@ export class MapKernel {
     this.toolSettings = { ...this.toolSettings, ...settings };
     if (settings.tool != null) {
       this.toolSettings.tool = settings.tool;
+      if (settings.tool !== "select" && this.scene.selectedId) {
+        this.scene.setSelectedId(null);
+      }
     }
     this.syncPanBlock();
     this.interaction?.onToolSettingsChanged?.();

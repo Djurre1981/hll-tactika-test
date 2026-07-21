@@ -29,7 +29,7 @@ const SHAPE_TYPES = new Set(["rect", "ellipse"]);
 const DEFAULT_TOOL_STATE = {
   tool: "select",
   color: "#ffffff",
-  strokeWidth: 3,
+  strokeWidth: 2,
   lineType: "solid",
   endType: "none",
   startCap: "none",
@@ -207,7 +207,6 @@ export function MicroPrepToolsPanel({
     : padding;
 
   const isPreset = COLOR_PRESETS.some((c) => c.toLowerCase() === activeColor.toLowerCase());
-  const lineToolActive = tool === "line" || tool === "curve";
   const isDark = theme === "dark";
 
   useEffect(() => {
@@ -249,10 +248,14 @@ export function MicroPrepToolsPanel({
   }, [selected?.id, selected?.type, selected?.style, patch]);
 
   const selectPanelTool = (id) => {
+    if (id !== "select") {
+      kernelRef.current?.clearSelection();
+      onSelectionChange?.(null);
+    }
     setPanelTool(id);
     if (id === "hll-map") return;
     if (id === "highlighter") {
-      patch({ tool: "pen", color: "#facc15", opacity: 40, strokeWidth: 4 });
+      patch({ tool: "pen", color: "#facc15", opacity: 40, strokeWidth: 4, filled: false });
       return;
     }
     if (id === "sticky") {
@@ -261,6 +264,10 @@ export function MicroPrepToolsPanel({
     }
     if (id === "line") {
       patch({ tool: "line", lineBezier: false });
+      return;
+    }
+    if (id === "pen") {
+      patch({ tool: "pen", filled: false, opacity: 100, strokeWidth: 2 });
       return;
     }
     patch({ tool: id === "select" ? "select" : id });
@@ -326,12 +333,8 @@ export function MicroPrepToolsPanel({
   };
 
   const toolActive = (item) => {
-    if (item.id === "line") return lineToolActive;
-    if (item.id === "highlighter") return panelTool === "highlighter" && tool === "pen";
-    if (item.id === "sticky") return panelTool === "sticky" && tool === "rect";
-    if (item.id === "hll-map") return panelTool === "hll-map";
-    if (item.id === "select") return tool === "select" && panelTool !== "hll-map";
-    return tool === item.id;
+    if (item.id === "line") return panelTool === "line";
+    return panelTool === item.id;
   };
 
   return (
