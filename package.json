@@ -8,7 +8,7 @@
     "dev:api": "wrangler pages dev . --port 8788 --compatibility-date=2024-01-01",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler pages deploy dist --project-name=hll-tactika --branch=main",
+    "deploy": "node scripts/deploy-pages.mjs",
     "db:migrate:local": "wrangler d1 migrations apply hll-tactika-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply hll-tactika-db --remote",
     "db:migrate:preview": "wrangler d1 migrations apply hll-tactika-db --remote --preview",

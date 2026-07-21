@@ -1,8 +1,12 @@
 #!/usr/bin/env pwsh
 # One-time Cloudflare Pages setup after `npx wrangler login`
 param(
-  [string]$ProjectName = "hll-tactika"
+  [string]$ProjectName = "hll-tactika-test"
 )
+
+if ($ProjectName -eq "hll-tactika") {
+  Write-Error "Refusing project hll-tactika (production V1). Use hll-tactika-test for this staging repo."
+}
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path

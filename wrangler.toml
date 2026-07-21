@@ -1,5 +1,7 @@
 # Cloudflare Pages + Workers config for local dev and deploy.
-name = "hll-tactika"
+# Staging / V2 only — production V1 is the separate hll-tactika project
+# (GitHub: HLL_interactive_climb). Do not deploy this repo to hll-tactika.
+name = "hll-tactika-test"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]

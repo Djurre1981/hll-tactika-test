@@ -220,9 +220,16 @@ There are a lot of ideas (Planning section for rostering etc.?, More Guides? Tan
 
 ## Quick start
 
-### Production (Cloudflare Pages)
+### Staging (Cloudflare Pages) — this repo
 
-Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Pages alone cannot run the auth API). The Cloudflare project name is **`hll-tactika`** (see [wrangler.toml](wrangler.toml)).
+Auth and protected pins require **Cloudflare Pages** with Functions (GitHub Pages alone cannot run the auth API).
+
+| Site | Pages project | GitHub repo |
+|------|---------------|-------------|
+| **V1 production** (climbing guide) | `hll-tactika` | `HLL_interactive_climb` |
+| **V2 staging** (this repo) | `hll-tactika-test` | `hll-tactika-test` |
+
+`npm run deploy` **only** publishes to **`hll-tactika-test`**. Never deploy this repo to `hll-tactika` — that overwrites production V1.
 
 1. Install dependencies: `npm install`
 2. Copy `.dev.vars.example` to `.dev.vars` and set:
