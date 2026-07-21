@@ -1,4 +1,8 @@
-import { getObjectBounds, objectNeedsAnimation } from "./object-schema.js";
+import {
+  getObjectBounds,
+  iconAnimationMotion,
+  objectNeedsAnimation,
+} from "./object-schema.js";
 import { resolveIconDef } from "./icons/resolve-icon.js";
 import { resolveHllAsset } from "./icons/hll-object-catalog.js";
 import { curveHandleDrawSizes } from "./selection-handles.js";
@@ -11,6 +15,14 @@ const PING_STAGGER_MS = 350;
 const PING_SCALE_FROM = 0.85;
 const PING_SCALE_TO = 1.8;
 const PING_OPACITY_FROM = 0.85;
+/** Icon attention pulse — quieter than ping so dense slides stay readable. */
+const ICON_RING_SCALE_FROM = 0.9;
+const ICON_RING_SCALE_TO = 1.45;
+const ICON_RING_OPACITY_FROM = 0.55;
+const ICON_OPACITY_FROM = 0.62;
+const ICON_OPACITY_TO = 1;
+const ICON_SCALE_FROM = 0.94;
+const ICON_SCALE_TO = 1.06;
 /** Pulse does not need 60fps; cap to reduce GPU/main-thread load on large maps. */
 const ANIM_MIN_FRAME_MS = 1000 / 30;
 
@@ -446,6 +458,7 @@ export class CanvasRenderer {
   drawIcon(ctx, object) {
     const { style, meta, points } = object;
     const icon = resolveIconDef(meta);
+    const motion = iconAnimationMotion(object);
     let x1;
     let y1;
     let x2;
@@ -470,12 +483,24 @@ export class CanvasRenderer {
     const heightPx = Math.max(1, this.pctToPx(y2 - y1));
     const cx = left + widthPx / 2;
     const cy = top + heightPx / 2;
+    const now = motion ? performance.now() : 0;
+    const pulseT = motion ? easeOutCubic(pingProgress(now, 0)) : 0;
+    const glyphOpacity =
+      motion === "opacity"
+        ? ICON_OPACITY_FROM + (ICON_OPACITY_TO - ICON_OPACITY_FROM) * (1 - Math.abs(pulseT * 2 - 1))
+        : 1;
+    const glyphScale =
+      motion === "scale"
+        ? ICON_SCALE_FROM + (ICON_SCALE_TO - ICON_SCALE_FROM) * (1 - Math.abs(pulseT * 2 - 1))
+        : 1;
 
     if (icon?.path || icon?.layers?.length) {
       const iw = icon.width || 512;
       const ih = icon.height || 512;
       ctx.save();
+      ctx.globalAlpha = glyphOpacity;
       ctx.translate(cx, cy);
+      ctx.scale(glyphScale, glyphScale);
       // Independent scales so corner/edge handles can stretch like rect/ellipse.
       ctx.scale(widthPx / iw, heightPx / ih);
       ctx.translate(-iw / 2, -ih / 2);
@@ -483,17 +508,38 @@ export class CanvasRenderer {
       this.fillIconLayers(ctx, icon);
       ctx.restore();
     } else {
-      const r = Math.min(widthPx, heightPx) * 0.35;
+      const r = Math.min(widthPx, heightPx) * 0.35 * glyphScale;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fillStyle = style.color;
+      ctx.globalAlpha = glyphOpacity;
       ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    if (motion === "rings") {
+      const strokeW = Math.max(1.5, Math.min(widthPx, heightPx) * 0.06);
+      const baseR = Math.min(widthPx, heightPx) * 0.42;
+      ctx.setLineDash([]);
+      for (let ring = 0; ring < 2; ring += 1) {
+        const t = easeOutCubic(pingProgress(now, ring));
+        const scale = ICON_RING_SCALE_FROM + (ICON_RING_SCALE_TO - ICON_RING_SCALE_FROM) * t;
+        const opacity = ICON_RING_OPACITY_FROM * (1 - t);
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(1, baseR * scale), 0, Math.PI * 2);
+        ctx.strokeStyle = style.color;
+        ctx.lineWidth = strokeW;
+        ctx.globalAlpha = opacity;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
     }
 
     if (meta?.iconLabel) {
       const fontPx = Math.max(10, Math.min(widthPx, heightPx) * 0.35);
       ctx.font = `${fontPx}px sans-serif`;
       ctx.fillStyle = style.color;
+      ctx.globalAlpha = 1;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(meta.iconLabel, cx, top + heightPx + fontPx * 0.15);

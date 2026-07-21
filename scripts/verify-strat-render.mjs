@@ -103,9 +103,14 @@ check("ssIconId pack lookup wins over iconId", () => {
   assert(def.name === "binoculars", `got ${def.name}`);
 });
 
-check("ping needs animation, icon does not", () => {
+check("ping and selective icons need animation", () => {
   assert(objectNeedsAnimation({ type: "ping" }));
-  assert(!objectNeedsAnimation({ type: "icon" }));
+  assert(!objectNeedsAnimation({ type: "icon", meta: { iconId: "check" } }));
+  assert(!objectNeedsAnimation({ type: "icon", meta: { iconId: "flag" } }));
+  assert(objectNeedsAnimation({ type: "icon", meta: { iconId: "crosshairs" } }));
+  assert(objectNeedsAnimation({ type: "icon", meta: { iconId: "triangle-exclamation" } }));
+  assert(objectNeedsAnimation({ type: "icon", meta: { iconId: "skull-crossbones" } }));
+  assert(objectNeedsAnimation({ type: "icon", meta: { iconId: "bomb" } }));
 });
 
 check("circle-a uses knockout layers like StratSketch", () => {
