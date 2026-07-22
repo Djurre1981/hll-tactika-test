@@ -37,4 +37,8 @@ export const queryKeys = {
     all: ["whiteboards"],
     byId: (id) => ["whiteboards", id],
   },
+  routePlans: {
+    all: ["route-plans"],
+    byId: (id) => ["route-plans", id],
+  },
 };

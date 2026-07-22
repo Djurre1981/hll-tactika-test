@@ -6,10 +6,11 @@ export class MapOverlays {
     this.stage = stage;
     this.image = image;
     this.mapId = null;
-    this.toggles = { grid: true, strongpoints: true };
+    this.toggles = { grid: true, strongpoints: true, accessibility: false };
 
     this.gridLayer = this.createLayer();
     this.strongpointsLayer = this.createLayer();
+    this.accessibilityLayer = this.createLayer();
 
     this.gridImage = document.createElement("img");
     this.gridImage.src = "/maps/plain-grid.png";
@@ -38,6 +39,20 @@ export class MapOverlays {
     });
     this.strongpointsLayer.appendChild(this.spImage);
 
+    this.accessibilityImage = document.createElement("img");
+    this.accessibilityImage.alt = "";
+    this.accessibilityImage.draggable = false;
+    Object.assign(this.accessibilityImage.style, {
+      display: "block",
+      maxWidth: "none",
+      width: "4096px",
+      height: "4096px",
+      pointerEvents: "none",
+      userSelect: "none",
+      opacity: "0.55",
+    });
+    this.accessibilityLayer.appendChild(this.accessibilityImage);
+
     this.image.addEventListener("load", () => this.syncSize());
     this.syncSize();
     this.render();
@@ -61,7 +76,7 @@ export class MapOverlays {
   syncSize() {
     const w = this.image.naturalWidth || 4096;
     const h = this.image.naturalHeight || w;
-    for (const img of [this.gridImage, this.spImage]) {
+    for (const img of [this.gridImage, this.spImage, this.accessibilityImage]) {
       img.style.width = `${w}px`;
       img.style.height = `${h}px`;
     }
@@ -71,6 +86,7 @@ export class MapOverlays {
     if (!mapId || mapId === this.mapId) return;
     this.mapId = mapId;
     this.spImage.src = `/maps/points/${mapId}_SP_NoMap2.png`;
+    this.accessibilityImage.src = `/maps/accessibility/${mapId}_Accessible.png`;
     this.render();
   }
 
@@ -87,10 +103,12 @@ export class MapOverlays {
   render() {
     this.gridLayer.style.display = this.toggles.grid ? "block" : "none";
     this.strongpointsLayer.style.display = this.toggles.strongpoints ? "block" : "none";
+    this.accessibilityLayer.style.display = this.toggles.accessibility ? "block" : "none";
   }
 
   destroy() {
     this.gridLayer.remove();
     this.strongpointsLayer.remove();
+    this.accessibilityLayer.remove();
   }
 }

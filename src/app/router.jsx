@@ -1,10 +1,12 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
 import { TeamPage } from "../features/team/TeamPage.jsx";
 import { ManagementPage } from "../features/management/ManagementPage.jsx";
 import { StratsPage } from "../features/strats/browser/StratsPage.jsx";
 import { StratEditorPage } from "../features/strats/editor/StratEditorPage.jsx";
 import { StratmakerPage } from "../features/strats/editor/StratmakerPage.jsx";
+import { RouteplannerEntryPage } from "../features/routeplanner/RouteplannerEntryPage.jsx";
+import { RouteplannerPage } from "../features/routeplanner/RouteplannerPage.jsx";
 import { MicroPrepEntryPage } from "../features/micro-prep/MicroPrepEntryPage.jsx";
 import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
@@ -58,6 +60,11 @@ function StaffOnlyManagementPage() {
   );
 }
 
+function RouteplannerEditorRoute() {
+  const { id } = useParams();
+  return <RouteplannerPage planId={id} />;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -74,6 +81,8 @@ export function AppRouter() {
         <Route element={<EditorShell />}>
           <Route path="tool/stratmaker" element={<StratmakerPage />} />
           <Route path="strats/:id" element={<StratEditorPage />} />
+          <Route path="tool/routeplanner" element={<RouteplannerEntryPage />} />
+          <Route path="routeplanner/:id" element={<RouteplannerEditorRoute />} />
           <Route path="tool/micro-prep" element={<MicroPrepEntryPage />} />
           <Route path="micro-prep/:id" element={<MicroPrepPage />} />
         </Route>
