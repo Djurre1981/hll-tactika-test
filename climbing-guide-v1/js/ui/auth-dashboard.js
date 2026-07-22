@@ -64,7 +64,7 @@ function consumeHomeNotice() {
   const notice = params.get("notice");
   if (!notice) return;
   if (notice === "stratmaker-locked") {
-    showComingSoon("Circle Stratmaker is not available for your role");
+    showComingSoon("Stratmaker is not available for your role");
   }
   params.delete("notice");
   const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}${window.location.hash}`;

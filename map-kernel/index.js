@@ -246,6 +246,11 @@ export class MapKernel {
     }
   }
 
+  /** Block map pan/zoom drag (e.g. while moving a route anchor). */
+  setBlockPan(block) {
+    this.viewer?.setBlockPan(Boolean(block));
+  }
+
   setMap(mapId) {
     const url = mapUrlForId(mapId);
     if (!url || !this.image) return;
@@ -579,6 +584,43 @@ export class MapKernel {
 
   getSelected() {
     return this.scene.getSelected();
+  }
+
+  screenToMapPercent(clientX, clientY) {
+    return this.viewer?.screenToMapPercent(clientX, clientY) ?? null;
+  }
+
+  mapPercentToScreen(xPercent, yPercent) {
+    return this.viewer?.mapPercentToScreen(xPercent, yPercent) ?? null;
+  }
+
+  getStage() {
+    return this.stage ?? null;
+  }
+
+  getMapImage() {
+    return this.image ?? null;
+  }
+
+  getImageSize() {
+    return this.viewer?.getImageSize() ?? { imgW: 0, imgH: 0 };
+  }
+
+  getViewport() {
+    return this.viewport;
+  }
+
+  /** Subscribe to pan/zoom (e.g. route overlay sync). Returns unsubscribe. */
+  onCameraChange(callback) {
+    if (!this.viewer) return () => {};
+    const prev = this.viewer.onTransform;
+    this.viewer.onTransform = (camera) => {
+      if (typeof prev === "function") prev(camera);
+      callback(camera);
+    };
+    return () => {
+      this.viewer.onTransform = prev;
+    };
   }
 }
 

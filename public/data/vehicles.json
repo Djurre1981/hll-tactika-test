@@ -1,0 +1,8 @@
+{
+  "transport-truck": {
+    "id": "transport-truck",
+    "label": "Transport Truck",
+    "maxSpeedKmh": 38,
+    "placeholder": true
+  }
+}

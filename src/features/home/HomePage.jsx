@@ -39,6 +39,9 @@ function placeholderCards() {
 const toolBtnClass =
   "glass-surface flex min-h-[7.5rem] flex-col items-start justify-end gap-1 rounded-[1.375rem] border border-white/10 bg-white/[0.06] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-45";
 
+const toolBtnSplitClass =
+  "glass-surface flex h-full min-h-0 flex-col items-start justify-end gap-1 rounded-[1.375rem] border border-white/10 bg-white/[0.06] p-4 text-left transition hover:border-white/20 hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-45";
+
 export function HomePage() {
   const user = useAuth();
   const navigate = useNavigate();
@@ -59,6 +62,10 @@ export function HomePage() {
     }
     if (tool.id === "micro-prep") {
       navigate("/tool/micro-prep");
+      return;
+    }
+    if (tool.id === "routeplanner") {
+      navigate("/tool/routeplanner");
       return;
     }
     if (tool.id === "viewer") {
@@ -150,18 +157,32 @@ export function HomePage() {
             The Circle Tools
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              type="button"
-              className={toolBtnClass}
-              disabled={!canStrats}
-              aria-disabled={!canStrats}
-              onClick={() => handleToolClick({ id: "strats" })}
-            >
-              <span className="text-[0.95rem] font-medium text-white">Circle Stratmaker</span>
-              <span className="text-[0.78rem] font-light text-white/50">
-                Draw and share ops on the tactical map.
-              </span>
-            </button>
+            <div className="grid min-h-[7.5rem] grid-cols-2 gap-3">
+              <button
+                type="button"
+                className={toolBtnSplitClass}
+                disabled={!canStrats}
+                aria-disabled={!canStrats}
+                onClick={() => handleToolClick({ id: "strats" })}
+              >
+                <span className="text-[0.88rem] font-medium leading-tight text-white">Stratmaker</span>
+                <span className="text-[0.72rem] font-light leading-snug text-white/50">
+                  Draw and share ops on the tactical map.
+                </span>
+              </button>
+              <button
+                type="button"
+                className={toolBtnSplitClass}
+                disabled={!canStrats}
+                aria-disabled={!canStrats}
+                onClick={() => handleToolClick({ id: "routeplanner" })}
+              >
+                <span className="text-[0.88rem] font-medium leading-tight text-white">Routeplanner</span>
+                <span className="text-[0.72rem] font-light leading-snug text-white/50">
+                  Timed transport truck routes on the tacmap.
+                </span>
+              </button>
+            </div>
             <button
               type="button"
               className={toolBtnClass}
