@@ -10,7 +10,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 - UI / framework: React + existing `map-kernel` canvas (same stack as Stratmaker)
 - Base layer: Stratmaker-style map view (map + faction context)
 - **Vehicle (MVP):** Transport truck only
-- **Speed (placeholder):** 38 km/h until AES/game-data extraction is wired — see [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)
+- **Speed:** Derived from FModel-exported wheeled blueprint drivetrains via `npm run extract:vehicles` ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)); Routeplanner default = Ford F60L Transport theoretical top speed (~38.5 km/h). Acceleration not yet modeled.
 - **Accessibility data:** Extract from [maps-let-loose](https://github.com/mattwright324/maps-let-loose) pipeline; high-res vector trace at 1920²
 - **Pathfinding style:** A* on rasterized obstacles; waypoint editing; shallow curve smoothing on output polyline
 - **MVP scope:** Route mapping + accessibility snapping + **travel time** + obstacle edit mode + D1 persistence
@@ -30,7 +30,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 
 | Area | Delivered |
 |------|-----------|
-| T0a | `public/data/vehicles.json` — transport truck @ 38 km/h |
+| T0a | `public/data/vehicles.json` — wheeled catalog + transport-truck default from FModel extract (`npm run extract:vehicles`) |
 | T0b | `scripts/extract-accessibility.mjs`, `scripts/trace-accessibility-vectors.mjs`, PNGs + `.vectors.json` per map |
 | T0c | `public/data/hq-spawns.json` — 3 HQs per map/faction |
 | T1 | Routeplanner editor UI, map/faction/HQ, waypoint routes, Routes panel |
@@ -50,7 +50,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 ### Phase 3 — Accuracy & breadth
 | Issue | Task |
 |-------|------|
-| [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26) | AES extraction → real speed/accel in `vehicles.json` |
+| [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26) | ~~AES extraction → real speed~~ **Partial:** theoretical top speeds from blueprint exports in `vehicles.json`. Still open: in-game spot-check, acceleration model |
 | [#27](https://github.com/Djurre1981/hll-tactika-test/issues/27) | Multi-vehicle types per plan |
 
 ### Phase 4 — Integration

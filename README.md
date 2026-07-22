@@ -277,7 +277,7 @@ Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the edit
 4. **Adjust the route:** drag waypoints, click the path to insert a waypoint, **Delete** to remove the selected waypoint.
 5. Multiple routes per plan; each gets a color. The right **Routes** panel lists them — hover to highlight on the map.
 
-**Travel time** uses path length at a **38 km/h placeholder** until real vehicle stats are extracted ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)).
+**Travel time** uses path length at the **transport-truck speed from `vehicles.json`** (Ford F60L theoretical top speed via `npm run extract:vehicles`, [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)).
 
 ### Obstacle editing
 
@@ -310,11 +310,12 @@ Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
 | Asset / script | Role |
 |----------------|------|
 | `public/data/hq-spawns.json` | Faction HQ spawn points per map |
-| `public/data/vehicles.json` | Vehicle speed placeholders (transport truck) |
+| `public/data/vehicles.json` | Wheeled vehicle speeds (FModel blueprint extract) |
 | `public/maps/accessibility/{mapId}_Accessible.png` | Source accessibility overlays |
 | `public/data/accessibility/{mapId}.vectors.json` | Traced obstacle polygons for pathfinding |
 | `npm run extract:accessibility` | Regenerate grid + vector JSON from PNGs |
 | `npm run extract:hq-spawns` | Regenerate HQ spawn data from Maps Let Loose |
+| `npm run extract:vehicles` | Regenerate wheeled speeds from FModel Vehicles JSON export |
 
 ### Routeplanner file layout (for developers)
 
