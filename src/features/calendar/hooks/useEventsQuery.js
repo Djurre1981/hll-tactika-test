@@ -52,6 +52,32 @@ export function useEventsRangeQuery({ from, to, enabled = true } = {}) {
   });
 }
 
+export function useEventQuery(eventId, { enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.events.byId(eventId),
+    queryFn: () => apiClient(`/events/${eventId}`).then((data) => data.event),
+    enabled: Boolean(eventId) && enabled,
+  });
+}
+
+export function useEventComponentsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, action, type, id }) =>
+      apiClient(`/events/${eventId}/components`, {
+        method: "POST",
+        body: JSON.stringify({ action, type, id }),
+      }),
+    onSettled: (_data, _error, vars) => {
+      invalidateEvents(queryClient);
+      if (vars?.eventId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(vars.eventId) });
+      }
+    },
+  });
+}
+
 export function useCreateEventMutation() {
   const queryClient = useQueryClient();
 
@@ -67,6 +93,12 @@ export function useCreateEventMutation() {
       const optimistic = {
         ...event,
         id: `temp-${crypto.randomUUID()}`,
+        components: event.components || {
+          stratIds: [],
+          routePlanIds: [],
+          whiteboardIds: [],
+          rosterId: null,
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

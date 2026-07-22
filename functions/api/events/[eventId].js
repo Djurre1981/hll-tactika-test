@@ -1,10 +1,33 @@
-import { requireEditor, readJsonBody } from "../../lib/auth-request.js";
-import { deleteEvent, updateEvent } from "../../lib/events-store.js";
+import { requireAuth, requireEditor, readJsonBody } from "../../lib/auth-request.js";
+import { deleteEvent, getEvent, updateEvent } from "../../lib/events-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 import { sanitizeEventBody } from "../events.js";
 
 function eventIdFromContext(context) {
   return String(context.params?.eventId || "").trim();
+}
+
+export async function onRequestGet(context) {
+  const auth = await requireAuth(context);
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const eventId = eventIdFromContext(context);
+  if (!eventId) {
+    return errorResponse("Missing event id", 400);
+  }
+
+  try {
+    const event = await getEvent(context.env, eventId);
+    if (!event) {
+      return errorResponse("Event not found", 404);
+    }
+    return json({ event });
+  } catch (error) {
+    console.error("GET /api/events/:eventId failed:", error);
+    return errorResponse("Failed to load event", 500);
+  }
 }
 
 export async function onRequestPatch(context) {

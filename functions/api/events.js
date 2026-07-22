@@ -1,5 +1,10 @@
 import { requireAuth, requireEditor, readJsonBody } from "../lib/auth-request.js";
-import { listEvents, createEvent } from "../lib/events-store.js";
+import {
+  listEvents,
+  createEvent,
+  emptyEventComponents,
+  sanitizeEventComponents,
+} from "../lib/events-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
 const EVENT_TYPES = ["scrim", "comp", "practice", "other"];
@@ -69,6 +74,12 @@ function sanitizeEventBody(body, { partial = false } = {}) {
     event.eventType = eventType;
   } else if (!partial) {
     event.eventType = "other";
+  }
+
+  if (Object.hasOwn(body, "components")) {
+    event.components = sanitizeEventComponents(body.components);
+  } else if (!partial) {
+    event.components = emptyEventComponents();
   }
 
   return { event };
