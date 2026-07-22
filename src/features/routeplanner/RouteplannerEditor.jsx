@@ -106,6 +106,7 @@ export function RouteplannerEditor({
   const shellRef = useRef(null);
   const leftRef = useRef(null);
   const rightRef = useRef(null);
+  const stableRightInsetRef = useRef(null);
 
   const [mapId, setMapId] = useState(plan?.mapId || "Carentan");
   const [factionId, setFactionId] = useState(plan?.factionId || "us");
@@ -170,9 +171,19 @@ export function RouteplannerEditor({
       const shellRect = shell.getBoundingClientRect();
       const leftRect = left?.getBoundingClientRect();
       const rightRect = right?.getBoundingClientRect();
+      const measuredRight = rightRect
+        ? Math.max(0, shellRect.right - rightRect.left + STRAT_PANEL_GAP)
+        : 0;
+      if (!showObstacles && measuredRight > 0) {
+        stableRightInsetRef.current = measuredRight;
+      }
+      const rightInset =
+        showObstacles && stableRightInsetRef.current != null
+          ? stableRightInsetRef.current
+          : measuredRight;
       setPanelInsets({
         left: leftRect ? Math.max(0, leftRect.right - shellRect.left + STRAT_PANEL_GAP) : 0,
-        right: rightRect ? Math.max(0, shellRect.right - rightRect.left + STRAT_PANEL_GAP) : 0,
+        right: rightInset,
         top: leftRect ? Math.max(24, leftRect.top - shellRect.top + STRAT_PANEL_GAP) : 24,
         bottom: 24,
       });
@@ -188,12 +199,6 @@ export function RouteplannerEditor({
       window.removeEventListener("resize", measure);
     };
   }, [showObstacles]);
-
-  useEffect(() => {
-    if (!kernelReady) return;
-    const t = window.setTimeout(() => kernelRef.current?.fitToView(), PANEL_COLLAPSE_MS);
-    return () => window.clearTimeout(t);
-  }, [showObstacles, kernelReady]);
 
   const hqSpawns = useMemo(() => {
     return hqData?.maps?.[mapId]?.factions?.[factionId]?.hqSpawns || [];
@@ -318,6 +323,11 @@ export function RouteplannerEditor({
   );
 
   const enterObstacleMode = useCallback(() => {
+    dragRef.current = null;
+    kernelRef.current?.setBlockPan(false);
+    setSelectedWaypoint(null);
+    setDragPreview(null);
+    setPlottingRouteId(null);
     setShowObstacles(true);
     setObstacleEditMode(true);
     setObstacleTool("select");
@@ -487,6 +497,7 @@ export function RouteplannerEditor({
       const inserted = insertWaypointOnPath(waypoints, route.points, pt);
       if (!inserted) return;
 
+      suppressNextClickRef.current = true;
       setSelectedRouteId(routeId);
       setSelectedWaypoint({ routeId, index: inserted.insertIndex });
       await replanRoute(routeId, inserted.waypoints);
@@ -552,6 +563,24 @@ export function RouteplannerEditor({
       if (showObstacles) return;
       if (obstacleEditMode && obstacleTool !== "select") return;
 
+      if (suppressNextClickRef.current) {
+        suppressNextClickRef.current = false;
+        return;
+      }
+
+      if (!plottingRouteId && selectedRouteId) {
+        const route = routesRef.current.find((r) => r.id === selectedRouteId);
+        if (isRouteEditable(route)) {
+          const waypoints = getRouteWaypoints(route);
+          const inserted = insertWaypointOnPath(waypoints, route.points, pt);
+          if (inserted) {
+            setSelectedWaypoint({ routeId: selectedRouteId, index: inserted.insertIndex });
+            await replanRoute(selectedRouteId, inserted.waypoints);
+            return;
+          }
+        }
+      }
+
       setSelectedWaypoint(null);
       if (!plottingRouteId) return;
       const route = routesRef.current.find((r) => r.id === plottingRouteId);
@@ -588,6 +617,8 @@ export function RouteplannerEditor({
     [
       showObstacles,
       plottingRouteId,
+      selectedRouteId,
+      replanRoute,
       mapId,
       hqIndex,
       factionId,
@@ -796,6 +827,7 @@ export function RouteplannerEditor({
   };
 
   const handleWaypointPointerDown = (routeId, waypointIndex, event) => {
+    if (showObstacles) return;
     event.preventDefault();
     event.stopPropagation();
     const route = routes.find((r) => r.id === routeId);
@@ -828,6 +860,7 @@ export function RouteplannerEditor({
 
   const handleWaypointContextMenu = useCallback(
     async (routeId, waypointIndex) => {
+      if (showObstacles) return;
       const route = routesRef.current.find((r) => r.id === routeId);
       const waypoints = getRouteWaypoints(route);
       const wp = waypoints[waypointIndex];
@@ -837,7 +870,7 @@ export function RouteplannerEditor({
       setSelectedWaypoint(null);
       await replanRoute(routeId, next);
     },
-    [replanRoute]
+    [showObstacles, replanRoute]
   );
 
   const handleObstaclePointerDown = useCallback(
@@ -1147,7 +1180,7 @@ export function RouteplannerEditor({
         handleRemoveSelectedObstacle();
         return;
       }
-      if (!selectedWaypoint || selectedWaypoint.index <= 0) return;
+      if (!selectedWaypoint || selectedWaypoint.index <= 0 || showObstacles) return;
       const route = routesRef.current.find((r) => r.id === selectedWaypoint.routeId);
       const waypoints = getRouteWaypoints(route);
       if (selectedWaypoint.index >= waypoints.length - 1) return;
@@ -1286,7 +1319,7 @@ export function RouteplannerEditor({
     hqData?.maps?.[mapId]?.factions?.[getRouteFactionId(selectedRoute, factionId)]?.hqSpawns ||
     [];
   const routeHint =
-    selectedRoute && isRouteEditable(selectedRoute)
+    !showObstacles && selectedRoute && isRouteEditable(selectedRoute)
       ? "Left-click the route to add a waypoint · Drag handles to move · Right-click a via to remove"
       : null;
 
@@ -1385,6 +1418,7 @@ export function RouteplannerEditor({
         selectedWaypoint={selectedWaypoint}
         dragPreview={dragPreview}
         hideVehicleMarkers={timelineActive}
+        obstacleEditMode={showObstacles}
         onWaypointPointerDown={handleWaypointPointerDown}
         onWaypointContextMenu={handleWaypointContextMenu}
         onRoutePathClick={handleRoutePathClick}
@@ -1423,12 +1457,6 @@ export function RouteplannerEditor({
               }}
               factionId={factionId}
               onFactionChange={handleFactionChange}
-              hqIndex={hqIndex}
-              onHqChange={(index) => {
-                setHqIndex(index);
-                persistPatch({ hqIndex: index });
-              }}
-              hqSpawns={hqSpawns}
               obstacleCount={obstacles.length}
               routeHint={routeHint}
               status={status}

@@ -104,17 +104,46 @@ export function projectPointOnSegment(p, a, b) {
   return { x: a.x + t * dx, y: a.y + t * dy };
 }
 
-function pathIndexNearestPoint(points, target) {
-  let best = 0;
-  let bestD = Infinity;
-  for (let i = 0; i < points.length; i++) {
-    const d = Math.hypot(points[i].x - target.x, points[i].y - target.y);
-    if (d < bestD) {
-      bestD = d;
-      best = i;
+function pathLengthToPoint(pathPoints, segmentIndex, pointOnSegment) {
+  let dist = 0;
+  for (let i = 0; i < segmentIndex; i += 1) {
+    dist += Math.hypot(pathPoints[i + 1].x - pathPoints[i].x, pathPoints[i + 1].y - pathPoints[i].y);
+  }
+  if (pointOnSegment) {
+    dist += Math.hypot(
+      pointOnSegment.x - pathPoints[segmentIndex].x,
+      pointOnSegment.y - pathPoints[segmentIndex].y
+    );
+  }
+  return dist;
+}
+
+function waypointDistanceAlongPath(pathPoints, waypoint) {
+  const closest = closestPointOnPath(pathPoints, waypoint);
+  if (!closest?.point) return 0;
+  return pathLengthToPoint(pathPoints, closest.segmentIndex, closest.point);
+}
+
+function insertIndexForClick(pathPoints, waypoints, clickDist) {
+  if (waypoints.length < 2) return 1;
+
+  const startDist = waypointDistanceAlongPath(pathPoints, waypoints[0]);
+  const endDist = waypointDistanceAlongPath(pathPoints, waypoints[waypoints.length - 1]);
+
+  if (clickDist <= startDist) return 1;
+  if (clickDist >= endDist) return waypoints.length - 1;
+
+  for (let i = 0; i < waypoints.length - 1; i += 1) {
+    const d0 = waypointDistanceAlongPath(pathPoints, waypoints[i]);
+    const d1 = waypointDistanceAlongPath(pathPoints, waypoints[i + 1]);
+    const lo = Math.min(d0, d1);
+    const hi = Math.max(d0, d1);
+    if (clickDist >= lo && clickDist <= hi) {
+      return i + 1;
     }
   }
-  return best;
+
+  return waypoints.length - 1;
 }
 
 /** Closest point on the displayed route polyline to a map click. */
@@ -160,20 +189,11 @@ export function insertWaypointOnPath(
   if (!closest?.point || closest.distance > hitThreshold) return null;
   if (isNearExistingWaypoint(click, waypoints, waypointThreshold)) return null;
 
-  const pathIndices = waypoints.map((w) => pathIndexNearestPoint(pathPoints, w));
-  let insertAt = 1;
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    if (
-      closest.segmentIndex >= pathIndices[i] &&
-      closest.segmentIndex <= pathIndices[i + 1]
-    ) {
-      insertAt = i + 1;
-      break;
-    }
-  }
+  const clickDist = pathLengthToPoint(pathPoints, closest.segmentIndex, closest.point);
+  const insertAt = insertIndexForClick(pathPoints, waypoints, clickDist);
 
   const next = waypoints.map((p) => ({ ...p }));
-  next.splice(insertAt, 0, { x: closest.point.x, y: closest.point.y, user: true });
+  next.splice(insertAt, 0, { x: click.x, y: click.y, user: true });
   return { waypoints: next, insertIndex: insertAt };
 }
 

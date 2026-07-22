@@ -141,9 +141,6 @@ export function RouteplannerSettingsPanel({
   onMapChange,
   factionId,
   onFactionChange,
-  hqIndex = 0,
-  onHqChange,
-  hqSpawns = [],
   selectedRoute = null,
   selectedRouteIndex = -1,
   routeHqSpawns = [],
@@ -158,7 +155,7 @@ export function RouteplannerSettingsPanel({
   status = "",
 }) {
   const routeFactionId = selectedRoute?.factionId || factionId;
-  const routeSpawns = selectedRoute ? routeHqSpawns : hqSpawns;
+  const routeSpawns = routeHqSpawns;
 
   return (
     <aside className={panelShell} aria-label="Route planner settings">
@@ -214,11 +211,6 @@ export function RouteplannerSettingsPanel({
                   ))}
                 </select>
               </label>
-
-              <div className="mb-3">
-                <p className={fieldLabel}>Start point</p>
-                <HqSpawnPicker hqIndex={hqIndex} hqSpawns={hqSpawns} onChange={onHqChange} />
-              </div>
             </>
           )}
 

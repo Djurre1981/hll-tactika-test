@@ -22,11 +22,13 @@ export function RouteMapCanvas({
 }) {
   const hostRef = useRef(null);
   const localKernel = useRef(null);
+  const fittedRef = useRef(false);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
 
+    fittedRef.current = false;
     const kernel = new MapKernel({ mapId });
     kernel.mount(host);
     kernel.setTool({ tool: "select" });
@@ -45,9 +47,13 @@ export function RouteMapCanvas({
     if (panelInsets) kernel.setPanelInsets(panelInsets);
     onKernelReady?.(kernel);
     kernel.fitToView();
+    fittedRef.current = true;
 
     const ro = new ResizeObserver(() => {
-      if (host.clientWidth > 0 && host.clientHeight > 0) kernel.fitToView();
+      if (!fittedRef.current && host.clientWidth > 0 && host.clientHeight > 0) {
+        fittedRef.current = true;
+        kernel.fitToView();
+      }
     });
     ro.observe(host);
 
@@ -69,7 +75,6 @@ export function RouteMapCanvas({
     const kernel = localKernel.current;
     if (!kernel || !panelInsets) return;
     kernel.setPanelInsets(panelInsets);
-    kernel.fitToView();
   }, [panelInsets]);
 
   useEffect(() => {

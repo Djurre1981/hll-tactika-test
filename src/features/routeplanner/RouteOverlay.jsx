@@ -114,6 +114,7 @@ export function RouteOverlay({
   dragPreview,
   pendingEnd,
   hideVehicleMarkers = false,
+  obstacleEditMode = false,
   onWaypointPointerDown,
   onWaypointContextMenu,
   onRoutePathClick,
@@ -127,8 +128,9 @@ export function RouteOverlay({
   if (!kernel || !stage) return null;
 
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
-  const routeEditing = isRouteEditable(selectedRoute);
+  const routeEditing = isRouteEditable(selectedRoute) && !obstacleEditMode;
   const visibleWaypoints = routeEditing ? getVisibleWaypoints(selectedRoute) : [];
+  const routeOpacity = obstacleEditMode ? 0.5 : 1;
   const m = overlayMetrics(imgW, imgH);
 
   return createPortal(
@@ -178,12 +180,13 @@ export function RouteOverlay({
         const pts = polylinePoints(route.points, imgW, imgH);
         if (!pts) return null;
         const highlighted =
-          route.id === hoveredRouteId || route.id === selectedRouteId;
+          !obstacleEditMode &&
+          (route.id === hoveredRouteId || route.id === selectedRouteId);
         const isSelected = route.id === selectedRouteId;
         const hitWidth = Math.max(m.routeStroke.highlighted * 4, m.routeHitWidth);
 
         return (
-          <g key={route.id}>
+          <g key={route.id} opacity={routeOpacity}>
             {routeEditing && isSelected && onRoutePathClick && (
               <polyline
                 points={pts}
@@ -193,7 +196,7 @@ export function RouteOverlay({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 style={{ pointerEvents: "stroke", cursor: "crosshair" }}
-                onClick={(e) => {
+                onPointerDown={(e) => {
                   if (e.button !== 0) return;
                   e.stopPropagation();
                   const pt = kernel.screenToMapPercent(e.clientX, e.clientY);
@@ -214,10 +217,9 @@ export function RouteOverlay({
               strokeWidth={highlighted ? m.routeStroke.highlighted : m.routeStroke.normal}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={1}
               style={{ pointerEvents: "none" }}
             />
-            {route.points.length >= 1 && !hideVehicleMarkers && (
+            {route.points.length >= 1 && !hideVehicleMarkers && !obstacleEditMode && (
               <RouteVehicleMarker
                 route={route}
                 factionId={getRouteFactionId(route, planFactionId)}

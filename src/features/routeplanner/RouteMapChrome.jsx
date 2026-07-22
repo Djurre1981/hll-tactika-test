@@ -44,7 +44,7 @@ export function RouteMapChrome({
         className={cx(
           glassIconBtn,
           showObstacles &&
-            "border-red-400/40 bg-red-500/15 text-red-100 hover:border-red-400/40 hover:bg-red-500/15"
+            "border-red-900/40 bg-[rgba(92,38,38,0.58)] text-red-50 hover:border-red-900/40 hover:bg-[rgba(92,38,38,0.58)]"
         )}
         onClick={onToggleObstacles}
       >
