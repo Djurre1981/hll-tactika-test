@@ -19,6 +19,13 @@ export const FACTIONS = [
   { id: "ger", label: "GER" },
 ];
 
+/** HQ spawn slots index 0–2 (north → south on typical maps). */
+export const HQ_SPAWN_LABELS = ["HQ north", "HQ mid", "HQ south"];
+
+export function getHqSpawnLabel(hqIndex) {
+  return HQ_SPAWN_LABELS[hqIndex] ?? `HQ ${hqIndex + 1}`;
+}
+
 export function clampPct(value) {
   return Math.min(MAP_PCT_MAX, Math.max(MAP_PCT_MIN, value));
 }

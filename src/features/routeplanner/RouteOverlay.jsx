@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getVisibleWaypoints } from "./path/plan-route.js";
-import { getRouteFactionId } from "./constants.js";
+import { getRouteFactionId, getHqSpawnLabel } from "./constants.js";
 import { RouteVehicleMarker } from "./RouteVehicleMarker.jsx";
 
 function mapPctToPx(x, y, imgW, imgH) {
@@ -166,7 +166,7 @@ export function RouteOverlay({
               fontSize={m.hqLabelSize}
               fontWeight="600"
             >
-              HQ {index + 1}
+              {getHqSpawnLabel(index)}
             </text>
           </g>
         );

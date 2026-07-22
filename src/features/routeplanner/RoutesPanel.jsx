@@ -1,6 +1,6 @@
 import { formatTravelTime } from "./timing/travel-time.js";
 import { formatMatchTime } from "./timing/route-timing.js";
-import { getRouteFactionId } from "./constants.js";
+import { getRouteFactionId, getHqSpawnLabel } from "./constants.js";
 import {
   getRouteVehicleIconSrc,
   getRouteVehicleLabel,
@@ -111,8 +111,8 @@ export function RoutesPanel({
                             ? ` · arrives ${formatMatchTime(route.matchArrivalSec)}`
                             : ""}
                           {" · "}
-                          {getRouteVehicleLabel(route.vehicleId, routeFaction)} · HQ{" "}
-                          {route.hqIndex + 1}
+                          {getRouteVehicleLabel(route.vehicleId, routeFaction)} ·{" "}
+                          {getHqSpawnLabel(route.hqIndex)}
                         </span>
                       </span>
                     </button>

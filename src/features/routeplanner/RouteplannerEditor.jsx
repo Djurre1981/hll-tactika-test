@@ -1136,6 +1136,28 @@ export function RouteplannerEditor({
     [updateRoute]
   );
 
+  const handleRouteHqChange = useCallback(
+    async (routeId, nextHqIndex) => {
+      const route = routesRef.current.find((r) => r.id === routeId);
+      if (!route) return;
+      const faction = getRouteFactionId(route, factionId);
+      const spawns = hqData?.maps?.[mapId]?.factions?.[faction]?.hqSpawns || [];
+      const newHq = spawns[nextHqIndex];
+      if (!newHq) return;
+
+      const waypoints = getRouteWaypoints(route);
+      if (waypoints.length >= 2) {
+        const dest = waypoints[waypoints.length - 1];
+        const via = waypoints.slice(1, -1);
+        updateRoute(routeId, (r) => ({ ...r, hqIndex: nextHqIndex }));
+        await replanRoute(routeId, [{ ...newHq }, ...via, dest]);
+        return;
+      }
+      updateRoute(routeId, (r) => ({ ...r, hqIndex: nextHqIndex }));
+    },
+    [factionId, hqData, mapId, updateRoute, replanRoute]
+  );
+
   const handleRouteFactionChange = useCallback(
     async (routeId, nextFaction) => {
       const route = routesRef.current.find((r) => r.id === routeId);
@@ -1189,6 +1211,9 @@ export function RouteplannerEditor({
   const overlayHqSpawns =
     hqData?.maps?.[mapId]?.factions?.[overlayFactionId]?.hqSpawns || hqSpawns;
   const overlayHqSide = getHqSideFromData(hqData, mapId, overlayFactionId);
+  const selectedRouteHqSpawns =
+    hqData?.maps?.[mapId]?.factions?.[getRouteFactionId(selectedRoute, factionId)]?.hqSpawns ||
+    [];
   const routeHint =
     selectedRoute && getRouteWaypoints(selectedRoute).length >= 2
       ? "Click the route line to add a waypoint · Drag handles to move · Right-click or Delete removes a manual via-point"
@@ -1326,15 +1351,23 @@ export function RouteplannerEditor({
               }}
               factionId={factionId}
               onFactionChange={handleFactionChange}
+              hqIndex={hqIndex}
+              onHqChange={(index) => {
+                setHqIndex(index);
+                persistPatch({ hqIndex: index });
+              }}
+              hqSpawns={hqSpawns}
               obstacleCount={obstacles.length}
               routeHint={routeHint}
               status={status}
               selectedRoute={selectedRoute}
               selectedRouteIndex={selectedRouteIndex}
+              routeHqSpawns={selectedRouteHqSpawns}
               onRouteColorChange={handleRouteColorChange}
               onRouteNameChange={handleRouteNameChange}
               onRouteDriverChange={handleRouteDriverChange}
               onRouteFactionChange={handleRouteFactionChange}
+              onRouteHqChange={handleRouteHqChange}
               onRouteVehicleChange={handleVehicleChange}
             />
           )}

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
-import { FACTIONS, ROUTE_COLORS } from "./constants.js";
+import { FACTIONS, ROUTE_COLORS, HQ_SPAWN_LABELS } from "./constants.js";
 import {
   getRouteVehicleLabel,
   getRouteVehicleOptions,
@@ -18,6 +18,8 @@ import {
   panelGlassFill,
   panelShell,
   sectionTitle,
+  segmentedBtn,
+  segmentedBtnActive,
   toolBtn,
   toolBtnActive,
 } from "../strats/editor/editorUi.js";
@@ -106,24 +108,57 @@ function RouteVehiclePicker({ vehicleId, factionId, onChange }) {
   );
 }
 
+function HqSpawnPicker({ hqIndex, hqSpawns, onChange }) {
+  return (
+    <div
+      className="mt-1.5 flex gap-1"
+      role="group"
+      aria-label="Start point"
+    >
+      {HQ_SPAWN_LABELS.map((label, index) => (
+        <button
+          key={label}
+          type="button"
+          disabled={!hqSpawns[index]}
+          aria-pressed={hqIndex === index}
+          onClick={() => onChange(index)}
+          className={cx(
+            segmentedBtn,
+            "min-w-0 flex-1 px-1.5 py-[0.45rem] text-center text-[0.64rem] leading-tight",
+            hqIndex === index && segmentedBtnActive
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function RouteplannerSettingsPanel({
   backTo = "/home",
   mapId,
   onMapChange,
   factionId,
   onFactionChange,
+  hqIndex = 0,
+  onHqChange,
+  hqSpawns = [],
   selectedRoute = null,
   selectedRouteIndex = -1,
+  routeHqSpawns = [],
   onRouteColorChange,
   onRouteNameChange,
   onRouteDriverChange,
   onRouteFactionChange,
+  onRouteHqChange,
   onRouteVehicleChange,
   obstacleCount = 0,
   routeHint = null,
   status = "",
 }) {
   const routeFactionId = selectedRoute?.factionId || factionId;
+  const routeSpawns = selectedRoute ? routeHqSpawns : hqSpawns;
 
   return (
     <aside className={panelShell} aria-label="Route planner settings">
@@ -164,20 +199,27 @@ export function RouteplannerSettingsPanel({
           </label>
 
           {!selectedRoute && (
-            <label className="mb-3 block">
-              <span className={fieldLabel}>Faction</span>
-              <select
-                value={factionId}
-                onChange={(e) => onFactionChange(e.target.value)}
-                className={cx(glassSelect, "mt-1.5")}
-              >
-                {FACTIONS.map((f) => (
-                  <option key={f.id} value={f.id} className="bg-[#121214]">
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <>
+              <label className="mb-3 block">
+                <span className={fieldLabel}>Faction</span>
+                <select
+                  value={factionId}
+                  onChange={(e) => onFactionChange(e.target.value)}
+                  className={cx(glassSelect, "mt-1.5")}
+                >
+                  {FACTIONS.map((f) => (
+                    <option key={f.id} value={f.id} className="bg-[#121214]">
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="mb-3">
+                <p className={fieldLabel}>Start point</p>
+                <HqSpawnPicker hqIndex={hqIndex} hqSpawns={hqSpawns} onChange={onHqChange} />
+              </div>
+            </>
           )}
 
           <p className="m-0 text-[0.72rem] font-light leading-snug text-white/45">
@@ -249,6 +291,15 @@ export function RouteplannerSettingsPanel({
                   ))}
                 </select>
               </label>
+
+              <div className="mb-3">
+                <p className={fieldLabel}>Start point</p>
+                <HqSpawnPicker
+                  hqIndex={selectedRoute.hqIndex ?? 0}
+                  hqSpawns={routeSpawns}
+                  onChange={(index) => onRouteHqChange?.(selectedRoute.id, index)}
+                />
+              </div>
 
               <div className="mb-3">
                 <p className={fieldLabel}>Vehicle</p>
