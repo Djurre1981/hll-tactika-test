@@ -50,16 +50,21 @@
 
 ### What we’re building
 
-Today Circle has strong **tools** (Stratmaker, Routeplanner, Micro Prep, Calendar, Roster) but they barely talk to each other. Before a match you hunt across apps.
+**Tactika is new.** Circle does not run match ops in Tactika yet.
 
-We are building a **match night hub**:
+**How Circle works today (outside Tactika):**
+- **[Stratsketch](https://stratsketch.com)** — nearly everything for strats / prep visuals
+- **Apollobot** — Discord signups / attendance-style flow
+- **Google Sheets** — roster
+
+Before a match, people bounce between those tools. We are building Tactika as the **single match-night hub** that replaces that split:
 
 1. A **calendar event** (scrim / practice / comp / other) becomes the folder for that night.
-2. That event can hold links to a **strat**, **route plan**, **whiteboard**, and **roster** (the “backpack”).
+2. That event can hold links to a **strat**, **route plan**, **whiteboard**, and **roster** (the “backpack”) — Tactika’s own tools, not Stratsketch glue.
 3. A **Match Brief** page opens that folder and shows everything in one screen.
-4. Players can **RSVP**, see a **countdown** on the home dashboard, get **Discord pings**, and later we retire **Apollobot** by syncing people from Discord into Tactika.
+4. Players can **RSVP**, see a **countdown** on the home dashboard, get **Discord pings**, and we retire **Apollobot** + the **Sheets roster** by syncing people from Discord into Tactika.
 
-Inspired by [RallyPoint](https://www.rallypoint.fyi/) ideas (#23), but built on what Tactika already has.
+Inspired by [RallyPoint](https://www.rallypoint.fyi/) ideas (#23). The Stratmaker / Routeplanner / Micro Prep / Calendar / Roster pieces in this repo are the **new** stack we’re wiring together for closed release — not a polish pass on an already-live Circle product.
 
 ### Where things live in the app
 
@@ -104,7 +109,7 @@ Think of it as building a house:
 | Discord calendar / create | Bot slash + two-way sync | T12b |
 | Team record / form | KPIs + history | T8, T10 |
 | Roster templates | Management roster | T11 |
-| Replace Apollobot roster | Live Discord roster sync | T0d |
+| Replace Apollobot + Sheets roster | Live Discord roster sync in Tactika | T0d |
 
 ---
 
