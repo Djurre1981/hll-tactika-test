@@ -1,4 +1,4 @@
-import { isBlocked } from "./accessibility-grid.js";
+import { isVehicleCellBlocked } from "./vehicle-clearance.js";
 
 const NEIGHBORS = [
   [1, 0],
@@ -19,11 +19,11 @@ function heuristic(a, b) {
   return Math.hypot(b.gx - a.gx, b.gy - a.gy);
 }
 
-/** BFS outward to the nearest drivable cell (handles HQ/clicks on padded edges). */
+/** BFS outward to the nearest cell where a truck fits (handles HQ/clicks on edges). */
 export function snapToNearestFree(grid, point, maxRadius = 18) {
   const size = grid.gridSize;
   const { gx, gy } = point;
-  if (!isBlocked(grid, gx, gy)) return point;
+  if (!isVehicleCellBlocked(grid, gx, gy)) return point;
 
   const queue = [{ gx, gy, d: 0 }];
   const seen = new Set([key(gx, gy)]);
@@ -38,7 +38,7 @@ export function snapToNearestFree(grid, point, maxRadius = 18) {
       const nk = key(nx, ny);
       if (seen.has(nk)) continue;
       seen.add(nk);
-      if (!isBlocked(grid, nx, ny)) return { gx: nx, gy: ny };
+      if (!isVehicleCellBlocked(grid, nx, ny)) return { gx: nx, gy: ny };
       queue.push({ gx: nx, gy: ny, d: d + 1 });
     }
   }
@@ -47,7 +47,7 @@ export function snapToNearestFree(grid, point, maxRadius = 18) {
 }
 
 /**
- * A* on accessibility grid. Returns grid cell path or null.
+ * A* on accessibility grid with truck-width clearance at each cell.
  */
 export function findGridPath(grid, start, end) {
   const size = grid.gridSize;
@@ -92,7 +92,12 @@ export function findGridPath(grid, start, end) {
       const nx = cx + dx;
       const ny = cy + dy;
       if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
-      if (isBlocked(grid, nx, ny)) continue;
+      if (isVehicleCellBlocked(grid, nx, ny)) continue;
+      if (dx !== 0 && dy !== 0) {
+        if (isVehicleCellBlocked(grid, cx + dx, cy) || isVehicleCellBlocked(grid, cx, cy + dy)) {
+          continue;
+        }
+      }
       const nk = key(nx, ny);
       const step = dx !== 0 && dy !== 0 ? 1.414 : 1;
       const tentative = baseG + step;

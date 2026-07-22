@@ -29,7 +29,7 @@ export function isBlocked(grid, gx, gy) {
   return grid.blocked[gy * grid.gridSize + gx] === 1;
 }
 
-export function segmentCrossesBlocked(grid, a, b, sampleStep = 0.4) {
+export function segmentCrossesBlocked(grid, a, b, sampleStep = 0.25) {
   const steps = Math.max(2, Math.ceil(dist(a, b) / sampleStep));
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;

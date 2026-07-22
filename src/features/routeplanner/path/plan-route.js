@@ -1,30 +1,19 @@
-import { mapPctToGrid, gridToMapPct } from "./coords.js";
 import { loadEffectiveGrid } from "../obstacles/obstacle-grid.js";
-import { findGridPath } from "./astar.js";
-import { finalizeRoutePath } from "./smooth-path.js";
+import { findRouteLegPath } from "./route-engine.js";
 
 /**
  * Plan a transport route from start to end on map image coords (0–100).
  */
 export async function planRoute(mapId, start, end, obstacles = []) {
   const grid = await loadEffectiveGrid(mapId, obstacles);
-  const gridStart = mapPctToGrid(start.x, start.y, grid.gridSize);
-  const gridEnd = mapPctToGrid(end.x, end.y, grid.gridSize);
-
-  const path = findGridPath(grid, gridStart, gridEnd);
-  if (!path) {
+  const points = findRouteLegPath(grid, start, end);
+  if (!points) {
     return { ok: false, error: "No path found — destination may be blocked." };
   }
-
-  const mapPoints = path.map(({ gx, gy }) => gridToMapPct(gx, gy, grid.gridSize));
-  mapPoints[0] = { ...start };
-  mapPoints[mapPoints.length - 1] = { ...end };
-
-  const points = finalizeRoutePath(grid, mapPoints);
   return { ok: true, points };
 }
 
-/** @typedef {{ x: number, y: number }} MapPoint */
+/** @typedef {{ x: number, y: number, user?: boolean }} MapPoint */
 
 /**
  * Ordered via-points that constrain routing (Google Maps / OSRM model).
@@ -32,18 +21,46 @@ export async function planRoute(mapId, start, end, obstacles = []) {
  */
 export function getRouteWaypoints(route) {
   if (route?.waypoints?.length >= 2) {
-    return route.waypoints.map((p) => ({ x: p.x, y: p.y }));
+    return route.waypoints.map((p) => ({ x: p.x, y: p.y, user: Boolean(p.user) }));
   }
   // Legacy: auto-simplified "anchors" are collapsed to endpoints only.
   if (route?.anchors?.length >= 2) {
     const a = route.anchors;
-    return [{ x: a[0].x, y: a[0].y }, { x: a[a.length - 1].x, y: a[a.length - 1].y }];
+    return [
+      { x: a[0].x, y: a[0].y, user: Boolean(a[0].user) },
+      { x: a[a.length - 1].x, y: a[a.length - 1].y, user: Boolean(a[a.length - 1].user) },
+    ];
   }
   if (route?.points?.length >= 2) {
     const p = route.points;
-    return [{ x: p[0].x, y: p[0].y }, { x: p[p.length - 1].x, y: p[p.length - 1].y }];
+    return [
+      { x: p[0].x, y: p[0].y },
+      { x: p[p.length - 1].x, y: p[p.length - 1].y },
+    ];
   }
   return [];
+}
+
+/** Waypoints drawn on the map — destination plus manually inserted vias only. */
+export function getVisibleWaypoints(route) {
+  const waypoints = getRouteWaypoints(route);
+  if (waypoints.length < 2) return [];
+
+  const visible = [];
+  for (let i = 1; i < waypoints.length; i += 1) {
+    const wp = waypoints[i];
+    const isEnd = i === waypoints.length - 1;
+    if (isEnd || wp.user) {
+      visible.push({
+        x: wp.x,
+        y: wp.y,
+        index: i,
+        kind: isEnd ? "end" : "via",
+        user: Boolean(wp.user),
+      });
+    }
+  }
+  return visible;
 }
 
 export function pointToSegmentDistance(p, a, b) {
@@ -135,7 +152,7 @@ export function insertWaypointOnPath(
   }
 
   const next = waypoints.map((p) => ({ ...p }));
-  next.splice(insertAt, 0, { x: closest.point.x, y: closest.point.y });
+  next.splice(insertAt, 0, { x: closest.point.x, y: closest.point.y, user: true });
   return { waypoints: next, insertIndex: insertAt };
 }
 
@@ -169,7 +186,7 @@ export function removeWaypoint(waypoints, index) {
 
 /**
  * Recompute path through ordered waypoints (origin → vias → destination).
- * Each leg is pathfound and smoothed independently, then concatenated.
+ * Each leg is pathfound independently (Google Maps / OSRM via-leg model).
  */
 export async function replanThroughWaypoints(mapId, waypoints, obstacles = []) {
   if (!waypoints || waypoints.length < 2) {
@@ -182,28 +199,15 @@ export async function replanThroughWaypoints(mapId, waypoints, obstacles = []) {
   for (let i = 0; i < waypoints.length - 1; i++) {
     const a = waypoints[i];
     const b = waypoints[i + 1];
-    const gridStart = mapPctToGrid(a.x, a.y, grid.gridSize);
-    const gridEnd = mapPctToGrid(b.x, b.y, grid.gridSize);
-    const segment = findGridPath(grid, gridStart, gridEnd);
-    if (!segment) {
+    const leg = findRouteLegPath(grid, a, b);
+    if (!leg) {
       return { ok: false, error: "Segment blocked — adjust waypoint positions." };
     }
-
-    const segmentPoints = segment.map(({ gx, gy }) => gridToMapPct(gx, gy, grid.gridSize));
-    segmentPoints[0] = { ...a };
-    segmentPoints[segmentPoints.length - 1] = { ...b };
-
-    const finalized = finalizeRoutePath(grid, segmentPoints);
-    if (i > 0 && finalized.length > 0) finalized.shift();
-    merged.push(...finalized);
+    if (i > 0 && leg.length > 0) leg.shift();
+    merged.push(...leg);
   }
 
-  if (merged.length >= 1) {
-    merged[0] = { ...waypoints[0] };
-    merged[merged.length - 1] = { ...waypoints[waypoints.length - 1] };
-  }
-
-  return { ok: true, points: merged, waypoints: waypoints.map((p) => ({ ...p })) };
+  return { ok: true, points: merged, waypoints: waypoints.map((p) => ({ ...p, user: Boolean(p.user) })) };
 }
 
 /** @deprecated Use replanThroughWaypoints */

@@ -1,9 +1,10 @@
 import { loadAccessibilityGrid } from "../path/accessibility-grid.js";
 import { MAP_PCT_MAX, MAP_PCT_MIN } from "../constants.js";
-import { pointInPolygon } from "./obstacle-shapes.js";
+import { pointInObstacle } from "./obstacle-shapes.js";
+import { getTransportBodyWidthMapPct } from "../path/vehicle-clearance.js";
 
-/** Finer raster grid for pathfinding — vectors traced from 1920px PNG. */
-const PATHFIND_GRID_SIZE = 384;
+/** Native pathfinding resolution — matches extract-accessibility.mjs GRID. */
+export const PATHFIND_GRID_SIZE = 384;
 
 const effectiveCache = new Map();
 
@@ -12,7 +13,7 @@ function obstaclesKey(obstacles) {
   return obstacles
     .map(
       (o) =>
-        `${o.id}:${o.source || ""}:${o.type}:${o.effect}:${o.points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join("|")}`
+        `${o.id}:${o.source || ""}:${o.type}:${o.effect}:${o.points.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join("|")}${o.holes?.length ? `:h${o.holes.map((ring) => ring.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join("|")).join(";")}` : ""}`
     )
     .join(";");
 }
@@ -51,7 +52,7 @@ function cellInEllipse(gx, gy, gx1, gy1, gx2, gy2) {
 
 function cellInsideObstacle(gx, gy, size, obstacle) {
   if (obstacle.type === "polygon") {
-    return pointInPolygon(gridCellCenterMapPct(gx, gy, size), obstacle.points);
+    return pointInObstacle(gridCellCenterMapPct(gx, gy, size), obstacle);
   }
 
   const xs = obstacle.points.map((p) => mapPctToPathGrid(p.x, p.y, size).gx);
@@ -85,35 +86,55 @@ function rasterizeObstacle(blocked, size, obstacle, value) {
   }
 }
 
-/** Build blocked grid from vector obstacle shapes at pathfinding resolution. */
-function buildBlockedFromObstacles(obstacles = []) {
-  const size = PATHFIND_GRID_SIZE;
-  const blocked = new Uint8Array(size * size);
-
-  for (const obstacle of obstacles) {
-    if (obstacle.effect === "clear") continue;
-    rasterizeObstacle(blocked, size, obstacle, 1);
+function upsampleBlocked(baseBlocked, baseSize, targetSize) {
+  const out = new Uint8Array(targetSize * targetSize);
+  for (let gy = 0; gy < targetSize; gy += 1) {
+    for (let gx = 0; gx < targetSize; gx += 1) {
+      const bx = Math.min(baseSize - 1, Math.floor((gx / targetSize) * baseSize));
+      const by = Math.min(baseSize - 1, Math.floor((gy / targetSize) * baseSize));
+      if (baseBlocked[by * baseSize + bx]) out[gy * targetSize + gx] = 1;
+    }
   }
-  for (const obstacle of obstacles) {
-    if (obstacle.effect !== "clear") continue;
-    rasterizeObstacle(blocked, size, obstacle, 0);
-  }
-
-  return { blocked, gridSize: size };
+  return out;
 }
 
-/** Apply vector obstacles onto the pathfinding grid. */
-export function applyObstaclesToGrid(baseGrid, obstacles = []) {
-  if (!obstacles?.length) return { blocked: new Uint8Array(baseGrid.blocked), gridSize: baseGrid.gridSize };
+function normalizeBaseBlocked(baseGrid, targetSize) {
+  if (baseGrid.gridSize === targetSize) {
+    return baseGrid.blocked instanceof Uint8Array
+      ? new Uint8Array(baseGrid.blocked)
+      : Uint8Array.from(baseGrid.blocked);
+  }
+  return upsampleBlocked(baseGrid.blocked, baseGrid.gridSize, targetSize);
+}
 
-  const { blocked, gridSize } = buildBlockedFromObstacles(obstacles);
-  return { blocked, gridSize };
+/** Apply vector obstacles onto the pathfinding grid (raw — truck width checked at query time). */
+export function applyObstaclesToGrid(baseGrid, obstacles = []) {
+  const gridSize = PATHFIND_GRID_SIZE;
+  const blocked = normalizeBaseBlocked(baseGrid, gridSize);
+
+  if (obstacles?.length) {
+    for (const obstacle of obstacles) {
+      if (obstacle.effect === "clear") continue;
+      rasterizeObstacle(blocked, gridSize, obstacle, 1);
+    }
+    for (const obstacle of obstacles) {
+      if (obstacle.effect !== "clear") continue;
+      rasterizeObstacle(blocked, gridSize, obstacle, 0);
+    }
+  }
+
+  return {
+    blocked,
+    gridSize,
+    vehicleWidthMapPct: getTransportBodyWidthMapPct(),
+  };
 }
 
 export async function loadEffectiveGrid(mapId, obstacles = []) {
   const base = await loadAccessibilityGrid(mapId);
   const oKey = obstaclesKey(obstacles);
-  const cacheKey = `${mapId}:${PATHFIND_GRID_SIZE}:${oKey}`;
+  const widthKey = getTransportBodyWidthMapPct().toFixed(4);
+  const cacheKey = `${mapId}:${PATHFIND_GRID_SIZE}:w${widthKey}:${oKey}`;
   if (effectiveCache.has(cacheKey)) return effectiveCache.get(cacheKey);
 
   const applied = applyObstaclesToGrid(base, obstacles);
@@ -121,6 +142,7 @@ export async function loadEffectiveGrid(mapId, obstacles = []) {
     ...base,
     blocked: applied.blocked,
     gridSize: applied.gridSize,
+    vehicleWidthMapPct: applied.vehicleWidthMapPct,
     obstacles: obstacles || [],
   };
   effectiveCache.set(cacheKey, grid);

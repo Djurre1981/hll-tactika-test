@@ -12,7 +12,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 - **Vehicle (MVP):** Transport truck only
 - **Speed:** Derived from FModel-exported wheeled blueprint drivetrains via `npm run extract:vehicles` ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)); Routeplanner default = Ford F60L Transport theoretical top speed (~38.5 km/h). Acceleration not yet modeled.
 - **Accessibility data:** Extract from [maps-let-loose](https://github.com/mattwright324/maps-let-loose) pipeline; high-res vector trace at 1920²
-- **Pathfinding style:** A* on rasterized obstacles; waypoint editing; shallow curve smoothing on output polyline
+- **Pathfinding style:** Two-phase routing (A* search + string-pull geometry; Maps/OSRM leg model). See [routeplanner-pathfinding.md](./routeplanner-pathfinding.md).
 - **MVP scope:** Route mapping + accessibility snapping + **travel time** + obstacle edit mode + D1 persistence
 - Blind-spot defaults: auth same as strats (logged-in save); no public anonymous plans unless user says otherwise
 - Explicitly deferred: match-clock ETA ([#29](https://github.com/Djurre1981/hll-tactika-test/issues/29)), timeline animation ([#30](https://github.com/Djurre1981/hll-tactika-test/issues/30)), multi-vehicle ([#27](https://github.com/Djurre1981/hll-tactika-test/issues/27)), strat embed ([#28](https://github.com/Djurre1981/hll-tactika-test/issues/28)), AES extraction ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26))
@@ -34,7 +34,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 | T0b | `scripts/extract-accessibility.mjs`, `scripts/trace-accessibility-vectors.mjs`, PNGs + `.vectors.json` per map |
 | T0c | `public/data/hq-spawns.json` — 3 HQs per map/faction |
 | T1 | Routeplanner editor UI, map/faction/HQ, waypoint routes, Routes panel |
-| T1c | A* pathfinding + obstacle rasterization (384 grid) |
+| T1c | Two-phase pathfinding (A* + string-pull) + obstacle rasterization (384 grid) |
 | T2a | `travel-time.js` — seconds from polyline length |
 | T3 | `migrations/0013_route_plans.sql`, `/api/route-plans` CRUD |
 | Extra | Obstacle edit mode, pen tool (Illustrator-style anchors), dashboard tile with Stratmaker |
@@ -70,7 +70,7 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 - [x] `npx vite build` passes; deployed to staging
 
 ## Risks
-- **Pathfinding quality** — shallow-curve / race-line quality may need iteration beyond grid A*
+- **Pathfinding quality** — racing-line curvature still deferred; search uses Lazy Theta* (see [routeplanner-pathfinding.md](./routeplanner-pathfinding.md))
 - **Frontier wall (later)** — position is per map + faction; route segments need timestamps for [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29)
 - **Placeholder vs real speed** — 38 km/h is good enough for MVP UX; swap must not break saved plans ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26))
 - **Large static assets** — accessibility PNGs + vector JSON committed per map; regen via `npm run extract:accessibility`

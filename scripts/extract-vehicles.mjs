@@ -102,6 +102,17 @@ function extractMovement(arr) {
   return (arr || []).find((o) => o?.Type === "WheeledVehicleMovementComponent4W") || null;
 }
 
+function readJeepBarrierHalfWidthCm(file) {
+  const arr = loadJson(file);
+  if (!Array.isArray(arr)) return null;
+  for (const o of arr) {
+    if (o?.Type !== "BoxComponent" || o?.Name !== "JeepBarrier") continue;
+    const y = o?.Properties?.BoxExtent?.Y;
+    if (typeof y === "number" && y > 0) return y;
+  }
+  return null;
+}
+
 function readBlueprintRecord(file, rel) {
   const arr = loadJson(file);
   if (!Array.isArray(arr)) return null;
@@ -138,6 +149,7 @@ function readBlueprintRecord(file, rel) {
     gears: gears.length ? gears : null,
     mass: typeof props.Mass === "number" ? props.Mass : null,
     wheelClass,
+    bodyHalfWidthCm: readJeepBarrierHalfWidthCm(file),
     ownEngine: Boolean(eng.MaxRPM != null || eng.TorqueCurve?.EditorCurveData?.Keys?.length),
   };
 }
@@ -203,6 +215,7 @@ Example:
     const mass = resolveChain(rec, byName, "mass");
     const peakTorqueNm = resolveChain(rec, byName, "peakTorqueNm");
     const wheelClass = resolveChain(rec, byName, "wheelClass");
+    const bodyHalfWidthCm = resolveChain(rec, byName, "bodyHalfWidthCm");
 
     let gears = gearsResolved.value;
     let gearsAssumedDefault = false;
@@ -252,6 +265,8 @@ Example:
       gearsAssumedDefault: gearsAssumedDefault || undefined,
       peakTorqueNm: peakTorqueNm.value,
       wheelRadiusCm: radiusCm,
+      bodyHalfWidthCm: bodyHalfWidthCm.value ?? undefined,
+      bodyHalfWidthSource: bodyHalfWidthCm.from ?? undefined,
       wheelBlueprint: wheelClass.value,
       parentBlueprint: rec.parent || undefined,
       sourceFile: rec.rel,
@@ -285,6 +300,10 @@ Example:
     gears: fordTransport.gears,
     peakTorqueNm: fordTransport.peakTorqueNm,
     wheelRadiusCm: fordTransport.wheelRadiusCm,
+    bodyHalfWidthCm: fordTransport.bodyHalfWidthCm,
+    bodyHalfWidthSource: fordTransport.bodyHalfWidthSource,
+    bodyWidthMethod:
+      "JeepBarrier BoxExtent.Y (UE cm) — half of PhysX vehicle footprint width for route clearance",
   };
 
   // Avoid committing machine-specific absolute paths.
@@ -294,7 +313,7 @@ Example:
     version: 1,
     generatedAt: new Date().toISOString(),
     method:
-      "theoreticalMaxKmh = MaxRPM / (topGearRatio * FinalRatio) * wheelRadius_m * 3.6 (PhysX drivetrain limit)",
+      "theoreticalMaxKmh = MaxRPM / (topGearRatio * FinalRatio) * wheelRadius_m * 3.6 (PhysX drivetrain limit); bodyHalfWidthCm from JeepBarrier BoxExtent.Y",
     inputLabel,
     defaultVehicleId: "transport-truck",
     counts: {
@@ -306,6 +325,22 @@ Example:
 
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
+
+  const bodyOut = path.join(ROOT, "src", "features", "routeplanner", "path", "vehicle-body.js");
+  const halfWidth = fordTransport.bodyHalfWidthCm ?? 108.54575;
+  const bodySource = fordTransport.bodyHalfWidthSource ?? fordTransport.blueprint ?? "BP_Ford_Base";
+  fs.writeFileSync(
+    bodyOut,
+    `/**
+ * Transport truck body half-width for route clearance (UE centimeters).
+ * Updated by \`npm run extract:vehicles\` from JeepBarrier BoxExtent.Y.
+ */
+export const TRANSPORT_TRUCK_BODY_HALF_WIDTH_CM = ${halfWidth};
+export const TRANSPORT_TRUCK_BODY_HALF_WIDTH_SOURCE = "${bodySource}";
+`,
+    "utf8"
+  );
+  console.log(`Wrote ${bodyOut} (half-width ${halfWidth} cm)`);
 
   const transports = Object.values(vehicles)
     .filter((v) => v.role === "transport" && v.id !== "transport-truck")

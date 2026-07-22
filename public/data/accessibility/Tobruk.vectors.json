@@ -1,1 +1,24 @@
-{"version":2,"mapId":"Tobruk","sourceSize":1920,"paddingPx":1,"obstacleCount":0,"obstacles":[],"stats":{"components":0,"vertices":0}}
+{
+  "version": 9,
+  "mapId": "Tobruk",
+  "sourceSize": 1920,
+  "traceMode": "mono-overlay-trace",
+  "traceEngine": "imagetracerjs",
+  "obstacleCount": 0,
+  "obstacles": [],
+  "stats": {
+    "sourceShapes": 0,
+    "skippedSmall": 0,
+    "vertices": 0,
+    "avgVertices": 0,
+    "maxVertices": 0
+  },
+  "viewBox": [
+    0,
+    0,
+    1920,
+    1920
+  ],
+  "flattenToleranceSvg": 0.20345052083333337,
+  "minAreaSvg": 2.5431315104166674
+}

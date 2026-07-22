@@ -1,19 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
-import { FACTIONS, ROUTE_COLORS } from "./constants.js";
+import { ROUTE_COLORS } from "./constants.js";
 import { RouteMapCanvas } from "./RouteMapCanvas.jsx";
 import { RouteOverlay } from "./RouteOverlay.jsx";
 import { ObstacleOverlay } from "./ObstacleOverlay.jsx";
 import { ObstacleToolbar } from "./ObstacleToolbar.jsx";
 import { MapDimOverlay } from "./MapDimOverlay.jsx";
 import { RoutesPanel } from "./RoutesPanel.jsx";
+import { RouteplannerSettingsPanel } from "./RouteplannerSettingsPanel.jsx";
+import { RouteMapChrome } from "./RouteMapChrome.jsx";
+import { EditorUserCluster } from "../strats/editor/EditorUserCluster.jsx";
+import { STRAT_PANEL_GAP, STRAT_PANEL_WIDTH } from "../strats/editor/hooks/useStratEditor.js";
 import { loadAccessibilityGrid } from "./path/accessibility-grid.js";
 import {
   loadAccessibilityVectors,
   mergeAccessibilityObstacles,
   needsObstacleVectorUpgrade,
+  normalizeLayerObstacles,
   clearAccessibilityVectorsCache,
+  vectorBuildId,
 } from "./obstacles/load-accessibility-vectors.js";
 import { extractObstaclesFromGrid } from "./obstacles/extract-obstacles-from-grid.js";
 import {
@@ -29,24 +33,52 @@ import {
   applyObstacleAnchorDrag,
   applyObstacleHandleDrag,
   clampPoint,
-  createPolygonObstacle,
   insertPolygonVertex,
   isNearPoint,
   nudgeObstaclePoints,
   obstacleToPolygonPoints,
   PEN_CLOSE_THRESHOLD,
   removePolygonVertex,
-  resolvePenTarget,
+  resolveShapeEditTarget,
 } from "./obstacles/obstacle-shapes.js";
-import { getDefaultTransportSpeedKmh } from "./timing/vehicle-speeds.js";
+import { applyPenAddUnion, applyPenSubtract } from "./obstacles/obstacle-boolean.mjs";
+import {
+  getDefaultRouteVehicleId,
+  getRouteVehicleSpeedKmh,
+  normalizeRouteVehicleId,
+} from "./route-vehicles.js";
 
-const TRANSPORT_SPEED_KMH = getDefaultTransportSpeedKmh();
-const PANEL_WIDTH = 280;
-const OBSTACLE_PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
-const PANEL_GAP = 16;
+const PANEL_COLLAPSE_MS = 300;
+const FREEHAND_MIN_PX = 6;
+const FREEHAND_SAMPLE_PCT = 0.35;
+
+function isPenTool(tool) {
+  return tool === "pen-add" || tool === "pen-subtract";
+}
+
+function panelCollapseClass(collapsed) {
+  return collapsed
+    ? "pointer-events-none w-0 opacity-0"
+    : "opacity-100";
+}
 
 function nextRouteColor(index) {
   return ROUTE_COLORS[index % ROUTE_COLORS.length];
+}
+
+function normalizeRoutesForFaction(routes, faction) {
+  return (routes || []).map((route) => {
+    const vehicleId = normalizeRouteVehicleId(route.vehicleId, faction);
+    const speed = getRouteVehicleSpeedKmh(vehicleId, faction);
+    return {
+      ...route,
+      vehicleId,
+      travelTimeSec:
+        route.points?.length >= 2
+          ? travelTimeSec(route.points, speed)
+          : route.travelTimeSec || 0,
+    };
+  });
 }
 
 export function RouteplannerEditor({
@@ -68,8 +100,11 @@ export function RouteplannerEditor({
   const [mapId, setMapId] = useState(plan?.mapId || "Carentan");
   const [factionId, setFactionId] = useState(plan?.factionId || "us");
   const [hqIndex, setHqIndex] = useState(plan?.hqIndex ?? 0);
-  const [routes, setRoutes] = useState(plan?.routes || []);
+  const [routes, setRoutes] = useState(() =>
+    normalizeRoutesForFaction(plan?.routes || [], plan?.factionId || "us")
+  );
   const [obstacles, setObstacles] = useState(plan?.obstacles || []);
+  const [obstacleVectorBuildId, setObstacleVectorBuildId] = useState(plan?.obstacleVectorBuildId ?? null);
   routesRef.current = routes;
   const obstaclesRef = useRef(obstacles);
   obstaclesRef.current = obstacles;
@@ -82,18 +117,22 @@ export function RouteplannerEditor({
   const [selectedWaypoint, setSelectedWaypoint] = useState(null);
   const [dragPreview, setDragPreview] = useState(null);
   const [showObstacles, setShowObstacles] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showStrongpoints, setShowStrongpoints] = useState(false);
   const [obstacleEditMode, setObstacleEditMode] = useState(false);
   const [obstacleTool, setObstacleTool] = useState("select");
-  const [obstaclePenEffect, setObstaclePenEffect] = useState("block");
   const [selectedObstacleId, setSelectedObstacleId] = useState(null);
+  const [selectedAnchorIndex, setSelectedAnchorIndex] = useState(null);
   const [penDrawPreview, setPenDrawPreview] = useState(null);
   const [penHoverTarget, setPenHoverTarget] = useState(null);
   const penSessionRef = useRef(null);
+  const penPointerRef = useRef(null);
+  const suppressNextClickRef = useRef(false);
   const [panelInsets, setPanelInsets] = useState({
     left: 0,
     right: 0,
-    top: 72,
-    bottom: 16,
+    top: 24,
+    bottom: 24,
   });
 
   useEffect(() => {
@@ -113,21 +152,29 @@ export function RouteplannerEditor({
       const leftRect = left?.getBoundingClientRect();
       const rightRect = right?.getBoundingClientRect();
       setPanelInsets({
-        left: leftRect ? Math.max(0, leftRect.right - shellRect.left + PANEL_GAP) : 0,
-        right: rightRect ? Math.max(0, shellRect.right - rightRect.left + PANEL_GAP) : 0,
-        top: 72,
-        bottom: 16,
+        left: leftRect ? Math.max(0, leftRect.right - shellRect.left + STRAT_PANEL_GAP) : 0,
+        right: rightRect ? Math.max(0, shellRect.right - rightRect.left + STRAT_PANEL_GAP) : 0,
+        top: leftRect ? Math.max(24, leftRect.top - shellRect.top + STRAT_PANEL_GAP) : 24,
+        bottom: 24,
       });
     };
     measure();
+    const t = window.setTimeout(measure, PANEL_COLLAPSE_MS);
     const ro = new ResizeObserver(measure);
     if (shellRef.current) ro.observe(shellRef.current);
     window.addEventListener("resize", measure);
     return () => {
+      window.clearTimeout(t);
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
   }, [showObstacles]);
+
+  useEffect(() => {
+    if (!kernelReady) return;
+    const t = window.setTimeout(() => kernelRef.current?.fitToView(), PANEL_COLLAPSE_MS);
+    return () => window.clearTimeout(t);
+  }, [showObstacles, kernelReady]);
 
   const hqSpawns = useMemo(() => {
     return hqData?.maps?.[mapId]?.factions?.[factionId]?.hqSpawns || [];
@@ -143,16 +190,22 @@ export function RouteplannerEditor({
         hqIndex,
         routes,
         obstacles,
+        obstacleVectorBuildId,
         ...patch,
       });
     },
-    [onSave, mapId, factionId, hqIndex, routes, obstacles]
+    [onSave, mapId, factionId, hqIndex, routes, obstacles, obstacleVectorBuildId]
   );
 
   const applyObstacles = useCallback(
-    (nextObstacles) => {
+    (nextObstacles, { buildId } = {}) => {
       setObstacles(nextObstacles);
-      persistPatch({ obstacles: nextObstacles });
+      const patch = { obstacles: nextObstacles };
+      if (buildId !== undefined) {
+        setObstacleVectorBuildId(buildId);
+        patch.obstacleVectorBuildId = buildId;
+      }
+      persistPatch(patch);
       clearEffectiveGridCache();
     },
     [persistPatch]
@@ -190,30 +243,23 @@ export function RouteplannerEditor({
         waypoints: result.waypoints,
         anchors: result.waypoints,
         points: result.points,
-        travelTimeSec: travelTimeSec(result.points, TRANSPORT_SPEED_KMH),
+        travelTimeSec: travelTimeSec(
+          result.points,
+          getRouteVehicleSpeedKmh(r.vehicleId, factionId)
+        ),
       }));
       setStatus("");
       return result;
     },
-    [mapId, updateRoute]
-  );
-
-  const replanAllRoutes = useCallback(
-    async (obs = obstaclesRef.current) => {
-      const list = routesRef.current.filter((r) => getRouteWaypoints(r).length >= 2);
-      for (const route of list) {
-        await replanRoute(route.id, getRouteWaypoints(route), obs);
-      }
-    },
-    [replanRoute]
+    [mapId, updateRoute, factionId]
   );
 
   const commitObstacles = useCallback(
     async (nextObstacles) => {
-      applyObstacles(nextObstacles);
-      await replanAllRoutes(nextObstacles);
+      const normalized = normalizeLayerObstacles(nextObstacles);
+      applyObstacles(normalized);
     },
-    [applyObstacles, replanAllRoutes]
+    [applyObstacles]
   );
 
   const enterObstacleMode = useCallback(() => {
@@ -221,41 +267,59 @@ export function RouteplannerEditor({
     setObstacleEditMode(true);
     setObstacleTool("select");
     setSelectedObstacleId(null);
+    setSelectedAnchorIndex(null);
   }, []);
 
   const exitObstacleMode = useCallback(() => {
     setShowObstacles(false);
     setObstacleEditMode(false);
     setSelectedObstacleId(null);
+    setSelectedAnchorIndex(null);
     setObstacleTool("select");
     penSessionRef.current = null;
+    penPointerRef.current = null;
     setPenDrawPreview(null);
     setPenHoverTarget(null);
   }, []);
 
   const cancelPenDraw = useCallback(() => {
     penSessionRef.current = null;
+    penPointerRef.current = null;
     setPenDrawPreview(null);
     setPenHoverTarget(null);
   }, []);
 
   const finishPenDraw = useCallback(
-    async (points, effect = penSessionRef.current?.effect || obstaclePenEffect) => {
-      const created = createPolygonObstacle(effect, points);
-      if (!created) return false;
+    async (points, tool = penSessionRef.current?.tool || obstacleTool) => {
+      if (!points || points.length < 3) return false;
       penSessionRef.current = null;
+      penPointerRef.current = null;
       setPenDrawPreview(null);
-      const next = [...obstaclesRef.current, created];
-      setSelectedObstacleId(created.id);
+      setPenHoverTarget(null);
+
+      let next;
+      if (tool === "pen-subtract") {
+        next = applyPenSubtract(obstaclesRef.current, points);
+        setSelectedObstacleId(null);
+        setSelectedAnchorIndex(null);
+      } else {
+        const beforeIds = new Set(obstaclesRef.current.map((o) => o.id));
+        next = applyPenAddUnion(obstaclesRef.current, points);
+        const created = next.find((o) => !beforeIds.has(o.id));
+        setSelectedObstacleId(created?.id ?? null);
+        setSelectedAnchorIndex(null);
+      }
+
       await commitObstacles(next);
       return true;
     },
-    [commitObstacles, obstaclePenEffect]
+    [commitObstacles, obstacleTool]
   );
 
   const handleObstacleToolChange = useCallback(
     (tool) => {
       cancelPenDraw();
+      setSelectedAnchorIndex(null);
       setObstacleTool(tool);
     },
     [cancelPenDraw]
@@ -263,14 +327,14 @@ export function RouteplannerEditor({
 
   const applyPenEditToObstacle = useCallback((obstacle, target) => {
     const polyPoints = obstacleToPolygonPoints(obstacle);
-    if (target.mode === "add") {
+    if (target.mode === "add-anchor") {
       return {
         ...obstacle,
         type: "polygon",
         points: insertPolygonVertex(polyPoints, target.segmentIndex, target.point),
       };
     }
-    if (target.mode === "delete") {
+    if (target.mode === "remove-anchor") {
       const nextPoints = removePolygonVertex(polyPoints, target.vertexIndex);
       if (!nextPoints) return obstacle;
       return { ...obstacle, type: "polygon", points: nextPoints };
@@ -286,35 +350,67 @@ export function RouteplannerEditor({
       if (updated === obstacle) return;
       const next = obstaclesRef.current.map((o) => (o.id === obstacleId ? updated : o));
       setPenHoverTarget(null);
+      if (target.mode === "remove-anchor") setSelectedAnchorIndex(null);
       await commitObstacles(next);
     },
     [applyPenEditToObstacle, commitObstacles]
+  );
+
+  const handleRemoveSelectedAnchor = useCallback(async () => {
+    if (!selectedObstacleId || selectedAnchorIndex == null) return;
+    await commitPenEdit(selectedObstacleId, {
+      mode: "remove-anchor",
+      vertexIndex: selectedAnchorIndex,
+    });
+  }, [selectedObstacleId, selectedAnchorIndex, commitPenEdit]);
+
+  const tryShapeEditAtPoint = useCallback(
+    async (pt, obstacleId = selectedObstacleId) => {
+      if (!obstacleId) return false;
+      const obstacle = obstaclesRef.current.find((o) => o.id === obstacleId);
+      if (!obstacle) return false;
+
+      const target = resolveShapeEditTarget(obstacle, pt);
+      if (target.mode === "add-anchor") {
+        await commitPenEdit(obstacleId, target);
+        return true;
+      }
+      if (target.mode === "select-anchor") {
+        setSelectedObstacleId(obstacleId);
+        setSelectedAnchorIndex(target.vertexIndex);
+        return true;
+      }
+      return false;
+    },
+    [selectedObstacleId, commitPenEdit]
   );
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
+      clearAccessibilityVectorsCache();
       const saved = obstaclesRef.current;
-      const vectors = await loadAccessibilityVectors(mapId);
+      const vectors = await loadAccessibilityVectors(mapId, { bustCache: true });
       if (cancelled) return;
 
-      const shouldUpgrade = needsObstacleVectorUpgrade(saved);
-      if (!shouldUpgrade && saved.length > 0) return;
+      if (!needsObstacleVectorUpgrade(saved, vectors, obstacleVectorBuildId)) {
+        if (!cancelled) setStatus("");
+        return;
+      }
 
       setStatus("Loading traced obstacle vectors…");
       try {
         let nextObstacles;
         if (vectors?.obstacles?.length) {
-          nextObstacles = mergeAccessibilityObstacles(vectors, saved);
+          nextObstacles = mergeAccessibilityObstacles(vectors, saved, obstacleVectorBuildId);
         } else {
           const grid = await loadAccessibilityGrid(mapId);
           if (cancelled) return;
           nextObstacles = extractObstaclesFromGrid(grid);
         }
 
-        applyObstacles(nextObstacles);
-        await replanAllRoutes(nextObstacles);
+        applyObstacles(nextObstacles, { buildId: vectorBuildId(vectors) });
         if (!cancelled) setStatus("");
       } catch {
         if (!cancelled) setStatus("Could not load accessibility obstacles.");
@@ -324,7 +420,7 @@ export function RouteplannerEditor({
     return () => {
       cancelled = true;
     };
-  }, [mapId, applyObstacles, replanAllRoutes]);
+  }, [mapId, obstacleVectorBuildId, applyObstacles]);
 
   const handleRoutePathClick = useCallback(
     async (routeId, pt) => {
@@ -347,36 +443,33 @@ export function RouteplannerEditor({
     async (pt, event) => {
       if (dragRef.current || obstacleInteractionRef.current) return;
 
-      if (obstacleEditMode && obstacleTool === "pen") {
+      if (obstacleEditMode && isPenTool(obstacleTool)) {
+        if (suppressNextClickRef.current) {
+          suppressNextClickRef.current = false;
+          return;
+        }
         if (event?.detail >= 2) return;
 
-        const shift = Boolean(event?.shiftKey);
         const session = penSessionRef.current;
         const points = session?.points || [];
 
-        if (!points.length && selectedObstacleId && !shift) {
-          const obstacle = obstaclesRef.current.find((o) => o.id === selectedObstacleId);
-          const target = resolvePenTarget(obstacle, pt, { shift });
-          if (target.mode === "add" || target.mode === "delete") {
-            await commitPenEdit(selectedObstacleId, target);
-            return;
-          }
+        if (!points.length) {
+          if (await tryShapeEditAtPoint(pt)) return;
         }
 
         if (points.length >= 3 && isNearPoint(pt, points[0], PEN_CLOSE_THRESHOLD)) {
-          await finishPenDraw(points);
+          await finishPenDraw(points, obstacleTool);
           return;
         }
 
         const nextPoint = clampPoint(pt);
         const nextPoints = points.length ? [...points, nextPoint] : [nextPoint];
         penSessionRef.current = {
-          effect: obstaclePenEffect,
+          tool: obstacleTool,
           points: nextPoints,
         };
         setPenHoverTarget(null);
         setPenDrawPreview({
-          effect: obstaclePenEffect,
           points: nextPoints,
           cursor: nextPoint,
         });
@@ -394,8 +487,10 @@ export function RouteplannerEditor({
         setStatus(result.error);
         return;
       }
-      const waypoints = [{ ...selectedHq }, { x: pt.x, y: pt.y }];
-      const time = travelTimeSec(result.points, TRANSPORT_SPEED_KMH);
+      const waypoints = [{ ...selectedHq }, { x: pt.x, y: pt.y, user: true }];
+      const route = routesRef.current.find((r) => r.id === plottingRouteId);
+      const speed = getRouteVehicleSpeedKmh(route?.vehicleId, factionId);
+      const time = travelTimeSec(result.points, speed);
       updateRoute(plottingRouteId, (route) => ({
         ...route,
         waypoints,
@@ -413,48 +508,77 @@ export function RouteplannerEditor({
       selectedHq,
       mapId,
       hqIndex,
+      factionId,
       updateRoute,
       obstacleEditMode,
       obstacleTool,
-      obstaclePenEffect,
       finishPenDraw,
-      selectedObstacleId,
-      commitPenEdit,
+      tryShapeEditAtPoint,
     ]
   );
 
   const handleMapDoubleClick = useCallback(
     async (pt) => {
-      if (!obstacleEditMode || obstacleTool !== "pen") return;
+      if (!obstacleEditMode || !isPenTool(obstacleTool)) return;
       const session = penSessionRef.current;
       if (!session?.points || session.points.length < 3) return;
       if (isNearPoint(pt, session.points[0], PEN_CLOSE_THRESHOLD)) return;
-      await finishPenDraw(session.points);
+      await finishPenDraw(session.points, obstacleTool);
     },
     [obstacleEditMode, obstacleTool, finishPenDraw]
   );
 
   const handleMapPointerMove = useCallback(
     (pt, event) => {
-      if (!obstacleEditMode || obstacleTool !== "pen") return;
+      if (!obstacleEditMode) return;
 
-      const shift = Boolean(event?.shiftKey);
+      const penPointer = penPointerRef.current;
+      if (penPointer && isPenTool(obstacleTool) && penPointer.pointerId === event.pointerId) {
+        const movedPx = Math.hypot(
+          event.clientX - penPointer.startScreen.x,
+          event.clientY - penPointer.startScreen.y
+        );
+        if (!penPointer.freehand && movedPx >= FREEHAND_MIN_PX) {
+          penPointer.freehand = true;
+          penSessionRef.current = {
+            tool: obstacleTool,
+            points: [penPointer.startPt],
+          };
+        }
+
+        if (penPointer.freehand) {
+          const session = penSessionRef.current;
+          const points = session?.points || [];
+          const last = points[points.length - 1];
+          if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) >= FREEHAND_SAMPLE_PCT) {
+            const nextPoints = [...points, clampPoint(pt)];
+            penSessionRef.current = { tool: obstacleTool, points: nextPoints };
+            setPenHoverTarget(null);
+            setPenDrawPreview({
+              points: nextPoints,
+              cursor: pt,
+            });
+          }
+          return;
+        }
+      }
+
+      if (!isPenTool(obstacleTool) && obstacleTool !== "select") return;
+
       const session = penSessionRef.current;
-
-      if (session?.points?.length) {
+      if (isPenTool(obstacleTool) && session?.points?.length) {
         setPenHoverTarget(null);
         setPenDrawPreview({
-          effect: session.effect,
           points: session.points,
           cursor: pt,
         });
         return;
       }
 
-      if (selectedObstacleId && !shift) {
+      if (selectedObstacleId) {
         const obstacle = obstaclesRef.current.find((o) => o.id === selectedObstacleId);
-        const target = resolvePenTarget(obstacle, pt, { shift });
-        if (target.mode === "add" || target.mode === "delete") {
+        const target = resolveShapeEditTarget(obstacle, pt);
+        if (target.mode === "add-anchor") {
           setPenHoverTarget({ obstacleId: selectedObstacleId, ...target });
           setPenDrawPreview(null);
           return;
@@ -465,6 +589,81 @@ export function RouteplannerEditor({
       setPenDrawPreview(null);
     },
     [obstacleEditMode, obstacleTool, selectedObstacleId]
+  );
+
+  const handleMapPointerDown = useCallback(
+    (pt, event) => {
+      if (dragRef.current || !obstacleEditMode || !isPenTool(obstacleTool)) return;
+      if (event.button !== 0) return;
+      if (penSessionRef.current?.points?.length) return;
+
+      penPointerRef.current = {
+        pointerId: event.pointerId,
+        startScreen: { x: event.clientX, y: event.clientY },
+        startPt: clampPoint(pt),
+        freehand: false,
+      };
+      kernelRef.current?.setBlockPan(true);
+    },
+    [obstacleEditMode, obstacleTool]
+  );
+
+  const handleMapPointerUp = useCallback(
+    async (pt, event) => {
+      const penPointer = penPointerRef.current;
+      if (!penPointer || penPointer.pointerId !== event.pointerId) return;
+
+      kernelRef.current?.setBlockPan(false);
+      penPointerRef.current = null;
+
+      if (penPointer.freehand) {
+        const points = penSessionRef.current?.points;
+        if (points?.length >= 3) {
+          suppressNextClickRef.current = true;
+          await finishPenDraw(points, obstacleTool);
+        } else {
+          cancelPenDraw();
+        }
+      }
+    },
+    [obstacleTool, finishPenDraw, cancelPenDraw]
+  );
+
+  const handleMapContextMenu = useCallback(
+    async (pt, event) => {
+      if (!obstacleEditMode) return;
+      event?.preventDefault?.();
+
+      if (penSessionRef.current?.points?.length) {
+        cancelPenDraw();
+        return;
+      }
+
+      if (selectedObstacleId && selectedAnchorIndex != null) {
+        await handleRemoveSelectedAnchor();
+        return;
+      }
+
+      if (selectedObstacleId && (obstacleTool === "select" || isPenTool(obstacleTool))) {
+        const obstacle = obstaclesRef.current.find((o) => o.id === selectedObstacleId);
+        const target = resolveShapeEditTarget(obstacle, pt);
+        if (target.mode === "select-anchor") {
+          await commitPenEdit(selectedObstacleId, {
+            mode: "remove-anchor",
+            vertexIndex: target.vertexIndex,
+          });
+        }
+      }
+    },
+    [
+      obstacleEditMode,
+      obstacleTool,
+      selectedObstacleId,
+      selectedAnchorIndex,
+      cancelPenDraw,
+      handleRemoveSelectedAnchor,
+      commitPenEdit,
+    ]
   );
 
   const handleAddRoute = () => {
@@ -478,6 +677,7 @@ export function RouteplannerEditor({
       name: `Route ${routes.length + 1}`,
       color: nextRouteColor(routes.length),
       hqIndex,
+      vehicleId: getDefaultRouteVehicleId(factionId),
       points: [],
       waypoints: [],
       anchors: [],
@@ -520,46 +720,89 @@ export function RouteplannerEditor({
     await replanRoute(selectedWaypoint.routeId, next);
   }, [selectedWaypoint, replanRoute]);
 
-  const handleMapPointerDown = useCallback(
-    (pt, event) => {
-      if (dragRef.current || !obstacleEditMode || obstacleTool === "pen") return;
+  const handleWaypointContextMenu = useCallback(
+    async (routeId, waypointIndex) => {
+      const route = routesRef.current.find((r) => r.id === routeId);
+      const waypoints = getRouteWaypoints(route);
+      const wp = waypoints[waypointIndex];
+      if (!wp?.user || waypointIndex <= 0 || waypointIndex >= waypoints.length - 1) return;
+      const next = removeWaypoint(waypoints, waypointIndex);
+      if (!next) return;
+      setSelectedWaypoint(null);
+      await replanRoute(routeId, next);
     },
-    [obstacleEditMode, obstacleTool]
+    [replanRoute]
   );
 
   const handleObstaclePointerDown = useCallback(
-    (obstacleId, event) => {
-      if (!obstacleEditMode || obstacleTool !== "select") return;
+    async (obstacleId, event) => {
+      if (!obstacleEditMode) return;
+      if (penSessionRef.current?.points?.length) return;
+
       event.preventDefault();
       event.stopPropagation();
       const obstacle = obstaclesRef.current.find((o) => o.id === obstacleId);
       if (!obstacle) return;
 
+      const pt = kernelRef.current?.screenToMapPercent(event.clientX, event.clientY);
+      if (!pt) return;
+
       setSelectedObstacleId(obstacleId);
+      const canEditAnchors =
+        obstacleTool === "select" || obstacleTool === "pen-add" || obstacleTool === "pen-subtract";
+      const target = canEditAnchors ? resolveShapeEditTarget(obstacle, pt) : { mode: "none" };
+
+      if (target.mode === "select-anchor") {
+        setSelectedAnchorIndex(target.vertexIndex);
+        obstacleInteractionRef.current = {
+          kind: "anchor",
+          obstacleId,
+          anchorIndex: target.vertexIndex,
+          pointerId: event.pointerId,
+          moved: false,
+          originalPoints: obstacle.points.map((p) => ({ ...p })),
+          captureTarget: event.currentTarget,
+        };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        kernelRef.current?.setBlockPan(true);
+        return;
+      }
+
+      if (target.mode === "add-anchor") {
+        setSelectedAnchorIndex(null);
+        await commitPenEdit(obstacleId, target);
+        return;
+      }
+
+      setSelectedAnchorIndex(null);
+      if (obstacleTool !== "select") return;
+
       obstacleInteractionRef.current = {
         kind: "body",
         obstacleId,
         pointerId: event.pointerId,
         moved: false,
-        start: kernelRef.current?.screenToMapPercent(event.clientX, event.clientY),
+        start: pt,
         originalPoints: obstacle.points.map((p) => ({ ...p })),
         captureTarget: event.currentTarget,
       };
       event.currentTarget.setPointerCapture?.(event.pointerId);
       kernelRef.current?.setBlockPan(true);
     },
-    [obstacleEditMode, obstacleTool]
+    [obstacleEditMode, obstacleTool, commitPenEdit]
   );
 
   const handleObstacleAnchorPointerDown = useCallback(
     (obstacleId, anchor, event) => {
       if (!obstacleEditMode) return;
+      if (penSessionRef.current?.points?.length) return;
       event.preventDefault();
       event.stopPropagation();
       const obstacle = obstaclesRef.current.find((o) => o.id === obstacleId);
       if (!obstacle) return;
 
       setSelectedObstacleId(obstacleId);
+      if (anchor.kind === "vertex") setSelectedAnchorIndex(anchor.index);
       obstacleInteractionRef.current = {
         kind: anchor.kind === "vertex" ? "anchor" : "handle",
         obstacleId,
@@ -574,6 +817,22 @@ export function RouteplannerEditor({
       kernelRef.current?.setBlockPan(true);
     },
     [obstacleEditMode]
+  );
+
+  const handleAnchorContextMenu = useCallback(
+    async (obstacleId, anchor, event) => {
+      if (!obstacleEditMode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (anchor.kind !== "vertex") return;
+      setSelectedObstacleId(obstacleId);
+      setSelectedAnchorIndex(anchor.index);
+      await commitPenEdit(obstacleId, {
+        mode: "remove-anchor",
+        vertexIndex: anchor.index,
+      });
+    },
+    [obstacleEditMode, commitPenEdit]
   );
 
   const handleRemoveSelectedObstacle = useCallback(async () => {
@@ -709,17 +968,42 @@ export function RouteplannerEditor({
   }, [commitObstacles]);
 
   useEffect(() => {
+    if (!obstacleEditMode || !isPenTool(obstacleTool)) return undefined;
+
+    const onMove = (event) => {
+      if (!penPointerRef.current || penPointerRef.current.pointerId !== event.pointerId) return;
+      const pt = kernelRef.current?.screenToMapPercent(event.clientX, event.clientY);
+      if (pt) handleMapPointerMove(pt, event);
+    };
+
+    const onUp = (event) => {
+      if (!penPointerRef.current || penPointerRef.current.pointerId !== event.pointerId) return;
+      const pt = kernelRef.current?.screenToMapPercent(event.clientX, event.clientY);
+      if (pt) handleMapPointerUp(pt, event);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [obstacleEditMode, obstacleTool, handleMapPointerMove, handleMapPointerUp]);
+
+  useEffect(() => {
     const viewport = kernelRef.current?.getViewport?.();
     if (!viewport) return undefined;
 
-    if (!obstacleEditMode || obstacleTool !== "pen") {
+    if (!obstacleEditMode || (obstacleTool !== "select" && !isPenTool(obstacleTool))) {
       viewport.style.cursor = "";
       return undefined;
     }
 
-    if (penHoverTarget?.mode === "add") viewport.style.cursor = "copy";
-    else if (penHoverTarget?.mode === "delete") viewport.style.cursor = "not-allowed";
-    else viewport.style.cursor = "crosshair";
+    if (penHoverTarget?.mode === "add-anchor") viewport.style.cursor = "copy";
+    else if (isPenTool(obstacleTool)) viewport.style.cursor = "crosshair";
+    else viewport.style.cursor = "";
 
     return () => {
       viewport.style.cursor = "";
@@ -728,28 +1012,23 @@ export function RouteplannerEditor({
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape" && obstacleEditMode && obstacleTool === "pen" && penSessionRef.current) {
+      if (event.key === "Escape" && obstacleEditMode && isPenTool(obstacleTool) && penSessionRef.current) {
         event.preventDefault();
         cancelPenDraw();
         return;
       }
-      if (event.key === "Enter" && obstacleEditMode && obstacleTool === "pen") {
+      if (event.key === "Enter" && obstacleEditMode && isPenTool(obstacleTool)) {
         const points = penSessionRef.current?.points;
         if (points?.length >= 3) {
           event.preventDefault();
-          finishPenDraw(points);
+          finishPenDraw(points, obstacleTool);
         }
         return;
       }
       if (event.key !== "Delete" && event.key !== "Backspace") return;
-      if (
-        obstacleEditMode &&
-        obstacleTool === "pen" &&
-        penHoverTarget?.mode === "delete" &&
-        penHoverTarget.obstacleId
-      ) {
+      if (obstacleEditMode && selectedObstacleId && selectedAnchorIndex != null) {
         event.preventDefault();
-        commitPenEdit(penHoverTarget.obstacleId, penHoverTarget);
+        handleRemoveSelectedAnchor();
         return;
       }
       if (obstacleEditMode && selectedObstacleId && obstacleTool === "select") {
@@ -770,14 +1049,44 @@ export function RouteplannerEditor({
     obstacleEditMode,
     obstacleTool,
     selectedObstacleId,
+    selectedAnchorIndex,
     selectedWaypoint,
-    penHoverTarget,
     cancelPenDraw,
     finishPenDraw,
-    commitPenEdit,
     handleRemoveSelectedObstacle,
+    handleRemoveSelectedAnchor,
     handleRemoveSelectedWaypoint,
   ]);
+
+  const handleVehicleChange = useCallback(
+    (routeId, vehicleId) => {
+      updateRoute(routeId, (route) => ({
+        ...route,
+        vehicleId,
+        travelTimeSec:
+          route.points?.length >= 2
+            ? travelTimeSec(route.points, getRouteVehicleSpeedKmh(vehicleId, factionId))
+            : route.travelTimeSec,
+      }));
+    },
+    [updateRoute, factionId]
+  );
+
+  const handleFactionChange = useCallback(
+    (nextFaction) => {
+      setFactionId(nextFaction);
+      const nextRoutes = normalizeRoutesForFaction(routesRef.current, nextFaction);
+      applyRoutes(nextRoutes);
+      persistPatch({ factionId: nextFaction, routes: nextRoutes });
+    },
+    [applyRoutes, persistPatch]
+  );
+
+  const selectedRoute = routes.find((r) => r.id === selectedRouteId);
+  const routeHint =
+    selectedRoute && getRouteWaypoints(selectedRoute).length >= 2
+      ? "Click the route line to add a waypoint · Drag handles to move · Right-click or Delete removes a manual via-point"
+      : null;
 
   return (
     <div ref={shellRef} className="routeplanner-map-shell relative h-full w-full overflow-hidden">
@@ -809,10 +1118,14 @@ export function RouteplannerEditor({
           kernelRef={kernelRef}
           mapId={mapId}
           panelInsets={panelInsets}
+          showGrid={showGrid}
+          showStrongpoints={showStrongpoints}
           onKernelReady={() => setKernelReady(true)}
           onMapClick={handleMapClick}
           onMapPointerDown={handleMapPointerDown}
           onMapPointerMove={handleMapPointerMove}
+          onMapPointerUp={handleMapPointerUp}
+          onMapContextMenu={handleMapContextMenu}
           onMapDoubleClick={handleMapDoubleClick}
         />
       </div>
@@ -828,20 +1141,23 @@ export function RouteplannerEditor({
         kernelRef={kernelRef}
         kernelReady={kernelReady}
         obstacles={obstacles}
-        visible={obstacles.length > 0 || Boolean(penDrawPreview)}
+        visible={showObstacles}
         editMode={obstacleEditMode}
         obstacleTool={obstacleTool}
         selectedObstacleId={selectedObstacleId}
+        selectedAnchorIndex={selectedAnchorIndex}
         penPreview={penDrawPreview}
         penHoverTarget={penHoverTarget}
         onObstaclePointerDown={handleObstaclePointerDown}
         onAnchorPointerDown={handleObstacleAnchorPointerDown}
+        onAnchorContextMenu={handleAnchorContextMenu}
       />
 
       <RouteOverlay
         kernelRef={kernelRef}
         kernelReady={kernelReady}
         routes={routes}
+        factionId={factionId}
         hqSpawns={hqSpawns}
         selectedHqIndex={hqIndex}
         hoveredRouteId={hoveredRouteId}
@@ -849,153 +1165,106 @@ export function RouteplannerEditor({
         selectedWaypoint={selectedWaypoint}
         dragPreview={dragPreview}
         onWaypointPointerDown={handleWaypointPointerDown}
+        onWaypointContextMenu={handleWaypointContextMenu}
         onRoutePathClick={handleRoutePathClick}
       />
 
-      <header className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-start justify-between gap-3 p-4">
-        <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md">
-          <Link to={backTo} className="text-[0.78rem] text-white/60 hover:text-white">
-            ← Hub
-          </Link>
-          <span className="text-white/25">|</span>
-          <span className="text-[0.85rem] font-medium text-white">
-            {plan?.title || "Route plan"}
-          </span>
-          {dirty && <span className="text-[0.72rem] text-amber-300/80">Unsaved</span>}
-          {saving && <span className="text-[0.72rem] text-white/45">Saving…</span>}
-        </div>
-      </header>
-
       <div
         ref={leftRef}
-        className="pointer-events-none absolute bottom-4 left-4 top-20 z-20"
-        style={{ width: showObstacles ? OBSTACLE_PANEL_WIDTH : PANEL_WIDTH }}
+        className="pointer-events-none absolute bottom-6 left-6 top-6 z-20"
+        style={{ width: STRAT_PANEL_WIDTH }}
       >
-        {showObstacles ? (
-          <div className="pointer-events-auto h-full">
+        <div className="pointer-events-auto h-full">
+          {showObstacles ? (
             <ObstacleToolbar
               backTo={backTo}
               obstacleTool={obstacleTool}
               onToolChange={handleObstacleToolChange}
-              penEffect={obstaclePenEffect}
-              onPenEffectChange={(effect) => {
-                setObstaclePenEffect(effect);
-                if (penSessionRef.current) {
-                  penSessionRef.current = { ...penSessionRef.current, effect };
-                  setPenDrawPreview((preview) => (preview ? { ...preview, effect } : preview));
-                }
-              }}
               obstacleCount={obstacles.length}
               selectedObstacleId={selectedObstacleId}
               onDeleteSelected={handleRemoveSelectedObstacle}
               onExit={exitObstacleMode}
               status={status}
             />
-          </div>
-        ) : (
-        <div className="pointer-events-auto space-y-3 rounded-[1.375rem] border border-white/10 bg-black/45 p-4 backdrop-blur-md">
-          <label className="block text-[0.68rem] uppercase tracking-[0.14em] text-white/45">
-            Map
-            <select
-              value={mapId}
-              onChange={(e) => {
-                const nextMap = e.target.value;
+          ) : (
+            <RouteplannerSettingsPanel
+              backTo={backTo}
+              mapId={mapId}
+              onMapChange={(nextMap) => {
                 setMapId(nextMap);
                 setObstacles([]);
                 obstaclesRef.current = [];
+                setObstacleVectorBuildId(null);
                 clearEffectiveGridCache();
                 clearAccessibilityVectorsCache();
-                persistPatch({ mapId: nextMap, obstacles: [] });
-                replanAllRoutes([]);
+                persistPatch({ mapId: nextMap, obstacles: [], obstacleVectorBuildId: null });
               }}
-              className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-[0.85rem] text-white"
-            >
-              {STRAT_MAP_IDS.map((id) => (
-                <option key={id} value={id} className="bg-[#1a1a1a]">
-                  {id}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block text-[0.68rem] uppercase tracking-[0.14em] text-white/45">
-            Faction
-            <select
-              value={factionId}
-              onChange={(e) => {
-                setFactionId(e.target.value);
-                persistPatch({ factionId: e.target.value });
+              factionId={factionId}
+              onFactionChange={handleFactionChange}
+              hqIndex={hqIndex}
+              onHqChange={(index) => {
+                setHqIndex(index);
+                persistPatch({ hqIndex: index });
               }}
-              className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-[0.85rem] text-white"
-            >
-              {FACTIONS.map((f) => (
-                <option key={f.id} value={f.id} className="bg-[#1a1a1a]">
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div>
-            <p className="m-0 text-[0.68rem] uppercase tracking-[0.14em] text-white/45">
-              HQ spawn
-            </p>
-            <div className="mt-1 flex gap-1">
-              {[0, 1, 2].map((index) => (
-                <button
-                  key={index}
-                  type="button"
-                  disabled={!hqSpawns[index]}
-                  onClick={() => {
-                    setHqIndex(index);
-                    persistPatch({ hqIndex: index });
-                  }}
-                  className={`flex-1 rounded-lg border px-2 py-1.5 text-[0.78rem] transition ${
-                    hqIndex === index
-                      ? "border-amber-400/50 bg-amber-400/15 text-amber-100"
-                      : "border-white/12 bg-white/5 text-white/70 hover:border-white/20"
-                  } disabled:opacity-35`}
-                >
-                  HQ {index + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <p className="m-0 text-[0.72rem] leading-snug text-white/45">
-            Transport truck · {Number(TRANSPORT_SPEED_KMH).toFixed(1)} km/h
-          </p>
-          {obstacles.length > 0 && (
-            <p className="m-0 text-[0.68rem] leading-snug text-white/40">
-              {obstacles.length} vector obstacle{obstacles.length === 1 ? "" : "s"} affect routing
-              · Open Obstacles to edit
-            </p>
+              hqSpawns={hqSpawns}
+              obstacleCount={obstacles.length}
+              routeHint={routeHint}
+              status={status}
+            />
           )}
-          {selectedRouteId &&
-            getRouteWaypoints(routes.find((r) => r.id === selectedRouteId)).length >= 2 && (
-              <p className="m-0 border-t border-white/10 pt-3 text-[0.68rem] leading-snug text-white/40">
-                Click the route line to add a waypoint · Drag handles to move · Delete
-                removes selected via-point
-              </p>
-            )}
-          {status && <p className="m-0 text-[0.72rem] text-amber-200/90">{status}</p>}
         </div>
-        )}
+      </div>
+
+      <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
+        <RouteMapChrome
+          showGrid={showGrid}
+          onToggleGrid={() => setShowGrid((on) => !on)}
+          showStrongpoints={showStrongpoints}
+          onToggleStrongpoints={() => setShowStrongpoints((on) => !on)}
+          showObstacles={showObstacles}
+          onToggleObstacles={() => {
+            if (showObstacles) exitObstacleMode();
+            else enterObstacleMode();
+          }}
+          onFitView={() => kernelRef.current?.fitToView()}
+        />
+      </div>
+
+      <div className="absolute right-6 top-6 z-30">
+        <EditorUserCluster />
       </div>
 
       <div
         ref={rightRef}
-        className="pointer-events-none absolute bottom-4 right-4 top-20 z-20"
-        style={{ width: PANEL_WIDTH }}
+        aria-hidden={showObstacles}
+        className={`pointer-events-none absolute bottom-6 right-6 z-20 overflow-hidden transition-[width,opacity] ease-out ${panelCollapseClass(showObstacles)}`}
+        style={{
+          width: showObstacles ? 0 : STRAT_PANEL_WIDTH,
+          top: "calc(1.5rem + 2.5rem + 0.65rem)",
+          transitionDuration: `${PANEL_COLLAPSE_MS}ms`,
+        }}
       >
         <div className="pointer-events-auto h-full">
           <RoutesPanel
+            planTitle={plan?.title || "Route plan"}
+            dirty={dirty}
+            saving={saving}
+            factionId={factionId}
             routes={routes}
             selectedRouteId={selectedRouteId}
             hoveredRouteId={hoveredRouteId}
+            onVehicleChange={handleVehicleChange}
             onSelectRoute={(id) => {
               setSelectedRouteId(id);
               setSelectedWaypoint(null);
+              const route = routesRef.current.find((r) => r.id === id);
+              const waypoints = getRouteWaypoints(route);
+              if (!route?.points?.length || waypoints.length < 2) {
+                setPlottingRouteId(id);
+                setStatus("Click the map to set destination.");
+              } else {
+                setPlottingRouteId(null);
+              }
             }}
             onHoverRoute={setHoveredRouteId}
             onAddRoute={handleAddRoute}
@@ -1006,32 +1275,6 @@ export function RouteplannerEditor({
             }}
             canAddRoute={Boolean(selectedHq)}
           />
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
-        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            className="rounded-full border border-white/15 bg-black/50 px-4 py-2 text-[0.78rem] text-white/80 backdrop-blur-md hover:bg-black/65"
-            onClick={() => kernelRef.current?.fitToView()}
-          >
-            Fit map
-          </button>
-          <button
-            type="button"
-            className={`rounded-full border px-4 py-2 text-[0.78rem] backdrop-blur-md transition ${
-              showObstacles
-                ? "border-red-400/50 bg-red-500/20 text-red-100"
-                : "border-white/15 bg-black/50 text-white/80 hover:bg-black/65"
-            }`}
-            onClick={() => {
-              if (showObstacles) exitObstacleMode();
-              else enterObstacleMode();
-            }}
-          >
-            {showObstacles ? "Exit obstacles" : "Obstacles"}
-          </button>
         </div>
       </div>
     </div>

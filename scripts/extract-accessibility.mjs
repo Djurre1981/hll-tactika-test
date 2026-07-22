@@ -1,6 +1,7 @@
 /**
  * Build accessibility collision grids from Maps Let Loose PNG overlays.
  * Source: tmp-maps-let-loose/assets/accessibility/{MapId}_Accessible.png
+ *         or public/maps/accessibility/{MapId}_Accessible.png (fallback)
  * Output: public/data/accessibility/{mapId}.json
  */
 import fs from "node:fs";
@@ -9,20 +10,25 @@ import sharp from "sharp";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const SOURCE_DIR = path.join(ROOT, "tmp-maps-let-loose", "assets", "accessibility");
+const FALLBACK_DIR = path.join(ROOT, "public", "maps", "accessibility");
 const OUT_DIR = path.join(ROOT, "public", "data", "accessibility");
-const PUBLIC_OVERLAY_DIR = path.join(ROOT, "public", "maps", "accessibility");
-const GRID = 96;
-const PADDING_CELLS = 1;
+const PUBLIC_OVERLAY_DIR = FALLBACK_DIR;
+/** Match PATHFIND_GRID_SIZE in obstacle-grid.js — native resolution, no upsample. */
+const GRID = 384;
+const PADDING_CELLS = 0;
 const ALPHA_THRESHOLD = 40;
 const COLOR_THRESHOLD = 24;
 /** Colored pixels in MLL accessibility PNG = no-drive zones; transparent = open. */
 
-const MAP_IDS = fs.existsSync(SOURCE_DIR)
-  ? fs
-      .readdirSync(SOURCE_DIR)
-      .filter((f) => f.endsWith("_Accessible.png"))
-      .map((f) => f.replace("_Accessible.png", ""))
-  : [];
+function listMapIds(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith("_Accessible.png"))
+    .map((f) => f.replace("_Accessible.png", ""));
+}
+
+const MAP_IDS = [...new Set([...listMapIds(SOURCE_DIR), ...listMapIds(FALLBACK_DIR)])];
 
 function dilate(grid, size, radius) {
   if (radius <= 0) return grid;
@@ -44,10 +50,18 @@ function dilate(grid, size, radius) {
   return out;
 }
 
+function resolveSource(mapId) {
+  const tmp = path.join(SOURCE_DIR, `${mapId}_Accessible.png`);
+  if (fs.existsSync(tmp)) return tmp;
+  const pub = path.join(FALLBACK_DIR, `${mapId}_Accessible.png`);
+  if (fs.existsSync(pub)) return pub;
+  return null;
+}
+
 async function extractMap(mapId) {
-  const src = path.join(SOURCE_DIR, `${mapId}_Accessible.png`);
-  if (!fs.existsSync(src)) {
-    console.warn(`skip ${mapId}: missing ${src}`);
+  const src = resolveSource(mapId);
+  if (!src) {
+    console.warn(`skip ${mapId}: missing accessibility PNG`);
     return null;
   }
 
@@ -70,8 +84,10 @@ async function extractMap(mapId) {
   const padded = dilate(blocked, GRID, PADDING_CELLS);
   const bits = Array.from(padded, (v) => (v ? "1" : "0")).join("");
 
-  fs.mkdirSync(PUBLIC_OVERLAY_DIR, { recursive: true });
-  fs.copyFileSync(src, path.join(PUBLIC_OVERLAY_DIR, `${mapId}_Accessible.png`));
+  if (src.startsWith(SOURCE_DIR)) {
+    fs.mkdirSync(PUBLIC_OVERLAY_DIR, { recursive: true });
+    fs.copyFileSync(src, path.join(PUBLIC_OVERLAY_DIR, `${mapId}_Accessible.png`));
+  }
 
   return {
     mapId,
@@ -82,20 +98,20 @@ async function extractMap(mapId) {
 }
 
 async function main() {
-  if (!fs.existsSync(SOURCE_DIR)) {
-    console.error(`Missing MLL source at ${SOURCE_DIR}. Clone maps-let-loose first.`);
+  if (!MAP_IDS.length) {
+    console.error(`No accessibility PNGs in ${SOURCE_DIR} or ${FALLBACK_DIR}`);
     process.exit(1);
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   let count = 0;
-  for (const mapId of MAP_IDS) {
+  for (const mapId of MAP_IDS.sort()) {
     const payload = await extractMap(mapId);
     if (!payload) continue;
     const out = path.join(OUT_DIR, `${mapId}.json`);
     fs.writeFileSync(out, JSON.stringify(payload));
     count++;
-    console.log(`Wrote ${out}`);
+    console.log(`Wrote ${out} (${GRID}², padding=${PADDING_CELLS})`);
   }
   console.log(`Done: ${count} maps`);
 }

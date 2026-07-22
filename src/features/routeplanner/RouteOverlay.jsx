@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { getRouteWaypoints } from "./path/plan-route.js";
+import { getVisibleWaypoints } from "./path/plan-route.js";
+import { RouteVehicleMarker } from "./RouteVehicleMarker.jsx";
 
 function mapPctToPx(x, y, imgW, imgH) {
   return { x: (x / 100) * imgW, y: (y / 100) * imgH };
@@ -10,10 +11,11 @@ function mapPctToPx(x, y, imgW, imgH) {
 function overlayMetrics(imgW, imgH) {
   const s = Math.max(imgW, imgH) / 4096;
   return {
-    routeStroke: { normal: 28 * s, highlighted: 36 * s },
+    routeStroke: { normal: 14 * s, highlighted: 18 * s },
+    routeHitWidth: 144 * s,
     hqRadius: { normal: 16 * s, active: 22 * s },
     hqStroke: 4 * s,
-    waypointRadius: { via: 14 * s, end: 20 * s },
+    waypointRadius: { via: 14 * s, end: 16 * s },
     waypointStroke: 5 * s,
     pendingRadius: 16 * s,
     pendingStroke: 4 * s,
@@ -60,6 +62,7 @@ function WaypointHandle({
   state,
   metrics,
   onPointerDown,
+  onContextMenu,
 }) {
   const { fill, stroke, cursor, scale } = state;
   const r = (kind === "end" ? metrics.waypointRadius.end : metrics.waypointRadius.via) * scale;
@@ -77,6 +80,7 @@ function WaypointHandle({
         stroke={stroke}
         strokeWidth={metrics.waypointStroke}
         onPointerDown={onPointerDown}
+        onContextMenu={onContextMenu}
       />
     );
   }
@@ -91,6 +95,7 @@ function WaypointHandle({
       stroke={stroke}
       strokeWidth={metrics.waypointStroke}
       onPointerDown={onPointerDown}
+      onContextMenu={onContextMenu}
     />
   );
 }
@@ -99,6 +104,7 @@ export function RouteOverlay({
   kernelRef,
   kernelReady = false,
   routes,
+  factionId,
   hqSpawns,
   selectedHqIndex,
   hoveredRouteId,
@@ -107,6 +113,7 @@ export function RouteOverlay({
   dragPreview,
   pendingEnd,
   onWaypointPointerDown,
+  onWaypointContextMenu,
   onRoutePathClick,
 }) {
   const { imgW, imgH } = useMapImageSize(kernelRef, kernelReady);
@@ -117,7 +124,7 @@ export function RouteOverlay({
   if (!kernel || !stage) return null;
 
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
-  const waypoints = getRouteWaypoints(selectedRoute);
+  const visibleWaypoints = getVisibleWaypoints(selectedRoute);
   const m = overlayMetrics(imgW, imgH);
 
   return createPortal(
@@ -169,7 +176,7 @@ export function RouteOverlay({
         const highlighted =
           route.id === hoveredRouteId || route.id === selectedRouteId;
         const isSelected = route.id === selectedRouteId;
-        const hitWidth = m.routeStroke.highlighted * 4;
+        const hitWidth = Math.max(m.routeStroke.highlighted * 4, m.routeHitWidth);
 
         return (
           <g key={route.id}>
@@ -197,9 +204,19 @@ export function RouteOverlay({
               strokeWidth={highlighted ? m.routeStroke.highlighted : m.routeStroke.normal}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={highlighted ? 1 : 0.9}
+              opacity={1}
               style={{ pointerEvents: "none" }}
             />
+            {route.points.length >= 1 && (
+              <RouteVehicleMarker
+                route={route}
+                factionId={factionId}
+                imgW={imgW}
+                imgH={imgH}
+                start={route.points[0]}
+                next={route.points[1]}
+              />
+            )}
           </g>
         );
       })}
@@ -216,21 +233,17 @@ export function RouteOverlay({
         />
       )}
 
-      {waypoints.map((pt, index, arr) => {
-        if (index === 0) return null;
-
-        const isEnd = index === arr.length - 1;
-        const kind = isEnd ? "end" : "via";
+      {visibleWaypoints.map((wp) => {
         const isSelected =
           selectedWaypoint?.routeId === selectedRouteId &&
-          selectedWaypoint?.index === index;
+          selectedWaypoint?.index === wp.index;
         const isDragging =
           dragPreview?.routeId === selectedRouteId &&
-          dragPreview?.index === index;
-        const display = isDragging ? dragPreview : pt;
+          dragPreview?.index === wp.index;
+        const display = isDragging ? dragPreview : wp;
         const pos = mapPctToPx(display.x, display.y, imgW, imgH);
 
-        let fill = isEnd ? "#fff" : "#c4b5fd";
+        let fill = wp.kind === "end" ? "#fff" : "#c4b5fd";
         let stroke = "#fbbf24";
         if (isDragging) {
           fill = "#f97316";
@@ -242,9 +255,9 @@ export function RouteOverlay({
 
         return (
           <WaypointHandle
-            key={`waypoint-${selectedRouteId}-${index}`}
+            key={`waypoint-${selectedRouteId}-${wp.index}`}
             pos={pos}
-            kind={kind}
+            kind={wp.kind}
             metrics={m}
             state={{
               fill,
@@ -254,7 +267,12 @@ export function RouteOverlay({
             }}
             onPointerDown={(e) => {
               e.stopPropagation();
-              onWaypointPointerDown?.(selectedRouteId, index, e);
+              onWaypointPointerDown?.(selectedRouteId, wp.index, e);
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onWaypointContextMenu?.(selectedRouteId, wp.index, e);
             }}
           />
         );

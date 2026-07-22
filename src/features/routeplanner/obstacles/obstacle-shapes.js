@@ -60,6 +60,35 @@ export function pointInPolygon(point, polygon) {
   return inside;
 }
 
+/** Point inside obstacle fill, respecting polygon holes. */
+export function pointInObstacle(point, obstacle) {
+  if (!obstacle?.points?.length) return false;
+
+  if (obstacle.type === "polygon") {
+    if (!pointInPolygon(point, obstacle.points)) return false;
+    for (const hole of obstacle.holes || []) {
+      if (pointInPolygon(point, hole)) return false;
+    }
+    return true;
+  }
+
+  const box = bboxFromPoints(obstacle.points);
+  const insideBox = point.x >= box.x1 && point.x <= box.x2 && point.y >= box.y1 && point.y <= box.y2;
+  if (!insideBox) return false;
+
+  if (obstacle.type === "ellipse") {
+    const cx = (box.x1 + box.x2) / 2;
+    const cy = (box.y1 + box.y2) / 2;
+    const rx = Math.max(0.001, (box.x2 - box.x1) / 2);
+    const ry = Math.max(0.001, (box.y2 - box.y1) / 2);
+    const nx = (point.x - cx) / rx;
+    const ny = (point.y - cy) / ry;
+    return nx * nx + ny * ny <= 1;
+  }
+
+  return true;
+}
+
 /** Resize handles for rect/ellipse, vertex anchors for polygons. */
 export function getObstacleAnchors(obstacle) {
   if (!obstacle?.points?.length) return [];
@@ -278,55 +307,44 @@ export function hitTestPolygonVertex(points, point, threshold = PEN_VERTEX_THRES
   return bestIndex;
 }
 
-/**
- * Illustrator-style contextual pen target on a selected path.
- * Shift disables auto add/delete so a new path can start on the selection.
- */
-export function resolvePenTarget(obstacle, point, { shift = false } = {}) {
-  if (shift || !obstacle?.points?.length) return { mode: "draw" };
+/** Hit-test selected shape for anchor add / select / delete (map-space). */
+export function resolveShapeEditTarget(obstacle, point) {
+  if (!obstacle?.points?.length) return { mode: "none" };
 
-  if (obstacle.type === "polygon" && obstacle.points.length >= 3) {
-    const vertexIndex = hitTestPolygonVertex(obstacle.points, point);
-    if (vertexIndex >= 0) {
-      return {
-        mode: "delete",
-        vertexIndex,
-        point: obstacle.points[vertexIndex],
-      };
-    }
-    const segment = hitTestPolygonSegment(obstacle.points, point);
-    if (segment) {
-      return {
-        mode: "add",
-        segmentIndex: segment.segmentIndex,
-        point: segment.point,
-      };
-    }
-    return { mode: "draw" };
+  const polyPoints =
+    obstacle.type === "polygon" && obstacle.points.length >= 3
+      ? obstacle.points
+      : obstacleToPolygonPoints(obstacle);
+
+  if (polyPoints.length < 3) return { mode: "none" };
+
+  const vertexIndex = hitTestPolygonVertex(polyPoints, point);
+  if (vertexIndex >= 0) {
+    return {
+      mode: "select-anchor",
+      vertexIndex,
+      point: polyPoints[vertexIndex],
+    };
   }
 
-  if (obstacle.type === "rect" || obstacle.type === "ellipse") {
-    const box = bboxFromPoints(obstacle.points);
-    const ring = [
-      { x: box.x1, y: box.y1 },
-      { x: box.x2, y: box.y1 },
-      { x: box.x2, y: box.y2 },
-      { x: box.x1, y: box.y2 },
-    ];
-    const vertexIndex = hitTestPolygonVertex(ring, point);
-    if (vertexIndex >= 0) {
-      return { mode: "delete", vertexIndex, point: ring[vertexIndex] };
-    }
-    const segment = hitTestPolygonSegment(ring, point);
-    if (segment) {
-      return {
-        mode: "add",
-        segmentIndex: segment.segmentIndex,
-        point: segment.point,
-      };
-    }
+  const segment = hitTestPolygonSegment(polyPoints, point);
+  if (segment) {
+    return {
+      mode: "add-anchor",
+      segmentIndex: segment.segmentIndex,
+      point: segment.point,
+    };
   }
 
+  return { mode: "none" };
+}
+
+/** @deprecated Use resolveShapeEditTarget */
+export function resolvePenTarget(obstacle, point, options = {}) {
+  const target = resolveShapeEditTarget(obstacle, point);
+  if (options.shift) return { mode: "draw" };
+  if (target.mode === "select-anchor") return { mode: "delete", ...target };
+  if (target.mode === "add-anchor") return { mode: "add", ...target };
   return { mode: "draw" };
 }
 
@@ -357,4 +375,21 @@ export function polygonPointsAttr(points, imgW, imgH) {
   return points
     .map((point) => `${(point.x / 100) * imgW},${(point.y / 100) * imgH}`)
     .join(" ");
+}
+
+function ringPath(points, imgW, imgH) {
+  if (!points?.length) return "";
+  const px = points.map((point) => ({
+    x: (point.x / 100) * imgW,
+    y: (point.y / 100) * imgH,
+  }));
+  const [first, ...rest] = px;
+  return `M ${first.x} ${first.y} ${rest.map((p) => `L ${p.x} ${p.y}`).join(" ")} Z`;
+}
+
+/** SVG path for a polygon with optional holes (even-odd fill). */
+export function polygonPathAttr(points, imgW, imgH, holes = []) {
+  const parts = [ringPath(points, imgW, imgH)];
+  for (const hole of holes) parts.push(ringPath(hole, imgW, imgH));
+  return parts.join(" ");
 }

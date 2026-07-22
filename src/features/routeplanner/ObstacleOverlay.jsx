@@ -4,6 +4,7 @@ import {
   bboxFromPoints,
   getObstacleAnchors,
   isNearPoint,
+  polygonPathAttr,
   polygonPointsAttr,
   PEN_CLOSE_THRESHOLD,
 } from "./obstacles/obstacle-shapes.js";
@@ -44,31 +45,40 @@ function useMapImageSize(kernelRef, kernelReady) {
   return size;
 }
 
-function ObstacleShape({ obstacle, imgW, imgH, selected, hovered, editMode, patternId, shapePointerEvents }) {
+function ObstacleShape({ obstacle, imgW, imgH, selected, hovered, editMode, shapePointerEvents }) {
   const isClear = obstacle.effect === "clear";
-  const fromAccessibility = obstacle.source === "accessibility";
 
-  const fill = isClear
-    ? "rgba(34, 197, 94, 0.22)"
-    : fromAccessibility
-      ? `url(#${patternId})`
-      : "rgba(239, 68, 68, 0.48)";
-  const fillOpacity = isClear ? 1 : fromAccessibility ? 0.85 : 1;
+  const fill = isClear ? "rgba(34, 197, 94, 0.22)" : "rgba(239, 68, 68, 0.45)";
+  const fillOpacity = 1;
   const stroke =
     selected && editMode
       ? "#ffffff"
       : hovered && editMode
         ? "rgba(255, 255, 255, 0.85)"
-        : fromAccessibility
-          ? "rgba(252, 165, 165, 0.95)"
-          : "rgba(220, 38, 38, 0.9)";
-  const strokeWidth = selected && editMode ? 3 : hovered && editMode ? 2.5 : fromAccessibility ? 2.5 : 2;
+        : "rgba(252, 165, 165, 0.95)";
+  const strokeWidth = selected && editMode ? 3 : hovered && editMode ? 2.5 : 2;
   const pointerStyle = {
     pointerEvents: shapePointerEvents ? "auto" : "none",
     cursor: shapePointerEvents ? "pointer" : "default",
   };
 
   if (obstacle.type === "polygon" && obstacle.points.length >= 3) {
+    const holes = obstacle.holes || [];
+    if (holes.length) {
+      return (
+        <path
+          d={polygonPathAttr(obstacle.points, imgW, imgH, holes)}
+          fill={fill}
+          fillOpacity={fillOpacity}
+          fillRule="evenodd"
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          strokeDasharray={isClear ? "6 4" : undefined}
+          style={pointerStyle}
+        />
+      );
+    }
+
     return (
       <polygon
         points={polygonPointsAttr(obstacle.points, imgW, imgH)}
@@ -127,6 +137,7 @@ function AnchorHandle({
   metrics,
   selected,
   onPointerDown,
+  onContextMenu,
 }) {
   const pos = mapPctToPx(anchor.x, anchor.y, imgW, imgH);
   const radius = selected ? metrics.handleRadius : metrics.anchorRadius;
@@ -141,17 +152,16 @@ function AnchorHandle({
       strokeWidth={metrics.handleStroke}
       style={{ pointerEvents: "auto", cursor: selected ? "grab" : "pointer" }}
       onPointerDown={onPointerDown}
+      onContextMenu={onContextMenu}
     />
   );
 }
 
 function PenEditHint({ target, imgW, imgH, metrics }) {
-  if (!target?.point || (target.mode !== "add" && target.mode !== "delete")) return null;
+  if (!target?.point || target.mode !== "add-anchor") return null;
 
   const pos = mapPctToPx(target.point.x, target.point.y, imgW, imgH);
-  const isAdd = target.mode === "add";
   const radius = metrics.handleRadius * 1.05;
-  const label = isAdd ? "+" : "−";
 
   return (
     <g className="routeplanner-pen-edit-hint" aria-hidden="true">
@@ -159,8 +169,8 @@ function PenEditHint({ target, imgW, imgH, metrics }) {
         cx={pos.x}
         cy={pos.y}
         r={radius}
-        fill={isAdd ? "#ffffff" : "#fecaca"}
-        stroke={isAdd ? "#22c55e" : "#dc2626"}
+        fill="#ffffff"
+        stroke="#22c55e"
         strokeWidth={metrics.handleStroke}
         style={{ pointerEvents: "none" }}
       />
@@ -169,23 +179,34 @@ function PenEditHint({ target, imgW, imgH, metrics }) {
         y={pos.y}
         textAnchor="middle"
         dominantBaseline="central"
-        fill={isAdd ? "#15803d" : "#991b1b"}
+        fill="#15803d"
         fontSize={radius * 1.35}
         fontWeight="700"
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
-        {label}
+        +
       </text>
     </g>
   );
 }
 
-function PenDrawPreview({ preview, imgW, imgH, metrics, patternId }) {
+function penPreviewStyle(tool) {
+  if (tool === "pen-subtract") {
+    return {
+      stroke: "rgba(134, 239, 172, 0.95)",
+      fill: "rgba(34, 197, 94, 0.28)",
+    };
+  }
+  return {
+    stroke: "rgba(252, 165, 165, 0.95)",
+    fill: "rgba(239, 68, 68, 0.22)",
+  };
+}
+
+function PenDrawPreview({ preview, imgW, imgH, metrics, obstacleTool }) {
   if (!preview?.points?.length) return null;
 
-  const isClear = preview.effect === "clear";
-  const stroke = isClear ? "rgba(34, 197, 94, 0.95)" : "rgba(252, 165, 165, 0.95)";
-  const fill = isClear ? "rgba(34, 197, 94, 0.18)" : `url(#${patternId})`;
+  const { stroke, fill } = penPreviewStyle(obstacleTool);
   const placed = preview.points;
   const cursor = preview.cursor;
   const nearClose =
@@ -245,11 +266,13 @@ export function ObstacleOverlay({
   editMode = false,
   obstacleTool = "select",
   selectedObstacleId,
+  selectedAnchorIndex = null,
   drawPreview,
   penPreview,
   penHoverTarget,
   onObstaclePointerDown,
   onAnchorPointerDown,
+  onAnchorContextMenu,
 }) {
   const { imgW, imgH } = useMapImageSize(kernelRef, kernelReady);
   const [hoveredObstacleId, setHoveredObstacleId] = useState(null);
@@ -266,11 +289,13 @@ export function ObstacleOverlay({
   if (!kernel || !stage) return null;
 
   const m = overlayMetrics(imgW, imgH);
-  const patternId = "routeplanner-obstacle-hatch";
   const anchorObstacleId = selectedObstacleId || hoveredObstacleId;
   const anchorObstacle = obstacles.find((o) => o.id === anchorObstacleId);
-  const penDrawing = editMode && obstacleTool === "pen";
+  const penDrawing =
+    editMode && (obstacleTool === "pen-add" || obstacleTool === "pen-subtract") && penPreview;
   const shapePointerEvents = editMode && !penDrawing;
+  const canEditAnchors =
+    editMode && !penDrawing && (obstacleTool === "select" || obstacleTool === "pen-add" || obstacleTool === "pen-subtract");
   return createPortal(
     <svg
       className="routeplanner-obstacles"
@@ -287,26 +312,6 @@ export function ObstacleOverlay({
         zIndex: 5,
       }}
     >
-      <defs>
-        <pattern
-          id={patternId}
-          patternUnits="userSpaceOnUse"
-          width={12}
-          height={12}
-          patternTransform="rotate(45)"
-        >
-          <rect width="12" height="12" fill="rgba(239, 68, 68, 0.22)" />
-          <line
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="12"
-            stroke="rgba(220, 38, 38, 0.75)"
-            strokeWidth="2"
-          />
-        </pattern>
-      </defs>
-
       {obstacles.map((obstacle) => (
         <g
           key={obstacle.id}
@@ -330,7 +335,6 @@ export function ObstacleOverlay({
             selected={obstacle.id === selectedObstacleId}
             hovered={obstacle.id === hoveredObstacleId && obstacle.id !== selectedObstacleId}
             editMode={editMode}
-            patternId={patternId}
             shapePointerEvents={shapePointerEvents}
           />
         </g>
@@ -342,7 +346,7 @@ export function ObstacleOverlay({
           imgW={imgW}
           imgH={imgH}
           metrics={m}
-          patternId={patternId}
+          obstacleTool={obstacleTool}
         />
       )}
 
@@ -357,11 +361,10 @@ export function ObstacleOverlay({
           imgH={imgH}
           selected
           editMode
-          patternId={patternId}
         />
       )}
 
-      {editMode && anchorObstacle && !penDrawing && (
+      {canEditAnchors && anchorObstacle && (
         <g key={`anchors-${anchorObstacle.id}`}>
           {getObstacleAnchors(anchorObstacle).map((anchor) => (
             <AnchorHandle
@@ -370,17 +373,25 @@ export function ObstacleOverlay({
               imgW={imgW}
               imgH={imgH}
               metrics={m}
-              selected={anchorObstacle.id === selectedObstacleId}
+              selected={
+                anchorObstacle.id === selectedObstacleId &&
+                anchor.kind === "vertex" &&
+                anchor.index === selectedAnchorIndex
+              }
               onPointerDown={(e) => {
                 e.stopPropagation();
                 onAnchorPointerDown?.(anchorObstacle.id, anchor, e);
+              }}
+              onContextMenu={(e) => {
+                e.stopPropagation();
+                onAnchorContextMenu?.(anchorObstacle.id, anchor, e);
               }}
             />
           ))}
         </g>
       )}
 
-      {editMode && anchorObstacle && anchorObstacle.type !== "polygon" && !penDrawing && (
+      {canEditAnchors && anchorObstacle && anchorObstacle.type !== "polygon" && (
         <g>
           {(() => {
             const box = bboxFromPoints(anchorObstacle.points);

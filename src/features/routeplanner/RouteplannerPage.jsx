@@ -17,6 +17,7 @@ function normalizePlan(raw) {
     hqIndex: inner.hqIndex ?? 0,
     routes: Array.isArray(inner.routes) ? inner.routes : [],
     obstacles: Array.isArray(inner.obstacles) ? inner.obstacles : [],
+    obstacleVectorBuildId: inner.obstacleVectorBuildId ?? null,
   };
 }
 
@@ -53,6 +54,7 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
           hqIndex: payload.hqIndex,
           routes: payload.routes,
           obstacles: payload.obstacles,
+          obstacleVectorBuildId: payload.obstacleVectorBuildId ?? null,
         },
       };
       setDirty(true);

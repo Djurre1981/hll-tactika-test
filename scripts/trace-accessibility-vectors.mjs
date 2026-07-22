@@ -1,7 +1,10 @@
 /**
- * Trace accessibility PNG overlays into high-accuracy vector polygons.
- * Each connected blocked region is traced at native PNG resolution (1920²)
- * by following pixel boundaries — matching the overlay template exactly.
+ * Trace accessibility PNG overlays into vector polygons for pathfinding.
+ *
+ * Modes:
+ * - boundary (v2): pixel-boundary trace with light RDP — legacy, high vertex count
+ * - orthogonal (v3): PNG footprint preserved; RDP collapses pixel stair-steps so
+ *   diagonals become single straight segments with anchors only at real corners
  *
  * Source: public/maps/accessibility/{MapId}_Accessible.png
  * Output: public/data/accessibility/{mapId}.vectors.json
@@ -14,12 +17,44 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const PNG_DIR = path.join(ROOT, "public", "maps", "accessibility");
 const OUT_DIR = path.join(ROOT, "public", "data", "accessibility");
 
-const VECTOR_VERSION = 2;
 const ALPHA_THRESHOLD = 40;
 const COLOR_THRESHOLD = 24;
-const PADDING_PX = 1;
-const MIN_COMPONENT_PX = 16;
 const RDP_EPSILON_PX = 0.8;
+
+const MODES = {
+  boundary: {
+    version: 2,
+    paddingPx: 0,
+    minComponentPx: 16,
+    closeRadius: 0,
+    rdpEpsilonPx: RDP_EPSILON_PX,
+    snapGridPx: 0,
+  },
+  orthogonal: {
+    version: 3,
+    paddingPx: 0,
+    minComponentPx: 16,
+    closeRadius: 0,
+    rdpEpsilonPx: 12,
+    snapGridPx: 2,
+  },
+};
+
+function parseArgs(argv) {
+  let mapFilter = null;
+  let mode = "boundary";
+  for (const arg of argv) {
+    if (arg.startsWith("--map=")) mapFilter = arg.slice(6);
+    else if (arg === "--orthogonal" || arg === "--mode=orthogonal") mode = "orthogonal";
+    else if (arg === "--rectangles" || arg === "--mode=rectangles") mode = "orthogonal";
+    else if (arg.startsWith("--mode=")) mode = arg.slice(7);
+  }
+  if (!MODES[mode]) {
+    console.error(`Unknown mode "${mode}". Use boundary or orthogonal.`);
+    process.exit(1);
+  }
+  return { mapFilter, mode };
+}
 
 function isBlockedPixel(data, index) {
   const o = index * 4;
@@ -48,7 +83,36 @@ function dilateMask(mask, width, height, radius) {
   return out;
 }
 
-function findComponents(mask, width, height) {
+function erodeMask(mask, width, height, radius) {
+  if (radius <= 0) return mask;
+  const out = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (!mask[i]) continue;
+      let keep = true;
+      for (let dy = -radius; dy <= radius && keep; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height || !mask[ny * width + nx]) {
+            keep = false;
+            break;
+          }
+        }
+      }
+      if (keep) out[i] = 1;
+    }
+  }
+  return out;
+}
+
+function closeMask(mask, width, height, radius) {
+  if (radius <= 0) return mask;
+  return erodeMask(dilateMask(mask, width, height, radius), width, height, radius);
+}
+
+function findComponents(mask, width, height, minComponentPx) {
   const visited = new Uint8Array(mask.length);
   const components = [];
 
@@ -91,7 +155,7 @@ function findComponents(mask, width, height) {
         }
       }
 
-      if (area >= MIN_COMPONENT_PX) {
+      if (area >= minComponentPx) {
         components.push({ minX, minY, maxX, maxY, area, pixels });
       }
     }
@@ -213,6 +277,75 @@ function simplifyOrthogonal(points, epsilon = RDP_EPSILON_PX) {
   return closed.length >= 3 ? closed : points;
 }
 
+function snapPolygonToGrid(polygon, gridPx) {
+  if (gridPx <= 1) return polygon;
+  return polygon.map((p) => ({
+    x: Math.round(p.x / gridPx) * gridPx,
+    y: Math.round(p.y / gridPx) * gridPx,
+  }));
+}
+
+function dedupeConsecutivePoints(polygon) {
+  if (polygon.length < 2) return polygon;
+  const out = [polygon[0]];
+  for (let i = 1; i < polygon.length; i++) {
+    const prev = out[out.length - 1];
+    const curr = polygon[i];
+    if (curr.x !== prev.x || curr.y !== prev.y) out.push(curr);
+  }
+  return out;
+}
+
+function mergeCollinearPoints(polygon) {
+  if (polygon.length < 3) return polygon;
+
+  let pts = dedupeConsecutivePoints(polygon.map((p) => ({ x: p.x, y: p.y })));
+  if (pts.length > 1) {
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+    if (first.x === last.x && first.y === last.y) pts.pop();
+  }
+  if (pts.length < 3) return polygon;
+
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const prev = out[out.length - 1];
+    const curr = pts[i];
+    const next = pts[(i + 1) % pts.length];
+    const dx1 = curr.x - prev.x;
+    const dy1 = curr.y - prev.y;
+    const dx2 = next.x - curr.x;
+    const dy2 = next.y - curr.y;
+    const cross = dx1 * dy2 - dy1 * dx2;
+    if (cross === 0 && (dx1 !== 0 || dy1 !== 0)) continue;
+    out.push(curr);
+  }
+
+  if (out.length > 2) {
+    const first = out[0];
+    const last = out[out.length - 1];
+    if (first.x === last.x && first.y === last.y) out.pop();
+  }
+
+  return out.length >= 3 ? out : polygon;
+}
+
+/** Collapse pixel stair-steps; keep straight diagonals as one segment between corners. */
+function simplifyMinimalBoundary(polygon, rdpEpsilonPx = 12, snapGridPx = 0) {
+  if (polygon.length < 3) return polygon;
+
+  let simplified = simplifyOrthogonal(polygon, rdpEpsilonPx);
+  simplified = mergeCollinearPoints(simplified);
+
+  if (snapGridPx > 1) {
+    simplified = mergeCollinearPoints(
+      dedupeConsecutivePoints(snapPolygonToGrid(simplified, snapGridPx))
+    );
+  }
+
+  return simplified.length >= 3 ? simplified : polygon;
+}
+
 function pxToMapPct(x, y, width, height) {
   return {
     x: Math.round((x / width) * 100000) / 1000,
@@ -220,17 +353,26 @@ function pxToMapPct(x, y, width, height) {
   };
 }
 
-function traceComponentPolygon(component) {
+function traceComponentBoundary(component, minimal, rdpEpsilonPx = 12, snapGridPx = 0) {
   const cells = new Set(component.pixels.map(([x, y]) => `${x},${y}`));
   const edges = collectBoundaryEdges(cells);
   const corners = chainEdgesToPolygon(edges);
   if (corners.length < 3) return null;
 
+  if (minimal) {
+    const simplified = simplifyMinimalBoundary(corners, rdpEpsilonPx, snapGridPx);
+    return simplified.length >= 3 ? simplified : corners;
+  }
+
   const simplified = simplifyOrthogonal(corners);
   return simplified.length >= 3 ? simplified : corners;
 }
 
-async function traceMap(mapId) {
+async function traceMap(mapId, modeConfig) {
+  const { version, paddingPx, minComponentPx, closeRadius, rdpEpsilonPx = 12, snapGridPx = 0 } =
+    modeConfig;
+  const minimal = version >= 3;
+
   const pngPath = path.join(PNG_DIR, `${mapId}_Accessible.png`);
   if (!fs.existsSync(pngPath)) {
     console.warn(`skip ${mapId}: missing ${pngPath}`);
@@ -248,12 +390,14 @@ async function traceMap(mapId) {
     blocked[i] = isBlockedPixel(data, i) ? 1 : 0;
   }
 
-  const mask = dilateMask(blocked, width, height, PADDING_PX);
-  const components = findComponents(mask, width, height);
+  let mask = closeRadius > 0 ? closeMask(blocked, width, height, closeRadius) : blocked;
+  mask = dilateMask(mask, width, height, paddingPx);
+
+  const components = findComponents(mask, width, height, minComponentPx);
   const obstacles = [];
 
   for (const component of components) {
-    const polygon = traceComponentPolygon(component);
+    const polygon = traceComponentBoundary(component, minimal, rdpEpsilonPx, snapGridPx);
     if (!polygon) continue;
 
     const points = polygon.map((point) => pxToMapPct(point.x, point.y, width, height));
@@ -262,7 +406,7 @@ async function traceMap(mapId) {
       type: "polygon",
       effect: "block",
       source: "accessibility",
-      traceVersion: VECTOR_VERSION,
+      traceVersion: version,
       points,
       areaPx: component.area,
     });
@@ -271,45 +415,67 @@ async function traceMap(mapId) {
   obstacles.sort((a, b) => b.areaPx - a.areaPx);
   for (const obstacle of obstacles) delete obstacle.areaPx;
 
+  const vertexCounts = obstacles.map((o) => o.points.length);
+
   return {
-    version: VECTOR_VERSION,
+    version,
     mapId,
     sourceSize: width,
-    paddingPx: PADDING_PX,
+    paddingPx,
+    closeRadiusPx: closeRadius,
+    rdpEpsilonPx: minimal ? rdpEpsilonPx : RDP_EPSILON_PX,
+    snapGridPx: minimal ? snapGridPx : 0,
+    traceMode: minimal ? "minimal" : "boundary",
     obstacleCount: obstacles.length,
     obstacles,
     stats: {
       components: components.length,
-      vertices: obstacles.reduce((sum, o) => sum + o.points.length, 0),
+      vertices: vertexCounts.reduce((sum, n) => sum + n, 0),
+      avgVertices:
+        vertexCounts.length > 0
+          ? Math.round((vertexCounts.reduce((sum, n) => sum + n, 0) / vertexCounts.length) * 10) / 10
+          : 0,
+      fourCornerShapes: vertexCounts.filter((n) => n === 4).length,
     },
   };
 }
 
 async function main() {
+  const { mapFilter, mode } = parseArgs(process.argv.slice(2));
+  const modeConfig = MODES[mode];
+
   if (!fs.existsSync(PNG_DIR)) {
     console.error(`Missing PNG dir ${PNG_DIR}`);
     process.exit(1);
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const mapIds = fs
+  let mapIds = fs
     .readdirSync(PNG_DIR)
     .filter((name) => name.endsWith("_Accessible.png"))
     .map((name) => name.replace("_Accessible.png", ""));
 
+  if (mapFilter) {
+    mapIds = mapIds.filter((id) => id.toLowerCase() === mapFilter.toLowerCase());
+    if (!mapIds.length) {
+      console.error(`No accessibility PNG found for map "${mapFilter}"`);
+      process.exit(1);
+    }
+  }
+
   let count = 0;
   for (const mapId of mapIds) {
-    const payload = await traceMap(mapId);
+    const payload = await traceMap(mapId, modeConfig);
     if (!payload) continue;
     const outPath = path.join(OUT_DIR, `${mapId}.vectors.json`);
     fs.writeFileSync(outPath, JSON.stringify(payload));
     console.log(
-      `Wrote ${outPath} — ${payload.obstacleCount} shapes, ${payload.stats.vertices} vertices`
+      `Wrote ${outPath} [${payload.traceMode}] — ${payload.obstacleCount} shapes, ${payload.stats.vertices} vertices (avg ${payload.stats.avgVertices}, ${payload.stats.fourCornerShapes} rects)`
     );
     count++;
   }
 
-  console.log(`Done: ${count} vector maps`);
+  console.log(`Done: ${count} vector map(s) using mode "${mode}"`);
 }
 
 main().catch((error) => {

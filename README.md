@@ -250,9 +250,9 @@ When collab is connected, object edits sync over Yjs `objects[]` (same bridge as
 
 Legacy Excalidraw files under `src/features/micro-prep/` (`ExcalidrawCanvas.jsx`, etc.) are unused and may be removed in a follow-up cleanup.
 
-## Routeplanner mode (timed truck routes)
+## Routeplanner mode (timed vehicle routes)
 
-**Routeplanner** plans **transport truck** routes from faction HQ spawns to destinations on tactical maps. Routes respect the in-game **accessibility overlay** (no-drive zones from [Maps Let Loose](https://mattw.io/maps-let-loose/)), show **travel time in seconds**, and save as standalone plans in D1.
+**Routeplanner** plans **faction vehicle routes** from HQ spawns to destinations on tactical maps. Routes respect the in-game **accessibility overlay** (no-drive zones from [Maps Let Loose](https://mattw.io/maps-let-loose/)), show **travel time in seconds**, and save as standalone plans in D1.
 
 Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) or `/tool/routeplanner`. Tracking issue: [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24).
 
@@ -262,34 +262,35 @@ Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) o
 |-------|-------------|
 | **Title** | Display name for the plan |
 | **Map** | Tactical map ID (same set as Strats) |
-| **Faction** | Axis or Allies — determines HQ spawns |
+| **Faction** | US or GER — determines HQ spawns and available vehicles |
 | **HQ index** | Which of the three faction HQs is the active spawn context |
-| **Routes** | Colored routes with waypoints, computed polyline, and travel time |
+| **Routes** | Colored routes with waypoints, computed polyline, per-route vehicle, and travel time |
 | **Obstacles** | Vector polygons (traced accessibility + user edits) used for pathfinding |
 
-Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the editor opens at `/routeplanner/{id}`.
+Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the editor opens at `/routeplanner/{id}`. Routes replan only when you change a route (not on load or map switch).
 
 ### Route mapping
 
-1. Pick **map**, **faction**, and **HQ** in the left panel.
+1. Pick **map**, **faction**, and **HQ** in the left glass panel (Stratmaker-style chrome).
 2. **Add route** → click the destination on the map.
-3. A* pathfinding plots a drivable polyline around blocked areas (384×384 grid, rasterized from vector obstacles).
+3. Two-phase pathfinding: **grid A\*** on a 384×384 accessibility grid, then **string-pull** smoothing with truck-width clearance checks.
 4. **Adjust the route:** drag waypoints, click the path to insert a waypoint, **Delete** to remove the selected waypoint.
 5. Multiple routes per plan; each gets a color. The right **Routes** panel lists them — hover to highlight on the map.
+6. **Vehicle per route:** select transport, supply, jeep, or halftrack in the Routes panel (options filtered by faction). Travel time uses that vehicle’s speed from `vehicles.json`. A rotated **HLL object icon** marks each route start, aligned with the first segment.
 
-**Travel time** uses path length at the **transport-truck speed from `vehicles.json`** (Ford F60L theoretical top speed via `npm run extract:vehicles`, [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)).
+**Clearance:** pathfinding validates the full vehicle body width (~2.17 m transport truck) via capsule sampling — not just the route centerline. Width comes from FModel `JeepBarrier` exports (`npm run extract:vehicles`).
 
 ### Obstacle editing
 
-Toggle **Obstacles** to dim the map and edit collision geometry:
+Toggle **Obstacles** in the bottom map chrome to dim the map and edit collision geometry (full left panel, Stratmaker glass UI):
 
 | Tool | Use |
 |------|-----|
 | **Select** | Click a shape; drag body or anchor handles to reshape |
-| **Pen** | Draw block/clear polygons; on a **selected** shape, hover edges (**+**) or anchors (**−**) to add/remove points (Illustrator-style); **Shift** overrides to start a new path |
-| **Block / Clear** | Pen mode effect — block adds collision; clear opens a drivable corridor through traced obstacles |
+| **Pen add** | Draw polygons; merges with overlapping obstacles (boolean union) |
+| **Pen subtract** | Draw cut shapes over obstacles |
 
-On open, traced accessibility vectors load from `public/data/accessibility/{mapId}.vectors.json` (built from Maps Let Loose accessibility PNGs at 1920² resolution).
+On open, traced accessibility vectors load from `public/data/accessibility/{mapId}.vectors.json` (384² grid, zero padding, merged overlapping shapes on import).
 
 ### Routeplanner API
 
@@ -313,21 +314,27 @@ Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
 | `public/data/vehicles.json` | Wheeled vehicle speeds (FModel blueprint extract) |
 | `public/maps/accessibility/{mapId}_Accessible.png` | Source accessibility overlays |
 | `public/data/accessibility/{mapId}.vectors.json` | Traced obstacle polygons for pathfinding |
-| `npm run extract:accessibility` | Regenerate grid + vector JSON from PNGs |
+| `npm run extract:accessibility` | Regenerate 384² grid JSON + mono trace from PNGs |
+| `npm run extract:accessibility:vectors` | Regenerate vector obstacle JSON only |
+| `npm run merge:vector-obstacles` | Merge overlapping obstacle polygons (e.g. Carentan cleanup) |
+| `npm run import:obstacle-svg` | Import hand-traced SVG obstacles (auto-merge on import) |
 | `npm run extract:hq-spawns` | Regenerate HQ spawn data from Maps Let Loose |
-| `npm run extract:vehicles` | Regenerate wheeled speeds from FModel Vehicles JSON export |
+| `npm run extract:vehicles` | Regenerate wheeled speeds + body width from FModel Vehicles JSON export |
 
 ### Routeplanner file layout (for developers)
 
 | Path | Role |
 |------|------|
-| `src/features/routeplanner/` | Editor, routes panel, obstacle overlay, pathfinding |
-| `src/features/routeplanner/path/` | A*, route planning, smoothing, accessibility grid loader |
-| `src/features/routeplanner/obstacles/` | Vector load/merge, rasterization, pen/select shape helpers |
+| `src/features/routeplanner/` | Editor, routes panel, obstacle overlay, Stratmaker-matched glass UI |
+| `src/features/routeplanner/path/` | Route engine (A* + string-pull), segment/vehicle clearance, accessibility grid |
+| `src/features/routeplanner/obstacles/` | Vector load/merge, boolean pen ops, rasterization |
+| `src/features/routeplanner/route-vehicles.js` | Faction vehicle catalog → HLL icons + speeds |
 | `src/features/routeplanner/timing/` | Travel-time calculation |
 | `functions/api/route-plans*.js` | Cloudflare Pages Functions handlers |
 | `functions/lib/route-plans-store.js` | D1 persistence |
 | `scripts/trace-accessibility-vectors.mjs` | High-res vector tracing pipeline |
+| `scripts/benchmark-route-path.mjs` | Local pathfinding benchmark (Carentan HQ → town) |
+| `docs/agentx/plans/routeplanner-pathfinding.md` | Pathfinding design (Google Maps / OSRM patterns) |
 | `docs/agentx/plans/routeplanner.md` | Agentx plan + phased roadmap |
 
 ### Roadmap (post-MVP)
@@ -336,9 +343,8 @@ Sub-issues under [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24)
 
 - [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29) — Frontier wall (120s) + match-clock ETA
 - [#30](https://github.com/Djurre1981/hll-tactika-test/issues/30) — Timeline animation scrubber
-- [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26) — Real vehicle stats from AES / game data
-- [#27](https://github.com/Djurre1981/hll-tactika-test/issues/27) — Multi-vehicle types per plan
 - [#28](https://github.com/Djurre1981/hll-tactika-test/issues/28) — Embed routes in Stratmaker slides
+- Per-vehicle body width in clearance (today: transport-truck width for all routes)
 
 ## Roadmap
 

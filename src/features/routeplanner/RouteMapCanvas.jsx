@@ -9,10 +9,14 @@ export function RouteMapCanvas({
   kernelRef,
   mapId,
   panelInsets,
+  showGrid = true,
+  showStrongpoints = false,
   onKernelReady,
   onMapClick,
   onMapPointerDown,
   onMapPointerMove,
+  onMapPointerUp,
+  onMapContextMenu,
   onMapDoubleClick,
   className = "",
 }) {
@@ -27,8 +31,8 @@ export function RouteMapCanvas({
     kernel.mount(host);
     kernel.setTool({ tool: "select" });
     kernel.setOverlays({
-      grid: true,
-      strongpoints: false,
+      grid: showGrid,
+      strongpoints: showStrongpoints,
       accessibility: false,
     });
 
@@ -67,6 +71,14 @@ export function RouteMapCanvas({
     kernel.setPanelInsets(panelInsets);
     kernel.fitToView();
   }, [panelInsets]);
+
+  useEffect(() => {
+    localKernel.current?.setOverlays({
+      grid: showGrid,
+      strongpoints: showStrongpoints,
+      accessibility: false,
+    });
+  }, [showGrid, showStrongpoints]);
 
   useEffect(() => {
     const kernel = localKernel.current;
@@ -111,6 +123,38 @@ export function RouteMapCanvas({
       viewport.removeEventListener("pointermove", handleMove);
     };
   }, [onMapClick, onMapPointerMove]);
+
+  useEffect(() => {
+    const kernel = localKernel.current;
+    const viewport = kernel?.getViewport?.();
+    if (!viewport || !onMapPointerUp) return undefined;
+
+    const handlePointerUp = (event) => {
+      const pt = kernel.screenToMapPercent(event.clientX, event.clientY);
+      if (pt) onMapPointerUp(pt, event);
+    };
+
+    viewport.addEventListener("pointerup", handlePointerUp);
+    viewport.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      viewport.removeEventListener("pointerup", handlePointerUp);
+      viewport.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [onMapPointerUp]);
+
+  useEffect(() => {
+    const kernel = localKernel.current;
+    const viewport = kernel?.getViewport?.();
+    if (!viewport || !onMapContextMenu) return undefined;
+
+    const handleContextMenu = (event) => {
+      const pt = kernel.screenToMapPercent(event.clientX, event.clientY);
+      if (pt) onMapContextMenu(pt, event);
+    };
+
+    viewport.addEventListener("contextmenu", handleContextMenu);
+    return () => viewport.removeEventListener("contextmenu", handleContextMenu);
+  }, [onMapContextMenu]);
 
   useEffect(() => {
     const kernel = localKernel.current;
