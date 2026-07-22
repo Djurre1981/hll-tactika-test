@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../../../lib/api-client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
@@ -25,6 +26,29 @@ export function useEventsByMonthQuery(year, month) {
   return useQuery({
     queryKey: queryKeys.events.byMonth(year, month),
     queryFn: () => apiClient(eventsPath({ year: String(year), month: String(month) })),
+  });
+}
+
+export function useEventsRangeQuery({ from, to, enabled = true } = {}) {
+  const range = useMemo(() => {
+    const start = from ? new Date(from) : new Date();
+    const end = to ? new Date(to) : new Date(start);
+    if (!to) {
+      end.setUTCDate(end.getUTCDate() + 120);
+    }
+    return {
+      from: start.toISOString(),
+      to: end.toISOString(),
+      keyFrom: start.toISOString().slice(0, 10),
+      keyTo: end.toISOString().slice(0, 10),
+    };
+  }, [from, to]);
+
+  return useQuery({
+    queryKey: queryKeys.events.upcoming(range.keyFrom, range.keyTo),
+    queryFn: () => apiClient(eventsPath({ from: range.from, to: range.to })),
+    enabled,
+    staleTime: 60_000,
   });
 }
 

@@ -41,7 +41,7 @@ export function getRouteWaypoints(route) {
   return [];
 }
 
-/** Waypoints drawn on the map — destination plus manually inserted vias only. */
+/** Waypoints drawn on the map while editing — destination plus user-inserted vias. */
 export function getVisibleWaypoints(route) {
   const waypoints = getRouteWaypoints(route);
   if (waypoints.length < 2) return [];
@@ -61,6 +61,27 @@ export function getVisibleWaypoints(route) {
     }
   }
   return visible;
+}
+
+/** Index of a removable user via near `click`, or null. */
+export function findRemovableUserWaypointIndex(waypoints, click, threshold = 2.5) {
+  if (!waypoints?.length || !click) return null;
+  let bestIndex = null;
+  let bestDist = threshold;
+  for (let i = 1; i < waypoints.length - 1; i += 1) {
+    if (!waypoints[i].user) continue;
+    const d = Math.hypot(click.x - waypoints[i].x, click.y - waypoints[i].y);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
+export function isRouteEditable(route) {
+  const waypoints = getRouteWaypoints(route);
+  return waypoints.length >= 2 && (route?.points?.length ?? 0) >= 2;
 }
 
 export function pointToSegmentDistance(p, a, b) {

@@ -5,9 +5,11 @@ import {
   getRouteVehicleIconSrc,
   getRouteVehicleLabel,
 } from "./route-vehicles.js";
+import { RoutePlanEventPicker } from "./RoutePlanEventPicker.jsx";
 import {
   cx,
   glassIconBtn,
+  glassInput,
   panelBody,
   panelDivider,
   panelGlassFill,
@@ -15,18 +17,20 @@ import {
   sectionTitle,
   slideItem,
   slideItemActive,
-  stratPickerTrigger,
 } from "../strats/editor/editorUi.js";
 import { IconBtn } from "../strats/editor/sidePanelUtils.jsx";
 
 export function RoutesPanel({
   planTitle = "Route plan",
+  eventId = null,
   dirty = false,
   saving = false,
   planFactionId = "us",
   routes,
   selectedRouteId,
   hoveredRouteId,
+  onPlanTitleChange,
+  onEventIdChange,
   onSelectRoute,
   onHoverRoute,
   onAddRoute,
@@ -46,18 +50,28 @@ export function RoutesPanel({
 
       <div className={panelBody}>
         <div className="flex items-stretch gap-[0.45rem]">
-          <div className={stratPickerTrigger}>
-            <div className="min-w-0 flex-1">
-              <p className="m-0 truncate text-[0.82rem] font-normal text-white">{planTitle}</p>
-              <p className="mt-[0.1rem] truncate text-[0.64rem] font-light uppercase tracking-[0.06em] text-white/45">
-                {metaBits.join(" · ")}
-              </p>
-            </div>
+          <div className="min-w-0 flex-1">
+            <input
+              type="text"
+              value={planTitle}
+              onChange={(e) => onPlanTitleChange?.(e.target.value)}
+              placeholder="Route plan title"
+              className={cx(glassInput, "text-[0.82rem] font-normal text-white")}
+              autoComplete="off"
+              aria-label="Route plan title"
+            />
+            <p className="mt-[0.35rem] truncate text-[0.64rem] font-light uppercase tracking-[0.06em] text-white/45">
+              {metaBits.join(" · ")}
+            </p>
           </div>
           <IconBtn title="Add route" disabled={!canAddRoute} onClick={onAddRoute}>
             <i className="fa-solid fa-plus" aria-hidden="true" />
           </IconBtn>
         </div>
+
+        <div className={panelDivider} role="presentation" />
+
+        <RoutePlanEventPicker eventId={eventId} onEventIdChange={onEventIdChange} />
 
         <div className={panelDivider} role="presentation" />
 

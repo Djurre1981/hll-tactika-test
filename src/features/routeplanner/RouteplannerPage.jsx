@@ -15,6 +15,7 @@ function normalizePlan(raw) {
     mapId: inner.mapId || "Carentan",
     factionId: inner.factionId || "us",
     hqIndex: inner.hqIndex ?? 0,
+    eventId: inner.eventId ?? null,
     routes: Array.isArray(inner.routes) ? inner.routes : [],
     obstacles: Array.isArray(inner.obstacles) ? inner.obstacles : [],
     obstacleVectorBuildId: inner.obstacleVectorBuildId ?? null,
@@ -47,11 +48,15 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
   const handleSave = useCallback(
     (payload) => {
       latestPayload.current = {
-        title: query.data?.title || "Untitled route plan",
+        title:
+          typeof payload.title === "string" && payload.title.trim()
+            ? payload.title.trim()
+            : query.data?.title || "Untitled route plan",
         plan: {
           mapId: payload.mapId,
           factionId: payload.factionId,
           hqIndex: payload.hqIndex,
+          eventId: payload.eventId ?? query.data?.eventId ?? null,
           routes: payload.routes,
           obstacles: payload.obstacles,
           obstacleVectorBuildId: payload.obstacleVectorBuildId ?? null,
@@ -63,7 +68,7 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
         if (latestPayload.current) mutation.mutate(latestPayload.current);
       }, 800);
     },
-    [mutation, query.data?.title]
+    [mutation, query.data?.title, query.data?.eventId]
   );
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);

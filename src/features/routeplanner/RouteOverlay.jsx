@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { getVisibleWaypoints } from "./path/plan-route.js";
+import { getVisibleWaypoints, isRouteEditable } from "./path/plan-route.js";
 import { getRouteFactionId, getHqSpawnLabel } from "./constants.js";
 import { RouteVehicleMarker } from "./RouteVehicleMarker.jsx";
 
@@ -117,6 +117,7 @@ export function RouteOverlay({
   onWaypointPointerDown,
   onWaypointContextMenu,
   onRoutePathClick,
+  onRoutePathContextMenu,
 }) {
   const { imgW, imgH } = useMapImageSize(kernelRef, kernelReady);
   if (!kernelReady || !imgW || !imgH) return null;
@@ -126,7 +127,8 @@ export function RouteOverlay({
   if (!kernel || !stage) return null;
 
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
-  const visibleWaypoints = getVisibleWaypoints(selectedRoute);
+  const routeEditing = isRouteEditable(selectedRoute);
+  const visibleWaypoints = routeEditing ? getVisibleWaypoints(selectedRoute) : [];
   const m = overlayMetrics(imgW, imgH);
 
   return createPortal(
@@ -182,7 +184,7 @@ export function RouteOverlay({
 
         return (
           <g key={route.id}>
-            {isSelected && onRoutePathClick && (
+            {routeEditing && isSelected && onRoutePathClick && (
               <polyline
                 points={pts}
                 fill="none"
@@ -190,12 +192,18 @@ export function RouteOverlay({
                 strokeWidth={hitWidth}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                style={{ pointerEvents: "stroke", cursor: "pointer" }}
-                onPointerDown={(e) => {
+                style={{ pointerEvents: "stroke", cursor: "crosshair" }}
+                onClick={(e) => {
                   if (e.button !== 0) return;
                   e.stopPropagation();
                   const pt = kernel.screenToMapPercent(e.clientX, e.clientY);
                   if (pt) onRoutePathClick(route.id, pt);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const pt = kernel.screenToMapPercent(e.clientX, e.clientY);
+                  if (pt) onRoutePathContextMenu?.(route.id, pt);
                 }}
               />
             )}
@@ -247,6 +255,10 @@ export function RouteOverlay({
 
         let fill = wp.kind === "end" ? "#fff" : "#c4b5fd";
         let stroke = "#fbbf24";
+        if (wp.user && wp.kind === "via") {
+          fill = "#a78bfa";
+          stroke = "#fbbf24";
+        }
         if (isDragging) {
           fill = "#f97316";
           stroke = "#fff";

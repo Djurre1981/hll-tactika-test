@@ -29,6 +29,8 @@ import {
   getRouteWaypoints,
   insertWaypointOnPath,
   removeWaypoint,
+  findRemovableUserWaypointIndex,
+  isRouteEditable,
 } from "./path/plan-route.js";
 import { getHqSideFromData } from "./timing/frontier-wall.js";
 import { enrichRouteTiming, maxMatchArrivalSec } from "./timing/route-timing.js";
@@ -113,6 +115,8 @@ export function RouteplannerEditor({
   );
   const [obstacles, setObstacles] = useState(plan?.obstacles || []);
   const [obstacleVectorBuildId, setObstacleVectorBuildId] = useState(plan?.obstacleVectorBuildId ?? null);
+  const [planTitle, setPlanTitle] = useState(plan?.title || "Untitled route plan");
+  const [eventId, setEventId] = useState(plan?.eventId ?? null);
   routesRef.current = routes;
   const obstaclesRef = useRef(obstacles);
   obstaclesRef.current = obstacles;
@@ -144,6 +148,11 @@ export function RouteplannerEditor({
     top: 24,
     bottom: 24,
   });
+
+  useEffect(() => {
+    setPlanTitle(plan?.title || "Untitled route plan");
+    setEventId(plan?.eventId ?? null);
+  }, [plan?.id, plan?.title, plan?.eventId]);
 
   useEffect(() => {
     fetch("/data/hq-spawns.json")
@@ -209,6 +218,8 @@ export function RouteplannerEditor({
   const persistPatch = useCallback(
     (patch) => {
       onSave?.({
+        title: planTitle,
+        eventId,
         mapId,
         factionId,
         hqIndex,
@@ -218,7 +229,23 @@ export function RouteplannerEditor({
         ...patch,
       });
     },
-    [onSave, mapId, factionId, hqIndex, routes, obstacles, obstacleVectorBuildId]
+    [onSave, planTitle, eventId, mapId, factionId, hqIndex, routes, obstacles, obstacleVectorBuildId]
+  );
+
+  const handlePlanTitleChange = useCallback(
+    (value) => {
+      setPlanTitle(value);
+      persistPatch({ title: value });
+    },
+    [persistPatch]
+  );
+
+  const handleEventIdChange = useCallback(
+    (nextEventId) => {
+      setEventId(nextEventId);
+      persistPatch({ eventId: nextEventId });
+    },
+    [persistPatch]
   );
 
   const applyObstacles = useCallback(
@@ -454,15 +481,33 @@ export function RouteplannerEditor({
     async (routeId, pt) => {
       if (showObstacles || dragRef.current || plottingRouteId) return;
       const route = routesRef.current.find((r) => r.id === routeId);
-      const waypoints = getRouteWaypoints(route);
-      if (!route?.points?.length || waypoints.length < 2) return;
+      if (!isRouteEditable(route)) return;
 
+      const waypoints = getRouteWaypoints(route);
       const inserted = insertWaypointOnPath(waypoints, route.points, pt);
       if (!inserted) return;
 
       setSelectedRouteId(routeId);
       setSelectedWaypoint({ routeId, index: inserted.insertIndex });
       await replanRoute(routeId, inserted.waypoints);
+    },
+    [showObstacles, plottingRouteId, replanRoute]
+  );
+
+  const handleRoutePathContextMenu = useCallback(
+    async (routeId, pt) => {
+      if (showObstacles || plottingRouteId) return;
+      const route = routesRef.current.find((r) => r.id === routeId);
+      if (!isRouteEditable(route)) return;
+
+      const waypoints = getRouteWaypoints(route);
+      const idx = findRemovableUserWaypointIndex(waypoints, pt);
+      if (idx == null) return;
+
+      const next = removeWaypoint(waypoints, idx);
+      if (!next) return;
+      setSelectedWaypoint(null);
+      await replanRoute(routeId, next);
     },
     [showObstacles, plottingRouteId, replanRoute]
   );
@@ -669,6 +714,23 @@ export function RouteplannerEditor({
 
   const handleMapContextMenu = useCallback(
     async (pt, event) => {
+      if (!showObstacles && selectedRouteId && !plottingRouteId) {
+        const route = routesRef.current.find((r) => r.id === selectedRouteId);
+        if (isRouteEditable(route)) {
+          const waypoints = getRouteWaypoints(route);
+          const idx = findRemovableUserWaypointIndex(waypoints, pt);
+          if (idx != null) {
+            event?.preventDefault?.();
+            const next = removeWaypoint(waypoints, idx);
+            if (next) {
+              setSelectedWaypoint(null);
+              await replanRoute(selectedRouteId, next);
+            }
+            return;
+          }
+        }
+      }
+
       if (!obstacleEditMode) return;
       event?.preventDefault?.();
 
@@ -694,6 +756,10 @@ export function RouteplannerEditor({
       }
     },
     [
+      showObstacles,
+      selectedRouteId,
+      plottingRouteId,
+      replanRoute,
       obstacleEditMode,
       obstacleTool,
       selectedObstacleId,
@@ -910,9 +976,14 @@ export function RouteplannerEditor({
         const route = routesRef.current.find((r) => r.id === drag.routeId);
         const waypoints = getRouteWaypoints(route);
         if (route && waypoints.length >= 2) {
-          const next = waypoints.map((p, i) =>
-            i === drag.waypointIndex ? { x: drag.preview.x, y: drag.preview.y } : p
-          );
+          const next = waypoints.map((p, i) => {
+            if (i !== drag.waypointIndex) return p;
+            const moved = { x: drag.preview.x, y: drag.preview.y };
+            if (i === waypoints.length - 1 || p.user) {
+              return { ...moved, user: true };
+            }
+            return moved;
+          });
           await replanRoute(drag.routeId, next);
           setSelectedWaypoint({ routeId: drag.routeId, index: drag.waypointIndex });
         }
@@ -1215,8 +1286,8 @@ export function RouteplannerEditor({
     hqData?.maps?.[mapId]?.factions?.[getRouteFactionId(selectedRoute, factionId)]?.hqSpawns ||
     [];
   const routeHint =
-    selectedRoute && getRouteWaypoints(selectedRoute).length >= 2
-      ? "Click the route line to add a waypoint · Drag handles to move · Right-click or Delete removes a manual via-point"
+    selectedRoute && isRouteEditable(selectedRoute)
+      ? "Left-click the route to add a waypoint · Drag handles to move · Right-click a via to remove"
       : null;
 
   return (
@@ -1317,6 +1388,7 @@ export function RouteplannerEditor({
         onWaypointPointerDown={handleWaypointPointerDown}
         onWaypointContextMenu={handleWaypointContextMenu}
         onRoutePathClick={handleRoutePathClick}
+        onRoutePathContextMenu={handleRoutePathContextMenu}
       />
 
       <div
@@ -1413,13 +1485,16 @@ export function RouteplannerEditor({
       >
         <div className="pointer-events-auto h-full">
           <RoutesPanel
-            planTitle={plan?.title || "Route plan"}
+            planTitle={planTitle}
+            eventId={eventId}
             dirty={dirty}
             saving={saving}
             planFactionId={factionId}
             routes={routes}
             selectedRouteId={selectedRouteId}
             hoveredRouteId={hoveredRouteId}
+            onPlanTitleChange={handlePlanTitleChange}
+            onEventIdChange={handleEventIdChange}
             onSelectRoute={(id) => {
               setSelectedRouteId(id);
               setSelectedWaypoint(null);
