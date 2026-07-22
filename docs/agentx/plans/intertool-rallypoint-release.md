@@ -1,7 +1,7 @@
 # Plan: Intertool + RallyPoint closed release (#33 → #23)
 
 ## Goal
-Ship an Event-centric Match Brief product so Circle can schedule, prep, RSVP, and review matches from one hub — using existing Strat / Routeplanner / Micro Prep / Roster tools — before closed release. **Membership, roles, roster, and match notifications are driven from Circle Discord**; Tactika replaces Apollobot as the roster/notification system of record.
+Ship an Event-centric Match Brief product so Circle can schedule, prep, RSVP, and review matches from one hub before closed release. **Tactika is new** — Circle today runs match ops on **Stratsketch** (nearly everything), **Apollobot** (signups), and **Google Sheets** (roster). This release wires Tactika’s Strat / Routeplanner / Micro Prep / Calendar / Roster into one hub and cuts over from those external tools. **Membership, roles, roster, and match notifications are driven from Circle Discord**; Tactika replaces Apollobot + Sheets as the roster/notification system of record.
 
 ## Agreed decisions (from lead gate)
 - UI / framework: React hub + Cloudflare Pages Functions (existing)
