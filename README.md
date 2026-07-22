@@ -2,7 +2,7 @@
 
 Developed by The Circle community and kept strictly exclusive to our competitive team. The platform is a tailored strategy and planning platform for Hell Let Loose designed to scale as our team needs grow. 
 
-Its first release features an interactive climb and MG guide. A second module, **Strats**, adds map-based tactical planning with multi-slide presentations and drawing tools similar to StratSketch, plus Hell Let Loose–specific placeables (garrisons, outposts, vehicles, and more) sized like Maps Let Loose.
+Its first release features an interactive climb and MG guide. A second module, **Strats**, adds map-based tactical planning with multi-slide presentations and drawing tools similar to StratSketch, plus Hell Let Loose–specific placeables (garrisons, outposts, vehicles, and more) sized like Maps Let Loose. **Routeplanner** adds timed transport-truck routes with accessibility-aware pathfinding on the same tactical maps.
 
 Inspired by [Maps Let Loose](https://mattw.io/maps-let-loose/) for map selection, overlays, and default spawn data.
 
@@ -250,6 +250,95 @@ When collab is connected, object edits sync over Yjs `objects[]` (same bridge as
 
 Legacy Excalidraw files under `src/features/micro-prep/` (`ExcalidrawCanvas.jsx`, etc.) are unused and may be removed in a follow-up cleanup.
 
+## Routeplanner mode (timed truck routes)
+
+**Routeplanner** plans **transport truck** routes from faction HQ spawns to destinations on tactical maps. Routes respect the in-game **accessibility overlay** (no-drive zones from [Maps Let Loose](https://mattw.io/maps-let-loose/)), show **travel time in seconds**, and save as standalone plans in D1.
+
+Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) or `/tool/routeplanner`. Tracking issue: [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24).
+
+### Plan documents
+
+| Field | Description |
+|-------|-------------|
+| **Title** | Display name for the plan |
+| **Map** | Tactical map ID (same set as Strats) |
+| **Faction** | Axis or Allies — determines HQ spawns |
+| **HQ index** | Which of the three faction HQs is the active spawn context |
+| **Routes** | Colored routes with waypoints, computed polyline, and travel time |
+| **Obstacles** | Vector polygons (traced accessibility + user edits) used for pathfinding |
+
+Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the editor opens at `/routeplanner/{id}`.
+
+### Route mapping
+
+1. Pick **map**, **faction**, and **HQ** in the left panel.
+2. **Add route** → click the destination on the map.
+3. A* pathfinding plots a drivable polyline around blocked areas (384×384 grid, rasterized from vector obstacles).
+4. **Adjust the route:** drag waypoints, click the path to insert a waypoint, **Delete** to remove the selected waypoint.
+5. Multiple routes per plan; each gets a color. The right **Routes** panel lists them — hover to highlight on the map.
+
+**Travel time** uses path length at a **38 km/h placeholder** until real vehicle stats are extracted ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)).
+
+### Obstacle editing
+
+Toggle **Obstacles** to dim the map and edit collision geometry:
+
+| Tool | Use |
+|------|-----|
+| **Select** | Click a shape; drag body or anchor handles to reshape |
+| **Pen** | Draw block/clear polygons; on a **selected** shape, hover edges (**+**) or anchors (**−**) to add/remove points (Illustrator-style); **Shift** overrides to start a new path |
+| **Block / Clear** | Pen mode effect — block adds collision; clear opens a drivable corridor through traced obstacles |
+
+On open, traced accessibility vectors load from `public/data/accessibility/{mapId}.vectors.json` (built from Maps Let Loose accessibility PNGs at 1920² resolution).
+
+### Routeplanner API
+
+All routes require Steam auth. Create/update/delete require editor role.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/route-plans` | List route plans |
+| `POST` | `/api/route-plans` | Create plan |
+| `GET` | `/api/route-plans/{id}` | Load plan |
+| `PUT` | `/api/route-plans/{id}` | Update plan |
+| `DELETE` | `/api/route-plans/{id}` | Delete plan |
+
+Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
+
+### Data & build scripts
+
+| Asset / script | Role |
+|----------------|------|
+| `public/data/hq-spawns.json` | Faction HQ spawn points per map |
+| `public/data/vehicles.json` | Vehicle speed placeholders (transport truck) |
+| `public/maps/accessibility/{mapId}_Accessible.png` | Source accessibility overlays |
+| `public/data/accessibility/{mapId}.vectors.json` | Traced obstacle polygons for pathfinding |
+| `npm run extract:accessibility` | Regenerate grid + vector JSON from PNGs |
+| `npm run extract:hq-spawns` | Regenerate HQ spawn data from Maps Let Loose |
+
+### Routeplanner file layout (for developers)
+
+| Path | Role |
+|------|------|
+| `src/features/routeplanner/` | Editor, routes panel, obstacle overlay, pathfinding |
+| `src/features/routeplanner/path/` | A*, route planning, smoothing, accessibility grid loader |
+| `src/features/routeplanner/obstacles/` | Vector load/merge, rasterization, pen/select shape helpers |
+| `src/features/routeplanner/timing/` | Travel-time calculation |
+| `functions/api/route-plans*.js` | Cloudflare Pages Functions handlers |
+| `functions/lib/route-plans-store.js` | D1 persistence |
+| `scripts/trace-accessibility-vectors.mjs` | High-res vector tracing pipeline |
+| `docs/agentx/plans/routeplanner.md` | Agentx plan + phased roadmap |
+
+### Roadmap (post-MVP)
+
+Sub-issues under [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24):
+
+- [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29) — Frontier wall (120s) + match-clock ETA
+- [#30](https://github.com/Djurre1981/hll-tactika-test/issues/30) — Timeline animation scrubber
+- [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26) — Real vehicle stats from AES / game data
+- [#27](https://github.com/Djurre1981/hll-tactika-test/issues/27) — Multi-vehicle types per plan
+- [#28](https://github.com/Djurre1981/hll-tactika-test/issues/28) — Embed routes in Stratmaker slides
+
 ## Roadmap
 
 - Fixing any bugs after release.
@@ -384,6 +473,7 @@ Map images live in `maps/no-grid/`. Spawn data is in `data/map-spawns.json` (gen
 | Action | Input |
 |--------|-------|
 | Open Strats | App navigation / Strats browser |
+| Open Routeplanner | Hub → Routeplanner (or `/tool/routeplanner`) |
 | Open Micro Prep | Hub → Micro Prep |
 | Select / draw | Left sidebar tools |
 | Finish draw → Select | **Right-click** on the map |
