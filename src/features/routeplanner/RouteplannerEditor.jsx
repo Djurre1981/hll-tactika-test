@@ -963,7 +963,7 @@ export function RouteplannerEditor({
           </div>
 
           <p className="m-0 text-[0.72rem] leading-snug text-white/45">
-            Transport truck · {TRANSPORT_SPEED_KMH} km/h (from game data)
+            Transport truck · {Number(TRANSPORT_SPEED_KMH).toFixed(1)} km/h
           </p>
           {obstacles.length > 0 && (
             <p className="m-0 text-[0.68rem] leading-snug text-white/40">
