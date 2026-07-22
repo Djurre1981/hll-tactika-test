@@ -34,6 +34,16 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 | 3 | #27 | `route-vehicles.js`, per-route vehicle + icon at start |
 | 4 | #28 | `slide.routePlanId`, `SlideRoutePlanPicker`, `StratRouteOverlay` |
 
+## Route settings UI (Jul 2026)
+
+Per selected route in the **left sidebar**:
+
+- **Name**, **Driver** (text; roster picker deferred)
+- **Color** presets + custom
+- **Faction**, **Start point** (HQ north / mid / south), **Vehicle** (HLL icon row, `toolBtnActive` selection)
+
+Plan-level defaults (map, faction, start point) apply when no route is selected.
+
 ## Key files
 
 | Path | Role |

@@ -254,7 +254,7 @@ Legacy Excalidraw files under `src/features/micro-prep/` (`ExcalidrawCanvas.jsx`
 
 **Routeplanner** plans **faction vehicle routes** from HQ spawns to destinations on tactical maps. Routes respect the in-game **accessibility overlay** (no-drive zones from [Maps Let Loose](https://mattw.io/maps-let-loose/)), show **travel time in seconds**, and save as standalone plans in D1.
 
-Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) or `/tool/routeplanner`. Tracking issue: [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24).
+Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) or `/tool/routeplanner`. Shipped on v2 (`hll-tactika-test`) — see [agentx plan](docs/agentx/plans/routeplanner.md). Tracking: [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24) (umbrella); sub-issues [#26–#30](https://github.com/Djurre1981/hll-tactika-test/issues?q=is%3Aissue+routeplanner) closed Jul 2026.
 
 ### Plan documents
 
@@ -262,21 +262,27 @@ Open **Routeplanner** from the hub dashboard (shared tile with **Stratmaker**) o
 |-------|-------------|
 | **Title** | Display name for the plan |
 | **Map** | Tactical map ID (same set as Strats) |
-| **Faction** | US or GER — determines HQ spawns and available vehicles |
-| **HQ index** | Which of the three faction HQs is the active spawn context |
-| **Routes** | Colored routes with waypoints, computed polyline, per-route vehicle, and travel time |
+| **Faction** | Default US or GER for new routes (each route can override) |
+| **HQ index** | Default start slot: **HQ north**, **HQ mid**, **HQ south** (indices 0–2) |
+| **Routes** | Per route: name, optional **driver** (text; roster picker later), color, faction, HQ, vehicle, waypoints, polyline, travel time, match arrival |
 | **Obstacles** | Vector polygons (traced accessibility + user edits) used for pathfinding |
 
 Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the editor opens at `/routeplanner/{id}`. Routes replan only when you change a route (not on load or map switch).
 
 ### Route mapping
 
-1. Pick **map**, **faction**, and **HQ** in the left glass panel (Stratmaker-style chrome).
+1. Pick **map** and **faction** in the left panel (when no route is selected). Choose default **start point** (**HQ north** / **HQ mid** / **HQ south**).
 2. **Add route** → click the destination on the map.
 3. Two-phase pathfinding: **grid A\*** on a 384×384 accessibility grid, then **string-pull** smoothing with truck-width clearance checks.
 4. **Adjust the route:** drag waypoints, click the path to insert a waypoint, **Delete** to remove the selected waypoint.
 5. Multiple routes per plan; each gets a color. The right **Routes** panel lists them — hover to highlight on the map.
-6. **Vehicle per route:** select transport, supply, jeep, or halftrack in the Routes panel (options filtered by faction). Travel time uses that vehicle’s speed from `vehicles.json`. A rotated **HLL object icon** marks each route start, aligned with the first segment.
+6. **Per-route settings** (left panel when a route is selected):
+   - **Name** and **Driver** (free text; match roster picker planned)
+   - **Color** — presets + custom picker
+   - **Faction** — US or GER (replans if path exists)
+   - **Start point** — HQ north / mid / south (replans from new HQ)
+   - **Vehicle** — HLL object icon row (transport, supply, jeep, halftrack); travel time uses that vehicle’s speed from `vehicles.json`
+7. A rotated **HLL object icon** marks each route start on the map, aligned with the first segment.
 
 **Clearance:** pathfinding validates the full vehicle body width (~2.17 m transport truck) via capsule sampling — not just the route centerline. Width comes from FModel `JeepBarrier` exports (`npm run extract:vehicles`).
 
@@ -287,13 +293,13 @@ Routes that cross the **frontier wall** (first 120s of the match) show:
 - **Drive time** — raw seconds at constant top speed
 - **Match arrival** — e.g. `2:06` including wait at the wall until 2:00
 
-A dashed **frontier wall** line appears on the map (column B/C border for left-side HQs). The bottom **match timeline** scrubber animates all routes together; **Space** toggles play/pause. Wall drop is marked at 2:00 on the scrubber.
+A dashed **frontier wall** line appears on the map at the **B/C border** (Allies) or **H/I border** (Axis) — two grid squares from HQ on the 10×10 tactical grid. The bottom **match timeline** scrubber animates all routes together; **Space** toggles play/pause. Wall drop is marked at 2:00 on the scrubber.
 
 Timing is ETA-only — pathfinding does not block routes beyond the wall; the engine adds wait time when the route crosses early.
 
-### Vehicle stats (#26)
+### Vehicle stats ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26))
 
-Speeds come from FModel wheeled blueprint JSON (PhysX drivetrain theoretical max):
+Speeds come from FModel wheeled blueprint JSON (PhysX drivetrain theoretical max). Per-route **HLL icon picker** uses the same catalog as Stratmaker (`route-vehicles.js` → `vehicles.json`).
 
 ```bash
 npm run extract:vehicles -- --input "C:/path/to/FModel/Exports/HLL/Content/Blueprints/Vehicles"
@@ -301,7 +307,7 @@ npm run extract:vehicles -- --input "C:/path/to/FModel/Exports/HLL/Content/Bluep
 
 Output: `public/data/vehicles.json` (MaxRPM, gear ratios, wheel radius → `maxSpeedKmh`). No acceleration model — constant top speed along the polyline. Re-run when game exports change.
 
-### Stratmaker embed (#28)
+### Stratmaker embed ([#28](https://github.com/Djurre1981/hll-tactika-test/issues/28))
 
 On an active strat slide, attach a **route plan** (filtered by slide map + match faction Allies→US / Axis→GER). Routes render read-only on the strat map; **Open in Routeplanner** and **Copy link** buttons appear in the slide panel.
 
@@ -361,16 +367,18 @@ Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
 | `functions/lib/route-plans-store.js` | D1 persistence |
 | `scripts/trace-accessibility-vectors.mjs` | High-res vector tracing pipeline |
 | `scripts/benchmark-route-path.mjs` | Local pathfinding benchmark (Carentan HQ → town) |
-| `scripts/benchmark-match-timing.mjs` | Frontier wall wait + match arrival benchmark |
+| `scripts/benchmark-match-timing.mjs` | Frontier wall wait + match arrival benchmark (Carentan US HQ north) |
 | `docs/agentx/plans/routeplanner-pathfinding.md` | Pathfinding design (Google Maps / OSRM patterns) |
 | `docs/agentx/plans/routeplanner.md` | Agentx plan + phased roadmap |
 
 ### Roadmap (deferred)
 
+- Match **driver** field → roster player picker (linked to scheduled match)
 - Per-vehicle body width in clearance (today: transport-truck width for all routes)
 - Terrain surface speed modifiers (declined — not worth the data cost)
 - In-game spot-check calibration for `vehicles.json` speeds
 - Acceleration / torque-curve timing model
+- Pathfinding blocked by frontier wall (today: ETA-only wait at wall crossing)
 
 ## Roadmap
 
