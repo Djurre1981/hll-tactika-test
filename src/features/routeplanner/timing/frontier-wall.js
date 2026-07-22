@@ -1,12 +1,17 @@
 /** Match start frontier wall drops at 120s (game rule). */
 export const FRONTIER_WALL_DROP_SEC = 120;
 
-/** Tactical grid columns are 200 m → 20 map-% each on a 1000 m map. */
-export const MAP_PCT_PER_GRID_COL = 20;
+/** Tactical map grid is 10×10 (A–J / 1–10) → 10 map-% per square on 0–100% coords. */
+export const MAP_PCT_PER_GRID_SQUARE = 10;
 
-/** Wall line between columns B/C (left HQ) or D/C (right HQ). */
-export const WALL_LINE_LEFT_HQ = MAP_PCT_PER_GRID_COL * 2;
-export const WALL_LINE_RIGHT_HQ = MAP_PCT_PER_GRID_COL * 3;
+/** Two grid squares from HQ side, then wall on the next border. */
+export const FRONTIER_WALL_SQUARES_FROM_HQ = 2;
+
+/** Allies (left HQ): columns A+B open; wall on B/C border (e.g. Carentan US). */
+export const WALL_LINE_LEFT_HQ = MAP_PCT_PER_GRID_SQUARE * FRONTIER_WALL_SQUARES_FROM_HQ;
+
+/** Axis (right HQ): columns I+J open; wall on H/I border (e.g. Carentan GER). */
+export const WALL_LINE_RIGHT_HQ = MAP_PCT_PER_GRID_SQUARE * (10 - FRONTIER_WALL_SQUARES_FROM_HQ);
 
 /**
  * @param {"left"|"right"|string|null|undefined} hqSide
@@ -30,7 +35,7 @@ export function getFrontierWallLine(hqSide) {
 export function isInFrontierAllowedZone(point, hqSide) {
   if (!point || hqSide == null) return true;
   if (hqSide === "left") return point.x < WALL_LINE_LEFT_HQ;
-  if (hqSide === "right") return point.x > WALL_LINE_RIGHT_HQ;
+  if (hqSide === "right") return point.x >= WALL_LINE_RIGHT_HQ;
   return true;
 }
 
@@ -54,7 +59,7 @@ export function findWallCrossing(a, b, hqSide) {
   }
 
   if (hqSide === "right") {
-    if (x1 <= WALL_LINE_RIGHT_HQ || x2 > WALL_LINE_RIGHT_HQ) return null;
+    if (x1 < WALL_LINE_RIGHT_HQ || x2 >= WALL_LINE_RIGHT_HQ) return null;
     if (Math.abs(dx) < 1e-9) return { t: 0, x: WALL_LINE_RIGHT_HQ, y: a.y };
     const t = (WALL_LINE_RIGHT_HQ - x1) / dx;
     if (t <= 0 || t > 1) return null;

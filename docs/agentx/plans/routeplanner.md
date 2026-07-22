@@ -1,6 +1,6 @@
 # Plan: Routeplanner (#24)
 
-**Status:** Phases 2–4 implemented on branch `routeplanner` (not merged). MVP shipped — [PR #25](https://github.com/Djurre1981/hll-tactika-test/pull/25).
+**Status:** Phases 2–4 merged to `main` and deployed to v2 (`hll-tactika-test`). MVP shipped — [PR #25](https://github.com/Djurre1981/hll-tactika-test/pull/25).
 
 ## Goal
 Build a standalone truck route planner that uses game-accurate constraints and vehicle speed to plot transport-truck routes from HQ spawn to destination, with accessibility-aware pathfinding and per-route **travel time** (duration in seconds).
@@ -18,8 +18,9 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 
 ## Game rules (frontier wall)
 - **Frontier wall:** First **120 seconds** — vehicles cannot pass beyond 2 grid columns from HQ side. Wall drops at t=120s.
-- **Wall geometry:** Vertical line at map-% **40** (left HQ) or **60** (right HQ); full map height.
+- **Wall geometry:** Vertical line at map-% **20** (left HQ, B/C border) or **80** (right HQ, H/I border); full map height.
 - **Example — Carentan US:** Wall at column B/C border; cols A–B open until 2:00.
+- **Example — Carentan GER:** Wall at column H/I border; cols I–J open until 2:00.
 - Grid squares are 200×200 m; coordinates 0–100 map-%.
 
 ## Shipped

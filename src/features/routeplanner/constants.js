@@ -22,3 +22,8 @@ export const FACTIONS = [
 export function clampPct(value) {
   return Math.min(MAP_PCT_MAX, Math.max(MAP_PCT_MIN, value));
 }
+
+/** Per-route faction when set; otherwise plan default. */
+export function getRouteFactionId(route, planFactionId = "us") {
+  return route?.factionId || planFactionId || "us";
+}

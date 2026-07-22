@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { getRouteFactionId } from "./constants.js";
+import { getHqSideFromData } from "./timing/frontier-wall.js";
 import {
   computeRouteTimeline,
   positionAtMatchTime,
@@ -75,8 +77,9 @@ export function RoutePlaybackOverlay({
   kernelRef,
   kernelReady = false,
   routes,
-  factionId,
-  hqSide,
+  planFactionId,
+  hqData,
+  mapId,
   matchTimeSec = 0,
   active = false,
 }) {
@@ -87,13 +90,16 @@ export function RoutePlaybackOverlay({
     return routes
       .filter((r) => r.points?.length >= 2)
       .map((route) => {
-        const speed = getRouteVehicleSpeedKmh(route.vehicleId, factionId);
+        const faction = getRouteFactionId(route, planFactionId);
+        const hqSide = getHqSideFromData(hqData, mapId, faction);
+        const speed = getRouteVehicleSpeedKmh(route.vehicleId, faction);
         return {
           route,
+          faction,
           timeline: computeRouteTimeline(route.points, speed, hqSide),
         };
       });
-  }, [active, routes, factionId, hqSide]);
+  }, [active, routes, planFactionId, hqData, mapId]);
 
   if (!active || !kernelReady || !imgW || !imgH || !timelines.length) return null;
 
@@ -117,14 +123,14 @@ export function RoutePlaybackOverlay({
         zIndex: 8,
       }}
     >
-      {timelines.map(({ route, timeline }) => {
+      {timelines.map(({ route, faction, timeline }) => {
         const pos = positionAtMatchTime(timeline, matchTimeSec);
         if (!pos) return null;
         return (
           <PlaybackVehicleIcon
             key={`playback-${route.id}`}
             route={route}
-            factionId={factionId}
+            factionId={faction}
             pos={pos}
             imgW={imgW}
             imgH={imgH}

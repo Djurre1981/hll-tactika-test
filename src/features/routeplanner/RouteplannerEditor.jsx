@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ROUTE_COLORS } from "./constants.js";
+import { ROUTE_COLORS, getRouteFactionId } from "./constants.js";
 import { RouteMapCanvas } from "./RouteMapCanvas.jsx";
 import { RouteOverlay } from "./RouteOverlay.jsx";
 import { ObstacleOverlay } from "./ObstacleOverlay.jsx";
@@ -70,16 +70,18 @@ function nextRouteColor(index) {
   return ROUTE_COLORS[index % ROUTE_COLORS.length];
 }
 
-function normalizeRoutesForFaction(routes, faction, hqSide) {
+function normalizeRoutesForFaction(routes, planFaction, hqData, mapId) {
   return (routes || []).map((route) => {
+    const faction = getRouteFactionId(route, planFaction);
+    const hqSide = getHqSideFromData(hqData, mapId, faction);
     const vehicleId = normalizeRouteVehicleId(route.vehicleId, faction);
     const speed = getRouteVehicleSpeedKmh(vehicleId, faction);
+    const withFaction = { ...route, vehicleId, factionId: faction };
     if (route.points?.length >= 2) {
-      return enrichRouteTiming({ ...route, vehicleId }, speed, hqSide);
+      return enrichRouteTiming(withFaction, speed, hqSide);
     }
     return {
-      ...route,
-      vehicleId,
+      ...withFaction,
       travelTimeSec: route.travelTimeSec || 0,
       matchArrivalSec: route.matchArrivalSec || 0,
       wallWaitSec: route.wallWaitSec || 0,
@@ -107,7 +109,7 @@ export function RouteplannerEditor({
   const [factionId, setFactionId] = useState(plan?.factionId || "us");
   const [hqIndex, setHqIndex] = useState(plan?.hqIndex ?? 0);
   const [routes, setRoutes] = useState(() =>
-    normalizeRoutesForFaction(plan?.routes || [], plan?.factionId || "us", null)
+    normalizeRoutesForFaction(plan?.routes || [], plan?.factionId || "us", null, plan?.mapId || "Carentan")
   );
   const [obstacles, setObstacles] = useState(plan?.obstacles || []);
   const [obstacleVectorBuildId, setObstacleVectorBuildId] = useState(plan?.obstacleVectorBuildId ?? null);
@@ -198,9 +200,9 @@ export function RouteplannerEditor({
 
   useEffect(() => {
     if (!hqData) return;
-    setRoutes((prev) => normalizeRoutesForFaction(prev, factionId, hqSide));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute match timing when hqSide loads
-  }, [hqSide, factionId, hqData]);
+    setRoutes((prev) => normalizeRoutesForFaction(prev, factionId, hqData, mapId));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute match timing when HQ data loads
+  }, [hqData, mapId]);
 
   const selectedHq = hqSpawns[hqIndex] || null;
 
@@ -260,22 +262,24 @@ export function RouteplannerEditor({
         setStatus(result.error);
         return result;
       }
-      updateRoute(routeId, (r) =>
-        enrichRouteTiming(
+      updateRoute(routeId, (r) => {
+        const faction = getRouteFactionId(r, factionId);
+        const side = getHqSideFromData(hqData, mapId, faction);
+        return enrichRouteTiming(
           {
             ...r,
             waypoints: result.waypoints,
             anchors: result.waypoints,
             points: result.points,
           },
-          getRouteVehicleSpeedKmh(r.vehicleId, factionId),
-          hqSide
-        )
-      );
+          getRouteVehicleSpeedKmh(r.vehicleId, faction),
+          side
+        );
+      });
       setStatus("");
       return result;
     },
-    [mapId, updateRoute, factionId, hqSide]
+    [mapId, updateRoute, factionId, hqData]
   );
 
   const commitObstacles = useCallback(
@@ -504,16 +508,21 @@ export function RouteplannerEditor({
       if (obstacleEditMode && obstacleTool !== "select") return;
 
       setSelectedWaypoint(null);
-      if (!plottingRouteId || !selectedHq) return;
+      if (!plottingRouteId) return;
+      const route = routesRef.current.find((r) => r.id === plottingRouteId);
+      const routeFaction = getRouteFactionId(route, factionId);
+      const routeSpawns = hqData?.maps?.[mapId]?.factions?.[routeFaction]?.hqSpawns || [];
+      const startHq = routeSpawns[route?.hqIndex ?? hqIndex];
+      if (!startHq) return;
       setStatus("Calculating route…");
-      const result = await planRoute(mapId, selectedHq, pt, obstaclesRef.current);
+      const result = await planRoute(mapId, startHq, pt, obstaclesRef.current);
       if (!result.ok) {
         setStatus(result.error);
         return;
       }
-      const waypoints = [{ ...selectedHq }, { x: pt.x, y: pt.y, user: true }];
-      const route = routesRef.current.find((r) => r.id === plottingRouteId);
-      const speed = getRouteVehicleSpeedKmh(route?.vehicleId, factionId);
+      const waypoints = [{ ...startHq }, { x: pt.x, y: pt.y, user: true }];
+      const speed = getRouteVehicleSpeedKmh(route?.vehicleId, routeFaction);
+      const side = getHqSideFromData(hqData, mapId, routeFaction);
       updateRoute(plottingRouteId, (r) =>
         enrichRouteTiming(
           {
@@ -521,10 +530,11 @@ export function RouteplannerEditor({
             waypoints,
             anchors: waypoints,
             points: result.points,
-            hqIndex,
+            hqIndex: route?.hqIndex ?? hqIndex,
+            factionId: routeFaction,
           },
           speed,
-          hqSide
+          side
         )
       );
       setPlottingRouteId(null);
@@ -533,16 +543,15 @@ export function RouteplannerEditor({
     [
       showObstacles,
       plottingRouteId,
-      selectedHq,
       mapId,
       hqIndex,
       factionId,
+      hqData,
       updateRoute,
       obstacleEditMode,
       obstacleTool,
       finishPenDraw,
       tryShapeEditAtPoint,
-      hqSide,
     ]
   );
 
@@ -705,8 +714,10 @@ export function RouteplannerEditor({
       id,
       name: `Route ${routes.length + 1}`,
       color: nextRouteColor(routes.length),
+      factionId,
       hqIndex,
       vehicleId: getDefaultRouteVehicleId(factionId),
+      driver: "",
       points: [],
       waypoints: [],
       anchors: [],
@@ -1089,33 +1100,95 @@ export function RouteplannerEditor({
 
   const handleVehicleChange = useCallback(
     (routeId, vehicleId) => {
-      updateRoute(routeId, (route) =>
-        route.points?.length >= 2
+      updateRoute(routeId, (route) => {
+        const faction = getRouteFactionId(route, factionId);
+        const side = getHqSideFromData(hqData, mapId, faction);
+        return route.points?.length >= 2
           ? enrichRouteTiming(
               { ...route, vehicleId },
-              getRouteVehicleSpeedKmh(vehicleId, factionId),
-              hqSide
+              getRouteVehicleSpeedKmh(vehicleId, faction),
+              side
             )
-          : { ...route, vehicleId }
-      );
+          : { ...route, vehicleId };
+      });
     },
-    [updateRoute, factionId, hqSide]
+    [updateRoute, factionId, hqData, mapId]
+  );
+
+  const handleRouteColorChange = useCallback(
+    (routeId, color) => {
+      updateRoute(routeId, (route) => ({ ...route, color }));
+    },
+    [updateRoute]
+  );
+
+  const handleRouteNameChange = useCallback(
+    (routeId, name) => {
+      updateRoute(routeId, (route) => ({ ...route, name }));
+    },
+    [updateRoute]
+  );
+
+  const handleRouteDriverChange = useCallback(
+    (routeId, driver) => {
+      updateRoute(routeId, (route) => ({ ...route, driver }));
+    },
+    [updateRoute]
+  );
+
+  const handleRouteFactionChange = useCallback(
+    async (routeId, nextFaction) => {
+      const route = routesRef.current.find((r) => r.id === routeId);
+      if (!route) return;
+      const spawns = hqData?.maps?.[mapId]?.factions?.[nextFaction]?.hqSpawns || [];
+      const nextHqIndex = Math.min(route.hqIndex ?? 0, Math.max(0, spawns.length - 1));
+      const newHq = spawns[nextHqIndex];
+      const vehicleId = normalizeRouteVehicleId(route.vehicleId, nextFaction);
+      const side = getHqSideFromData(hqData, mapId, nextFaction);
+
+      const waypoints = getRouteWaypoints(route);
+      if (waypoints.length >= 2 && newHq) {
+        const dest = waypoints[waypoints.length - 1];
+        const via = waypoints.slice(1, -1);
+        updateRoute(routeId, (r) => ({
+          ...r,
+          factionId: nextFaction,
+          hqIndex: nextHqIndex,
+          vehicleId,
+        }));
+        await replanRoute(routeId, [{ ...newHq }, ...via, dest]);
+        return;
+      }
+
+      updateRoute(routeId, (r) => {
+        const updated = { ...r, factionId: nextFaction, hqIndex: nextHqIndex, vehicleId };
+        return r.points?.length >= 2
+          ? enrichRouteTiming(updated, getRouteVehicleSpeedKmh(vehicleId, nextFaction), side)
+          : updated;
+      });
+    },
+    [factionId, hqData, mapId, updateRoute, replanRoute]
   );
 
   const handleFactionChange = useCallback(
     (nextFaction) => {
       setFactionId(nextFaction);
-      const side = getHqSideFromData(hqData, mapId, nextFaction);
-      const nextRoutes = normalizeRoutesForFaction(routesRef.current, nextFaction, side);
-      applyRoutes(nextRoutes);
-      persistPatch({ factionId: nextFaction, routes: nextRoutes });
+      persistPatch({ factionId: nextFaction });
       setMatchTimeSec(0);
       setTimelinePlaying(false);
     },
-    [applyRoutes, persistPatch, hqData, mapId]
+    [persistPatch]
   );
 
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
+  const selectedRouteIndex = selectedRoute ? routes.indexOf(selectedRoute) : -1;
+  const overlayFactionId = selectedRoute
+    ? getRouteFactionId(selectedRoute, factionId)
+    : factionId;
+  const overlayHqIndex = selectedRoute?.hqIndex ?? hqIndex;
+  const overlayHqSpawns =
+    hqData?.maps?.[mapId]?.factions?.[overlayFactionId]?.hqSpawns || hqSpawns;
+  const overlayHqSide = getHqSideFromData(hqData, mapId, overlayFactionId);
   const routeHint =
     selectedRoute && getRouteWaypoints(selectedRoute).length >= 2
       ? "Click the route line to add a waypoint · Drag handles to move · Right-click or Delete removes a manual via-point"
@@ -1189,7 +1262,7 @@ export function RouteplannerEditor({
       <FrontierWallOverlay
         kernelRef={kernelRef}
         kernelReady={kernelReady}
-        hqSide={hqSide}
+        hqSide={overlayHqSide}
         visible={!showObstacles}
       />
 
@@ -1197,8 +1270,9 @@ export function RouteplannerEditor({
         kernelRef={kernelRef}
         kernelReady={kernelReady}
         routes={routes}
-        factionId={factionId}
-        hqSide={hqSide}
+        planFactionId={factionId}
+        hqData={hqData}
+        mapId={mapId}
         matchTimeSec={matchTimeSec}
         active={timelineActive}
       />
@@ -1207,9 +1281,9 @@ export function RouteplannerEditor({
         kernelRef={kernelRef}
         kernelReady={kernelReady}
         routes={routes}
-        factionId={factionId}
-        hqSpawns={hqSpawns}
-        selectedHqIndex={hqIndex}
+        planFactionId={factionId}
+        hqSpawns={overlayHqSpawns}
+        selectedHqIndex={overlayHqIndex}
         hoveredRouteId={hoveredRouteId}
         selectedRouteId={selectedRouteId}
         selectedWaypoint={selectedWaypoint}
@@ -1252,15 +1326,16 @@ export function RouteplannerEditor({
               }}
               factionId={factionId}
               onFactionChange={handleFactionChange}
-              hqIndex={hqIndex}
-              onHqChange={(index) => {
-                setHqIndex(index);
-                persistPatch({ hqIndex: index });
-              }}
-              hqSpawns={hqSpawns}
               obstacleCount={obstacles.length}
               routeHint={routeHint}
               status={status}
+              selectedRoute={selectedRoute}
+              selectedRouteIndex={selectedRouteIndex}
+              onRouteColorChange={handleRouteColorChange}
+              onRouteNameChange={handleRouteNameChange}
+              onRouteDriverChange={handleRouteDriverChange}
+              onRouteFactionChange={handleRouteFactionChange}
+              onRouteVehicleChange={handleVehicleChange}
             />
           )}
         </div>
@@ -1308,11 +1383,10 @@ export function RouteplannerEditor({
             planTitle={plan?.title || "Route plan"}
             dirty={dirty}
             saving={saving}
-            factionId={factionId}
+            planFactionId={factionId}
             routes={routes}
             selectedRouteId={selectedRouteId}
             hoveredRouteId={hoveredRouteId}
-            onVehicleChange={handleVehicleChange}
             onSelectRoute={(id) => {
               setSelectedRouteId(id);
               setSelectedWaypoint(null);

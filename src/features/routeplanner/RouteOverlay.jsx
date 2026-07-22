@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getVisibleWaypoints } from "./path/plan-route.js";
+import { getRouteFactionId } from "./constants.js";
 import { RouteVehicleMarker } from "./RouteVehicleMarker.jsx";
 
 function mapPctToPx(x, y, imgW, imgH) {
@@ -104,7 +105,7 @@ export function RouteOverlay({
   kernelRef,
   kernelReady = false,
   routes,
-  factionId,
+  planFactionId,
   hqSpawns,
   selectedHqIndex,
   hoveredRouteId,
@@ -211,7 +212,7 @@ export function RouteOverlay({
             {route.points.length >= 1 && !hideVehicleMarkers && (
               <RouteVehicleMarker
                 route={route}
-                factionId={factionId}
+                factionId={getRouteFactionId(route, planFactionId)}
                 imgW={imgW}
                 imgH={imgH}
                 start={route.points[0]}
