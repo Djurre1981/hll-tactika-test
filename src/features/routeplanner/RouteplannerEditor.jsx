@@ -38,8 +38,9 @@ import {
   removePolygonVertex,
   resolvePenTarget,
 } from "./obstacles/obstacle-shapes.js";
+import { getDefaultTransportSpeedKmh } from "./timing/vehicle-speeds.js";
 
-const TRANSPORT_SPEED_KMH = 38;
+const TRANSPORT_SPEED_KMH = getDefaultTransportSpeedKmh();
 const PANEL_WIDTH = 280;
 const OBSTACLE_PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
 const PANEL_GAP = 16;
@@ -962,7 +963,7 @@ export function RouteplannerEditor({
           </div>
 
           <p className="m-0 text-[0.72rem] leading-snug text-white/45">
-            Transport truck · {TRANSPORT_SPEED_KMH} km/h (placeholder)
+            Transport truck · {TRANSPORT_SPEED_KMH} km/h (from game data)
           </p>
           {obstacles.length > 0 && (
             <p className="m-0 text-[0.68rem] leading-snug text-white/40">

@@ -27,7 +27,8 @@
     "vectorize:hll-objects": "node scripts/vectorize-hll-objects.mjs",
     "extract:accessibility": "node scripts/extract-accessibility.mjs && node scripts/trace-accessibility-vectors.mjs",
     "extract:accessibility:vectors": "node scripts/trace-accessibility-vectors.mjs",
-    "extract:hq-spawns": "node scripts/extract-hq-spawns.mjs"
+    "extract:hq-spawns": "node scripts/extract-hq-spawns.mjs",
+    "extract:vehicles": "node scripts/extract-vehicles.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
