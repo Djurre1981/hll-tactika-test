@@ -1,6 +1,6 @@
 # Plan: Routeplanner (#24)
 
-**Status:** MVP shipped — [PR #25](https://github.com/Djurre1981/hll-tactika-test/pull/25) merged, deployed to `hll-tactika-test`.
+**Status:** Phases 2–4 implemented on branch `routeplanner` (not merged). MVP shipped — [PR #25](https://github.com/Djurre1981/hll-tactika-test/pull/25).
 
 ## Goal
 Build a standalone truck route planner that uses game-accurate constraints and vehicle speed to plot transport-truck routes from HQ spawn to destination, with accessibility-aware pathfinding and per-route **travel time** (duration in seconds).
@@ -9,68 +9,58 @@ Build a standalone truck route planner that uses game-accurate constraints and v
 - **Tool shape:** Standalone tool at `/tool/routeplanner` — own page, own saved route plans (not a Stratmaker mode for MVP)
 - UI / framework: React + existing `map-kernel` canvas (same stack as Stratmaker)
 - Base layer: Stratmaker-style map view (map + faction context)
-- **Vehicle (MVP):** Transport truck only
-- **Speed:** Derived from FModel-exported wheeled blueprint drivetrains via `npm run extract:vehicles` ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)); Routeplanner default = Ford F60L Transport theoretical top speed (~38.5 km/h). Acceleration not yet modeled.
-- **Accessibility data:** Extract from [maps-let-loose](https://github.com/mattwright324/maps-let-loose) pipeline; high-res vector trace at 1920²
-- **Pathfinding style:** Two-phase routing (A* search + string-pull geometry; Maps/OSRM leg model). See [routeplanner-pathfinding.md](./routeplanner-pathfinding.md).
-- **MVP scope:** Route mapping + accessibility snapping + **travel time** + obstacle edit mode + D1 persistence
-- Blind-spot defaults: auth same as strats (logged-in save); no public anonymous plans unless user says otherwise
-- Explicitly deferred: match-clock ETA ([#29](https://github.com/Djurre1981/hll-tactika-test/issues/29)), timeline animation ([#30](https://github.com/Djurre1981/hll-tactika-test/issues/30)), multi-vehicle ([#27](https://github.com/Djurre1981/hll-tactika-test/issues/27)), strat embed ([#28](https://github.com/Djurre1981/hll-tactika-test/issues/28)), AES extraction ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26))
+- **Vehicle:** Per-route picker — transport, supply, jeep, halftrack per faction ([#27](https://github.com/Djurre1981/hll-tactika-test/issues/27))
+- **Speed:** FModel wheeled blueprint drivetrain extract via `npm run extract:vehicles` ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26)); theoretical top speed only (no acceleration)
+- **Match timing:** Frontier wall wait in ETA only — pathfinding unchanged ([#29](https://github.com/Djurre1981/hll-tactika-test/issues/29))
+- **Strat embed:** Read-only overlay + deep link; strict map + match faction ([#28](https://github.com/Djurre1981/hll-tactika-test/issues/28))
+- **Accessibility data:** Extract from [maps-let-loose](https://github.com/mattwright324/maps-let-loose) pipeline; 384² grid + vector trace
+- **Pathfinding style:** Two-phase routing (A* + string-pull). See [routeplanner-pathfinding.md](./routeplanner-pathfinding.md).
 
-## Game rules (recorded for later phases)
-- **Frontier wall:** For the first **120 seconds** after game start, a virtual boundary blocks vehicle access beyond the first **2 grid columns or rows** on the HQ side of the map. It disappears at exactly t=120s — hard fact, no exceptions. Trucks **can** drive anywhere within those first 2 columns/rows (up to the wall) during the 120s window.
-- **Wall geometry:** A straight line from map top to bottom (or left to right for top/bottom HQ layouts), positioned on the grid border after the 2nd accessible column/row — **not** a rectangle around HQ, but a full-map-spanning line on that grid edge.
-- **Faction + map dependent:** Wall axis and position follow which side of the map the faction’s HQs are on.
-- **Example — Carentan, US (HQs on left):** Wall runs **top to bottom** on the border between **column B and column C**. Columns A and B are drivable until t=120s; column C onward is blocked until the wall drops.
-- Grid squares are 200×200 m; map coordinate system matches existing `map-kernel` (0–100 map-%).
-- Routes always start at one of three faction HQs (vehicle spawn points).
-- Sharp 90° turns are invalid; pathfinder favors shallow/racing-line curves.
+## Game rules (frontier wall)
+- **Frontier wall:** First **120 seconds** — vehicles cannot pass beyond 2 grid columns from HQ side. Wall drops at t=120s.
+- **Wall geometry:** Vertical line at map-% **40** (left HQ) or **60** (right HQ); full map height.
+- **Example — Carentan US:** Wall at column B/C border; cols A–B open until 2:00.
+- Grid squares are 200×200 m; coordinates 0–100 map-%.
 
-## Shipped (MVP — complete)
+## Shipped
 
-| Area | Delivered |
-|------|-----------|
-| T0a | `public/data/vehicles.json` — wheeled catalog + transport-truck default from FModel extract (`npm run extract:vehicles`) |
-| T0b | `scripts/extract-accessibility.mjs`, `scripts/trace-accessibility-vectors.mjs`, PNGs + `.vectors.json` per map |
-| T0c | `public/data/hq-spawns.json` — 3 HQs per map/faction |
-| T1 | Routeplanner editor UI, map/faction/HQ, waypoint routes, Routes panel |
-| T1c | Two-phase pathfinding (A* + string-pull) + obstacle rasterization (384 grid) |
-| T2a | `travel-time.js` — seconds from polyline length |
-| T3 | `migrations/0013_route_plans.sql`, `/api/route-plans` CRUD |
-| Extra | Obstacle edit mode, pen tool (Illustrator-style anchors), dashboard tile with Stratmaker |
+| Phase | Issue | Delivered |
+|-------|-------|-----------|
+| MVP | #24 | Editor, pathfinding, obstacles, D1 plans, dashboard entry |
+| 2 | #29 | `frontier-wall.js`, `route-timing.js`, match-clock ETA in Routes panel, wall overlay |
+| 2 | #30 | `MatchTimeline.jsx`, `RoutePlaybackOverlay.jsx`, multi-route scrubber |
+| 3 | #26 | `extract:vehicles` documented; `vehicles.json` theoretical max speeds |
+| 3 | #27 | `route-vehicles.js`, per-route vehicle + icon at start |
+| 4 | #28 | `slide.routePlanId`, `SlideRoutePlanPicker`, `StratRouteOverlay` |
 
-## Phases (remaining)
+## Key files
 
-### Phase 2 — Match timing & preview
-| Issue | Task |
-|-------|------|
-| [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29) | Frontier wall model + match-clock ETA |
-| [#30](https://github.com/Djurre1981/hll-tactika-test/issues/30) | Timeline scrubber + animated vehicle pin(s) |
+| Path | Role |
+|------|------|
+| `timing/frontier-wall.js` | Wall line geometry, hqSide lookup |
+| `timing/route-timing.js` | Match arrival, timeline keyframes, `formatMatchTime` |
+| `FrontierWallOverlay.jsx` | Dashed wall line on map |
+| `MatchTimeline.jsx` | Scrubber + play/pause (Space) |
+| `RoutePlaybackOverlay.jsx` | Animated vehicle icons at scrub time |
+| `strat-route-link.js` | Strat faction ↔ route faction mapping |
+| `scripts/benchmark-match-timing.mjs` | Carentan US wall wait assertion |
 
-### Phase 3 — Accuracy & breadth
-| Issue | Task |
-|-------|------|
-| [#26](https://github.com/Djurre1981/hll-tactika-test/issues/26) | ~~AES extraction → real speed~~ **Partial:** theoretical top speeds from blueprint exports in `vehicles.json`. Still open: in-game spot-check, acceleration model |
-| [#27](https://github.com/Djurre1981/hll-tactika-test/issues/27) | Multi-vehicle types per plan |
+## Verify
 
-### Phase 4 — Integration
-| Issue | Task |
-|-------|------|
-| [#28](https://github.com/Djurre1981/hll-tactika-test/issues/28) | Embed / link route plans in Stratmaker slides |
+```bash
+npm run build
+node scripts/benchmark-route-path.mjs
+node scripts/benchmark-match-timing.mjs
+```
 
-## MVP acceptance (done)
+## Deferred
 
-- [x] User selects map, faction, HQ → destination on map (transport truck implicit)
-- [x] Route auto-avoids accessibility-blocked areas with editable waypoints
-- [x] Multiple colored routes per plan; sidebar hover highlight
-- [x] Per-route **travel time in seconds** shown (38 km/h placeholder)
-- [x] Plan saves and reloads via `/tool/routeplanner`
-- [x] Obstacle edit mode with traced vectors + pen tool
-- [x] Dashboard entry alongside Stratmaker
-- [x] `npx vite build` passes; deployed to staging
+- Per-vehicle clearance width in pathfinding
+- Terrain surface speed modifiers
+- In-game speed spot-check / acceleration model
+- Pathfinding blocked by frontier wall (ETA-only by design)
 
-## Risks
-- **Pathfinding quality** — racing-line curvature still deferred; search uses Lazy Theta* (see [routeplanner-pathfinding.md](./routeplanner-pathfinding.md))
-- **Frontier wall (later)** — position is per map + faction; route segments need timestamps for [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29)
-- **Placeholder vs real speed** — 38 km/h is good enough for MVP UX; swap must not break saved plans ([#26](https://github.com/Djurre1981/hll-tactika-test/issues/26))
-- **Large static assets** — accessibility PNGs + vector JSON committed per map; regen via `npm run extract:accessibility`
+## Risks (resolved / open)
+
+- **Wall crossing edge cases** — first outward crossing only; documented in `route-timing.js`
+- **Strat list API** — `listRoutePlans` now includes `mapId`/`factionId` summary for picker filtering

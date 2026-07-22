@@ -8,6 +8,9 @@ import { MapDimOverlay } from "./MapDimOverlay.jsx";
 import { RoutesPanel } from "./RoutesPanel.jsx";
 import { RouteplannerSettingsPanel } from "./RouteplannerSettingsPanel.jsx";
 import { RouteMapChrome } from "./RouteMapChrome.jsx";
+import { FrontierWallOverlay } from "./FrontierWallOverlay.jsx";
+import { MatchTimeline } from "./MatchTimeline.jsx";
+import { RoutePlaybackOverlay } from "./RoutePlaybackOverlay.jsx";
 import { EditorUserCluster } from "../strats/editor/EditorUserCluster.jsx";
 import { STRAT_PANEL_GAP, STRAT_PANEL_WIDTH } from "../strats/editor/hooks/useStratEditor.js";
 import { loadAccessibilityGrid } from "./path/accessibility-grid.js";
@@ -27,7 +30,8 @@ import {
   insertWaypointOnPath,
   removeWaypoint,
 } from "./path/plan-route.js";
-import { travelTimeSec } from "./timing/travel-time.js";
+import { getHqSideFromData } from "./timing/frontier-wall.js";
+import { enrichRouteTiming, maxMatchArrivalSec } from "./timing/route-timing.js";
 import { clearEffectiveGridCache } from "./obstacles/obstacle-grid.js";
 import {
   applyObstacleAnchorDrag,
@@ -66,17 +70,19 @@ function nextRouteColor(index) {
   return ROUTE_COLORS[index % ROUTE_COLORS.length];
 }
 
-function normalizeRoutesForFaction(routes, faction) {
+function normalizeRoutesForFaction(routes, faction, hqSide) {
   return (routes || []).map((route) => {
     const vehicleId = normalizeRouteVehicleId(route.vehicleId, faction);
     const speed = getRouteVehicleSpeedKmh(vehicleId, faction);
+    if (route.points?.length >= 2) {
+      return enrichRouteTiming({ ...route, vehicleId }, speed, hqSide);
+    }
     return {
       ...route,
       vehicleId,
-      travelTimeSec:
-        route.points?.length >= 2
-          ? travelTimeSec(route.points, speed)
-          : route.travelTimeSec || 0,
+      travelTimeSec: route.travelTimeSec || 0,
+      matchArrivalSec: route.matchArrivalSec || 0,
+      wallWaitSec: route.wallWaitSec || 0,
     };
   });
 }
@@ -101,7 +107,7 @@ export function RouteplannerEditor({
   const [factionId, setFactionId] = useState(plan?.factionId || "us");
   const [hqIndex, setHqIndex] = useState(plan?.hqIndex ?? 0);
   const [routes, setRoutes] = useState(() =>
-    normalizeRoutesForFaction(plan?.routes || [], plan?.factionId || "us")
+    normalizeRoutesForFaction(plan?.routes || [], plan?.factionId || "us", null)
   );
   const [obstacles, setObstacles] = useState(plan?.obstacles || []);
   const [obstacleVectorBuildId, setObstacleVectorBuildId] = useState(plan?.obstacleVectorBuildId ?? null);
@@ -125,6 +131,8 @@ export function RouteplannerEditor({
   const [selectedAnchorIndex, setSelectedAnchorIndex] = useState(null);
   const [penDrawPreview, setPenDrawPreview] = useState(null);
   const [penHoverTarget, setPenHoverTarget] = useState(null);
+  const [matchTimeSec, setMatchTimeSec] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
   const penSessionRef = useRef(null);
   const penPointerRef = useRef(null);
   const suppressNextClickRef = useRef(false);
@@ -179,6 +187,20 @@ export function RouteplannerEditor({
   const hqSpawns = useMemo(() => {
     return hqData?.maps?.[mapId]?.factions?.[factionId]?.hqSpawns || [];
   }, [hqData, mapId, factionId]);
+
+  const hqSide = useMemo(
+    () => getHqSideFromData(hqData, mapId, factionId),
+    [hqData, mapId, factionId]
+  );
+
+  const maxTimelineSec = useMemo(() => maxMatchArrivalSec(routes), [routes]);
+  const timelineActive = matchTimeSec > 0 || timelinePlaying;
+
+  useEffect(() => {
+    if (!hqData) return;
+    setRoutes((prev) => normalizeRoutesForFaction(prev, factionId, hqSide));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute match timing when hqSide loads
+  }, [hqSide, factionId, hqData]);
 
   const selectedHq = hqSpawns[hqIndex] || null;
 
@@ -238,20 +260,22 @@ export function RouteplannerEditor({
         setStatus(result.error);
         return result;
       }
-      updateRoute(routeId, (r) => ({
-        ...r,
-        waypoints: result.waypoints,
-        anchors: result.waypoints,
-        points: result.points,
-        travelTimeSec: travelTimeSec(
-          result.points,
-          getRouteVehicleSpeedKmh(r.vehicleId, factionId)
-        ),
-      }));
+      updateRoute(routeId, (r) =>
+        enrichRouteTiming(
+          {
+            ...r,
+            waypoints: result.waypoints,
+            anchors: result.waypoints,
+            points: result.points,
+          },
+          getRouteVehicleSpeedKmh(r.vehicleId, factionId),
+          hqSide
+        )
+      );
       setStatus("");
       return result;
     },
-    [mapId, updateRoute, factionId]
+    [mapId, updateRoute, factionId, hqSide]
   );
 
   const commitObstacles = useCallback(
@@ -490,15 +514,19 @@ export function RouteplannerEditor({
       const waypoints = [{ ...selectedHq }, { x: pt.x, y: pt.y, user: true }];
       const route = routesRef.current.find((r) => r.id === plottingRouteId);
       const speed = getRouteVehicleSpeedKmh(route?.vehicleId, factionId);
-      const time = travelTimeSec(result.points, speed);
-      updateRoute(plottingRouteId, (route) => ({
-        ...route,
-        waypoints,
-        anchors: waypoints,
-        points: result.points,
-        travelTimeSec: time,
-        hqIndex,
-      }));
+      updateRoute(plottingRouteId, (r) =>
+        enrichRouteTiming(
+          {
+            ...r,
+            waypoints,
+            anchors: waypoints,
+            points: result.points,
+            hqIndex,
+          },
+          speed,
+          hqSide
+        )
+      );
       setPlottingRouteId(null);
       setStatus("");
     },
@@ -514,6 +542,7 @@ export function RouteplannerEditor({
       obstacleTool,
       finishPenDraw,
       tryShapeEditAtPoint,
+      hqSide,
     ]
   );
 
@@ -1060,26 +1089,30 @@ export function RouteplannerEditor({
 
   const handleVehicleChange = useCallback(
     (routeId, vehicleId) => {
-      updateRoute(routeId, (route) => ({
-        ...route,
-        vehicleId,
-        travelTimeSec:
-          route.points?.length >= 2
-            ? travelTimeSec(route.points, getRouteVehicleSpeedKmh(vehicleId, factionId))
-            : route.travelTimeSec,
-      }));
+      updateRoute(routeId, (route) =>
+        route.points?.length >= 2
+          ? enrichRouteTiming(
+              { ...route, vehicleId },
+              getRouteVehicleSpeedKmh(vehicleId, factionId),
+              hqSide
+            )
+          : { ...route, vehicleId }
+      );
     },
-    [updateRoute, factionId]
+    [updateRoute, factionId, hqSide]
   );
 
   const handleFactionChange = useCallback(
     (nextFaction) => {
       setFactionId(nextFaction);
-      const nextRoutes = normalizeRoutesForFaction(routesRef.current, nextFaction);
+      const side = getHqSideFromData(hqData, mapId, nextFaction);
+      const nextRoutes = normalizeRoutesForFaction(routesRef.current, nextFaction, side);
       applyRoutes(nextRoutes);
       persistPatch({ factionId: nextFaction, routes: nextRoutes });
+      setMatchTimeSec(0);
+      setTimelinePlaying(false);
     },
-    [applyRoutes, persistPatch]
+    [applyRoutes, persistPatch, hqData, mapId]
   );
 
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
@@ -1153,6 +1186,23 @@ export function RouteplannerEditor({
         onAnchorContextMenu={handleAnchorContextMenu}
       />
 
+      <FrontierWallOverlay
+        kernelRef={kernelRef}
+        kernelReady={kernelReady}
+        hqSide={hqSide}
+        visible={!showObstacles}
+      />
+
+      <RoutePlaybackOverlay
+        kernelRef={kernelRef}
+        kernelReady={kernelReady}
+        routes={routes}
+        factionId={factionId}
+        hqSide={hqSide}
+        matchTimeSec={matchTimeSec}
+        active={timelineActive}
+      />
+
       <RouteOverlay
         kernelRef={kernelRef}
         kernelReady={kernelReady}
@@ -1164,6 +1214,7 @@ export function RouteplannerEditor({
         selectedRouteId={selectedRouteId}
         selectedWaypoint={selectedWaypoint}
         dragPreview={dragPreview}
+        hideVehicleMarkers={timelineActive}
         onWaypointPointerDown={handleWaypointPointerDown}
         onWaypointContextMenu={handleWaypointContextMenu}
         onRoutePathClick={handleRoutePathClick}
@@ -1215,7 +1266,15 @@ export function RouteplannerEditor({
         </div>
       </div>
 
-      <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
+      <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
+        <MatchTimeline
+          matchTimeSec={matchTimeSec}
+          maxMatchSec={maxTimelineSec}
+          playing={timelinePlaying}
+          onMatchTimeChange={setMatchTimeSec}
+          onPlayingChange={setTimelinePlaying}
+          disabled={showObstacles || maxTimelineSec <= 0}
+        />
         <RouteMapChrome
           showGrid={showGrid}
           onToggleGrid={() => setShowGrid((on) => !on)}

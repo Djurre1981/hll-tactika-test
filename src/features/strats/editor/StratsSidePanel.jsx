@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import { StratDetailsPanel } from "./StratDetailsPanel.jsx";
+import { SlideRoutePlanPicker } from "./SlideRoutePlanPicker.jsx";
 import {
   cx,
   fieldLabel,
@@ -38,6 +39,7 @@ export function StratsSidePanel({
   onReorderSlides,
   onRenameSlide,
   onChangeSlideMap,
+  onChangeSlideRoutePlan,
   onRenameStrat,
   onPatchStrat,
   onDuplicateStrat,
@@ -309,6 +311,12 @@ export function StratsSidePanel({
                     />
                   </span>
                 </label>
+                <SlideRoutePlanPicker
+                  slide={active}
+                  strat={strat}
+                  canEdit={canEdit}
+                  onChangeRoutePlan={onChangeSlideRoutePlan}
+                />
                 <p className="text-center text-[0.68rem] text-white/35">
                   {dirty || saving ? "Saving…" : "Saved!"}
                 </p>

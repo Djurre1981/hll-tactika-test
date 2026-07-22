@@ -280,6 +280,31 @@ Plans auto-save after edits. Create a new plan at `/tool/routeplanner`; the edit
 
 **Clearance:** pathfinding validates the full vehicle body width (~2.17 m transport truck) via capsule sampling — not just the route centerline. Width comes from FModel `JeepBarrier` exports (`npm run extract:vehicles`).
 
+### Match timing & timeline
+
+Routes that cross the **frontier wall** (first 120s of the match) show:
+
+- **Drive time** — raw seconds at constant top speed
+- **Match arrival** — e.g. `2:06` including wait at the wall until 2:00
+
+A dashed **frontier wall** line appears on the map (column B/C border for left-side HQs). The bottom **match timeline** scrubber animates all routes together; **Space** toggles play/pause. Wall drop is marked at 2:00 on the scrubber.
+
+Timing is ETA-only — pathfinding does not block routes beyond the wall; the engine adds wait time when the route crosses early.
+
+### Vehicle stats (#26)
+
+Speeds come from FModel wheeled blueprint JSON (PhysX drivetrain theoretical max):
+
+```bash
+npm run extract:vehicles -- --input "C:/path/to/FModel/Exports/HLL/Content/Blueprints/Vehicles"
+```
+
+Output: `public/data/vehicles.json` (MaxRPM, gear ratios, wheel radius → `maxSpeedKmh`). No acceleration model — constant top speed along the polyline. Re-run when game exports change.
+
+### Stratmaker embed (#28)
+
+On an active strat slide, attach a **route plan** (filtered by slide map + match faction Allies→US / Axis→GER). Routes render read-only on the strat map; **Open in Routeplanner** and **Copy link** buttons appear in the slide panel.
+
 ### Obstacle editing
 
 Toggle **Obstacles** in the bottom map chrome to dim the map and edit collision geometry (full left panel, Stratmaker glass UI):
@@ -329,22 +354,23 @@ Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
 | `src/features/routeplanner/path/` | Route engine (A* + string-pull), segment/vehicle clearance, accessibility grid |
 | `src/features/routeplanner/obstacles/` | Vector load/merge, boolean pen ops, rasterization |
 | `src/features/routeplanner/route-vehicles.js` | Faction vehicle catalog → HLL icons + speeds |
-| `src/features/routeplanner/timing/` | Travel-time calculation |
+| `src/features/routeplanner/timing/` | Travel time, frontier wall, match-clock ETA, timeline keyframes |
+| `src/features/strats/editor/StratRouteOverlay.jsx` | Read-only route overlay on strat slides |
+| `src/features/strats/editor/SlideRoutePlanPicker.jsx` | Attach route plan to slide |
 | `functions/api/route-plans*.js` | Cloudflare Pages Functions handlers |
 | `functions/lib/route-plans-store.js` | D1 persistence |
 | `scripts/trace-accessibility-vectors.mjs` | High-res vector tracing pipeline |
 | `scripts/benchmark-route-path.mjs` | Local pathfinding benchmark (Carentan HQ → town) |
+| `scripts/benchmark-match-timing.mjs` | Frontier wall wait + match arrival benchmark |
 | `docs/agentx/plans/routeplanner-pathfinding.md` | Pathfinding design (Google Maps / OSRM patterns) |
 | `docs/agentx/plans/routeplanner.md` | Agentx plan + phased roadmap |
 
-### Roadmap (post-MVP)
+### Roadmap (deferred)
 
-Sub-issues under [#24](https://github.com/Djurre1981/hll-tactika-test/issues/24):
-
-- [#29](https://github.com/Djurre1981/hll-tactika-test/issues/29) — Frontier wall (120s) + match-clock ETA
-- [#30](https://github.com/Djurre1981/hll-tactika-test/issues/30) — Timeline animation scrubber
-- [#28](https://github.com/Djurre1981/hll-tactika-test/issues/28) — Embed routes in Stratmaker slides
 - Per-vehicle body width in clearance (today: transport-truck width for all routes)
+- Terrain surface speed modifiers (declined — not worth the data cost)
+- In-game spot-check calibration for `vehicles.json` speeds
+- Acceleration / torque-curve timing model
 
 ## Roadmap
 

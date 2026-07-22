@@ -10,16 +10,19 @@ function parseJson(raw, fallback) {
 }
 
 function rowToPlan(row, { includePlan = true } = {}) {
+  const parsed = parseJson(row.plan_json, {});
   const plan = {
     id: row.id,
     title: row.title,
+    mapId: parsed.mapId || null,
+    factionId: parsed.factionId || null,
     createdBy: row.created_by,
     createdByName: row.created_by_name || "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
   if (includePlan) {
-    plan.plan = parseJson(row.plan_json, {});
+    plan.plan = parsed;
   }
   return plan;
 }

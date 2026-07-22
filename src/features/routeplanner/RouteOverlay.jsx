@@ -112,6 +112,7 @@ export function RouteOverlay({
   selectedWaypoint,
   dragPreview,
   pendingEnd,
+  hideVehicleMarkers = false,
   onWaypointPointerDown,
   onWaypointContextMenu,
   onRoutePathClick,
@@ -207,7 +208,7 @@ export function RouteOverlay({
               opacity={1}
               style={{ pointerEvents: "none" }}
             />
-            {route.points.length >= 1 && (
+            {route.points.length >= 1 && !hideVehicleMarkers && (
               <RouteVehicleMarker
                 route={route}
                 factionId={factionId}

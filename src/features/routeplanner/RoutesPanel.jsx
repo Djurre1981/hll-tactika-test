@@ -1,4 +1,5 @@
 import { formatTravelTime } from "./timing/travel-time.js";
+import { formatMatchTime } from "./timing/route-timing.js";
 import {
   getRouteVehicleIconSrc,
   getRouteVehicleLabel,
@@ -108,7 +109,13 @@ export function RoutesPanel({
                             {route.name || `Route ${index + 1}`}
                           </span>
                           <span className="mt-0.5 block truncate text-[0.66rem] text-white/45">
-                            {formatTravelTime(route.travelTimeSec)} · HQ {route.hqIndex + 1}
+                            {formatTravelTime(route.travelTimeSec)} drive
+                            {route.matchArrivalSec > 0
+                              ? ` · arrives ${formatMatchTime(route.matchArrivalSec)}`
+                              : ""}
+                            {" · "}
+                            {getRouteVehicleLabel(route.vehicleId, factionId)} · HQ{" "}
+                            {route.hqIndex + 1}
                           </span>
                         </span>
                       </button>

@@ -1,16 +1,22 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "../../../shared/Spinner.jsx";
 import { CanvasWrapper } from "./CanvasWrapper.jsx";
 import { ToolsPanel } from "./ToolsPanel.jsx";
 import { StratsSidePanel } from "./StratsSidePanel.jsx";
+import { StratRouteOverlay } from "./StratRouteOverlay.jsx";
 import { MapChrome } from "./MapChrome.jsx";
 import { CollabPeers } from "../../../shared/CollabPeers.jsx";
 import { EditorUserCluster } from "./EditorUserCluster.jsx";
 import { ImportStratSketchModal } from "./ImportStratSketchModal.jsx";
 import { STRAT_PANEL_WIDTH, useStratEditor } from "./hooks/useStratEditor.js";
+import { apiClient } from "../../../lib/api-client.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 
 export function StratEditor({ stratId, backTo = "/home" }) {
   const editor = useStratEditor(stratId);
+  const [kernelReady, setKernelReady] = useState(false);
   const {
     query,
     mutation,
@@ -34,6 +40,32 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     collabPeers,
     collabStatus,
   } = editor;
+
+  const routePlanId = activeSlide?.routePlanId;
+  const routePlanQuery = useQuery({
+    queryKey: queryKeys.routePlans.byId(routePlanId),
+    queryFn: () =>
+      apiClient(`/route-plans/${routePlanId}`).then((d) => {
+        const raw = d.plan;
+        const inner = raw?.plan && typeof raw.plan === "object" ? raw.plan : {};
+        return {
+          id: raw.id,
+          title: raw.title,
+          mapId: raw.mapId ?? inner.mapId,
+          factionId: raw.factionId ?? inner.factionId,
+          plan: inner,
+          routes: inner.routes || [],
+        };
+      }),
+    enabled: Boolean(routePlanId),
+    retry: false,
+  });
+
+  useEffect(() => {
+    setKernelReady(false);
+    const t = window.setTimeout(() => setKernelReady(true), 400);
+    return () => window.clearTimeout(t);
+  }, [activeSlide?.id, activeSlide?.mapId]);
 
   if (query.isLoading) {
     return (
@@ -89,6 +121,13 @@ export function StratEditor({ stratId, backTo = "/home" }) {
           panelInsets={panelInsets}
           onSelectionChange={setSelected}
         />
+        {routePlanId && routePlanQuery.data && (
+          <StratRouteOverlay
+            kernelRef={kernelRef}
+            kernelReady={kernelReady}
+            routePlan={routePlanQuery.data}
+          />
+        )}
       </div>
 
       <div
@@ -153,6 +192,7 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             onReorderSlides={editor.handleReorderSlides}
             onRenameSlide={editor.handleRenameSlide}
             onChangeSlideMap={editor.handleChangeSlideMap}
+            onChangeSlideRoutePlan={editor.handleChangeSlideRoutePlan}
             onRenameStrat={editor.handleRenameStrat}
             onPatchStrat={editor.handlePatchStrat}
             onDuplicateStrat={editor.handleDuplicateStrat}

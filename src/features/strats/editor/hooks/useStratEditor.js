@@ -233,7 +233,19 @@ export function useStratEditor(stratId) {
 
   const handleChangeSlideMap = async (slideId, mapId) => {
     rememberMapId(mapId);
-    await persistSlides(slides.map((s) => (s.id === slideId ? { ...s, mapId } : s)));
+    await persistSlides(
+      slides.map((s) =>
+        s.id === slideId ? { ...s, mapId, routePlanId: null } : s
+      )
+    );
+  };
+
+  const handleChangeSlideRoutePlan = async (slideId, routePlanId) => {
+    await persistSlides(
+      slides.map((s) =>
+        s.id === slideId ? { ...s, routePlanId: routePlanId || undefined } : s
+      )
+    );
   };
 
   const handleRenameStrat = async (title) => {
@@ -325,6 +337,7 @@ export function useStratEditor(stratId) {
     handleReorderSlides,
     handleRenameSlide,
     handleChangeSlideMap,
+    handleChangeSlideRoutePlan,
     handleRenameStrat,
     handlePatchStrat,
     handleDuplicateStrat,
