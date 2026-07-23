@@ -2,13 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useCallback, useMemo, useState } from "react";
 import { apiClient } from "../../../lib/api-client.js";
+import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { queryKeys } from "../../../lib/query-keys.js";
 import {
   filterRoutePlansForSlide,
   routeFactionLabel,
   stratFactionToRouteFaction,
 } from "../../routeplanner/strat-route-link.js";
-import { cx, fieldLabel, glassBtn, glassSelect } from "./editorUi.js";
+import { cx, fieldLabel, glassBtn } from "./editorUi.js";
 
 function normalizeRoutePlanRecord(raw) {
   if (!raw) return null;
@@ -69,25 +70,17 @@ export function SlideRoutePlanPicker({
     <div className="flex flex-col gap-2">
       <label className={fieldLabel}>
         Route plan
-        <span className="relative mt-1 block">
-          <select
-            disabled={!canEdit || listQuery.isLoading}
-            value={routePlanId}
-            onChange={(e) => onChangeRoutePlan?.(slide.id, e.target.value || null)}
-            className={glassSelect}
-          >
-            <option value="">None</option>
-            {compatiblePlans.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title} ({routeFactionLabel(p.factionId)})
-              </option>
-            ))}
-          </select>
-          <i
-            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-            aria-hidden="true"
-          />
-        </span>
+        <GlassSelect
+          className="mt-1"
+          disabled={!canEdit || listQuery.isLoading}
+          value={routePlanId}
+          onChange={(value) => onChangeRoutePlan?.(slide.id, value || null)}
+          placeholder="None"
+          options={compatiblePlans.map((p) => ({
+            value: p.id,
+            label: `${p.title} (${routeFactionLabel(p.factionId)})`,
+          }))}
+        />
       </label>
 
       {!expectedRouteFaction && (

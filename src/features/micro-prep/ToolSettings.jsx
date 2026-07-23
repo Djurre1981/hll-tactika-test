@@ -1,4 +1,5 @@
 import { Segmented, SizeOption } from "../../shared/toolChrome.jsx";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import {
   BG_COLORS,
@@ -13,7 +14,6 @@ import {
   actionBtn,
   actionBtnWide,
   cx,
-  glassSelect,
   sectionTitle,
   toolBtnActive,
   toolHasEdges,
@@ -113,25 +113,13 @@ export function ToolSettings({
         <h3 className={cx(sectionTitle, "mb-2")}>HLL Map</h3>
         <label className="flex flex-col gap-[0.35rem]">
           <span className={sectionTitle}>Map</span>
-          <span className="relative block">
-            <select
-              disabled={disabled}
-              value={hllMapId || ""}
-              className={glassSelect}
-              onChange={(e) => onHllMapIdChange?.(e.target.value)}
-            >
-              <option value="">Select map…</option>
-              {STRAT_MAP_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-            <i
-              className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-              aria-hidden="true"
-            />
-          </span>
+          <GlassSelect
+            disabled={disabled}
+            value={hllMapId || ""}
+            onChange={(value) => onHllMapIdChange?.(value)}
+            placeholder="Select map…"
+            options={STRAT_MAP_IDS.map((id) => ({ value: id, label: id }))}
+          />
         </label>
         <div className="mt-2">
           <p className={cx(sectionTitle, "mb-1.5")}>Overlays</p>

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import { FACTIONS, ROUTE_COLORS, HQ_SPAWN_LABELS } from "./constants.js";
 import {
@@ -12,7 +13,6 @@ import {
   fieldLabel,
   getHllToolbarPreviewSrc,
   glassInput,
-  glassSelect,
   panelBody,
   panelDivider,
   panelGlassFill,
@@ -156,6 +156,8 @@ export function RouteplannerSettingsPanel({
 }) {
   const routeFactionId = selectedRoute?.factionId || factionId;
   const routeSpawns = routeHqSpawns;
+  const mapOptions = STRAT_MAP_IDS.map((id) => ({ value: id, label: id }));
+  const factionOptions = FACTIONS.map((f) => ({ value: f.id, label: f.label }));
 
   return (
     <aside className={panelShell} aria-label="Route planner settings">
@@ -182,34 +184,26 @@ export function RouteplannerSettingsPanel({
 
           <label className="mb-3 block">
             <span className={fieldLabel}>Map</span>
-            <select
+            <GlassSelect
+              className="mt-1.5"
               value={mapId}
-              onChange={(e) => onMapChange(e.target.value)}
-              className={cx(glassSelect, "mt-1.5")}
-            >
-              {STRAT_MAP_IDS.map((id) => (
-                <option key={id} value={id} className="bg-[#121214]">
-                  {id}
-                </option>
-              ))}
-            </select>
+              onChange={onMapChange}
+              placeholder=""
+              options={mapOptions}
+            />
           </label>
 
           {!selectedRoute && (
             <>
               <label className="mb-3 block">
                 <span className={fieldLabel}>Faction</span>
-                <select
+                <GlassSelect
+                  className="mt-1.5"
                   value={factionId}
-                  onChange={(e) => onFactionChange(e.target.value)}
-                  className={cx(glassSelect, "mt-1.5")}
-                >
-                  {FACTIONS.map((f) => (
-                    <option key={f.id} value={f.id} className="bg-[#121214]">
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={onFactionChange}
+                  placeholder=""
+                  options={factionOptions}
+                />
               </label>
             </>
           )}
@@ -271,17 +265,13 @@ export function RouteplannerSettingsPanel({
 
               <label className="mb-3 block">
                 <span className={fieldLabel}>Faction</span>
-                <select
+                <GlassSelect
+                  className="mt-1.5"
                   value={routeFactionId}
-                  onChange={(e) => onRouteFactionChange?.(selectedRoute.id, e.target.value)}
-                  className={cx(glassSelect, "mt-1.5")}
-                >
-                  {FACTIONS.map((f) => (
-                    <option key={f.id} value={f.id} className="bg-[#121214]">
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => onRouteFactionChange?.(selectedRoute.id, value)}
+                  placeholder=""
+                  options={factionOptions}
+                />
               </label>
 
               <div className="mb-3">

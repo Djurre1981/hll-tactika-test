@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import {
   STRAT_CUSTOM_MAP_VALUE,
@@ -14,7 +15,6 @@ import {
   fieldLabel,
   glassIconBtn,
   glassInput,
-  glassSelect,
   panelBody,
   panelGlassFill,
   panelShell,
@@ -28,6 +28,22 @@ import {
   stratPickerTrigger,
 } from "./editorUi.js";
 import { IconBtn } from "./sidePanelUtils.jsx";
+
+const slideMapOptions = [
+  ...STRAT_MAP_IDS.map((id) => ({ value: id, label: id })),
+  { value: STRAT_CUSTOM_MAP_VALUE, label: "Custom image…" },
+];
+
+const rasterFitLabels = {
+  contain: "Fit inside canvas",
+  cover: "Fill canvas (crop)",
+  stretch: "Stretch to canvas",
+};
+
+const rasterFitOptions = STRAT_RASTER_FIT_MODES.map((mode) => ({
+  value: mode,
+  label: rasterFitLabels[mode] || mode,
+}));
 
 export function StratsSidePanel({
   strat,
@@ -341,32 +357,20 @@ export function StratsSidePanel({
                 </label>
                 <label className={fieldLabel}>
                   Map
-                  <span className="relative mt-1 block">
-                    <select
-                      disabled={!canEdit || backgroundUploading}
-                      value={active.rasterUrl ? STRAT_CUSTOM_MAP_VALUE : active.mapId || ""}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === STRAT_CUSTOM_MAP_VALUE) {
-                          openCustomImagePicker();
-                          return;
-                        }
-                        onChangeSlideMap?.(active.id, value);
-                      }}
-                      className={glassSelect}
-                    >
-                      {STRAT_MAP_IDS.map((id) => (
-                        <option key={id} value={id}>
-                          {id}
-                        </option>
-                      ))}
-                      <option value={STRAT_CUSTOM_MAP_VALUE}>Custom image…</option>
-                    </select>
-                    <i
-                      className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-                      aria-hidden="true"
-                    />
-                  </span>
+                  <GlassSelect
+                    className="mt-1"
+                    disabled={!canEdit || backgroundUploading}
+                    value={active.rasterUrl ? STRAT_CUSTOM_MAP_VALUE : active.mapId || ""}
+                    onChange={(value) => {
+                      if (value === STRAT_CUSTOM_MAP_VALUE) {
+                        openCustomImagePicker();
+                        return;
+                      }
+                      onChangeSlideMap?.(active.id, value);
+                    }}
+                    placeholder=""
+                    options={slideMapOptions}
+                  />
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -390,30 +394,14 @@ export function StratsSidePanel({
                   <>
                     <label className={fieldLabel}>
                       Image scale
-                      <span className="relative mt-1 block">
-                        <select
-                          disabled={!canEdit}
-                          value={active.rasterFit || "contain"}
-                          onChange={(e) =>
-                            onChangeSlideRasterFit?.(active.id, e.target.value)
-                          }
-                          className={glassSelect}
-                        >
-                          {STRAT_RASTER_FIT_MODES.map((mode) => (
-                            <option key={mode} value={mode}>
-                              {mode === "contain"
-                                ? "Fit inside canvas"
-                                : mode === "cover"
-                                  ? "Fill canvas (crop)"
-                                  : "Stretch to canvas"}
-                            </option>
-                          ))}
-                        </select>
-                        <i
-                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-                          aria-hidden="true"
-                        />
-                      </span>
+                      <GlassSelect
+                        className="mt-1"
+                        disabled={!canEdit}
+                        value={active.rasterFit || "contain"}
+                        onChange={(value) => onChangeSlideRasterFit?.(active.id, value)}
+                        placeholder=""
+                        options={rasterFitOptions}
+                      />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       <button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import {
   accLabel,
@@ -8,7 +9,6 @@ import {
   cx,
   glassBtn,
   glassInput,
-  glassSelect,
   sectionTitle,
   tagBar,
   tagBarBtn,
@@ -186,25 +186,13 @@ export function StratDetailsPanel({
           </div>
           <label className="flex flex-col gap-[0.35rem]">
             <span className={accLabel}>Map</span>
-            <span className="relative block">
-              <select
-                disabled={!canEdit}
-                value={match.mapId || ""}
-                className={glassSelect}
-                onChange={(e) => patchMatch({ mapId: e.target.value })}
-              >
-                <option value="">Select map…</option>
-                {STRAT_MAP_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                  </option>
-                ))}
-              </select>
-              <i
-                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-                aria-hidden="true"
-              />
-            </span>
+            <GlassSelect
+              disabled={!canEdit}
+              value={match.mapId || ""}
+              onChange={(value) => patchMatch({ mapId: value })}
+              placeholder="Select map…"
+              options={STRAT_MAP_IDS.map((id) => ({ value: id, label: id }))}
+            />
           </label>
           <label className="flex flex-col gap-[0.35rem]">
             <span className={accLabel}>Opponent</span>

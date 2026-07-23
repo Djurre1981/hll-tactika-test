@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { Modal } from "../../shared/Modal.jsx";
 import { EventForm } from "../calendar/EventForm.jsx";
 import { canEditEvents } from "../calendar/calendar-utils.js";
@@ -7,7 +8,7 @@ import {
   useCreateEventMutation,
   useEventsRangeQuery,
 } from "../calendar/hooks/useEventsQuery.js";
-import { cx, fieldLabel, glassSelect } from "../strats/editor/editorUi.js";
+import { fieldLabel } from "../strats/editor/editorUi.js";
 
 const CREATE_VALUE = "__create_event__";
 
@@ -47,8 +48,21 @@ export function RoutePlanEventPicker({ eventId, onEventIdChange }) {
     return day;
   }, []);
 
-  function handleSelectChange(event) {
-    const value = event.target.value;
+  const eventOptions = useMemo(() => {
+    const opts = events.map((event) => ({
+      value: event.id,
+      label: formatEventOption(event),
+    }));
+    if (eventId && !linkedEvent) {
+      opts.unshift({ value: eventId, label: "Linked event (outside list)" });
+    }
+    if (canEdit) {
+      opts.push({ value: CREATE_VALUE, label: "+ Create new event…" });
+    }
+    return opts;
+  }, [events, eventId, linkedEvent, canEdit]);
+
+  function handleSelectChange(value) {
     if (value === CREATE_VALUE) {
       setCreateOpen(true);
       return;
@@ -70,29 +84,14 @@ export function RoutePlanEventPicker({ eventId, onEventIdChange }) {
     <>
       <label className="block">
         <span className={fieldLabel}>Linked event</span>
-        <span className="relative mt-1.5 block">
-          <select
-            value={eventId || ""}
-            disabled={!canEdit || eventsQuery.isLoading}
-            onChange={handleSelectChange}
-            className={glassSelect}
-          >
-            <option value="">None</option>
-            {eventId && !linkedEvent && (
-              <option value={eventId}>Linked event (outside list)</option>
-            )}
-            {events.map((event) => (
-              <option key={event.id} value={event.id}>
-                {formatEventOption(event)}
-              </option>
-            ))}
-            {canEdit ? <option value={CREATE_VALUE}>+ Create new event…</option> : null}
-          </select>
-          <i
-            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
-            aria-hidden="true"
-          />
-        </span>
+        <GlassSelect
+          className="mt-1.5"
+          value={eventId || ""}
+          disabled={!canEdit || eventsQuery.isLoading}
+          onChange={handleSelectChange}
+          placeholder="None"
+          options={eventOptions}
+        />
       </label>
 
       {linkedEvent ? (

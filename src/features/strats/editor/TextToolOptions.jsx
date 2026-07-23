@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TEXT_FONTS } from "@map-kernel/text-style.js";
-import { cx, glassSelect } from "./editorUi.js";
+import { GlassSelect } from "../../../shared/GlassSelect.jsx";
+import { cx } from "./editorUi.js";
 import { Segmented, SliderField } from "./ToolsPanelPrimitives.jsx";
 import { TextColorMenu } from "./TextColorMenu.jsx";
 import { TextShadowGrid } from "./TextShadowGrid.jsx";
@@ -52,6 +53,8 @@ export function TextToolOptions({
 }) {
   const [menu, setMenu] = useState(null);
   const [advancedOpen, setAdvancedOpen] = useState(true);
+  const activeFont = TEXT_FONTS.find((f) => f.id === (fontFamily || "Inter"));
+  const fontOptions = TEXT_FONTS.map((f) => ({ value: f.id, label: f.label }));
 
   return (
     <>
@@ -59,19 +62,14 @@ export function TextToolOptions({
         <span className="mb-1 block text-[0.62rem] font-light uppercase tracking-[0.1em] text-white/40">
           Font
         </span>
-        <select
-          className={glassSelect}
+        <GlassSelect
           disabled={disabled}
           value={fontFamily || "Inter"}
-          style={{ fontFamily: fontFamily || "Inter" }}
-          onChange={(e) => setStyle({ fontFamily: e.target.value }, { fontFamily: e.target.value })}
-        >
-          {TEXT_FONTS.map((f) => (
-            <option key={f.id} value={f.id} style={{ fontFamily: f.css }}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+          displayStyle={{ fontFamily: activeFont?.css || "Inter" }}
+          onChange={(value) => setStyle({ fontFamily: value }, { fontFamily: value })}
+          placeholder=""
+          options={fontOptions}
+        />
       </label>
 
       <div className="relative mb-[0.65rem] flex items-start gap-2">

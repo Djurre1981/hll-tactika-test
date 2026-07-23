@@ -15,6 +15,7 @@ export function GlassSelect({
   placeholder = "Select…",
   disabled = false,
   className = "",
+  displayStyle,
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState(null);
@@ -139,7 +140,12 @@ export function GlassSelect({
           if (!disabled) setOpen((current) => !current);
         }}
       >
-        <span className={hasValue ? "text-white" : "text-white/45"}>{displayLabel}</span>
+        <span
+          style={displayStyle}
+          className={hasValue ? "text-white" : "text-white/45"}
+        >
+          {displayLabel}
+        </span>
       </button>
       {menu ? createPortal(menu, document.body) : null}
     </div>

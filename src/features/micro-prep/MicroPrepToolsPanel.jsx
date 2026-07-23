@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { normalizeLineCaps } from "@map-kernel/line-caps.js";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { useToolStore } from "../../lib/stores/useToolStore.js";
 import { COLOR_PRESETS } from "../strats/editor/editorUi.js";
 import {
@@ -8,7 +9,6 @@ import {
   actionBtnWide,
   cx,
   glassInput,
-  glassSelect,
   MICRO_PREP_TOOL_ITEMS,
   panelBody,
   panelDivider,
@@ -541,18 +541,14 @@ export function MicroPrepToolsPanel({
             <div className={panelDivider} />
             <section>
               <h3 className={sectionTitle}>HLL Map</h3>
-              <select
+              <GlassSelect
+                className="mt-2"
                 value={hllMapId}
                 disabled={disabled}
-                onChange={(e) => setHllMapId(e.target.value)}
-                className={cx(glassSelect, "mt-2 w-full")}
-              >
-                {STRAT_MAP_IDS.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
-                  </option>
-                ))}
-              </select>
+                onChange={setHllMapId}
+                placeholder=""
+                options={STRAT_MAP_IDS.map((id) => ({ value: id, label: id }))}
+              />
               <div className="mt-2 flex gap-1.5">
                 <button
                   type="button"
