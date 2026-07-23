@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "./mapIds.js";
+import { StratEventLinker } from "./StratEventLinker.jsx";
 import {
   accLabel,
   accShell,
@@ -133,6 +134,8 @@ export function StratDetailsPanel({
             }}
           />
         </Accordion>
+
+        <StratEventLinker stratId={strat?.id} canEdit={canEdit} onPatchStrat={onPatchStrat} />
 
         <Accordion label="Team & type" value={tagsSummary}>
           <div className="flex flex-col gap-[0.35rem]">
