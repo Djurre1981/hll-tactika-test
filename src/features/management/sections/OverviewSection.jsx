@@ -20,7 +20,6 @@ import {
   mergeCombatIntoFormBoard,
   readinessClass,
   readinessLabel,
-  splitFormBoard,
 } from "../overview-utils.js";
 
 function Panel({ title, subtitle, children, className = "" }) {
@@ -203,18 +202,38 @@ function OrgaToolsCard({ nextEvent }) {
   );
 }
 
-function PlayerListRows({ rows, emptyLabel, valueFn }) {
+function RankedScrollList({ rows, emptyLabel, valueFn, onSelect }) {
   if (!rows?.length) {
     return <p className="m-0 text-[0.78rem] text-white/40">{emptyLabel}</p>;
   }
+
   return (
-    <ul className="m-0 flex list-none flex-col gap-1 p-0">
-      {rows.map((row) => (
-        <li key={row.steamId} className="flex items-center justify-between gap-2 text-[0.78rem]">
-          <span className="truncate text-white/85">{row.displayName}</span>
-          <span className="shrink-0 tabular-nums text-white/45">{valueFn(row)}</span>
-        </li>
-      ))}
+    <ul className="glass-scroll m-0 max-h-[18rem] list-none space-y-0.5 overflow-y-auto overscroll-contain p-0 pr-1">
+      {rows.map((row, index) => {
+        const content = (
+          <>
+            <span className="w-5 shrink-0 text-right tabular-nums text-white/35">{index + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-white/85">{row.displayName}</span>
+            <span className="shrink-0 tabular-nums text-white/45">{valueFn(row)}</span>
+          </>
+        );
+
+        return (
+          <li key={row.steamId}>
+            {onSelect ? (
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 rounded-lg border border-transparent px-1 py-1 text-left text-[0.78rem] transition hover:border-white/10 hover:bg-white/[0.04]"
+                onClick={() => onSelect(row)}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 px-1 py-1 text-[0.78rem]">{content}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -222,13 +241,12 @@ function PlayerListRows({ rows, emptyLabel, valueFn }) {
 function AttendancePulseCard({ nextEvent, rsvpData, participation }) {
   const counts = rsvpData?.counts;
   const hasRsvps = counts && counts.total > 0;
-  const top = participation?.top?.slice(0, 5) || [];
-  const bottom = participation?.bottom?.slice(0, 5) || [];
+  const rows = (participation?.rows || []).filter((row) => row.gamesPlayed > 0);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-h-0 flex-col gap-3">
       {hasRsvps && nextEvent ? (
-        <div>
+        <div className="shrink-0">
           <p className="m-0 text-[0.68rem] text-white/45">
             Next:{" "}
             <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
@@ -248,106 +266,50 @@ function AttendancePulseCard({ nextEvent, rsvpData, participation }) {
               </div>
             ))}
           </div>
-          <p className="m-0 mt-1.5 text-[0.65rem] text-white/35">
-            Live RSVP · {counts.total} response{counts.total === 1 ? "" : "s"}
-          </p>
         </div>
       ) : (
-        <p className="m-0 text-[0.7rem] text-white/45">
+        <p className="m-0 shrink-0 text-[0.7rem] text-white/45">
           {nextEvent ? (
             <>
               No RSVPs yet — set attendance on{" "}
               <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
                 next brief
               </Link>
-              . Showing who played recent comps:
+              .
             </>
           ) : (
-            <>Showing who played recent comps (last {participation?.poolSize || 0}):</>
+            <>Played in last {participation?.poolSize || 0} comps.</>
           )}
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
-            Regulars
-          </p>
-          <PlayerListRows
-            rows={top}
-            emptyLabel="No participation data yet."
-            valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
-          />
-        </div>
-        <div>
-          <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
-            Rarely seen
-          </p>
-          <PlayerListRows
-            rows={bottom.filter((row) => !top.some((t) => t.steamId === row.steamId))}
-            emptyLabel="Pool too small to split."
-            valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
-          />
-        </div>
-      </div>
+      <RankedScrollList
+        rows={rows}
+        emptyLabel="No players with matches yet."
+        valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
+      />
     </div>
   );
 }
 
-function PlayerFormBoard({ hotRows, coldRows, onSelect }) {
-  const hot = hotRows || [];
-  const cold = coldRows || [];
-
-  if (!hot.length && !cold.length) {
-    return (
-      <p className="m-0 text-[0.8rem] text-white/40">
-        No player form yet — need roster Steam IDs on matches.
-      </p>
-    );
-  }
-
-  function Row({ row }) {
-    return (
-      <li key={row.steamId}>
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-2 rounded-lg border border-transparent px-1 py-1 text-left text-[0.78rem] transition hover:border-white/10 hover:bg-white/[0.04]"
-          onClick={() => onSelect?.(row)}
-        >
-          <span className="min-w-0 truncate text-white/85">{row.displayName}</span>
-          <span className="shrink-0 tabular-nums text-white/45">
-            {row.winRate != null ? `${row.winRate}%` : "—"}
-            {row.kd != null ? ` · ${row.kd} K/D` : ""}
-            {` · ${row.gamesPlayed}g`}
-          </span>
-        </button>
-      </li>
-    );
-  }
+function PlayerFormBoard({ rows, onSelect }) {
+  const list = (rows || []).filter((row) => row.gamesPlayed > 0);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div>
-        <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-emerald-200/70">
-          In form
-        </p>
-        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          {hot.length ? hot.map((row) => <Row key={row.steamId} row={row} />) : (
-            <li className="text-[0.75rem] text-white/40">Need more recorded results.</li>
-          )}
-        </ul>
-      </div>
-      <div>
-        <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-red-200/70">
-          Cold
-        </p>
-        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
-          {cold.length ? cold.map((row) => <Row key={row.steamId} row={row} />) : (
-            <li className="text-[0.75rem] text-white/40">Need more recorded results.</li>
-          )}
-        </ul>
-      </div>
-    </div>
+    <RankedScrollList
+      rows={list}
+      emptyLabel="No players with matches yet."
+      onSelect={onSelect}
+      valueFn={(row) =>
+        [
+          row.winRate != null ? `${row.winRate}%` : null,
+          row.kd != null ? `${row.kd} K/D` : null,
+          `${row.gamesPlayed}g`,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      }
+    />
   );
 }
 
@@ -522,12 +484,15 @@ export function OverviewSection() {
     [historyQuery.data, members]
   );
 
-  const formRows = useMemo(
-    () => mergeCombatIntoFormBoard(participation.rows, combatQuery.data || {}),
-    [participation.rows, combatQuery.data]
-  );
-
-  const formBoard = useMemo(() => splitFormBoard(formRows), [formRows]);
+  const formRows = useMemo(() => {
+    const merged = mergeCombatIntoFormBoard(participation.rows, combatQuery.data || {});
+    return [...merged]
+      .filter((row) => row.gamesPlayed > 0)
+      .sort((a, b) => {
+        if ((b.winRate ?? -1) !== (a.winRate ?? -1)) return (b.winRate ?? -1) - (a.winRate ?? -1);
+        return b.gamesPlayed - a.gamesPlayed;
+      });
+  }, [participation.rows, combatQuery.data]);
 
   const seasonPulse = useMemo(
     () => buildSeasonPulse(historyQuery.data || [], events),
@@ -582,12 +547,12 @@ export function OverviewSection() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+          <div className="glass-surface flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
             <h3 className="m-0 text-[0.88rem] font-medium text-white">Attendance pulse</h3>
             <p className="m-0 mt-1 text-[0.7rem] text-white/40">
-              Next-event RSVP + who shows for comps
+              Ranked by comps played · scroll for full list
             </p>
-            <div className="mt-3">
+            <div className="mt-3 min-h-0">
               <AttendancePulseCard
                 nextEvent={nextEvent}
                 rsvpData={nextRsvpQuery.data}
@@ -596,17 +561,13 @@ export function OverviewSection() {
             </div>
           </div>
 
-          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+          <div className="glass-surface flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
             <h3 className="m-0 text-[0.88rem] font-medium text-white">Player form</h3>
             <p className="m-0 mt-1 text-[0.7rem] text-white/40">
-              Win rate when present · combat when ingested · click for profile
+              Ranked by win rate · click for profile
             </p>
-            <div className="mt-3">
-              <PlayerFormBoard
-                hotRows={formBoard.hot}
-                coldRows={formBoard.cold}
-                onSelect={setSelectedPlayer}
-              />
+            <div className="mt-3 min-h-0">
+              <PlayerFormBoard rows={formRows} onSelect={setSelectedPlayer} />
             </div>
           </div>
 
