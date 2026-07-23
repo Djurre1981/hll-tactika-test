@@ -368,3 +368,132 @@ body {
 #root .overflow-auto::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* In-app wiki / help overlay article */
+.wiki-prose {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.92rem;
+  font-weight: 300;
+  line-height: 1.55;
+}
+
+.wiki-prose > :first-child {
+  margin-top: 0;
+}
+
+.wiki-prose h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.wiki-prose h2 {
+  margin: 1.6rem 0 0.55rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.wiki-prose h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.wiki-prose p,
+.wiki-prose ul,
+.wiki-prose ol,
+.wiki-prose blockquote,
+.wiki-prose table {
+  margin: 0 0 0.85rem;
+}
+
+.wiki-prose ul,
+.wiki-prose ol {
+  padding-left: 1.25rem;
+}
+
+.wiki-prose li + li {
+  margin-top: 0.25rem;
+}
+
+.wiki-prose a {
+  color: rgb(196, 163, 90);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.wiki-prose a:hover {
+  color: rgb(220, 190, 120);
+}
+
+.wiki-prose blockquote {
+  border-left: 2px solid rgba(196, 163, 90, 0.45);
+  padding: 0.15rem 0 0.15rem 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.wiki-prose code {
+  border-radius: 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+}
+
+.wiki-prose pre {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.85rem 1rem;
+  margin: 0 0 0.85rem;
+}
+
+.wiki-prose pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.wiki-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.wiki-prose th,
+.wiki-prose td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wiki-prose th {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.wiki-prose .wiki-figure {
+  margin: 1rem 0 1.25rem;
+}
+
+.wiki-prose .wiki-figure img {
+  display: block;
+  width: 100%;
+  max-height: min(420px, 50vh);
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.wiki-prose .wiki-figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}

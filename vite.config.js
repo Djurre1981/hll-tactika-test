@@ -189,6 +189,10 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     open: "/",
+    fs: {
+      // Bundled in-app manual lives under docs/wiki
+      allow: [root],
+    },
     proxy: {
       "/api": {
         target: WRANGLER_API,

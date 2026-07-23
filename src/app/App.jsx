@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "./providers/query-client.jsx";
 import { AppRouter } from "./router.jsx";
 import { AuthGate } from "../features/auth/AuthGate.jsx";
+import { HelpWikiProvider } from "../features/help/HelpWikiContext.jsx";
 import { ErrorBoundary } from "../shared/ErrorBoundary.jsx";
 
 export default function App() {
@@ -8,7 +9,9 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider>
         <AuthGate>
-          <AppRouter />
+          <HelpWikiProvider>
+            <AppRouter />
+          </HelpWikiProvider>
         </AuthGate>
       </QueryClientProvider>
     </ErrorBoundary>
