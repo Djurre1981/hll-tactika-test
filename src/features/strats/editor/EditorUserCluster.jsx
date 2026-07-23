@@ -2,19 +2,19 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../../auth/hooks/useAuthQuery.js";
 import { canManageTeam } from "../../../lib/roles.js";
-import { HelpWikiButton } from "../../help/HelpWikiButton.jsx";
+import { useHelpWiki } from "../../help/HelpWikiContext.jsx";
 import { userMenuPill } from "./editorUi.js";
 
-/** Same chrome as home HubUserMenu — help + avatar + glass pill menu. */
+/** Same chrome as home HubUserMenu — avatar + glass pill menu. */
 export function EditorUserCluster() {
   const user = useAuth();
   const logout = useLogoutMutation();
+  const { openWiki } = useHelpWiki();
   const name = user.name || user.steamId;
 
   return (
     <div className="relative flex items-start gap-[0.65rem]">
       <div className="flex items-center gap-[0.65rem]">
-        <HelpWikiButton />
         <div className="group relative flex items-center">
           <div
             className="pointer-events-none invisible absolute right-full top-0 flex w-max flex-col items-stretch gap-[0.35rem] pr-[0.65rem] group-hover:pointer-events-auto group-hover:visible group-focus-within:pointer-events-auto group-focus-within:visible"
@@ -25,6 +25,14 @@ export function EditorUserCluster() {
                 Admin Panel
               </Link>
             ) : null}
+            <button
+              type="button"
+              className={userMenuPill}
+              role="menuitem"
+              onClick={() => openWiki("Home")}
+            >
+              User Manual
+            </button>
             <button
               type="button"
               className={userMenuPill}
