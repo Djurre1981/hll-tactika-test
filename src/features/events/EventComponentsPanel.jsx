@@ -88,7 +88,7 @@ function ComponentGroup({ kind, items, canEdit, pending, onDetach }) {
           <ComponentRow
             key={`${item.kind}-${item.id}`}
             item={item}
-            canEdit={canEdit && !eventLocked}
+            canEdit={canEdit}
             pending={pending}
             onDetach={onDetach}
           />
