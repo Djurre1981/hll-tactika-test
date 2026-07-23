@@ -61,6 +61,7 @@ function Accordion({ label, value, defaultOpen = false, children }) {
 
 export function StratDetailsPanel({
   strat,
+  activeSlide,
   canEdit,
   onBack,
   onPatchStrat,

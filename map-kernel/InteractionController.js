@@ -6,7 +6,13 @@ import {
   normalizePoint,
   cubicPointsFromEndpoints,
   textBoxFromCenter,
+  getCoordSpan,
 } from "./object-schema.js";
+import {
+  measureLineDefaultEnd,
+  measureRadiusDefaultBox,
+  measureStyleFromSettings,
+} from "./measure.js";
 import {
   applyHandleDrag,
   getBoxFromObjectPoints,
@@ -106,7 +112,12 @@ export class InteractionController {
   }
 
   isDrawingTool(tool) {
-    return tool !== "select" && tool !== "eraser";
+    return (
+      tool !== "select" &&
+      tool !== "eraser" &&
+      tool !== "measure-line" &&
+      tool !== "measure-radius"
+    );
   }
 
   shouldBlockPan() {
@@ -114,6 +125,8 @@ export class InteractionController {
     return (
       this.isDrawingTool(tool) ||
       tool === "eraser" ||
+      tool === "measure-line" ||
+      tool === "measure-radius" ||
       Boolean(this.drawSession) ||
       Boolean(this.strokeChain) ||
       Boolean(this.objectDrag) ||
@@ -449,6 +462,38 @@ export class InteractionController {
       return;
     }
 
+    if (tool === "measure-radius") {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      const mapSize = this.renderer?.mapSize || 1920;
+      const points = measureRadiusDefaultBox(point, mapSize, getCoordSpan(), normalizePoint);
+      if (points.length < 2) return;
+      const object = createStratObject("measure-radius", {
+        points,
+        style: measureStyleFromSettings(settingsToObjectStyle(this.getToolSettings())),
+      });
+      this.scene.addObject(object);
+      this.maybeSelectAfterCreate(object.id);
+      this.refresh();
+      return;
+    }
+
+    if (tool === "measure-line") {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      this.drawSession = {
+        type: "measure-line",
+        start: point,
+        points: [point],
+        pointerId: event.pointerId,
+        preview: null,
+      };
+      this.viewport.setPointerCapture?.(event.pointerId);
+      this.getViewer()?.setBlockPan(true);
+      this.updateDrawPreview(point, event.shiftKey);
+      return;
+    }
+
     if (!["pen", "rect", "ellipse", "text"].includes(drawType)) return;
 
     event.stopImmediatePropagation();
@@ -492,6 +537,12 @@ export class InteractionController {
         meta: { text: "add text here" },
       });
       session.preview.meta.draft = true;
+    } else if (session.type === "measure-line") {
+      const end = resolveTwoPoint(session.start, point, { shift: shiftKey, aspect });
+      session.preview = createStratObject("measure-line", {
+        points: [session.start, end],
+        style: measureStyleFromSettings(style),
+      });
     } else {
       const end = resolveTwoPoint(session.start, point, { shift: shiftKey, aspect });
       session.preview = createStratObject(session.type, {
@@ -637,6 +688,26 @@ export class InteractionController {
         this.maybeSelectAfterCreate(object.id);
         this.refresh();
         this.beginTextEdit?.(object, { selectAll: false });
+        return;
+      } else if (preview.type === "measure-line") {
+        let points = preview.points;
+        const [a, b] = points || [];
+        if (!a) {
+          this.refresh();
+          return;
+        }
+        if (!b || Math.hypot(b.x - a.x, b.y - a.y) < 0.15) {
+          const mapSize = this.renderer?.mapSize || 1920;
+          const end = measureLineDefaultEnd(session.start, mapSize, getCoordSpan(), normalizePoint);
+          points = [session.start, end];
+        }
+        const object = createStratObject("measure-line", {
+          points,
+          style: measureStyleFromSettings(settingsToObjectStyle(this.getToolSettings())),
+        });
+        this.scene.addObject(object);
+        this.maybeSelectAfterCreate(object.id);
+        this.refresh();
         return;
       } else if (preview.type !== "pen") {
         const [a, b] = preview.points;

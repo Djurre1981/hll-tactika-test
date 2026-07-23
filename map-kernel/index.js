@@ -12,8 +12,28 @@ function mapUrlForId(mapId) {
   return `/maps/no-grid/${mapId}_NoGrid.webp`;
 }
 
+function sameAssetUrl(img, url) {
+  if (!img || !url) return false;
+  const raw = String(url).trim();
+  const current = img.getAttribute("src") || img.src || "";
+  if (current === raw) return true;
+  try {
+    const base =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "http://localhost";
+    return new URL(current, base).pathname === new URL(raw, base).pathname;
+  } catch {
+    return false;
+  }
+}
+
 /** Logical unit for micro-prep freeform workspace sizing (map-% span × unit = px). */
 const FREEFORM_UNIT_PX = 4096;
+
+/** Strat slides use a fixed 1920×1920 ground layer; custom images sit on top. */
+const STRAT_GROUND_SIZE = 1920;
+const STRAT_GROUND_URL = "/assets/strats/strat-ground-1920.svg";
 
 /**
  * Imperative map + drawing kernel. React must only touch this via CanvasWrapper.
@@ -30,6 +50,9 @@ export class MapKernel {
     this.currentMapId = null;
     this.pageUrl = null;
     this.pageMode = "square";
+    this.stratCustomMode = false;
+    this.customBgUrl = null;
+    this.customBgFit = "contain";
     this.autoSelectOnCreate = options.autoSelectOnCreate !== false;
     this.toolSettings = {
       tool: "select",
@@ -138,7 +161,33 @@ export class MapKernel {
     this.animCanvas = document.createElement("canvas");
     Object.assign(this.animCanvas.style, overlayStyle);
 
+    this.customBgClip = document.createElement("div");
+    this.customBgClip.className = "map-kernel-custom-bg-clip";
+    Object.assign(this.customBgClip.style, {
+      position: "absolute",
+      left: "0",
+      top: "0",
+      overflow: "hidden",
+      pointerEvents: "none",
+      display: "none",
+      zIndex: "1",
+    });
+
+    this.customBgImage = document.createElement("img");
+    this.customBgImage.alt = "";
+    this.customBgImage.draggable = false;
+    Object.assign(this.customBgImage.style, {
+      position: "absolute",
+      display: "block",
+      maxWidth: "none",
+      userSelect: "none",
+      pointerEvents: "none",
+      WebkitUserDrag: "none",
+    });
+
+    this.customBgClip.appendChild(this.customBgImage);
     this.stage.appendChild(this.image);
+    this.stage.appendChild(this.customBgClip);
     this.stage.appendChild(this.canvas);
     this.stage.appendChild(this.animCanvas);
     this.viewport.appendChild(this.stage);
@@ -217,6 +266,12 @@ export class MapKernel {
     this.image.addEventListener("load", () => {
       this._applyPageLayout();
     });
+    this.customBgImage.addEventListener("load", () => {
+      if (this.stratCustomMode) {
+        this._applyCustomBgOverlay();
+        this.renderer?.requestDraw(this.scene.getObjects());
+      }
+    });
 
     if (this.options.mapId) {
       this.setMap(this.options.mapId);
@@ -251,9 +306,111 @@ export class MapKernel {
     this.viewer?.setBlockPan(Boolean(block));
   }
 
+  _clearStratCustomBackground() {
+    this.stratCustomMode = false;
+    this.customBgUrl = null;
+    if (this.customBgClip) {
+      this.customBgClip.style.display = "none";
+    }
+    if (this.customBgImage) {
+      this.customBgImage.removeAttribute("src");
+    }
+  }
+
+  /**
+   * Stratmaker: show fixed ground canvas before a custom image is chosen/uploaded.
+   */
+  setStratGroundOnly() {
+    if (!this.image) return;
+    this.stratCustomMode = true;
+    this.customBgUrl = null;
+    this.customBgFit = "contain";
+    this.currentMapId = null;
+    this.pageUrl = STRAT_GROUND_URL;
+    this.overlays?.setToggles({ grid: false, strongpoints: false, accessibility: false });
+    if (this.customBgClip) {
+      this.customBgClip.style.display = "none";
+    }
+    if (this.customBgImage) {
+      this.customBgImage.removeAttribute("src");
+    }
+    this._assignImageSrc(STRAT_GROUND_URL);
+  }
+
+  /**
+   * Stratmaker: fixed 1920×1920 ground with a custom image composited on top.
+   * Drawing coords stay aligned to the standard tac map canvas.
+   */
+  setStratCustomBackground(url, { fit = "contain" } = {}) {
+    if (!url || !this.image) return;
+    this.stratCustomMode = true;
+    this.customBgUrl = url;
+    this.customBgFit = fit === "cover" || fit === "stretch" ? fit : "contain";
+    this.currentMapId = null;
+    this.pageUrl = STRAT_GROUND_URL;
+    this.overlays?.setToggles({ grid: false, strongpoints: false, accessibility: false });
+    if (this.customBgClip) {
+      this.customBgClip.style.display = "block";
+      this.customBgClip.style.width = `${STRAT_GROUND_SIZE}px`;
+      this.customBgClip.style.height = `${STRAT_GROUND_SIZE}px`;
+    }
+    this._assignImageSrc(STRAT_GROUND_URL);
+    if (!sameAssetUrl(this.customBgImage, url)) {
+      this.customBgImage.src = url;
+    } else if (this.customBgImage.complete && this.customBgImage.naturalWidth) {
+      this._applyCustomBgOverlay();
+    }
+  }
+
+  setStratCustomBackgroundFit(fit = "contain") {
+    if (!this.stratCustomMode) return;
+    this.customBgFit = fit === "cover" || fit === "stretch" ? fit : "contain";
+    this._applyCustomBgOverlay();
+  }
+
+  _applyCustomBgOverlay() {
+    const img = this.customBgImage;
+    const clip = this.customBgClip;
+    if (!img || !clip || !this.stratCustomMode) return;
+    const groundW = STRAT_GROUND_SIZE;
+    const groundH = STRAT_GROUND_SIZE;
+    const nw = img.naturalWidth || 0;
+    const nh = img.naturalHeight || 0;
+    if (!nw || !nh) {
+      img.style.display = "none";
+      return;
+    }
+
+    clip.style.width = `${groundW}px`;
+    clip.style.height = `${groundH}px`;
+
+    const fit = this.customBgFit || "contain";
+    let w = nw;
+    let h = nh;
+    if (fit === "stretch") {
+      w = groundW;
+      h = groundH;
+    } else if (fit === "cover") {
+      const scale = Math.max(groundW / nw, groundH / nh);
+      w = nw * scale;
+      h = nh * scale;
+    } else {
+      const scale = Math.min(groundW / nw, groundH / nh);
+      w = nw * scale;
+      h = nh * scale;
+    }
+
+    img.style.width = `${w}px`;
+    img.style.height = `${h}px`;
+    img.style.left = `${(groundW - w) / 2}px`;
+    img.style.top = `${(groundH - h) / 2}px`;
+    img.style.display = "block";
+  }
+
   setMap(mapId) {
     const url = mapUrlForId(mapId);
     if (!url || !this.image) return;
+    this._clearStratCustomBackground();
     this.currentMapId = mapId;
     this.pageUrl = url;
     this.overlays?.setMapId(mapId);
@@ -263,12 +420,13 @@ export class MapKernel {
   /** Custom page image (background upload, composed HLL map, blank page). */
   setPageImage(url, { mapId = null, showOverlays = false } = {}) {
     if (!url || !this.image) return;
+    this._clearStratCustomBackground();
     this.pageUrl = url;
     this.currentMapId = mapId;
     if (mapId && showOverlays) {
       this.overlays?.setMapId(mapId);
     } else {
-      this.overlays?.setToggles({ grid: false, strongpoints: false });
+      this.overlays?.setToggles({ grid: false, strongpoints: false, accessibility: false });
     }
     this._assignImageSrc(url);
   }
@@ -292,8 +450,12 @@ export class MapKernel {
   }
 
   _applyPageLayout() {
-    const w = this.image.naturalWidth || FREEFORM_UNIT_PX;
-    const h = this.image.naturalHeight || w;
+    const w = this.stratCustomMode
+      ? STRAT_GROUND_SIZE
+      : this.image.naturalWidth || FREEFORM_UNIT_PX;
+    const h = this.stratCustomMode
+      ? STRAT_GROUND_SIZE
+      : this.image.naturalHeight || w;
     this.image.removeAttribute("width");
     this.image.removeAttribute("height");
     this.image.style.display = "block";
@@ -326,6 +488,10 @@ export class MapKernel {
       this.viewer?.fitToView();
     }
 
+    if (this.stratCustomMode) {
+      this._applyCustomBgOverlay();
+    }
+
     this.renderer.requestDraw(this.scene.getObjects());
   }
 
@@ -333,7 +499,7 @@ export class MapKernel {
   setFreeformBlankPage(theme = "dark") {
     this.pageUrl = null;
     this.currentMapId = null;
-    this.overlays?.setToggles({ grid: false, strongpoints: false });
+    this.overlays?.setToggles({ grid: false, strongpoints: false, accessibility: false });
     this.image.style.display = "none";
     this.image.removeAttribute("src");
     if (this.viewport) {
@@ -406,6 +572,10 @@ export class MapKernel {
 
   setOverlays(toggles) {
     this.overlays?.setToggles(toggles);
+  }
+
+  setVisibleStrongpoints(keys) {
+    this.overlays?.setVisibleStrongpoints(keys);
   }
 
   setCamera(camera) {

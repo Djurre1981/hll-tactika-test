@@ -1,0 +1,178 @@
+# Tactika — Current & Planned Features
+
+**Tactika** is a private, team-internal strategy and planning platform for Hell Let Loose (The Circle competitive team). It runs on **Cloudflare Pages + D1 + R2**, with **Steam sign-in** and role-based access. V2 staging lives at `hll-tactika-test`; production V1 is still the climbing guide.
+
+---
+
+## Platform (shared across modules)
+
+| Area | Shipped |
+|------|---------|
+| **Auth** | Steam login, allowlist, roles (Comp Member → Owner) |
+| **Security** | Protected pin data, hybrid marker/detail split, audit hooks |
+| **Hub** | Dashboard with upcoming events, tool launcher, online presence |
+| **Calendar** | Month view, event CRUD (scrim / comp / practice / other) |
+| **Team / roster** | Site access roster, comp rosters with drag-and-drop, multiple named rosters |
+| **Management** | Staff section, clan roster (separate from site access) |
+| **Media** | R2 uploads for videos/images; external links (YouTube, Medal, etc.) |
+| **Collab** | Yjs live editing on Strat slides & Micro Prep; peer presence |
+| **Maps** | All 20 HLL tactical maps, pan/zoom, grid & strongpoint overlays (Maps Let Loose data) |
+
+---
+
+## Module 1: Interactive Climbing Guide (V1 + embedded)
+
+The original module — still available via hub → **Climbing Guide** (`/climbing-guide-v1/`).
+
+- **Climb** and **MG spot** pins on all maps
+- Faction tags, filters, hover preview, full video playback
+- Multi-media pins, editor mode (place, drag, undo/redo)
+- Cloudflare-hosted trick videos + preview images
+- Admin panel for members
+
+---
+
+## Module 2: Stratmaker (Strats)
+
+Map-based tactical planning with multi-slide “decks.”
+
+### Documents & browser
+
+- Strat catalog with folders, search, drag-and-drop organization
+- Metadata: title, team (jr/sr), type (friendly/tournament), notes, match info
+- Slides: per-map drawings, reorder, duplicate, thumbnails
+- StratSketch import, lock (view-only) mode
+- D1 persistence, debounced autosave
+
+### Drawing tools
+
+- Select, pen, line, curved line (Bézier), rectangle, circle, text
+- StratSketch-style icons (~75), HLL placeables (garrisons, vehicles, classes, etc.)
+- Ping animation, eraser, color picker, stroke/fill options
+- Shift/Alt modifiers (snap angles, proportional resize, draw from center)
+- Copy/cut/paste, duplicate, undo/redo, keyboard nudge
+
+### HLL-specific
+
+- Spawn radius toggle, garrison radius check (valid/invalid preview)
+- Route plan embed on slides (read-only overlay + deep link) — issue #28
+
+### Collab
+
+- Live Yjs sync per slide when multiple editors are present
+
+---
+
+## Module 3: Micro Prep
+
+Freeform whiteboard & slideshow for match prep (map-kernel v2, replaces Excalidraw).
+
+- **Whiteboard** (square canvas) and **Slideshow** (16:9, multi-slide)
+- Same core draw tools as Strats (no icons/HLL placeables/ping)
+- HLL map background composer (map + optional overlays → R2 page)
+- Image page backgrounds, theme (dark/light)
+- D1 whiteboards CRUD, Yjs collab on objects
+
+---
+
+## Module 4: Routeplanner (shipped on V2, Jul 2026)
+
+Timed vehicle routes with accessibility-aware pathfinding — issue #24 umbrella, phases 2–4 merged.
+
+### Route planning
+
+- Standalone plans in D1 (`/tool/routeplanner` → `/routeplanner/{id}`)
+- HQ → destination pathfinding: grid A* + string-pull, truck-width clearance
+- Multiple routes per plan; per-route name, driver, color, faction, HQ slot, vehicle
+- User waypoints: click to add, drag to move, right-click/Delete to remove
+- Vehicle speeds from FModel extract (`vehicles.json`) — issue #26
+- Per-route vehicle picker with HLL icons — issue #27
+
+### Match timing — issue #29
+
+- Frontier wall (first 120s), match arrival ETA, dashed wall on map
+- Timeline scrubber + multi-route playback animation — issue #30
+
+### Obstacles
+
+- Traced accessibility vectors per map; pen add/subtract editing
+- Obstacle mode dims routes, blocks route editing, muted-red toolbar indicator
+
+### UI (recent, deployed)
+
+- Editable plan title + **calendar event linking** (pick existing or create event)
+- Start point only when a route is selected (not at plan level)
+- Stable map camera when toggling obstacle mode
+
+### Strat integration — issue #28
+
+- Attach route plan to strat slide; filtered by map + faction
+
+---
+
+## Infrastructure completed (migration roadmap)
+
+Phases **0–8** are done (D1, React shell, auth, dashboard, calendar, Strat browser, Strat editor, Micro Prep, Yjs collab).
+
+**Phase 9 — Discord bot** is planned but not shipped: `/link`, event create, signups, reminders, embed sync, Hetzner deploy.
+
+---
+
+## Planned & deferred features
+
+### Routeplanner (documented deferred)
+
+- Driver field → **roster player picker** (linked to scheduled match)
+- Per-vehicle body width in clearance (today: transport-truck width for all)
+- Terrain speed modifiers, acceleration model, in-game speed calibration
+- Block pathfinding at frontier wall (today: ETA-only wait)
+
+### GitHub issues — open enhancements
+
+| Issue | Topic |
+|-------|--------|
+| #23 | **RallyPoint-style features** — match wizard, RSVP, match brief, Discord push, analytics, prep tasks |
+| #12 | **Tool integrations** — HLLRecords links, RCON stats, signups, notifications, match analytics, inbox |
+| #13 | **Engagement** — pin ratings, contribution XP/tiers |
+| #5 | Link **roster matches ↔ strats** |
+| #11 | Link **roster matches ↔ Micro Prep** |
+| #3 | Insert **image** into Strat builder |
+| #8 | **Visibility layer** (Maps Let Loose–style fog) |
+| #4 | Merge **line + arrow** tool |
+| #2 | **Rich text** in Strat text tool |
+| #7 | Review **icons for animation** |
+| #9 | **HLL map images** in Micro Prep |
+| #10 | Unify **whiteboard + slideshow** modes |
+| #15 | **Bug:** recon role missing from comp roster role picker |
+
+### README / product roadmap (high level)
+
+- Bug fixes and member-requested polish on shipped modules
+- Future modules driven by prep team feedback (e.g. **HLL Records** placeholder on hub, tank guides, broader **Planning/rostering**)
+- Cross-linking calendar ↔ strats ↔ route plans ↔ rosters (partially started with route plan ↔ event)
+
+### Suggested near-term slice (from enhancement-issues-ranked.md)
+
+1. README sync
+2. Merge line/arrow tool
+3. Icon animation audit
+4. Match ↔ strat linking (unlocks Micro Prep linking)
+
+---
+
+## Deployment status
+
+| Environment | Contents |
+|-------------|----------|
+| **V1 (`hll-tactika`)** | Climbing guide (production) |
+| **V2 (`hll-tactika-test`)** | Full React hub + Strats + Micro Prep + **Routeplanner** |
+
+---
+
+## Summary
+
+**Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab.
+
+**Planned work** clusters around match-day operations (RallyPoint-style scheduling, RSVP, Discord bot), deeper cross-linking between tools, Strat/Micro Prep UX polish, and optional engagement/analytics layers — with Routeplanner’s main gaps being roster-linked drivers and tighter calendar/match workflow integration.
+
+*Generated July 22, 2026*

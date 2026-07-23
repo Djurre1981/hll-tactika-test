@@ -32,6 +32,18 @@ export {
   userMenuPill,
 } from "../../../shared/glassUi.js";
 
+/** Glass surface shared by map toolbar + strongpoint popover. */
+export const mapToolbarGlass =
+  "border border-solid border-white/10 bg-[rgba(24,24,26,0.58)] shadow-[0_12px_40px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-[20px] backdrop-saturate-[180%]";
+
+export const mapToolbarWidth = "w-[14rem]";
+
+/** Strongpoint sector grid — matches maps-let-loose selector green. */
+export const strongpointSectorSelected =
+  "border-[#1ba31b]/35 bg-[#1ba31b] hover:bg-[#22ad22]";
+export const strongpointSectorUnselected =
+  "border-white/10 bg-white/[0.12] hover:border-white/14 hover:bg-white/[0.16]";
+
 export const slideItem =
   "flex w-full cursor-pointer items-center gap-[0.45rem] rounded-[10px] border border-solid border-white/10 bg-black/[0.22] px-[0.55rem] py-2 text-left text-[0.78rem] text-white/85 transition";
 
@@ -92,6 +104,8 @@ export const TOOL_ITEMS = [
   { id: "pen", icon: "fa-solid fa-pen", title: "Draw" },
   { id: "line", title: "Line / curve / arrow" },
   { id: "ellipse", icon: "fa-regular fa-circle", title: "Circle" },
+  { id: "measure-line", icon: "fa-solid fa-ruler-horizontal", title: "Measure line" },
+  { id: "measure-radius", icon: "fa-regular fa-circle-dot", title: "Measure radius" },
   { id: "rect", icon: "fa-regular fa-square", title: "Rectangle" },
   { id: "eraser", icon: "fa-solid fa-eraser", title: "Eraser" },
   { id: "text", icon: "fa-solid fa-font", title: "Text" },

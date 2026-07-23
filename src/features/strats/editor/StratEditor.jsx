@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "../../../shared/Spinner.jsx";
@@ -6,17 +6,20 @@ import { CanvasWrapper } from "./CanvasWrapper.jsx";
 import { ToolsPanel } from "./ToolsPanel.jsx";
 import { StratsSidePanel } from "./StratsSidePanel.jsx";
 import { StratRouteOverlay } from "./StratRouteOverlay.jsx";
+import { StratPresentationChrome } from "./StratPresentationChrome.jsx";
 import { MapChrome } from "./MapChrome.jsx";
 import { CollabPeers } from "../../../shared/CollabPeers.jsx";
 import { EditorUserCluster } from "./EditorUserCluster.jsx";
 import { ImportStratSketchModal } from "./ImportStratSketchModal.jsx";
 import { STRAT_PANEL_WIDTH, useStratEditor } from "./hooks/useStratEditor.js";
+import { useStratPresentation } from "./hooks/useStratPresentation.js";
 import { apiClient } from "../../../lib/api-client.js";
 import { queryKeys } from "../../../lib/query-keys.js";
 
 export function StratEditor({ stratId, backTo = "/home" }) {
   const editor = useStratEditor(stratId);
   const [kernelReady, setKernelReady] = useState(false);
+  const [presenting, setPresenting] = useState(false);
   const {
     query,
     mutation,
@@ -39,7 +42,58 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     rightRef,
     collabPeers,
     collabStatus,
+    backgroundUploadError,
+    backgroundUploading,
+    pendingCustomBackground,
   } = editor;
+
+  const sortedSlides = useMemo(
+    () => [...slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [slides]
+  );
+  const activeSlideIndex = Math.max(
+    0,
+    sortedSlides.findIndex((slide) => slide.id === activeSlide?.id)
+  );
+
+  const presentation = useStratPresentation({
+    enabled: presenting,
+    slideCount: sortedSlides.length,
+    activeIndex: activeSlideIndex,
+    onSelectIndex: (index) => {
+      const slide = sortedSlides[index];
+      if (slide) editor.handleSelectSlide(slide.id);
+    },
+    onExit: () => setPresenting(false),
+    shellRef: editor.shellRef,
+  });
+
+  const effectiveInsets = presenting
+    ? { left: 0, right: 0, top: 0, bottom: 0 }
+    : panelInsets;
+
+  const startPresentation = () => {
+    setSelected(null);
+    kernelRef.current?.clearSelection?.();
+    setPresenting(true);
+  };
+
+  useEffect(() => {
+    if (presenting) {
+      const frame = window.requestAnimationFrame(() => {
+        kernelRef.current?.fitToView();
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+    const timer = window.setTimeout(() => {
+      kernelRef.current?.fitToView();
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [presenting, activeSlide?.id, kernelRef]);
+
+  const hasCustomBackground = Boolean(activeSlide?.rasterUrl);
+  const overlaysLocked =
+    hasCustomBackground || pendingCustomBackground || backgroundUploading;
 
   const routePlanId = activeSlide?.routePlanId;
   const routePlanQuery = useQuery({
@@ -65,7 +119,7 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     setKernelReady(false);
     const t = window.setTimeout(() => setKernelReady(true), 400);
     return () => window.clearTimeout(t);
-  }, [activeSlide?.id, activeSlide?.mapId]);
+  }, [activeSlide?.id, activeSlide?.mapId, activeSlide?.rasterUrl]);
 
   if (query.isLoading) {
     return (
@@ -87,9 +141,16 @@ export function StratEditor({ stratId, backTo = "/home" }) {
   }
 
   return (
-    <div ref={shellRef} className="stratmaker-map-shell relative h-full w-full overflow-hidden">
+    <div
+      ref={shellRef}
+      className="stratmaker-map-shell relative h-full w-full overflow-hidden"
+      onPointerMove={presenting ? presentation.onPointerMove : undefined}
+      onPointerLeave={presenting ? presentation.onPointerLeave : undefined}
+    >
       <div className="absolute inset-0 z-0" aria-hidden="true">
-        <div className="absolute inset-0 bg-[#0f0f0f]" />
+        <div className={`absolute inset-0 ${presenting ? "bg-black" : "bg-[#0f0f0f]"}`} />
+        {!presenting ? (
+        <>
         <div
           className="absolute inset-0 opacity-100"
           style={{
@@ -109,19 +170,27 @@ export function StratEditor({ stratId, backTo = "/home" }) {
               "linear-gradient(to top, rgba(62, 36, 15, 0.76) 0%, rgba(62, 36, 15, 0.28) 24%, transparent 42%)",
           }}
         />
+        </>
+        ) : null}
       </div>
 
       <div className="absolute inset-0 z-[1]">
         <CanvasWrapper
           kernelRef={kernelRef}
           mapId={activeSlide?.mapId}
+          rasterUrl={activeSlide?.rasterUrl}
+          rasterFit={activeSlide?.rasterFit || "contain"}
+          customBackgroundPending={pendingCustomBackground}
           slideKey={activeSlide?.id}
           objects={slideObjects}
-          locked={!canEdit}
-          panelInsets={panelInsets}
+          locked={!canEdit || presenting}
+          panelInsets={effectiveInsets}
+          visibleStrongpoints={
+            hasCustomBackground ? undefined : activeSlide?.visibleStrongpoints
+          }
           onSelectionChange={setSelected}
         />
-        {routePlanId && routePlanQuery.data && (
+        {routePlanId && !hasCustomBackground && routePlanQuery.data && (
           <StratRouteOverlay
             kernelRef={kernelRef}
             kernelReady={kernelReady}
@@ -130,6 +199,29 @@ export function StratEditor({ stratId, backTo = "/home" }) {
         )}
       </div>
 
+      {presenting ? (
+        <StratPresentationChrome
+          stratTitle={strat.title}
+          slide={activeSlide}
+          slideIndex={activeSlideIndex}
+          slideCount={sortedSlides.length}
+          notes={strat.notes}
+          chromeVisible={presentation.chromeVisible}
+          notesOpen={presentation.notesOpen}
+          laserOn={presentation.laserOn}
+          laserPos={presentation.laserPos}
+          canGoPrev={presentation.canGoPrev}
+          canGoNext={presentation.canGoNext}
+          onPrev={presentation.goPrev}
+          onNext={presentation.goNext}
+          onToggleNotes={() => presentation.setNotesOpen((open) => !open)}
+          onToggleLaser={() => presentation.setLaserOn((on) => !on)}
+          onFitView={() => kernelRef.current?.fitToView()}
+          onExit={presentation.exitPresentation}
+        />
+      ) : null}
+
+      {!presenting ? (
       <div
         ref={leftRef}
         className="pointer-events-none absolute bottom-6 left-6 top-6 z-20"
@@ -159,16 +251,28 @@ export function StratEditor({ stratId, backTo = "/home" }) {
           />
         </div>
       </div>
+      ) : null}
 
+      {!presenting ? (
       <div className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2">
-        <MapChrome onFitView={() => kernelRef.current?.fitToView()} />
+        <MapChrome
+          overlaysDisabled={overlaysLocked}
+          canEdit={canEdit}
+          activeSlide={activeSlide}
+          onChangeSlideVisibleStrongpoints={editor.handleChangeSlideVisibleStrongpoints}
+          onFitView={() => kernelRef.current?.fitToView()}
+        />
       </div>
+      ) : null}
 
+      {!presenting ? (
       <div className="absolute right-6 top-6 z-30 flex items-start gap-3">
         <CollabPeers peers={collabPeers} status={collabStatus} />
         <EditorUserCluster />
       </div>
+      ) : null}
 
+      {!presenting ? (
       <div
         ref={rightRef}
         className="pointer-events-none absolute bottom-6 right-6 z-20"
@@ -192,6 +296,13 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             onReorderSlides={editor.handleReorderSlides}
             onRenameSlide={editor.handleRenameSlide}
             onChangeSlideMap={editor.handleChangeSlideMap}
+            onUploadSlideBackground={editor.handleUploadSlideBackground}
+            onBeginCustomBackgroundPick={editor.handleBeginCustomBackgroundPick}
+            onCancelCustomBackgroundPick={editor.handleCancelCustomBackgroundPick}
+            onChangeSlideRasterFit={editor.handleChangeSlideRasterFit}
+            onClearSlideBackground={editor.handleClearSlideBackground}
+            backgroundUploadError={backgroundUploadError}
+            backgroundUploading={backgroundUploading}
             onChangeSlideRoutePlan={editor.handleChangeSlideRoutePlan}
             onRenameStrat={editor.handleRenameStrat}
             onPatchStrat={editor.handlePatchStrat}
@@ -199,9 +310,11 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             onDeleteStrat={editor.handleDeleteStrat}
             onNewStrat={editor.handleNewStrat}
             onImport={() => setImportOpen(true)}
+            onPresent={startPresentation}
           />
         </div>
       </div>
+      ) : null}
 
       <ImportStratSketchModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>

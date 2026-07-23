@@ -8,6 +8,13 @@ import { resolveHllAsset } from "./icons/hll-object-catalog.js";
 import { curveHandleDrawSizes } from "./selection-handles.js";
 import { lineDashForType, paintLineCap, capStrokeInset, movePointToward, normalizeLineCaps } from "./line-caps.js";
 import { drawTextObject } from "./text-draw.js";
+import {
+  measureRadiusDiameterMeters,
+  measureStrokeColor,
+  metersFromMapPoints,
+  metersLabel,
+} from "./measure.js";
+import { getCoordSpan } from "./object-schema.js";
 
 /** Match legacy CSS: strat-ping-pulse 1.2s ease-out infinite, delay ring*0.35s */
 const PING_PERIOD_MS = 1200;
@@ -673,9 +680,107 @@ export class CanvasRenderer {
       this.drawHll(ctx, object);
     } else if (type === "ping") {
       this.drawPing(ctx, object);
+    } else if (type === "measure-line") {
+      this.drawMeasureLine(ctx, object);
+    } else if (type === "measure-radius") {
+      this.drawMeasureRadius(ctx, object);
     }
 
     ctx.restore();
+  }
+
+  drawMeasureLine(ctx, object) {
+    const [a, b] = object.points || [];
+    if (!a || !b) return;
+    const p0 = { x: this.pctToPx(a.x), y: this.pctToPx(a.y) };
+    const p1 = { x: this.pctToPx(b.x), y: this.pctToPx(b.y) };
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const lineWidth = Math.min(8, Math.max(2.5, sizes.armWidth * 2.2));
+
+    const strokeColor = measureStrokeColor(object);
+
+    ctx.save();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([Math.max(8, lineWidth * 2.2), Math.max(5, lineWidth * 1.1)]);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const endpointR = Math.min(10, Math.max(4.5, sizes.endpoint * 0.72));
+    for (const p of [p0, p1]) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, endpointR, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = Math.max(1.8, sizes.stroke);
+      ctx.stroke();
+    }
+
+    const meters = metersFromMapPoints(a, b, this.mapSize, getCoordSpan());
+    const mid = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    this.drawMeasureLabel(ctx, mid.x, mid.y, metersLabel(meters));
+    ctx.restore();
+  }
+
+  drawMeasureRadius(ctx, object) {
+    const [a, b] = object.points || [];
+    if (!a || !b) return;
+    const cx = this.pctToPx((a.x + b.x) / 2);
+    const cy = this.pctToPx((a.y + b.y) / 2);
+    const rx = this.pctToPx(Math.abs(b.x - a.x) / 2);
+    const ry = this.pctToPx(Math.abs(b.y - a.y) / 2);
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const lineWidth = Math.min(8, Math.max(2.5, sizes.armWidth * 2.2));
+
+    const strokeColor = measureStrokeColor(object);
+
+    ctx.save();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([Math.max(8, lineWidth * 2.2), Math.max(5, lineWidth * 1.1)]);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.max(rx, 0.5), Math.max(ry, 0.5), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const cross = Math.min(8, Math.max(3.5, sizes.control * 0.55));
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = Math.max(1.2, sizes.stroke * 0.85);
+    ctx.beginPath();
+    ctx.moveTo(cx - cross, cy);
+    ctx.lineTo(cx + cross, cy);
+    ctx.moveTo(cx, cy - cross);
+    ctx.lineTo(cx, cy + cross);
+    ctx.stroke();
+
+    const meters = measureRadiusDiameterMeters(object.points, this.mapSize, getCoordSpan());
+    const label = metersLabel(meters);
+    const labelOffset = Math.max(ry, rx) + Math.max(14, sizes.endpoint);
+    this.drawMeasureLabel(ctx, cx, cy - labelOffset, label);
+    this.drawMeasureLabel(ctx, cx, cy + labelOffset, label);
+    ctx.restore();
+  }
+
+  drawMeasureLabel(ctx, x, y, text) {
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const fontSize = Math.min(20, Math.max(11, 14 / Math.max(0.45, this.viewScale || 1)));
+    ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const metrics = ctx.measureText(text);
+    const padX = 6;
+    const padY = 4;
+    const w = metrics.width + padX * 2;
+    const h = fontSize + padY * 2;
+    ctx.fillStyle = "rgba(34, 34, 34, 0.82)";
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(text, x, y);
   }
 
   _drawHandleDisc(ctx, p, radius, fill, strokeWidth) {
@@ -761,6 +866,28 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
+  drawMeasureLineEditChrome(ctx, object, { dim = false } = {}) {
+    if (!object?.points || object.points.length < 2) return;
+    const toPx = (p) => ({ x: this.pctToPx(p.x), y: this.pctToPx(p.y) });
+    const a = toPx(object.points[0]);
+    const b = toPx(object.points[1]);
+    const sizes = curveHandleDrawSizes(this.viewScale);
+    const endpointR = Math.min(12, Math.max(5, sizes.endpoint * 0.85));
+
+    ctx.save();
+    ctx.globalAlpha = dim ? 0.55 : 1;
+    for (const p of [a, b]) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, endpointR, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = measureStrokeColor(object);
+      ctx.lineWidth = Math.max(2, sizes.stroke);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   drawSelection(ctx, object) {
     if (object?.id && object.id === this.editingTextId) return;
 
@@ -769,8 +896,12 @@ export class CanvasRenderer {
       return;
     }
 
-    if ((object?.type === "line" || object?.type === "arrow") && object.points?.length >= 2) {
-      this.drawLineEditChrome(ctx, object);
+    if ((object?.type === "line" || object?.type === "arrow" || object?.type === "measure-line") && object.points?.length >= 2) {
+      if (object.type === "measure-line") {
+        this.drawMeasureLineEditChrome(ctx, object);
+      } else {
+        this.drawLineEditChrome(ctx, object);
+      }
       return;
     }
 
@@ -871,6 +1002,8 @@ export class CanvasRenderer {
           this.drawCurveEditChrome(ctx, this.preview, { dim: true });
         } else if (this.preview.type === "line" || this.preview.type === "arrow") {
           this.drawLineEditChrome(ctx, this.preview, { dim: true });
+        } else if (this.preview.type === "measure-line") {
+          this.drawMeasureLineEditChrome(ctx, this.preview, { dim: true });
         }
       }
     }

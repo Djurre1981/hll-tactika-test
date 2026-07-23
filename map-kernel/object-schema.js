@@ -50,6 +50,8 @@ export const STRAT_OBJECT_TYPES = [
   "icon",
   "hll",
   "ping",
+  "measure-line",
+  "measure-radius",
 ];
 
 /** Object types that always need a continuous animation clock in CanvasRenderer. */
@@ -437,6 +439,15 @@ export function hitTestObject(object, point, threshold = 1.2) {
       }
     }
     return false;
+  }
+
+  if (
+    (object.type === "line" ||
+      object.type === "arrow" ||
+      object.type === "measure-line") &&
+    object.points.length >= 2
+  ) {
+    return distanceToSegment(point, object.points[0], object.points[1]) <= threshold;
   }
 
   if (object.type === "curve" && object.points.length >= 4) {

@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STRAT_MAP_IDS } from "./mapIds.js";
+import {
+  STRAT_CUSTOM_MAP_VALUE,
+  STRAT_RASTER_ACCEPT,
+  STRAT_RASTER_FIT_MODES,
+  slideBackgroundLabel,
+  slideThumbUrl,
+} from "./stratBackground.js";
 import { StratDetailsPanel } from "./StratDetailsPanel.jsx";
 import { SlideRoutePlanPicker } from "./SlideRoutePlanPicker.jsx";
 import {
@@ -20,7 +27,7 @@ import {
   slideItemDropTarget,
   stratPickerTrigger,
 } from "./editorUi.js";
-import { IconBtn, mapThumbUrl } from "./sidePanelUtils.jsx";
+import { IconBtn } from "./sidePanelUtils.jsx";
 
 export function StratsSidePanel({
   strat,
@@ -39,6 +46,13 @@ export function StratsSidePanel({
   onReorderSlides,
   onRenameSlide,
   onChangeSlideMap,
+  onUploadSlideBackground,
+  onBeginCustomBackgroundPick,
+  onCancelCustomBackgroundPick,
+  onChangeSlideRasterFit,
+  onClearSlideBackground,
+  backgroundUploadError,
+  backgroundUploading,
   onChangeSlideRoutePlan,
   onRenameStrat,
   onPatchStrat,
@@ -46,6 +60,7 @@ export function StratsSidePanel({
   onDeleteStrat,
   onNewStrat,
   onImport,
+  onPresent,
 }) {
   const sorted = [...slides].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const active = sorted.find((s) => s.id === activeSlideId) || sorted[0];
@@ -53,6 +68,34 @@ export function StratsSidePanel({
   const [slideNameDraft, setSlideNameDraft] = useState(active?.name || "");
   const [dragId, setDragId] = useState(null);
   const [dropId, setDropId] = useState(null);
+  const fileInputRef = useRef(null);
+  const pendingCustomSlideRef = useRef(null);
+  const pickCancelFocusRef = useRef(null);
+
+  const clearPickCancelListener = () => {
+    if (!pickCancelFocusRef.current) return;
+    window.removeEventListener("focus", pickCancelFocusRef.current);
+    pickCancelFocusRef.current = null;
+  };
+
+  const openCustomImagePicker = () => {
+    if (!canEdit || backgroundUploading) return;
+    pendingCustomSlideRef.current = active.id;
+    clearPickCancelListener();
+    onBeginCustomBackgroundPick?.(active.id);
+    const onWindowFocus = () => {
+      clearPickCancelListener();
+      window.setTimeout(() => {
+        onCancelCustomBackgroundPick?.();
+      }, 400);
+    };
+    pickCancelFocusRef.current = onWindowFocus;
+    window.addEventListener("focus", onWindowFocus);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  };
 
   useEffect(() => {
     setTitleDraft(strat?.title || "");
@@ -94,15 +137,18 @@ export function StratsSidePanel({
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-stretch gap-[0.45rem]">
-            <IconBtn title="Strat details" pressed={showDetails} onClick={onToggleDetails}>
-              <i className="fa-solid fa-circle-info" aria-hidden="true" />
-            </IconBtn>
+          <div className="grid shrink-0 grid-cols-2 gap-[0.45rem]">
             <IconBtn title="New strat" disabled={!canEdit} onClick={onNewStrat}>
               <i className="fa-solid fa-plus" aria-hidden="true" />
             </IconBtn>
             <IconBtn title="Import from StratSketch" disabled={!canEdit} onClick={onImport}>
               <i className="fa-solid fa-file-import" aria-hidden="true" />
+            </IconBtn>
+            <IconBtn title="Present slideshow" onClick={onPresent} disabled={sorted.length === 0}>
+              <i className="fa-solid fa-play" aria-hidden="true" />
+            </IconBtn>
+            <IconBtn title="Strat details" pressed={showDetails} onClick={onToggleDetails}>
+              <i className="fa-solid fa-circle-info" aria-hidden="true" />
             </IconBtn>
           </div>
         </div>
@@ -110,6 +156,7 @@ export function StratsSidePanel({
         {showDetails ? (
           <StratDetailsPanel
             strat={strat}
+            activeSlide={active}
             canEdit={canEdit}
             onBack={onToggleDetails}
             onPatchStrat={onPatchStrat}
@@ -145,7 +192,7 @@ export function StratsSidePanel({
                 const isActive = slide.id === active?.id;
                 const isFirst = index === 0;
                 const isLast = index === sorted.length - 1;
-                const thumb = mapThumbUrl(slide.mapId);
+                const thumb = slideThumbUrl(slide);
                 return (
                   <li key={slide.id}>
                     <div
@@ -237,7 +284,9 @@ export function StratsSidePanel({
                         <div className="truncate font-normal text-white/85">
                           {slide.name || `Slide ${index + 1}`}
                         </div>
-                        <div className="truncate text-[0.68rem] text-white/40">{slide.mapId}</div>
+                        <div className="truncate text-[0.68rem] text-white/40">
+                          {slideBackgroundLabel(slide)}
+                        </div>
                       </div>
 
                       {canEdit && (
@@ -294,9 +343,16 @@ export function StratsSidePanel({
                   Map
                   <span className="relative mt-1 block">
                     <select
-                      disabled={!canEdit}
-                      value={active.mapId || ""}
-                      onChange={(e) => onChangeSlideMap?.(active.id, e.target.value)}
+                      disabled={!canEdit || backgroundUploading}
+                      value={active.rasterUrl ? STRAT_CUSTOM_MAP_VALUE : active.mapId || ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === STRAT_CUSTOM_MAP_VALUE) {
+                          openCustomImagePicker();
+                          return;
+                        }
+                        onChangeSlideMap?.(active.id, value);
+                      }}
                       className={glassSelect}
                     >
                       {STRAT_MAP_IDS.map((id) => (
@@ -304,17 +360,92 @@ export function StratsSidePanel({
                           {id}
                         </option>
                       ))}
+                      <option value={STRAT_CUSTOM_MAP_VALUE}>Custom image…</option>
                     </select>
                     <i
                       className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
                       aria-hidden="true"
                     />
                   </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={STRAT_RASTER_ACCEPT}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      clearPickCancelListener();
+                      const slideId = pendingCustomSlideRef.current || active.id;
+                      pendingCustomSlideRef.current = null;
+                      if (file) {
+                        onUploadSlideBackground?.(slideId, file);
+                      } else {
+                        onCancelCustomBackgroundPick?.();
+                      }
+                    }}
+                  />
                 </label>
+                {active.rasterUrl && (
+                  <>
+                    <label className={fieldLabel}>
+                      Image scale
+                      <span className="relative mt-1 block">
+                        <select
+                          disabled={!canEdit}
+                          value={active.rasterFit || "contain"}
+                          onChange={(e) =>
+                            onChangeSlideRasterFit?.(active.id, e.target.value)
+                          }
+                          className={glassSelect}
+                        >
+                          {STRAT_RASTER_FIT_MODES.map((mode) => (
+                            <option key={mode} value={mode}>
+                              {mode === "contain"
+                                ? "Fit inside canvas"
+                                : mode === "cover"
+                                  ? "Fill canvas (crop)"
+                                  : "Stretch to canvas"}
+                            </option>
+                          ))}
+                        </select>
+                        <i
+                          className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-white/50 fa-solid fa-chevron-down"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={!canEdit || backgroundUploading}
+                        onClick={openCustomImagePicker}
+                        className="rounded-[0.55rem] border border-solid border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[0.72rem] text-white/75 hover:bg-white/[0.1] disabled:opacity-40"
+                      >
+                        {backgroundUploading ? "Uploading…" : "Replace image"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canEdit || backgroundUploading}
+                        onClick={() => onClearSlideBackground?.(active.id)}
+                        className="rounded-[0.55rem] border border-solid border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[0.72rem] text-white/75 hover:bg-white/[0.1] disabled:opacity-40"
+                      >
+                        Use map background
+                      </button>
+                    </div>
+                    <p className="text-[0.66rem] leading-snug text-white/35">
+                      Custom backgrounds use a fixed 1920×1920 canvas. JPEG, PNG, WebP, or GIF up
+                      to 12 MB.
+                    </p>
+                  </>
+                )}
+                {backgroundUploadError ? (
+                  <p className="text-[0.68rem] text-amber-300/90">{backgroundUploadError}</p>
+                ) : null}
                 <SlideRoutePlanPicker
                   slide={active}
                   strat={strat}
-                  canEdit={canEdit}
+                  canEdit={canEdit && !active.rasterUrl}
                   onChangeRoutePlan={onChangeSlideRoutePlan}
                 />
                 <p className="text-center text-[0.68rem] text-white/35">

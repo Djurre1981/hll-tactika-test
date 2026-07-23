@@ -83,6 +83,20 @@ export function normalizeStratMatch(match) {
   };
 }
 
+function normalizeRasterFit(value) {
+  const fit = String(value || "").trim();
+  return fit === "cover" || fit === "stretch" ? fit : fit === "contain" ? "contain" : undefined;
+}
+
+/** undefined = all sectors visible; [] = none; partial list = selected only. */
+function normalizeVisibleStrongpoints(value) {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) return undefined;
+  return [
+    ...new Set(value.map(String).filter((key) => /^\d{2}$/.test(key))),
+  ];
+}
+
 function normalizeSlide(slide, index) {
   if (!slide || typeof slide !== "object") {
     return null;
@@ -91,6 +105,7 @@ function normalizeSlide(slide, index) {
   const id = String(slide.id || "").trim();
   const mapId = String(slide.mapId || "").trim();
   const rasterUrl = String(slide.rasterUrl || "").trim();
+  const rasterFit = normalizeRasterFit(slide.rasterFit);
   if (!id || !mapId) {
     return null;
   }
@@ -102,6 +117,8 @@ function normalizeSlide(slide, index) {
     mapId,
     objects: sanitizeStratObjects(slide.objects),
     rasterUrl: rasterUrl || undefined,
+    rasterFit: rasterUrl ? rasterFit || "contain" : undefined,
+    visibleStrongpoints: normalizeVisibleStrongpoints(slide.visibleStrongpoints),
   };
 }
 

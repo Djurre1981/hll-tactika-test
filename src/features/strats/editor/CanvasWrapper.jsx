@@ -39,6 +39,20 @@ function toolSettingsFromStore(state) {
   };
 }
 
+function applySlideBackground(kernel, { rasterUrl, rasterFit, customBackgroundPending, mapId }) {
+  if (rasterUrl) {
+    kernel.setStratCustomBackground(rasterUrl, { fit: rasterFit || "contain" });
+    return;
+  }
+  if (customBackgroundPending) {
+    kernel.setStratGroundOnly();
+    return;
+  }
+  if (mapId) {
+    kernel.setMap(mapId);
+  }
+}
+
 /**
  * Sole React bridge to @map-kernel. Exposes kernel via `kernelRef`.
  * Camera stays inside the kernel (no Zustand round-trip — that was distorting fit).
@@ -46,10 +60,14 @@ function toolSettingsFromStore(state) {
 export function CanvasWrapper({
   kernelRef,
   mapId,
+  rasterUrl,
+  rasterFit = "contain",
+  customBackgroundPending = false,
   slideKey,
   objects,
   locked = false,
   panelInsets,
+  visibleStrongpoints,
   onSelectionChange,
   className = "",
 }) {
@@ -58,6 +76,10 @@ export function CanvasWrapper({
   const selectionCb = useRef(onSelectionChange);
   selectionCb.current = onSelectionChange;
   const fittedRef = useRef(false);
+  const overlayLockRef = useRef(false);
+  const bgRef = useRef({ rasterUrl, rasterFit, customBackgroundPending, mapId });
+  overlayLockRef.current = Boolean(rasterUrl || customBackgroundPending);
+  bgRef.current = { rasterUrl, rasterFit, customBackgroundPending, mapId };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -92,8 +114,15 @@ export function CanvasWrapper({
     });
     kernel.mount(host);
     kernel.setTool(toolSettingsFromStore(useToolStore.getState()));
+    applySlideBackground(kernel, bgRef.current);
     const ed = useEditorStore.getState();
-    kernel.setOverlays({ grid: ed.showGrid, strongpoints: ed.showStrongpoints });
+    const lockOverlays = overlayLockRef.current;
+    kernel.setOverlays({
+      grid: lockOverlays ? false : ed.showGrid,
+      strongpoints: lockOverlays ? false : ed.showStrongpoints,
+      strongpointNames: lockOverlays ? false : ed.showStrongpointNames,
+      accessibility: lockOverlays ? false : ed.showAccessibility,
+    });
     localKernel.current = kernel;
     if (kernelRef) kernelRef.current = kernel;
 
@@ -101,9 +130,12 @@ export function CanvasWrapper({
       kernel.setTool(toolSettingsFromStore(state));
     });
     const unsubEditor = useEditorStore.subscribe((state) => {
+      if (overlayLockRef.current) return;
       kernel.setOverlays({
         grid: state.showGrid,
         strongpoints: state.showStrongpoints,
+        strongpointNames: state.showStrongpointNames,
+        accessibility: state.showAccessibility,
       });
     });
 
@@ -127,8 +159,10 @@ export function CanvasWrapper({
   }, [kernelRef]);
 
   useEffect(() => {
-    localKernel.current?.setMap(mapId);
-  }, [mapId]);
+    const kernel = localKernel.current;
+    if (!kernel) return;
+    applySlideBackground(kernel, bgRef.current);
+  }, [mapId, rasterUrl, rasterFit, customBackgroundPending, slideKey]);
 
   useEffect(() => {
     localKernel.current?.setLocked(locked);
@@ -140,8 +174,13 @@ export function CanvasWrapper({
   }, [panelInsets]);
 
   useEffect(() => {
+    localKernel.current?.setVisibleStrongpoints(visibleStrongpoints);
+  }, [visibleStrongpoints]);
+
+  useEffect(() => {
     if (!localKernel.current || !slideKey) return;
     localKernel.current.loadSlide(objects || []);
+    applySlideBackground(localKernel.current, bgRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only on slide change
   }, [slideKey]);
 

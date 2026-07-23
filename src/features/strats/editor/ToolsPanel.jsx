@@ -34,6 +34,8 @@ function selectionLabel(selected) {
     const text = String(selected.meta?.text || "Text").trim();
     return text.length > 18 ? `${text.slice(0, 18)}…` : text || "Text";
   }
+  if (selected.type === "measure-line") return "Measure line";
+  if (selected.type === "measure-radius") return "Measure radius";
   return selected.type;
 }
 
@@ -327,7 +329,7 @@ export function ToolsPanel({
             </p>
           ) : null}
 
-          <div className="grid grid-cols-5 gap-[0.45rem]" role="toolbar" aria-label="Drawing tools">
+          <div className="grid grid-cols-6 gap-[0.45rem]" role="toolbar" aria-label="Drawing tools">
             {TOOL_ITEMS.map((item) => (
               <ToolBtn
                 key={item.id}

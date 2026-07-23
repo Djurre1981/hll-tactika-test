@@ -8,7 +8,7 @@ const LINE_HANDLE_IDS = ["p0", "p1"];
 const CURVE_HANDLE_SCREEN_PX = 14;
 
 function isLineStrokeType(type) {
-  return type === "line" || type === "arrow";
+  return type === "line" || type === "arrow" || type === "measure-line";
 }
 
 export function getBoxFromObjectPoints(points) {
@@ -241,6 +241,16 @@ export function applyHandleDrag(
 
   if (object.type === "ping") {
     return [clampPoint(cursor)];
+  }
+
+  if (object.type === "measure-radius" && isCornerHandle(handleId)) {
+    const origBox = getBoxFromObjectPoints(originalPoints);
+    const locked = constrainCornerBox(origBox, handleId, cursor, 1);
+    if (!locked) return originalPoints;
+    return [
+      clampPoint({ x: locked.x1, y: locked.y1 }),
+      clampPoint({ x: locked.x2, y: locked.y2 }),
+    ];
   }
 
   if (originalPoints.length < 2) return originalPoints;

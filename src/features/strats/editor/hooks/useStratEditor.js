@@ -12,6 +12,8 @@ import { useMutateStrat } from "./useMutateStrat.js";
 import { useStratAutosave } from "./useStratAutosave.js";
 import { useStratQuery } from "./useStratQuery.js";
 import { getDefaultMapId, rememberMapId } from "../mapIds.js";
+import { STRAT_RASTER_FIT_DEFAULT } from "../stratBackground.js";
+import { prepareImageUpload, uploadImageFile } from "../../../../shared/prepareImageUpload.js";
 
 function sortSlides(slides) {
   return [...(slides || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -33,6 +35,13 @@ export function useStratEditor(stratId) {
   const [localSlides, setLocalSlides] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [backgroundUploadError, setBackgroundUploadError] = useState("");
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
+  const [pendingCustomBackground, setPendingCustomBackground] = useState(false);
+  const overlaySnapshotRef = useRef(null);
+  const customPickFileChosenRef = useRef(false);
+  const backgroundUploadingRef = useRef(false);
+  backgroundUploadingRef.current = backgroundUploading;
   const [panelInsets, setPanelInsets] = useState({
     left: 0,
     right: 0,
@@ -63,6 +72,114 @@ export function useStratEditor(stratId) {
     const first = sortSlides(strat.slides)[0];
     if (first) setActiveSlideId(first.id);
   }, [strat, setActiveSlideId]);
+
+  useEffect(() => {
+    setBackgroundUploadError("");
+    setPendingCustomBackground(false);
+    overlaySnapshotRef.current = null;
+  }, [activeSlide?.id]);
+
+  const disableMapOverlays = useCallback(() => {
+    const store = useEditorStore.getState();
+    store.setShowGrid(false);
+    store.setShowStrongpoints(false);
+    store.setShowStrongpointNames(false);
+    store.setShowAccessibility(false);
+    kernelRef.current?.setOverlays({
+      grid: false,
+      strongpoints: false,
+      strongpointNames: false,
+      accessibility: false,
+    });
+  }, []);
+
+  const restoreMapOverlays = useCallback(() => {
+    const snap = overlaySnapshotRef.current;
+    const showGrid = snap?.showGrid ?? true;
+    const showStrongpoints = snap?.showStrongpoints ?? true;
+    const showStrongpointNames = snap?.showStrongpointNames ?? true;
+    const showAccessibility = snap?.showAccessibility ?? false;
+    const store = useEditorStore.getState();
+    store.setShowGrid(showGrid);
+    store.setShowStrongpoints(showStrongpoints);
+    store.setShowStrongpointNames(showStrongpointNames);
+    store.setShowAccessibility(showAccessibility);
+    kernelRef.current?.setOverlays({
+      grid: showGrid,
+      strongpoints: showStrongpoints,
+      strongpointNames: showStrongpointNames,
+      accessibility: showAccessibility,
+    });
+    overlaySnapshotRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (activeSlide?.rasterUrl || pendingCustomBackground || backgroundUploading) {
+      disableMapOverlays();
+      return;
+    }
+    const { showGrid, showStrongpoints, showStrongpointNames, showAccessibility } =
+      useEditorStore.getState();
+    kernelRef.current?.setOverlays({
+      grid: showGrid,
+      strongpoints: showStrongpoints,
+      strongpointNames: showStrongpointNames,
+      accessibility: showAccessibility,
+    });
+  }, [
+    activeSlide?.id,
+    activeSlide?.rasterUrl,
+    pendingCustomBackground,
+    backgroundUploading,
+    disableMapOverlays,
+  ]);
+
+  const handleBeginCustomBackgroundPick = useCallback(
+    (slideId) => {
+      if (!canEdit) return;
+      const slide = slides.find((s) => s.id === slideId);
+      if (!slide) return;
+
+      customPickFileChosenRef.current = false;
+
+      if (!slide.rasterUrl) {
+        const store = useEditorStore.getState();
+        overlaySnapshotRef.current = {
+          showGrid: store.showGrid,
+          showStrongpoints: store.showStrongpoints,
+          showStrongpointNames: store.showStrongpointNames,
+          showAccessibility: store.showAccessibility,
+        };
+        disableMapOverlays();
+        setPendingCustomBackground(true);
+        if (slideId === activeSlide?.id) {
+          kernelRef.current?.setStratGroundOnly();
+          kernelRef.current?.fitToView();
+        }
+      } else {
+        disableMapOverlays();
+      }
+    },
+    [activeSlide?.id, canEdit, disableMapOverlays, slides]
+  );
+
+  const handleCancelCustomBackgroundPick = useCallback(() => {
+    if (customPickFileChosenRef.current || backgroundUploadingRef.current) return;
+    const slideId = activeSlide?.id;
+    if (!slideId) return;
+    const slide = sortSlides(stratRef.current?.slides || []).find((s) => s.id === slideId);
+    if (slide?.rasterUrl) return;
+    setPendingCustomBackground(false);
+    if (slide?.mapId) {
+      kernelRef.current?.setMap(slide.mapId);
+      restoreMapOverlays();
+      kernelRef.current?.fitToView();
+    }
+  }, [activeSlide?.id, restoreMapOverlays]);
+
+  const handleCustomBackgroundFileChosen = useCallback(() => {
+    customPickFileChosenRef.current = true;
+  }, []);
 
   const measureInsets = useCallback(() => {
     const shell = shellRef.current;
@@ -235,8 +352,99 @@ export function useStratEditor(stratId) {
     rememberMapId(mapId);
     await persistSlides(
       slides.map((s) =>
-        s.id === slideId ? { ...s, mapId, routePlanId: null } : s
+        s.id === slideId
+          ? {
+              ...s,
+              mapId,
+              rasterUrl: undefined,
+              rasterFit: undefined,
+              routePlanId: null,
+              visibleStrongpoints: undefined,
+            }
+          : s
       )
+    );
+  };
+
+  const handleUploadSlideBackground = async (slideId, file) => {
+    if (!canEdit || !file) return;
+    handleCustomBackgroundFileChosen();
+    setBackgroundUploadError("");
+    setBackgroundUploading(true);
+    disableMapOverlays();
+    try {
+      const slide = slides.find((s) => s.id === slideId);
+      const fit = slide?.rasterFit || STRAT_RASTER_FIT_DEFAULT;
+      const { file: prepared, warning } = await prepareImageUpload(file);
+      const url = await uploadImageFile(prepared, apiClient);
+      await persistSlides(
+        slides.map((s) =>
+          s.id === slideId
+            ? {
+                ...s,
+                rasterUrl: url,
+                rasterFit: fit,
+                routePlanId: null,
+              }
+            : s
+        )
+      );
+      setPendingCustomBackground(false);
+      overlaySnapshotRef.current = null;
+      if (slideId === activeSlide?.id) {
+        kernelRef.current?.setStratCustomBackground(url, { fit });
+        kernelRef.current?.fitToView();
+      }
+      if (warning) {
+        setBackgroundUploadError(warning);
+      }
+    } catch (error) {
+      setBackgroundUploadError(error?.message || "Upload failed.");
+      const slide = slides.find((s) => s.id === slideId);
+      if (!slide?.rasterUrl) {
+        setPendingCustomBackground(false);
+        if (slide?.mapId) {
+          kernelRef.current?.setMap(slide.mapId);
+          restoreMapOverlays();
+          kernelRef.current?.fitToView();
+        }
+      }
+    } finally {
+      setBackgroundUploading(false);
+    }
+  };
+
+  const handleChangeSlideRasterFit = async (slideId, rasterFit) => {
+    await persistSlides(
+      slides.map((s) => (s.id === slideId ? { ...s, rasterFit } : s))
+    );
+    if (slideId === activeSlide?.id) {
+      kernelRef.current?.setStratCustomBackgroundFit(rasterFit);
+    }
+  };
+
+  const handleClearSlideBackground = async (slideId) => {
+    const slide = slides.find((s) => s.id === slideId);
+    if (!slide?.rasterUrl) return;
+    await persistSlides(
+      slides.map((s) =>
+        s.id === slideId
+          ? { ...s, rasterUrl: undefined, rasterFit: undefined, routePlanId: null }
+          : s
+      )
+    );
+    if (slideId === activeSlide?.id && slide?.mapId) {
+      setPendingCustomBackground(false);
+      kernelRef.current?.setMap(slide.mapId);
+      restoreMapOverlays();
+      kernelRef.current?.fitToView();
+    }
+    setBackgroundUploadError("");
+  };
+
+  const handleChangeSlideVisibleStrongpoints = async (slideId, visibleStrongpoints) => {
+    await persistSlides(
+      slides.map((s) => (s.id === slideId ? { ...s, visibleStrongpoints } : s))
     );
   };
 
@@ -337,7 +545,16 @@ export function useStratEditor(stratId) {
     handleReorderSlides,
     handleRenameSlide,
     handleChangeSlideMap,
+    handleUploadSlideBackground,
+    handleBeginCustomBackgroundPick,
+    handleCancelCustomBackgroundPick,
+    handleChangeSlideRasterFit,
+    handleClearSlideBackground,
+    backgroundUploadError,
+    backgroundUploading,
+    pendingCustomBackground,
     handleChangeSlideRoutePlan,
+    handleChangeSlideVisibleStrongpoints,
     handleRenameStrat,
     handlePatchStrat,
     handleDuplicateStrat,

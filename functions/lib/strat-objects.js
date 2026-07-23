@@ -9,6 +9,8 @@ const STRAT_OBJECT_TYPES = [
   "icon",
   "hll",
   "ping",
+  "measure-line",
+  "measure-radius",
 ];
 
 const LINE_TYPES = ["solid", "dashed", "dotted", "dashDot", "dashDotDot"];
