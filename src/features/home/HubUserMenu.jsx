@@ -3,7 +3,7 @@ import { useAuth } from "../auth/AuthGate.jsx";
 import { useLogoutMutation } from "../auth/hooks/useAuthQuery.js";
 import { canManageTeam } from "../../lib/roles.js";
 import { userMenuPill } from "../../shared/glassUi.js";
-import { HelpWikiButton } from "../help/HelpWikiButton.jsx";
+import { useHelpWiki } from "../help/HelpWikiContext.jsx";
 import { OnlineNow } from "./OnlineNow.jsx";
 import { usePresenceMembersQuery } from "./hooks/usePresenceMembersQuery.js";
 import { useSitePresence } from "./hooks/useSitePresence.js";
@@ -15,6 +15,7 @@ import { useSitePresence } from "./hooks/useSitePresence.js";
 export function HubUserMenu() {
   const user = useAuth();
   const logout = useLogoutMutation();
+  const { openWiki } = useHelpWiki();
   const name = user.name || user.steamId;
   const presence = useSitePresence();
   const membersQuery = usePresenceMembersQuery(Boolean(user?.steamId));
@@ -23,7 +24,6 @@ export function HubUserMenu() {
   return (
     <div className="pointer-events-none fixed bottom-6 right-3 top-6 z-40 flex flex-col items-end sm:right-6">
       <div className="pointer-events-auto relative flex shrink-0 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_0.08s_both] items-center gap-2">
-        <HelpWikiButton />
         <div className="group relative flex items-center">
           <div className="invisible pointer-events-none absolute right-full top-0 flex w-max flex-col items-stretch gap-1 pr-2.5 transition-[visibility] group-hover:visible group-hover:pointer-events-auto group-focus-within:visible group-focus-within:pointer-events-auto">
             {canManageTeam(user.role) ? (
@@ -31,6 +31,14 @@ export function HubUserMenu() {
                 Admin Panel
               </Link>
             ) : null}
+            <button
+              type="button"
+              className={userMenuPill}
+              role="menuitem"
+              onClick={() => openWiki("Home")}
+            >
+              User Manual
+            </button>
             <button
               type="button"
               className={userMenuPill}
