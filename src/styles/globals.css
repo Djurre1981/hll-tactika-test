@@ -95,12 +95,12 @@ body {
   }
 
   .glass-select-option-selected {
-    @apply bg-accent/18 text-accent;
+    @apply bg-accent/20 text-accent;
   }
 
   .glass-select-option-selected:hover,
   .glass-select-option-selected:focus-visible {
-    @apply bg-accent/24 text-accent;
+    @apply bg-accent/30 text-accent;
   }
 
   /* Native fallback when GlassSelect is not used yet */
