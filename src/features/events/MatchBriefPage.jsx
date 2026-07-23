@@ -13,6 +13,7 @@ import { canManageTeam } from "../../lib/roles.js";
 import { getStartingPointLabel } from "../../shared/mapMidpoints.js";
 import { EventScheduleIndicators } from "../calendar/EventScheduleIndicators.jsx";
 import { EventComponentsPanel } from "./EventComponentsPanel.jsx";
+import { PrepTasksPanel } from "./PrepTasksPanel.jsx";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
 
 function MatchFacts({ event }) {
@@ -139,6 +140,8 @@ export function MatchBriefPage() {
       ) : null}
 
       <MatchFacts event={event} />
+
+      <PrepTasksPanel eventId={event.id} canEdit={canEdit} />
 
       <section>
         <h2 className="m-0 mb-3 text-[0.72rem] uppercase tracking-[0.16em] text-white/45">

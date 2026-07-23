@@ -40,3 +40,11 @@ describe("T2 migration 0016_event_match_json", () => {
     assert.match(sql, /ALTER TABLE events/i);
   });
 });
+
+describe("T9 migration 0017_prep_tasks", () => {
+  it("creates prep_tasks table", () => {
+    const sql = readFileSync(join(root, "migrations/0017_prep_tasks.sql"), "utf8");
+    assert.match(sql, /CREATE TABLE IF NOT EXISTS prep_tasks/i);
+    assert.match(sql, /assignee_steam_id/i);
+  });
+});

@@ -31,6 +31,7 @@ export function createMemoryD1(seed = {}) {
     route_plans: new Map(),
     whiteboards: new Map(),
     rosters: new Map(),
+    prep_tasks: new Map(),
   };
 
   for (const [table, rows] of Object.entries(seed)) {
@@ -88,6 +89,12 @@ export function createMemoryD1(seed = {}) {
             return { ...row, member_count: row.member_count ?? 0 };
           }
 
+          if (/FROM prep_tasks\b/i.test(sql) && /WHERE event_id = \? AND id = \?/i.test(sql)) {
+            const row = findById("prep_tasks", binds[1]);
+            if (!row || row.event_id !== binds[0]) return null;
+            return row;
+          }
+
           return null;
         },
 
@@ -99,10 +106,107 @@ export function createMemoryD1(seed = {}) {
               .sort((a, b) => compareValues(a.starts_at, b.starts_at));
             return { results: filtered };
           }
+
+          if (/FROM prep_tasks\b/i.test(sql) && /WHERE event_id = \?/i.test(sql) && !/AND id = \?/i.test(sql)) {
+            const filtered = rowsFor("prep_tasks")
+              .filter((row) => row.event_id === binds[0])
+              .sort((a, b) => {
+                const completedDiff = (a.completed ?? 0) - (b.completed ?? 0);
+                if (completedDiff !== 0) return completedDiff;
+                return compareValues(a.created_at, b.created_at);
+              });
+            return { results: filtered };
+          }
+
+          if (/FROM prep_tasks pt\b/i.test(sql) && /INNER JOIN events e/i.test(sql)) {
+            const [steamId, from, to] = binds;
+            const filtered = rowsFor("prep_tasks")
+              .filter((row) => row.assignee_steam_id === steamId && row.completed === 0)
+              .map((row) => {
+                const event = findById("events", row.event_id);
+                if (!event || event.starts_at < from || event.starts_at >= to) return null;
+                return {
+                  ...row,
+                  event_title: event.title,
+                  event_starts_at: event.starts_at,
+                  event_event_type: event.event_type,
+                };
+              })
+              .filter(Boolean)
+              .sort((a, b) => {
+                const eventDiff = compareValues(a.event_starts_at, b.event_starts_at);
+                if (eventDiff !== 0) return eventDiff;
+                return compareValues(a.created_at, b.created_at);
+              });
+            return { results: filtered };
+          }
+
           return { results: [] };
         },
 
         async run() {
+          if (/INSERT INTO prep_tasks\b/i.test(sql)) {
+            const [
+              id,
+              event_id,
+              title,
+              description,
+              assignee_steam_id,
+              completed,
+              completed_at,
+              created_by,
+              created_at,
+              updated_at,
+            ] = binds;
+            tables.prep_tasks.set(id, {
+              id,
+              event_id,
+              title,
+              description,
+              assignee_steam_id,
+              completed,
+              completed_at,
+              created_by,
+              created_at,
+              updated_at,
+            });
+            return { success: true };
+          }
+
+          if (/UPDATE prep_tasks\b/i.test(sql)) {
+            const [
+              title,
+              description,
+              assignee_steam_id,
+              completed,
+              completed_at,
+              updated_at,
+              event_id,
+              id,
+            ] = binds;
+            const existing = findById("prep_tasks", id);
+            if (!existing || existing.event_id !== event_id) return { success: false };
+            tables.prep_tasks.set(id, {
+              ...existing,
+              title,
+              description,
+              assignee_steam_id,
+              completed,
+              completed_at,
+              updated_at,
+            });
+            return { success: true };
+          }
+
+          if (/DELETE FROM prep_tasks\b/i.test(sql)) {
+            const [event_id, id] = binds;
+            const existing = findById("prep_tasks", id);
+            if (existing?.event_id === event_id) {
+              tables.prep_tasks.delete(id);
+            }
+            return { success: true };
+          }
+
           if (/INSERT INTO events\b/i.test(sql)) {
             const [
               id,

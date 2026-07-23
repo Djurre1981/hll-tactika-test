@@ -42,4 +42,9 @@ export const queryKeys = {
     all: ["route-plans"],
     byId: (id) => ["route-plans", id],
   },
+  prepTasks: {
+    mineRoot: ["prep-tasks", "mine"],
+    byEvent: (eventId) => ["prep-tasks", "event", eventId],
+    mine: (from, to) => ["prep-tasks", "mine", from, to],
+  },
 };
