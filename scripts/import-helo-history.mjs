@@ -31,8 +31,8 @@ import {
 
 const PAGE_SIZE = 50;
 const DB_NAME = "hll-tactika-db";
-const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const WRANGLER_JS = path.join(ROOT, "node_modules", "wrangler", "bin", "wrangler.js");
 const IMPORT_ACTOR = "helo-import";
 
 function parseArgs(argv) {
@@ -100,12 +100,15 @@ function sqlEscape(value) {
 }
 
 function wranglerD1(flag, { command, file } = {}) {
-  const args = ["wrangler", "d1", "execute", DB_NAME, flag, "--json", "-y"];
+  const args = [WRANGLER_JS, "d1", "execute", DB_NAME, flag, "--json", "-y"];
   let tmpToDelete = null;
-  if (file) {
+  // Remote --file often returns a summary instead of SELECT rows; --command works.
+  // Local --command can be mangled by shells, so local prefers --file.
+  if (command && flag === "--remote") {
+    args.push(`--command=${command}`);
+  } else if (file) {
     args.push("--file", file);
   } else if (command) {
-    // Always use a file on Windows — cmd.exe mangles --command values with spaces/parens.
     tmpToDelete = path.join(os.tmpdir(), `helo-cmd-${Date.now()}-${Math.random().toString(16).slice(2)}.sql`);
     fs.writeFileSync(tmpToDelete, `${command}\n`, "utf8");
     args.push("--file", tmpToDelete);
@@ -113,11 +116,11 @@ function wranglerD1(flag, { command, file } = {}) {
     throw new Error("wranglerD1 requires command or file");
   }
   try {
-    return execFileSync(NPX, args, {
+    return execFileSync(process.execPath, args, {
       cwd: ROOT,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32",
+      windowsHide: true,
     });
   } finally {
     if (tmpToDelete) {
@@ -130,32 +133,51 @@ function wranglerD1(flag, { command, file } = {}) {
   }
 }
 
+/** Wrangler often prints progress lines before the JSON array when using --remote. */
+function parseWranglerJson(out) {
+  const text = String(out || "");
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  if (start < 0 || end < start) {
+    throw new Error(`No JSON array in wrangler output:\n${text.slice(0, 400)}`);
+  }
+  return JSON.parse(text.slice(start, end + 1));
+}
+
 function fetchExistingHeloIdsFromD1(flag) {
-  const tmp = path.join(os.tmpdir(), `helo-existing-${Date.now()}.sql`);
-  fs.writeFileSync(
-    tmp,
-    "SELECT match_json FROM events WHERE match_json LIKE '%heloMatchId%';\n",
-    "utf8"
-  );
   let out;
-  try {
-    out = wranglerD1(flag, { file: tmp });
-  } finally {
+  if (flag === "--remote") {
+    out = wranglerD1(flag, {
+      command: "SELECT match_json FROM events WHERE match_json LIKE '%heloMatchId%';",
+    });
+  } else {
+    const tmp = path.join(os.tmpdir(), `helo-existing-${Date.now()}.sql`);
+    fs.writeFileSync(
+      tmp,
+      "SELECT match_json FROM events WHERE match_json LIKE '%heloMatchId%';\n",
+      "utf8"
+    );
     try {
-      fs.unlinkSync(tmp);
-    } catch {
-      /* ignore */
+      out = wranglerD1(flag, { file: tmp });
+    } finally {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        /* ignore */
+      }
     }
   }
   const ids = new Set();
   let parsed;
   try {
-    parsed = JSON.parse(out);
+    parsed = parseWranglerJson(out);
   } catch {
     return ids;
   }
   const rows = parsed?.[0]?.results || parsed?.results || [];
   for (const row of rows) {
+    // Ignore wrangler summary rows that are not SELECT results.
+    if (!row || typeof row.match_json !== "string") continue;
     try {
       const match = JSON.parse(row.match_json || "{}");
       const id = String(match.heloMatchId || "").trim();
@@ -205,12 +227,15 @@ function ensureEventsSchema(flag) {
   });
   let parsed;
   try {
-    parsed = JSON.parse(out);
+    parsed = parseWranglerJson(out);
   } catch (err) {
     throw new Error(`Could not read events schema: ${err.message}\n${out}`);
   }
   const rows = parsed?.[0]?.results || parsed?.results || [];
-  const cols = new Set(rows.map((r) => r.name));
+  const cols = new Set(rows.filter((r) => r && typeof r.name === "string").map((r) => r.name));
+  if (cols.size === 0) {
+    throw new Error(`Could not read events columns from PRAGMA (got ${rows.length} result row(s))`);
+  }
   const alters = [];
   if (!cols.has("event_type")) {
     alters.push("ALTER TABLE events ADD COLUMN event_type TEXT NOT NULL DEFAULT 'other';");
@@ -252,7 +277,8 @@ function ensureEventsSchema(flag) {
 }
 
 function applyViaD1(mapped, flag) {
-  ensureEventsSchema(flag);
+  // Remote schema comes from migrations; local may need column repair for older DBs.
+  if (flag !== "--remote") ensureEventsSchema(flag);
   console.log(`\nLoading existing HeLO ids from D1 (${flag}) …`);
   const existing = fetchExistingHeloIdsFromD1(flag);
   console.log(`Existing imported HeLO matches: ${existing.size}`);

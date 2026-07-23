@@ -16,7 +16,7 @@ import { DEFAULT_SERIES, HELO_BASE } from "./lib/helo-mapper.mjs";
 import { extractCircleParticipantSteamIds } from "./lib/helo-participants.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
+const WRANGLER_JS = path.join(ROOT, "node_modules", "wrangler", "bin", "wrangler.js");
 const DB_NAME = "hll-tactika-db";
 
 function parseArgs(argv) {
@@ -35,12 +35,45 @@ function esc(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-function wranglerD1(flag, file) {
-  return execFileSync(
-    NPX,
-    ["wrangler", "d1", "execute", DB_NAME, flag, "--json", "-y", "--file", file],
-    { cwd: ROOT, encoding: "utf8", shell: process.platform === "win32" }
-  );
+function wranglerD1(flag, { file, command } = {}) {
+  const args = [WRANGLER_JS, "d1", "execute", DB_NAME, flag, "--json", "-y"];
+  let tmpToDelete = null;
+  if (command && flag === "--remote") {
+    args.push(`--command=${command}`);
+  } else if (file) {
+    args.push("--file", file);
+  } else if (command) {
+    tmpToDelete = path.join(os.tmpdir(), `helo-part-cmd-${Date.now()}.sql`);
+    fs.writeFileSync(tmpToDelete, `${command}\n`);
+    args.push("--file", tmpToDelete);
+  } else {
+    throw new Error("wranglerD1 requires file or command");
+  }
+  try {
+    return execFileSync(process.execPath, args, {
+      cwd: ROOT,
+      encoding: "utf8",
+      windowsHide: true,
+    });
+  } finally {
+    if (tmpToDelete) {
+      try {
+        fs.unlinkSync(tmpToDelete);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
+function parseWranglerJson(out) {
+  const text = String(out || "");
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  if (start < 0 || end < start) {
+    throw new Error(`No JSON array in wrangler output:\n${text.slice(0, 400)}`);
+  }
+  return JSON.parse(text.slice(start, end + 1));
 }
 
 async function fetchHeloMatch(series, matchId) {
@@ -58,13 +91,26 @@ async function main() {
   }
 
   const flag = opts.remoteD1 ? "--remote" : "--local";
-  const sel = path.join(os.tmpdir(), `helo-part-sel-${Date.now()}.sql`);
-  fs.writeFileSync(
-    sel,
-    "SELECT id, match_json FROM events WHERE match_json LIKE '%heloMatchId%';\n"
+  const selectSql = "SELECT id, match_json FROM events WHERE match_json LIKE '%heloMatchId%';";
+  let raw;
+  if (flag === "--remote") {
+    raw = wranglerD1(flag, { command: selectSql });
+  } else {
+    const sel = path.join(os.tmpdir(), `helo-part-sel-${Date.now()}.sql`);
+    fs.writeFileSync(sel, `${selectSql}\n`);
+    try {
+      raw = wranglerD1(flag, { file: sel });
+    } finally {
+      try {
+        fs.unlinkSync(sel);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  const rows = (parseWranglerJson(raw)[0].results || []).filter(
+    (r) => r && typeof r.id === "string" && typeof r.match_json === "string"
   );
-  const raw = wranglerD1(flag, sel);
-  const rows = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1))[0].results;
 
   console.log(`Events with HeLO id: ${rows.length}`);
 
@@ -121,7 +167,7 @@ async function main() {
       )
       .join("\n");
     fs.writeFileSync(tmp, `${sql}\n`);
-    wranglerD1(flag, tmp);
+    wranglerD1(flag, { file: tmp });
     try {
       fs.unlinkSync(tmp);
     } catch {
