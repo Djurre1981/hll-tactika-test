@@ -3,6 +3,7 @@ import {
   hasRecordedResult,
   summarizeMatchHistory,
 } from "./match-history-utils.js";
+import { formatMapLabel, normalizeMapId } from "../strats/editor/mapIds.js";
 
 /** Past events with a recorded win or loss, newest first. */
 export function getRecordedResults(events, now = new Date()) {
@@ -79,9 +80,9 @@ export function aggregateWinRateByMap(events, now = new Date()) {
   const buckets = new Map();
 
   for (const event of getRecordedResults(events, now)) {
-    const mapId = String(event.match?.mapId || "").trim() || "Unknown map";
+    const mapId = normalizeMapId(event.match?.mapId) || "Unknown map";
     if (!buckets.has(mapId)) {
-      buckets.set(mapId, { mapId, wins: 0, losses: 0 });
+      buckets.set(mapId, { mapId, label: formatMapLabel(mapId), wins: 0, losses: 0 });
     }
     const bucket = buckets.get(mapId);
     if (event.match.result === "win") bucket.wins += 1;

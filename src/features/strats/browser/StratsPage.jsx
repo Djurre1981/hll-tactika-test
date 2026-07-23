@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthGate.jsx";
 import { canEditStrats } from "../../../lib/roles.js";
 import { Spinner } from "../../../shared/Spinner.jsx";
@@ -13,6 +14,7 @@ import {
 
 export function StratsPage({ hub = false }) {
   const user = useAuth();
+  const navigate = useNavigate();
   const canEdit = canEditStrats(user.role);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [filter, setFilter] = useState("");
@@ -62,13 +64,24 @@ export function StratsPage({ hub = false }) {
             Browse folders and filterable strat list.
           </p>
         </div>
-        <input
-          className="min-h-[2.4rem] min-w-[min(240px,70vw)] rounded-full border border-white/15 bg-white/[0.05] px-4 py-2 text-white/90"
-          type="search"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-          placeholder="Filter strats"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit ? (
+            <button
+              type="button"
+              className="min-h-[2.4rem] rounded-full border border-accent/40 bg-accent/15 px-4 py-2 text-[0.82rem] font-medium text-accent transition hover:border-accent/55 hover:bg-accent/25"
+              onClick={() => navigate("/tool/stratmaker")}
+            >
+              New strat
+            </button>
+          ) : null}
+          <input
+            className="min-h-[2.4rem] min-w-[min(240px,70vw)] rounded-full border border-white/15 bg-white/[0.05] px-4 py-2 text-white/90"
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            placeholder="Filter strats"
+          />
+        </div>
       </header>
 
       {error ? <p className="mb-3 shrink-0 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p> : null}

@@ -21,6 +21,7 @@ describe("T2 — sanitizeEventBody (API)", () => {
     assert.equal(result.error, undefined);
     assert.deepEqual(result.event.match, {
       date: "",
+      team: "sr",
       faction: "",
       mapId: "",
       startingPoint: "",

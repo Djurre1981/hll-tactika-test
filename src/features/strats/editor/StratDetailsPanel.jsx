@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import { StratEventLinker } from "./StratEventLinker.jsx";
@@ -78,10 +78,32 @@ export function StratDetailsPanel({
   const [titleDraft, setTitleDraft] = useState(strat?.title || "");
   const [notesDraft, setNotesDraft] = useState(strat?.notes || "");
   const [opponentDraft, setOpponentDraft] = useState(strat?.match?.opponent || "");
+  const titleDraftRef = useRef(titleDraft);
+  const stratTitleRef = useRef(strat?.title || "");
+  const onPatchStratRef = useRef(onPatchStrat);
+  titleDraftRef.current = titleDraft;
+  stratTitleRef.current = strat?.title || "";
+  onPatchStratRef.current = onPatchStrat;
+
+  const commitTitle = () => {
+    const next = titleDraftRef.current.trim();
+    if (next && next !== stratTitleRef.current) {
+      onPatchStratRef.current?.({ title: next });
+    }
+  };
 
   useEffect(() => {
     setTitleDraft(strat?.title || "");
   }, [strat?.id, strat?.title]);
+
+  useEffect(() => {
+    return () => {
+      const next = titleDraftRef.current.trim();
+      if (next && next !== stratTitleRef.current) {
+        onPatchStratRef.current?.({ title: next });
+      }
+    };
+  }, [strat?.id]);
 
   useEffect(() => {
     setNotesDraft(strat?.notes || "");
@@ -141,9 +163,11 @@ export function StratDetailsPanel({
             placeholder="Untitled Strat"
             className={glassInput}
             onChange={(e) => setTitleDraft(e.target.value)}
-            onBlur={() => {
-              if (titleDraft.trim() && titleDraft !== strat?.title) {
-                onPatchStrat?.({ title: titleDraft.trim() });
+            onBlur={commitTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
               }
             }}
           />

@@ -15,6 +15,7 @@ describe("helo-mapper map aliases", () => {
   it("maps known aliases", () => {
     assert.equal(mapHeloMapId("Hurtgen").mapId, "HurtgenV2");
     assert.equal(mapHeloMapId("SMDM").mapId, "SMDMV2");
+    assert.equal(mapHeloMapId("SHD65V2").mapId, "SMDMV2");
     assert.equal(mapHeloMapId("Omaha Beach").mapId, "Omaha");
     assert.equal(mapHeloMapId("Elsenborn Ridge").mapId, "Elsenborn");
     assert.equal(mapHeloMapId("El Alamein").mapId, "ElAlamein");
@@ -77,10 +78,42 @@ describe("helo-mapper Circle-PF-2026-07-12", () => {
     assert.equal(mapped.event.match.mapId, "PHL");
     assert.equal(mapped.event.match.faction, "axis");
     assert.equal(mapped.event.match.result, "win");
+    assert.equal(mapped.event.match.team, "sr");
     assert.equal(mapped.event.match.date, "2026-07-12");
     assert.equal(mapped.event.match.heloMatchId, "Circle-PF-2026-07-12");
     assert.match(mapped.event.match.heloUrl, /Circle-PF-2026-07-12/);
     assert.match(mapped.event.description, /Score: 4-1/);
     assert.match(mapped.event.description, /Tournament: HCA/);
+  });
+});
+
+describe("helo-mapper Circle Jr (◯)", () => {
+  const JR = "\u25EF";
+  const helo = {
+    match_id: `${JR}-CHMA-2026-05-02`,
+    teams: [JR, "CHMA"],
+    date: { $date: 1777708800000 },
+    duration: 90,
+    result: "3-2",
+    victor_side: "Allies",
+    map: "SMDM",
+    type: "friendly",
+  };
+
+  it("maps Jr tag to match.team jr and Jr title prefix", () => {
+    const mapped = heloMatchToEvent(helo, { teamTag: JR });
+    assert.ok(!mapped.error);
+    assert.equal(mapped.event.match.team, "jr");
+    assert.equal(mapped.event.title, "Jr Scrim vs CHMA");
+    assert.equal(mapped.event.match.opponent, "CHMA");
+    assert.equal(mapped.event.match.mapId, "SMDMV2");
+    assert.equal(mapped.event.match.result, "win");
+    assert.equal(mapped.event.match.faction, "allies");
+  });
+
+  it("accepts circle-jr alias via resolve in mapper teamTag helo char", () => {
+    const mapped = heloMatchToEvent(helo, { teamTag: "jr" });
+    assert.ok(!mapped.error);
+    assert.equal(mapped.event.match.team, "jr");
   });
 });

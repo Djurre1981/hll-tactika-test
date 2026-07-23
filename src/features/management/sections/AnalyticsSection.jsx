@@ -154,8 +154,8 @@ export function AnalyticsSection() {
                   />
                   <YAxis
                     type="category"
-                    dataKey="mapId"
-                    width={92}
+                    dataKey="label"
+                    width={108}
                     tick={{ fill: "rgba(255,255,255,0.65)", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}

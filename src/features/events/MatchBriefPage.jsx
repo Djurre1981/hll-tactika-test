@@ -7,6 +7,7 @@ import {
   formatEventMatchSummary,
   isMatchEventType,
 } from "../calendar/calendar-utils.js";
+import { compTeamLabel } from "../../../functions/lib/comp-teams.js";
 import { useEventQuery } from "../calendar/hooks/useEventsQuery.js";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { canManageTeam } from "../../lib/roles.js";
@@ -48,6 +49,7 @@ function MatchFacts({ event }) {
   }
 
   const rows = [
+    { label: "Team", value: compTeamLabel(match?.team) },
     match?.opponent ? { label: "Opponent", value: match.opponent } : null,
     match?.mapId ? { label: "Map", value: match.mapId } : null,
     match?.faction

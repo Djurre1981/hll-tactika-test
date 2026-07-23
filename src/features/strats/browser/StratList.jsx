@@ -22,13 +22,20 @@ export function StratList({
     : strats;
 
   if (filtered.length === 0) {
-    return <p className="my-8 text-[0.92rem] text-white/45">No strats match this filter.</p>;
+    return (
+      <p className="my-8 text-[0.92rem] text-white/45">
+        {needle ? "No strats match this filter." : "No strats yet."}
+      </p>
+    );
   }
 
   return (
     <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
       {filtered.map((strat) => {
         const folderName = strat.folderId ? foldersById.get(strat.folderId)?.name : null;
+        const slideCount = strat.slideCount;
+        const slideLabel =
+          slideCount != null ? ` · ${slideCount} slide${slideCount === 1 ? "" : "s"}` : "";
         return (
           <li key={strat.id}>
             <div
@@ -51,7 +58,7 @@ export function StratList({
                   {[strat.tags?.team, strat.tags?.type, folderName || "Unfiled"]
                     .filter(Boolean)
                     .join(" · ")}
-                  {strat.slideCount != null ? ` · ${strat.slideCount} slides` : ""}
+                  {slideLabel}
                 </p>
               </div>
               {canDelete ? (

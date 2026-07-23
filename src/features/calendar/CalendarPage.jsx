@@ -137,6 +137,7 @@ export function CalendarPage({ hub = false }) {
           key={modalState.event?.id || "create"}
           initialEvent={editEvent || modalState.event}
           selectedDay={modalState.selectedDay}
+          existingEvents={events}
           onSubmit={submitEvent}
           onDelete={handleDelete}
           onLock={handleLockEvent}

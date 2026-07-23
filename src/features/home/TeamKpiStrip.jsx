@@ -57,7 +57,11 @@ export function TeamKpiStrip() {
         <KpiCard
           label="Win rate"
           value={kpis.winRateLabel}
-          hint={hasResults ? `${kpis.recorded} recorded matches` : "No results logged yet"}
+          hint={
+            hasResults
+              ? `${kpis.wins}–${kpis.losses} (${kpis.recorded} with result)`
+              : "No results logged yet"
+          }
         />
         <KpiCard
           label="Record"
@@ -72,7 +76,11 @@ export function TeamKpiStrip() {
         <KpiCard
           label="Past matches"
           value={kpis.entries}
-          hint="Scrims, comps, and recorded results"
+          hint={
+            kpis.entries === kpis.recorded
+              ? "Scrims, comps, and recorded results"
+              : `${kpis.entries} past · ${kpis.recorded} with result`
+          }
         />
       </div>
 

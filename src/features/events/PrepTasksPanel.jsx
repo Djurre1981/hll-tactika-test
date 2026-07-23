@@ -10,9 +10,17 @@ import {
   useUpdatePrepTaskMutation,
 } from "./hooks/usePrepTasksQuery.js";
 
+function shortSteamLabel(steamId) {
+  const id = String(steamId || "").trim();
+  if (!id) return "Unknown";
+  return id.length > 8 ? `Player …${id.slice(-4)}` : id;
+}
+
 function memberLabel(member) {
   if (!member) return "Unknown";
-  return member.name || member.steamId;
+  const named = String(member.displayName || member.name || "").trim();
+  if (named) return named;
+  return shortSteamLabel(member.steamId);
 }
 
 function PrepTaskRow({ task, canEdit, canComplete, memberName, pending, onToggle, onDelete }) {

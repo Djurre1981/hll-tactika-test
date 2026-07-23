@@ -4,6 +4,7 @@ import { Spinner } from "../../shared/Spinner.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useMatchHistoryQuery } from "./hooks/useMatchHistoryQuery.js";
+import { COMP_TEAMS } from "../../../functions/lib/comp-teams.js";
 import {
   countParticipantMatches,
   eventHasParticipant,
@@ -14,6 +15,7 @@ import {
   historyMatchLine,
   historyResultClass,
   historyResultLabel,
+  historyTeamLabel,
   summarizeMatchHistory,
   uniqueMapIds,
 } from "./match-history-utils.js";
@@ -35,6 +37,7 @@ export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) 
   const [mapFilter, setMapFilter] = useState("");
   const [opponentFilter, setOpponentFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [teamFilter, setTeamFilter] = useState("");
   const [mineOnly, setMineOnly] = useState(Boolean(defaultMineOnly && mySteamId));
 
   const allEvents = historyQuery.data || [];
@@ -45,9 +48,10 @@ export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) 
       mapId: mapFilter || undefined,
       opponent: opponentFilter || undefined,
       eventType: typeFilter || undefined,
+      team: teamFilter || undefined,
       participantSteamId: mineOnly && mySteamId ? mySteamId : undefined,
     }),
-    [resultFilter, mapFilter, opponentFilter, typeFilter, mineOnly, mySteamId]
+    [resultFilter, mapFilter, opponentFilter, typeFilter, teamFilter, mineOnly, mySteamId]
   );
 
   const filtered = useMemo(
@@ -105,7 +109,7 @@ export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) 
         </div>
       ) : null}
 
-      <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/15 p-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/15 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {mySteamId ? (
           <label className="flex min-w-0 cursor-pointer items-end gap-2 pb-2 sm:col-span-2 lg:col-span-1">
             <input
@@ -122,6 +126,17 @@ export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) 
             </span>
           </label>
         ) : null}
+        <label className="block min-w-0">
+          <span className="mb-1.5 block text-[0.68rem] uppercase tracking-[0.12em] text-white/40">
+            Team
+          </span>
+          <GlassSelect
+            value={teamFilter}
+            onChange={setTeamFilter}
+            placeholder="All teams"
+            options={COMP_TEAMS.map((team) => ({ value: team.id, label: team.label }))}
+          />
+        </label>
         <label className="block min-w-0">
           <span className="mb-1.5 block text-[0.68rem] uppercase tracking-[0.12em] text-white/40">
             Result
@@ -202,6 +217,9 @@ export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) 
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/45">
+                          {historyTeamLabel(event.match?.team)}
+                        </span>
                         <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/45">
                           {historyEventTypeLabel(event.eventType)}
                         </span>

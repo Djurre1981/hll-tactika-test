@@ -38,11 +38,15 @@
     "test:t2": "node --test tests/t2-match-details.test.mjs tests/t2-api-sanitize.test.mjs tests/calendar-utils.test.mjs tests/migrations.test.mjs",
     "import:helo": "node scripts/import-helo-history.mjs",
     "import:helo:pilot": "node scripts/import-helo-history.mjs --only Circle-PF-2026-07-12",
+    "import:helo:jr": "node scripts/import-helo-history.mjs --team jr",
+    "import:helo:jr:apply-local": "node scripts/import-helo-history.mjs --team jr --apply --local-d1",
     "import:helo:apply-local": "node scripts/import-helo-history.mjs --apply --local-d1",
     "backfill:helo-participants": "node scripts/backfill-helo-participants.mjs",
     "backfill:helo-participants:local": "node scripts/backfill-helo-participants.mjs --apply --local-d1",
     "backfill:helo-player-stats": "node scripts/backfill-helo-player-stats.mjs",
-    "backfill:helo-player-stats:local": "node scripts/backfill-helo-player-stats.mjs --apply --local-d1"
+    "backfill:helo-player-stats:local": "node scripts/backfill-helo-player-stats.mjs --apply --local-d1",
+    "backfill:match-team": "node scripts/backfill-match-team.mjs",
+    "seed:roster:helo": "node scripts/seed-roster-from-helo-events.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

@@ -1,4 +1,5 @@
 import { sanitizeStratObjects } from "./strat-objects.js";
+import { normalizeCompTeamId } from "./comp-teams.js";
 
 export const STRAT_TEAMS = ["jr", "sr"];
 export const STRAT_TYPES = ["friendly", "tournament"];
@@ -8,6 +9,11 @@ export const MIDPOINT_NA_ID = "na";
 
 export function normalizeStratTeam(value) {
   return STRAT_TEAMS.includes(value) ? value : "jr";
+}
+
+/** Calendar/match team: Circle (sr) or Circle Jr (jr). Defaults to senior. */
+export function normalizeMatchTeam(value) {
+  return normalizeCompTeamId(value, { fallback: "sr" });
 }
 
 export function normalizeStratType(value) {
@@ -114,6 +120,7 @@ export function normalizeParticipantSteamIds(value) {
 export function emptyStratMatch() {
   return {
     date: "",
+    team: "sr",
     faction: "",
     mapId: "",
     startingPoint: "",
@@ -134,6 +141,7 @@ export function normalizeStratMatch(match) {
 
   return {
     date: normalizeMatchDate(match.date),
+    team: normalizeMatchTeam(match.team),
     faction: normalizeStratFaction(match.faction),
     mapId: String(match.mapId || "").trim(),
     startingPoint: normalizeStartingPoint(match.startingPoint),

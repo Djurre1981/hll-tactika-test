@@ -20,7 +20,7 @@ export function HubUserMenu() {
   const members = membersQuery.data?.users || [];
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 top-6 z-40 flex w-10 flex-col items-center">
+    <div className="pointer-events-none fixed bottom-6 right-3 top-6 z-40 flex w-10 flex-col items-center sm:right-6">
       <div className="pointer-events-auto relative flex shrink-0 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_0.08s_both] flex-col items-center">
         <div className="group relative flex items-center">
           <div className="invisible pointer-events-none absolute right-full top-0 flex w-max flex-col items-stretch gap-1 pr-2.5 transition-[visibility] group-hover:visible group-hover:pointer-events-auto group-focus-within:visible group-focus-within:pointer-events-auto">

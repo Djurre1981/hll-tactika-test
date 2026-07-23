@@ -14,6 +14,7 @@ import { MicroPrepPage } from "../features/micro-prep/MicroPrepPage.jsx";
 import { useAuth } from "../features/auth/AuthGate.jsx";
 import { HubLayout } from "../features/home/HubLayout.jsx";
 import { HomePage } from "../features/home/HomePage.jsx";
+import { NotFoundPage } from "../features/home/NotFoundPage.jsx";
 import { canViewTeam } from "../lib/roles.js";
 
 /** Full-bleed shell for map editor / whiteboard. */
@@ -97,6 +98,9 @@ export function AppRouter() {
           <Route path="micro-prep/:id" element={<MicroPrepPage />} />
         </Route>
         <Route path="micro-prep" element={<Navigate to="/tool/micro-prep" replace />} />
+        <Route element={<HubLayout />}>
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

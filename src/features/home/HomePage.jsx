@@ -114,7 +114,7 @@ export function HomePage() {
 
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
         <section
-          className="glass-surface flex min-h-[220px] flex-col gap-4 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
+          className="glass-surface flex min-h-[220px] min-w-0 flex-col gap-4 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
           aria-labelledby="dashboard-hero-title"
         >
           <div>
@@ -128,59 +128,58 @@ export function HomePage() {
           <TeamKpiStrip />
         </section>
 
-        <aside
-          className="glass-surface flex min-h-0 flex-col rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4 md:col-start-2 md:row-span-2 md:row-start-1"
-          aria-labelledby="dashboard-upcoming-title"
-        >
-          <h2
-            className="m-0 mb-3 px-1 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
-            id="dashboard-upcoming-title"
-          >
-            Upcoming games
-          </h2>
+        <aside className="glass-surface flex min-h-0 min-w-0 flex-col gap-4 overflow-auto rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4 md:col-start-2 md:row-span-2 md:row-start-1">
           <MyMatchesWidget />
           <MyPrepTasksWidget />
-          <div className="flex min-h-0 flex-col gap-2 overflow-auto pr-1">
-            {upcomingCards.map((card) => {
-              const inner = (
-                <>
-                  <p className="m-0 mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/40">
-                    {card.meta}
-                  </p>
-                  <p className="m-0 text-[0.95rem] font-medium text-white">{card.title}</p>
-                  <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
-                </>
-              );
+          <section className="flex min-h-0 flex-col" aria-labelledby="dashboard-upcoming-title">
+            <h2
+              className="m-0 mb-3 px-1 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
+              id="dashboard-upcoming-title"
+            >
+              Upcoming games
+            </h2>
+            <div className="flex min-h-0 flex-col gap-2 overflow-auto pr-1">
+              {upcomingCards.map((card) => {
+                const inner = (
+                  <>
+                    <p className="m-0 mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/40">
+                      {card.meta}
+                    </p>
+                    <p className="m-0 text-[0.95rem] font-medium text-white">{card.title}</p>
+                    <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
+                  </>
+                );
 
-              if (card.eventId) {
+                if (card.eventId) {
+                  return (
+                    <Link
+                      key={card.key}
+                      to={`/events/${card.eventId}`}
+                      className={`block rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 no-underline transition hover:border-accent/35 hover:bg-white/[0.08] ${
+                        card.muted ? "opacity-55" : ""
+                      }`}
+                    >
+                      {inner}
+                    </Link>
+                  );
+                }
+
                 return (
-                  <Link
+                  <article
                     key={card.key}
-                    to={`/events/${card.eventId}`}
-                    className={`block rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 no-underline transition hover:border-accent/35 hover:bg-white/[0.08] ${
+                    className={`rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 ${
                       card.muted ? "opacity-55" : ""
                     }`}
                   >
                     {inner}
-                  </Link>
+                  </article>
                 );
-              }
-
-              return (
-                <article
-                  key={card.key}
-                  className={`rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 ${
-                    card.muted ? "opacity-55" : ""
-                  }`}
-                >
-                  {inner}
-                </article>
-              );
-            })}
-          </div>
+              })}
+            </div>
+          </section>
         </aside>
 
-        <section className="md:col-start-1 md:row-start-2" aria-labelledby="dashboard-tools-title">
+        <section className="min-w-0 md:col-start-1 md:row-start-2" aria-labelledby="dashboard-tools-title">
           <h2
             className="m-0 mb-3 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
             id="dashboard-tools-title"
@@ -188,10 +187,10 @@ export function HomePage() {
             The Circle Tools
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="grid min-h-[7.5rem] grid-cols-2 gap-3">
+            <div className="grid min-h-[7.5rem] min-w-0 grid-cols-2 gap-3">
               <button
                 type="button"
-                className={toolBtnSplitClass}
+                className={`${toolBtnSplitClass} min-w-0`}
                 disabled={!canStrats}
                 aria-disabled={!canStrats}
                 onClick={() => handleToolClick({ id: "strats" })}
@@ -203,7 +202,7 @@ export function HomePage() {
               </button>
               <button
                 type="button"
-                className={toolBtnSplitClass}
+                className={`${toolBtnSplitClass} min-w-0`}
                 disabled={!canStrats}
                 aria-disabled={!canStrats}
                 onClick={() => handleToolClick({ id: "routeplanner" })}
@@ -216,7 +215,7 @@ export function HomePage() {
             </div>
             <button
               type="button"
-              className={toolBtnClass}
+              className={`${toolBtnClass} min-w-0`}
               disabled={!canStrats}
               aria-disabled={!canStrats}
               onClick={() => handleToolClick({ id: "micro-prep" })}
@@ -228,7 +227,7 @@ export function HomePage() {
             </button>
             <button
               type="button"
-              className={toolBtnClass}
+              className={`${toolBtnClass} min-w-0`}
               onClick={() => handleToolClick({ id: "viewer" })}
             >
               <span className="text-[0.95rem] font-medium text-white">Climbing Guide</span>
@@ -238,7 +237,7 @@ export function HomePage() {
             </button>
             <button
               type="button"
-              className={toolBtnClass}
+              className={`${toolBtnClass} min-w-0`}
               onClick={() => handleToolClick({ id: "records" })}
             >
               <span className="text-[0.95rem] font-medium text-white">HLL Records</span>

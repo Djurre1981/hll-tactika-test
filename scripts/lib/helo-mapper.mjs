@@ -2,16 +2,21 @@
  * Map HeLO /v3 match payloads into Tactika calendar event bodies.
  */
 
+import {
+  HELO_TEAM_TAG_SR,
+  resolveCompTeam,
+} from "../../functions/lib/comp-teams.js";
 import { extractCircleParticipantSteamIds } from "./helo-participants.mjs";
 
 export const HELO_BASE = "https://helo-system.de";
-export const DEFAULT_TEAM_TAG = "Circle";
+export const DEFAULT_TEAM_TAG = HELO_TEAM_TAG_SR;
 export const DEFAULT_SERIES = "2024";
 
 /** HeLO map names → Tactika STRAT_MAP_IDS */
 export const HELO_MAP_ALIASES = {
   Hurtgen: "HurtgenV2",
   SMDM: "SMDMV2",
+  SHD65V2: "SMDMV2",
   "Omaha Beach": "Omaha",
   "Elsenborn Ridge": "Elsenborn",
   "El Alamein": "ElAlamein",
@@ -97,7 +102,9 @@ export function inferCircleFaction(victorSide, circleWon) {
  * } | { error: string }}
  */
 export function heloMatchToEvent(heloMatch, opts = {}) {
-  const teamTag = opts.teamTag || DEFAULT_TEAM_TAG;
+  const resolved = resolveCompTeam(opts.teamTag || DEFAULT_TEAM_TAG);
+  const teamTag = resolved?.heloTag || String(opts.teamTag || DEFAULT_TEAM_TAG).trim() || DEFAULT_TEAM_TAG;
+  const teamId = resolved?.id || "sr";
   const series = opts.series || DEFAULT_SERIES;
   const matchId = String(heloMatch?.match_id || "").trim();
   if (!matchId) {
@@ -139,8 +146,9 @@ export function heloMatchToEvent(heloMatch, opts = {}) {
 
   const heloType = String(heloMatch.type || "").toLowerCase();
   const eventType = heloType === "competitive" ? "comp" : "scrim";
-  const titlePrefix = eventType === "comp" ? "Comp" : "Scrim";
-  const title = `${titlePrefix} vs ${scores.opponent}`.slice(0, 120);
+  const kindLabel = eventType === "comp" ? "Comp" : "Scrim";
+  const teamPrefix = resolved?.titlePrefix || "";
+  const title = `${teamPrefix}${kindLabel} vs ${scores.opponent}`.slice(0, 120);
 
   const heloUrl = `${HELO_BASE}/statistics/matches/${encodeURIComponent(matchId)}?series=${encodeURIComponent(series)}`;
   const tournament = String(heloMatch.tournament || "").trim();
@@ -148,6 +156,7 @@ export function heloMatchToEvent(heloMatch, opts = {}) {
     `HeLO: ${heloUrl}`,
     `Score: ${heloMatch.result}`,
     tournament ? `Tournament: ${tournament}` : "",
+    teamId === "jr" ? "Team: Circle Jr" : "Team: Circle",
   ].filter(Boolean);
 
   const dateOnly = starts.toISOString().slice(0, 10);
@@ -164,6 +173,7 @@ export function heloMatchToEvent(heloMatch, opts = {}) {
       description: descParts.join("\n").slice(0, 1000),
       match: {
         date: dateOnly,
+        team: teamId,
         opponent: scores.opponent.slice(0, 80),
         mapId,
         faction,

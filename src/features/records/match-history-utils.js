@@ -1,4 +1,5 @@
 import { FACTION_LABELS, RESULT_LABELS, isMatchEventType } from "../calendar/calendar-utils.js";
+import { compTeamLabel, normalizeCompTeamId } from "../../../functions/lib/comp-teams.js";
 
 /** Event start is before now (strictly in the past). */
 export function isPastEvent(event, now = new Date()) {
@@ -33,6 +34,11 @@ export function filterMatchHistory(events, filters = {}, now = new Date()) {
 
   if (filters.eventType) {
     list = list.filter((event) => String(event.eventType || "") === filters.eventType);
+  }
+
+  if (filters.team) {
+    const team = normalizeCompTeamId(filters.team);
+    list = list.filter((event) => normalizeCompTeamId(event.match?.team) === team);
   }
 
   const opponentQuery = String(filters.opponent || "").trim().toLowerCase();
@@ -121,9 +127,14 @@ export function historyEventTypeLabel(eventType) {
   return labels[eventType] || eventType || "Event";
 }
 
+export function historyTeamLabel(team) {
+  return compTeamLabel(team);
+}
+
 export function historyMatchLine(event) {
   const match = event?.match || {};
   const parts = [];
+  parts.push(compTeamLabel(match.team));
   if (match.opponent) parts.push(`vs ${match.opponent}`);
   if (match.mapId) parts.push(match.mapId);
   if (match.faction) parts.push(FACTION_LABELS[match.faction] || match.faction);

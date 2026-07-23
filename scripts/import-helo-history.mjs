@@ -32,6 +32,10 @@ import {
   extractCircleSlimStats,
   slimStatToInsertSql,
 } from "./lib/helo-player-stats.mjs";
+import {
+  HELO_TEAM_TAG_JR,
+  resolveCompTeam,
+} from "../functions/lib/comp-teams.js";
 
 const PAGE_SIZE = 50;
 const DB_NAME = "hll-tactika-db";
@@ -48,6 +52,7 @@ function parseArgs(argv) {
     type: null,
     team: DEFAULT_TEAM_TAG,
     series: DEFAULT_SERIES,
+    fetchDetails: true,
     help: false,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -60,6 +65,7 @@ function parseArgs(argv) {
     else if (arg === "--type") opts.type = String(argv[++i] || "").trim().toLowerCase() || null;
     else if (arg === "--team") opts.team = String(argv[++i] || "").trim() || DEFAULT_TEAM_TAG;
     else if (arg === "--series") opts.series = String(argv[++i] || "").trim() || DEFAULT_SERIES;
+    else if (arg === "--no-details") opts.fetchDetails = false;
     else {
       console.error(`Unknown argument: ${arg}`);
       opts.help = true;
@@ -85,8 +91,9 @@ Usage:
 Options:
   --only <match_id>   Import a single HeLO match_id
   --type <kind>       Filter: competitive | friendly
-  --team <tag>        Team tag (default: Circle)
+  --team <tag>        Team: Circle | jr | circle-jr | ${HELO_TEAM_TAG_JR} (default: Circle)
   --series <tag>      HeLO series (default: 2024)
+  --no-details        Skip per-match detail fetch (no participants/stats)
   --apply             Write events (default: dry-run)
   --local-d1          With --apply: insert into local wrangler D1
   --remote-d1         With --apply: insert into remote wrangler D1
@@ -457,12 +464,24 @@ async function main() {
     process.exit(0);
   }
 
+  const resolvedTeam = resolveCompTeam(opts.team);
+  const heloTeamTag = resolvedTeam?.heloTag || opts.team;
+  if (!resolvedTeam && opts.team !== DEFAULT_TEAM_TAG) {
+    console.warn(
+      `Warning: unknown --team "${opts.team}" — using as raw HeLO tag (match.team will default to sr).`
+    );
+  } else {
+    console.log(
+      `Team: ${resolvedTeam?.label || "Circle"} (HeLO tag=${heloTeamTag}, match.team=${resolvedTeam?.id || "sr"})`
+    );
+  }
+
   let heloMatches;
   if (opts.only) {
     const one = await fetchOneHeloMatch({ series: opts.series, matchId: opts.only });
     heloMatches = [one];
   } else {
-    heloMatches = await fetchAllHeloMatches({ team: opts.team, series: opts.series });
+    heloMatches = await fetchAllHeloMatches({ team: heloTeamTag, series: opts.series });
   }
 
   if (opts.type) {
@@ -471,11 +490,35 @@ async function main() {
     );
   }
 
+  if (opts.fetchDetails && heloMatches.length) {
+    console.log(`Fetching match details for ${heloMatches.length} match(es)…`);
+    const detailed = [];
+    for (let i = 0; i < heloMatches.length; i += 1) {
+      const summary = heloMatches[i];
+      const matchId = String(summary?.match_id || "").trim();
+      if (!matchId) {
+        detailed.push(summary);
+        continue;
+      }
+      try {
+        const full = await fetchOneHeloMatch({ series: opts.series, matchId });
+        detailed.push(full && typeof full === "object" ? { ...summary, ...full } : summary);
+      } catch (err) {
+        console.warn(`  detail fail ${matchId}: ${err.message}`);
+        detailed.push(summary);
+      }
+      if ((i + 1) % 10 === 0 || i === heloMatches.length - 1) {
+        console.log(`  details ${i + 1}/${heloMatches.length}`);
+      }
+    }
+    heloMatches = detailed;
+  }
+
   const mapped = [];
   const errors = [];
   const warnings = [];
   for (const helo of heloMatches) {
-    const result = heloMatchToEvent(helo, { teamTag: opts.team, series: opts.series });
+    const result = heloMatchToEvent(helo, { teamTag: heloTeamTag, series: opts.series });
     if (result.error) {
       errors.push(result.error);
       continue;

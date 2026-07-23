@@ -1,14 +1,26 @@
 # HeLO calendar import
 
-Import The Circle’s competitive/scrim history from the public HeLO `/v3` API into Tactika calendar events.
+Import Circle and Circle Jr competitive/scrim history from the public HeLO `/v3` API into Tactika calendar events.
 
-**Status (Jul 2026):** Shipped on v2 (`hll-tactika-test`). Remote D1 has **101** Circle series matches with Circle-side `participantSteamIds` backfilled. UI: **Records → My matches**, Hub **My matches**, Match Brief **You played**.
+**Teams**
+
+| UI label | `match.team` | HeLO `tag` | Import flag |
+|----------|--------------|------------|-------------|
+| Circle | `sr` | `Circle` | `--team Circle` (default) |
+| Circle Jr | `jr` | `◯` (U+25EF) | `--team jr` or `--team circle-jr` |
+
+Both teams share one player pool (`roster_members` / Comp Roster). Events store which org played via `match.team`.
+
+**Status (Jul 2026):** Shipped on v2 (`hll-tactika-test`). Remote D1 has Circle series matches with Circle-side `participantSteamIds`. UI: **Records → My matches**, Hub **My matches**, Match Brief **You played**, create-event **Team** selector (Circle / Circle Jr).
 
 ## Quick start
 
 ```bash
 # Dry-run all Circle matches (series 2024)
 npm run import:helo
+
+# Dry-run Circle Jr (HeLO tag ◯)
+npm run import:helo:jr
 
 # Pilot one match
 npm run import:helo:pilot
@@ -25,25 +37,39 @@ node scripts/import-helo-history.mjs --apply
 # Or write directly into local / remote D1 (no session cookie)
 node scripts/import-helo-history.mjs --only Circle-PF-2026-07-12 --apply --local-d1
 node scripts/import-helo-history.mjs --apply --local-d1
+node scripts/import-helo-history.mjs --team jr --apply --local-d1
+node scripts/import-helo-history.mjs --team jr --apply --remote-d1
 node scripts/import-helo-history.mjs --apply --remote-d1
 ```
 
 Re-runs are safe: events with the same `match.heloMatchId` are skipped.
+Circle vs Circle Jr friendlies share one HeLO id — whichever team is imported first keeps the event (usually senior Circle as `sr`).
+
+Import fetches per-match HeLO details by default so `participantSteamIds` and `player_match_stats` land in one pass. Use `--no-details` for a faster metadata-only dry-run.
 
 ## Mapping
 
 See [`scripts/lib/helo-mapper.mjs`](../scripts/lib/helo-mapper.mjs). Events store:
 
 - `eventType`: `comp` / `scrim`
+- `match.team`: `sr` (Circle) or `jr` (Circle Jr)
 - `match.opponent`, `mapId`, `faction`, `result` (`win`/`loss`)
 - `match.heloMatchId`, `match.heloUrl`
-- `match.participantSteamIds` (Circle-side Steam64 from HeLO `player_stats`)
+- `match.participantSteamIds` (our-side Steam64 from HeLO `player_stats`)
 - Optional: `match.crconGameId`, `match.crconUrl` (allowlisted Circle stats hosts)
 - Score + tournament text in `description`
+- Titles: `Comp vs …` / `Jr Comp vs …` (and Scrim equivalents)
+
+Backfill `match.team` on older imports:
+
+```bash
+node scripts/backfill-match-team.mjs --local-d1
+node scripts/backfill-match-team.mjs --apply --remote-d1
+```
 
 ## Player participation (Steam ID → My matches)
 
-HeLO `player_stats` (and CRCON scoreboards) use **Steam ID64**. Tactika stores Circle-side IDs on each event as `match.participantSteamIds`. Logged-in users see **My matches** on Records / Hub when their auth Steam ID is in that list.
+HeLO `player_stats` (and CRCON scoreboards) use **Steam ID64**. Tactika stores our-side IDs on each event as `match.participantSteamIds`. Logged-in users see **My matches** on Records / Hub when their auth Steam ID is in that list.
 
 ```bash
 npm run backfill:helo-participants          # dry-run
@@ -53,7 +79,7 @@ node scripts/backfill-helo-participants.mjs --apply --remote-d1
 
 ## Player combat stats (slim snapshot)
 
-HeLO import (`--local-d1` / `--remote-d1`) also writes Circle-side rows into `player_match_stats` (kills, deaths, combat/support/off/def points, playtime, kpm). Backfill existing events:
+HeLO import (`--local-d1` / `--remote-d1`) also writes our-side rows into `player_match_stats` (kills, deaths, combat/support/off/def points, playtime, kpm). Backfill existing events:
 
 ```bash
 npm run backfill:helo-player-stats
@@ -62,6 +88,15 @@ node scripts/backfill-helo-player-stats.mjs --apply --remote-d1
 ```
 
 Management Overview **Player form** merges these aggregates when present.
+
+## Roster seeding (shared pool)
+
+Add HeLO participants into Comp Roster (`roster-default`) without granting site access:
+
+```bash
+node scripts/seed-roster-from-helo-events.mjs --local-d1
+node scripts/seed-roster-from-helo-events.mjs --apply --remote-d1 --team jr
+```
 
 **Roster spreadsheets** are useful Steam ID references only. Do **not** auto-grant Tactika site access from them — many entries are mercs, leavers, Epic/Game Pass IDs, nicknames, or incomplete Steam64s:
 
@@ -109,4 +144,5 @@ Do **not** scrape HLLRecords `/matches/:id` for mass import; use CRCON game ids 
 - `--local-d1` may auto-repair a missing `event_type` column on older local DBs (schema drift from early migrations).
 - Prefer `--local-d1` / `--remote-d1` for bulk backfill; use HTTP `--apply` when you already have an editor session cookie.
 - On Windows, remote D1 reads use wrangler’s JS entrypoint + `--command=…` (remote `--file` SELECTs often return a summary instead of rows).
+- Circle Jr HeLO page: https://helo-system.de/teams/%E2%97%AF?series=2024
 - Related: feature summary [`tactika-features-summary.md`](./tactika-features-summary.md) · tracker [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33)

@@ -28,7 +28,7 @@ function HubMain() {
 export function HubLayout() {
   return (
     <div
-      className="fixed inset-0 z-10 flex items-center justify-center overflow-auto px-[max(2vw,4.25rem)] pb-6 pt-[5.25rem]"
+      className="fixed inset-0 z-10 flex items-center justify-center overflow-auto px-[max(2vw,3rem)] pb-6 pt-[5.25rem] max-sm:px-3"
       aria-label="Hub"
     >
       <div className="hub-page-bg pointer-events-none fixed inset-0 -z-[1] overflow-hidden bg-[#0a0a0c]" aria-hidden="true" />

@@ -95,6 +95,8 @@ export function RsvpBar({ eventId }) {
               key={status}
               type="button"
               disabled={upsert.isPending}
+              aria-pressed={active}
+              aria-label={STATUS_LABELS[status]}
               className={`rounded-full border px-3 py-1.5 text-[0.78rem] transition disabled:opacity-50 ${
                 active
                   ? STATUS_CLASSES[status]

@@ -10,10 +10,11 @@ const HUB_TABS = [
 ];
 
 function activeTab(pathname) {
-  if (pathname.startsWith("/calendar")) return "calendar";
+  if (pathname.startsWith("/calendar") || pathname.startsWith("/events")) return "calendar";
   if (pathname.startsWith("/management")) return "management";
   if (pathname.startsWith("/strats")) return "strats";
-  return "home";
+  if (pathname.startsWith("/home") || pathname === "/") return "home";
+  return null;
 }
 
 export function HubChrome() {
@@ -23,7 +24,8 @@ export function HubChrome() {
   const current = activeTab(location.pathname);
   const [peekIndex, setPeekIndex] = useState(null);
   const peekTimerRef = useRef(null);
-  const hubIndex = peekIndex ?? HUB_TABS.findIndex((tab) => tab.id === current);
+  const matchedIndex = current ? HUB_TABS.findIndex((tab) => tab.id === current) : -1;
+  const hubIndex = peekIndex ?? matchedIndex;
 
   useEffect(
     () => () => {
@@ -56,7 +58,7 @@ export function HubChrome() {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-0 z-40">
       <Link
-        className="pointer-events-auto fixed left-6 top-[calc(1.5rem+1.25rem)] z-40 block -translate-y-1/2 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_both] hover:opacity-90"
+        className="pointer-events-auto fixed left-3 top-[calc(1.5rem+1.25rem)] z-40 block -translate-y-1/2 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_both] hover:opacity-90 sm:left-6"
         to="/home"
         aria-label="Tactika home"
       >
@@ -65,11 +67,11 @@ export function HubChrome() {
           alt=""
           width={40}
           height={40}
-          className="block h-10 w-10 object-contain"
+          className="block h-9 w-9 object-contain sm:h-10 sm:w-10"
         />
       </Link>
       <nav
-        className="hub-nav pointer-events-auto fixed left-1/2 top-6 z-40 min-w-[28rem] -translate-x-1/2 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_0.05s_both]"
+        className="hub-nav pointer-events-auto fixed left-1/2 top-6 z-40 w-[min(92vw,28rem)] max-w-[calc(100vw-5.5rem)] -translate-x-1/2 animate-[hub-chrome-enter_0.6s_cubic-bezier(0.22,1,0.36,1)_0.05s_both]"
         data-hub-index={hubIndex}
         aria-label="Hub navigation"
       >
@@ -81,7 +83,7 @@ export function HubChrome() {
             <button
               key={tab.id}
               type="button"
-              className="relative z-[1] cursor-pointer whitespace-nowrap rounded-full border-0 bg-transparent px-4 py-2 text-[0.72rem] font-light uppercase tracking-[0.14em] text-white/55 transition-colors hover:text-white/80 aria-selected:text-white"
+              className="relative z-[1] cursor-pointer whitespace-nowrap rounded-full border-0 bg-transparent px-1.5 py-2 text-[0.62rem] font-light uppercase tracking-[0.08em] text-white/55 transition-colors hover:text-white/80 aria-selected:text-white min-[400px]:px-2.5 min-[400px]:text-[0.68rem] min-[400px]:tracking-[0.1em] sm:px-4 sm:text-[0.72rem] sm:tracking-[0.14em]"
               role="tab"
               data-hub={tab.id}
               aria-selected={current === tab.id}

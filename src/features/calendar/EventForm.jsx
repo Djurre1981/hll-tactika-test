@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Button } from "../../shared/Button.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
+import { COMP_TEAMS } from "../../../functions/lib/comp-teams.js";
 import { EventLockBadge, EventLockIcon } from "../events/EventLockBadge.jsx";
 import { eventLockLabel } from "../events/event-lock.js";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
 import {
   endDateTimeFromStart,
+  findOverlappingEvents,
   isMatchEventType,
   localDateTimeValue,
 } from "./calendar-utils.js";
@@ -21,6 +23,11 @@ const RESULT_OPTIONS = [
   { value: "win", label: "Win" },
   { value: "loss", label: "Loss" },
 ];
+
+const TEAM_OPTIONS = COMP_TEAMS.map((team) => ({
+  value: team.id,
+  label: team.label,
+}));
 
 function TagToggle({ value, options, onChange, disabled = false }) {
   return (
@@ -47,6 +54,7 @@ function TagToggle({ value, options, onChange, disabled = false }) {
 function emptyMatchState() {
   return {
     date: "",
+    team: "sr",
     faction: "",
     mapId: "",
     startingPoint: "",
@@ -63,6 +71,7 @@ function emptyMatchState() {
 export function EventForm({
   initialEvent,
   selectedDay,
+  existingEvents = [],
   onSubmit,
   onDelete,
   onLock,
@@ -119,14 +128,30 @@ export function EventForm({
   function handleSubmit(event) {
     event.preventDefault();
     if (readOnly) return;
-    onSubmit({
+    const payload = {
       title: title.trim(),
       eventType,
       startsAt: new Date(startsAt).toISOString(),
       endsAt: endsAt ? new Date(endsAt).toISOString() : "",
       description: description.trim(),
       match: showMatchFields ? match : emptyMatchState(),
-    });
+    };
+    const overlaps = findOverlappingEvents(existingEvents, payload, initialEvent?.id || null);
+    if (overlaps.length) {
+      const names = overlaps
+        .slice(0, 3)
+        .map((item) => item.title || "Untitled event")
+        .join(", ");
+      const more = overlaps.length > 3 ? ` (+${overlaps.length - 3} more)` : "";
+      if (
+        !window.confirm(
+          `This time overlaps ${overlaps.length} existing event${overlaps.length === 1 ? "" : "s"}: ${names}${more}. Save anyway?`,
+        )
+      ) {
+        return;
+      }
+    }
+    onSubmit(payload);
   }
 
   const lockLabel = eventLockLabel(lockReason);
@@ -237,6 +262,18 @@ export function EventForm({
             <legend className="px-1 text-[0.72rem] uppercase tracking-[0.14em] text-white/45">
               Match details
             </legend>
+            <div className="block text-sm">
+              <span className="mb-1 block text-muted">Team</span>
+              <TagToggle
+                value={match.team || "sr"}
+                options={TEAM_OPTIONS}
+                disabled={inputDisabled}
+                onChange={(value) => {
+                  if (!value) return;
+                  patchMatch({ team: value });
+                }}
+              />
+            </div>
             <label className="block text-sm">
               <span className="mb-1 block text-muted">Opponent</span>
               <input

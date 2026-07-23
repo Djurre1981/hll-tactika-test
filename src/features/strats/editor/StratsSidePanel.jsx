@@ -91,6 +91,28 @@ export function StratsSidePanel({
   const fileInputRef = useRef(null);
   const pendingCustomSlideRef = useRef(null);
   const pickCancelFocusRef = useRef(null);
+  const titleDraftRef = useRef(titleDraft);
+  const stratTitleRef = useRef(strat?.title || "");
+  const onRenameStratRef = useRef(onRenameStrat);
+  titleDraftRef.current = titleDraft;
+  stratTitleRef.current = strat?.title || "";
+  onRenameStratRef.current = onRenameStrat;
+
+  const commitTitle = () => {
+    const next = titleDraftRef.current.trim();
+    if (next && next !== stratTitleRef.current) {
+      onRenameStratRef.current?.(next);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      const next = titleDraftRef.current.trim();
+      if (next && next !== stratTitleRef.current) {
+        onRenameStratRef.current?.(next);
+      }
+    };
+  }, [strat?.id]);
 
   const clearPickCancelListener = () => {
     if (!pickCancelFocusRef.current) return;
@@ -144,9 +166,11 @@ export function StratsSidePanel({
                 value={titleDraft}
                 disabled={!canEdit}
                 onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => {
-                  if (titleDraft.trim() && titleDraft !== strat?.title) {
-                    onRenameStrat?.(titleDraft.trim());
+                onBlur={commitTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
                   }
                 }}
                 className="w-full truncate bg-transparent text-[0.82rem] font-normal text-white outline-none placeholder:text-white/40"
