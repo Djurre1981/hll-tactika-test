@@ -10,13 +10,13 @@
 |------|---------|
 | **Auth** | Steam login, allowlist, roles (Comp Member → Owner) |
 | **Security** | Protected pin data, hybrid marker/detail split, audit hooks |
-| **Hub** | Dashboard with upcoming events, **My tasks** widget, tool launcher, online presence |
-| **Calendar** | Month view, event CRUD (scrim / comp / practice / other), match metadata (opponent, map, faction, result) |
+| **Hub** | Dashboard with upcoming events, **team KPI strip** (win rate, record, form), **My tasks** widget, tool launcher, online presence |
+| **Calendar** | Month view, event CRUD (scrim / comp / practice / other), match metadata (opponent, map, faction, result), **event locking** |
 | **Match Brief** | `/events/:id` — match details, linked tools, prep task checklist |
 | **Event hub** | `components` on events: stratIds, routePlanIds, whiteboardIds, rosterId; attach/detach on Brief |
 | **Prep tasks** | Per-event assignments; assignees complete on Brief; Hub “My tasks” sidebar |
 | **Team / roster** | Site access roster, comp rosters with drag-and-drop, multiple named rosters |
-| **Management** | Staff section, clan roster (separate from site access) |
+| **Management** | Staff section: Overview, Roster, Folders, **Match history**, **Analytics** (win/loss charts), clan roster |
 | **Media** | R2 uploads for videos/images; external links (YouTube, Medal, etc.) |
 | **Collab** | Yjs live editing on Strat slides & Micro Prep; peer presence |
 | **Maps** | All 20 HLL tactical maps, pan/zoom, grid & strongpoint overlays (Maps Let Loose data) |
@@ -35,6 +35,9 @@ Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues
 | T5 | **Attach/detach** linked tools on Brief | ✅ |
 | T9 | **Prep tasks** — assign, complete, Hub my-tasks | ✅ |
 | T8 | **Match history** — HLL Records + Management History | ✅ |
+| — | **Event lock** — auto/manual lock; propagates to linked tools | ✅ |
+| — | **Tool lock** — lock strats, routes, slideshows in-editor | ✅ |
+| T10 | **Team KPIs** — Hub strip + Management Analytics charts | ✅ |
 
 ### Match Brief UX
 
@@ -43,12 +46,13 @@ Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues
 - Editors attach/detach existing strats, route plans, whiteboards, rosters
 - Tool editors (Stratmaker, Routeplanner, Micro Prep) can link events from their side panels
 - **Prep tasks:** editors assign; assignees checkbox-complete; **Home → My tasks** for open items
+- **Locking:** events auto-lock when past or win/loss recorded; per-tool lock in Stratmaker / Routeplanner / Micro Prep
+- **Analytics:** Home **Season at a glance** KPIs; **Management → Analytics** (`/management#analytics`) — monthly W/L, win rate by map/opponent (Recharts)
 
 ### Still planned (RallyPoint / #23)
 
 | Step | Feature | Blocked by |
 |------|---------|------------|
-| T10 | Team KPIs + analytics charts | — (T2 ✅) |
 | T6/T7 | RSVP + Hub next-match hero | T0c (Discord member sync) for full flow |
 | T4 | Create-match wizard | T0e (Discord notifications) |
 | T0a–T0e | Discord bot, role map, roster sync, notifications | — |
@@ -77,7 +81,7 @@ Map-based tactical planning with multi-slide “decks.”
 - Strat catalog with folders, search, drag-and-drop organization
 - Metadata: title, team (jr/sr), type (friendly/tournament), notes, match info
 - Slides: per-map drawings, reorder, duplicate, thumbnails
-- StratSketch import, lock (view-only) mode
+- StratSketch import, **per-tool lock** (creator/admin/owner; view-only when locked)
 - D1 persistence, debounced autosave
 
 ### Drawing tools

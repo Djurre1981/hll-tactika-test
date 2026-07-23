@@ -449,7 +449,9 @@ Stop for PR. Human QA in Discord required. Plan T12b.
 - [x] Match Brief attach/detach UI (T5) — `3f53569`
 - [x] Prep tasks on Brief (T9) — `d7cb96b`, migration `0017` on remote
 - [x] Match history / HLL Records (T8)
-- [ ] Team KPIs + Analytics charts (T10)
+- [x] Event lock + linked-tool propagation (`0018_event_lock.sql`)
+- [x] Per-tool lock in Stratmaker / Routeplanner / Micro Prep (`0019_tool_lock.sql`)
+- [x] Team KPIs + Analytics charts (T10) — `7612e62`, fix `091d326` (`/management#analytics`)
 - [ ] Roster duplicate/template (T11)
 - [ ] Discord webhook + reminders on test (T12a)
 - [ ] Slash `/event create`, `/calendar`, two-way sync on **test guild** (T12b)

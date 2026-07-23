@@ -467,9 +467,9 @@ Migration: `migrations/0019_tool_lock.sql`. Tests: `tests/tool-lock.test.mjs`.
 
 ### Team KPIs (T10)
 
-Win/loss from calendar event `match.result` feeds a **KPI strip on the Hub home page** and **Management → Analytics** charts (by month, map, opponent). Client-side aggregation over the last 24 months — no new API. Charts use **Recharts**.
+Win/loss from calendar event `match.result` feeds a **KPI strip on the Hub home page** and **Management → Analytics** (`/management#analytics`) charts (by month, map, opponent). Client-side aggregation over the last 24 months — no new API. Charts use **Recharts** (`recharts` in lockfile).
 
-Tests: `tests/t10-team-kpis.test.mjs`. Helpers: `src/features/records/team-kpi-utils.js`.
+Tests: `tests/t10-team-kpis.test.mjs`. Helpers: `src/features/records/team-kpi-utils.js`. UI: `TeamKpiStrip.jsx`, `AnalyticsSection.jsx`.
 
 ### Events API (subset)
 

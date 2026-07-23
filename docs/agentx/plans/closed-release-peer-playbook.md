@@ -39,7 +39,6 @@
 | ⬜ | **T0e** | Notification messages | T0a, T0c |
 | ⬜ | **T6** | RSVP “I’m in / can’t” | T1, T0c |
 | ⬜ | **T7** | Hub next-match card | T3, T6 |
-| ⬜ | **T10** | Team win/loss stats | T2 |
 | ⬜ | **T11** | Roster templates | T0d (T6 helps) |
 | ⬜ | **T12a** | Discord posts + reminders | T2, T0e |
 | ⬜ | **T12b** | Discord slash commands + two-way calendar | T12a, T0a–T0c, T1–T3 |
