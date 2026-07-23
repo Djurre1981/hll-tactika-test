@@ -25,10 +25,6 @@ Open it anytime with the **?** next to your avatar (top right).
 - [Roles & permissions](Roles-and-Permissions)
 - [Troubleshooting](Troubleshooting)
 
-![Hub overview](media/hub-overview.png)
+![Hub overview](placeholder)
 
 *Hub: next match, KPIs, tool launcher, and presence — your home base before tools.*
-
-## Also on GitHub
-
-The same pages live on the [GitHub wiki](https://github.com/Djurre1981/hll-tactika-test/wiki). Editors keep `docs/wiki` in the repo in sync with that wiki (`npm run wiki:push` / `wiki:pull`).

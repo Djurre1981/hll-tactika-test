@@ -38,4 +38,4 @@ Use the **?** control immediately left of your avatar. If overlays are blocked b
 
 ## Still stuck
 
-Ping staff on Discord with: page URL, what you clicked, and your Steam name. Maintainers can also read the [GitHub wiki](https://github.com/Djurre1981/hll-tactika-test/wiki) mirror of this manual.
+Ping staff on Discord with: page URL, what you clicked, and your Steam name.

@@ -21,7 +21,7 @@ Hub → **Stratmaker** (strat catalog), then open or create a strat. Editor chro
 | Ping, eraser, colors | Stroke/fill options |
 | Clipboard | Copy/cut/paste, duplicate, undo/redo, nudge |
 
-![Stratmaker editor](media/stratmaker-editor.jpg)
+![Stratmaker editor](placeholder)
 
 *Stratmaker: map canvas, draw tools, and slide/deck chrome.*
 

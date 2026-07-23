@@ -1,13 +1,7 @@
-/** Bundled wiki pages + media from docs/wiki (synced with GitHub wiki). */
+/** Bundled wiki pages from docs/wiki (in-app help manual). */
 
 const mdModules = import.meta.glob("../../../docs/wiki/*.md", {
   query: "?raw",
-  import: "default",
-  eager: true,
-});
-
-const mediaModules = import.meta.glob("../../../docs/wiki/media/**/*", {
-  query: "?url",
   import: "default",
   eager: true,
 });
@@ -27,32 +21,8 @@ for (const [modPath, raw] of Object.entries(mdModules)) {
   wikiPages[id] = typeof raw === "string" ? raw : String(raw ?? "");
 }
 
-/** @type {Record<string, string>} */
-export const wikiMedia = {};
-for (const [modPath, url] of Object.entries(mediaModules)) {
-  const idx = modPath.lastIndexOf("/media/");
-  const rel =
-    idx >= 0
-      ? modPath.slice(idx + 1) // media/...
-      : `media/${modPath.split("/").pop()}`;
-  wikiMedia[rel.replace(/\\/g, "/")] = url;
-}
-
-export function resolveWikiMedia(href) {
-  if (!href) return href;
-  if (/^https?:\/\//i.test(href) || href.startsWith("data:")) return href;
-  const cleaned = href.replace(/^\.\//, "").replace(/^\/+/, "");
-  if (wikiMedia[cleaned]) return wikiMedia[cleaned];
-  if (wikiMedia[`media/${cleaned}`]) return wikiMedia[`media/${cleaned}`];
-  const bare = cleaned.split("/").pop();
-  for (const [key, url] of Object.entries(wikiMedia)) {
-    if (key.endsWith(`/${bare}`) || key === bare) return url;
-  }
-  return href;
-}
-
 /**
- * Parse GitHub-wiki `_Sidebar.md` into nav sections.
+ * Parse `_Sidebar.md` into nav sections for the in-app help overlay.
  * @param {string} md
  */
 export function parseWikiSidebar(md) {

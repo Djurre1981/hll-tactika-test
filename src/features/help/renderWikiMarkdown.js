@@ -1,5 +1,4 @@
 import { marked } from "marked";
-import { resolveWikiMedia } from "./wikiCatalog.js";
 
 marked.setOptions({
   gfm: true,
@@ -28,14 +27,13 @@ function wikiPageIdFromHref(href) {
 
 const renderer = new marked.Renderer();
 
-renderer.image = function image({ href, title, text }) {
-  const src = resolveWikiMedia(href);
-  const alt = escapeAttr(text || "");
+/** Screenshots are not shipped — render a dark placeholder that matches the glass UI. */
+renderer.image = function image({ title, text }) {
+  const label = text?.trim() || "Screenshot";
+  const alt = escapeAttr(label);
   const titleAttr = title ? ` title="${escapeAttr(title)}"` : "";
-  const caption = text
-    ? `<figcaption class="wiki-figcaption">${escapeAttr(text)}</figcaption>`
-    : "";
-  return `<figure class="wiki-figure"><img src="${escapeAttr(src)}" alt="${alt}"${titleAttr} loading="lazy" decoding="async" />${caption}</figure>`;
+  const caption = `<figcaption class="wiki-figcaption">${escapeAttr(label)}</figcaption>`;
+  return `<figure class="wiki-figure"${titleAttr}><div class="wiki-media-placeholder" role="img" aria-label="${alt}"><span class="wiki-media-placeholder-mark">Screenshot placeholder</span></div>${caption}</figure>`;
 };
 
 renderer.link = function link({ href, title, text }) {

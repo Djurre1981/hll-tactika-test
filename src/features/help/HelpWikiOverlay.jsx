@@ -80,14 +80,6 @@ export function HelpWikiOverlay() {
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <a
-              href="https://github.com/Djurre1981/hll-tactika-test/wiki"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden rounded-full border border-white/12 px-3 py-1.5 text-[0.72rem] font-light uppercase tracking-[0.08em] text-white/70 transition hover:border-white/25 hover:text-white sm:inline-flex"
-            >
-              GitHub wiki
-            </a>
             <button
               type="button"
               onClick={closeWiki}
