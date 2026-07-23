@@ -452,6 +452,7 @@ Stop for PR. Human QA in Discord required. Plan T12b.
 - [x] Event lock + linked-tool propagation (`0018_event_lock.sql`)
 - [x] Per-tool lock in Stratmaker / Routeplanner / Micro Prep (`0019_tool_lock.sql`)
 - [x] Team KPIs + Analytics charts (T10) — `7612e62`, fix `091d326` (`/management#analytics`)
+- [x] HeLO Circle history import + `participantSteamIds` / My matches — `3c6f1f8`, remote D1 apply `e0572bc`; ops [`docs/helo-import.md`](../../helo-import.md)
 - [ ] Roster duplicate/template (T11)
 - [ ] Discord webhook + reminders on test (T12a)
 - [ ] Slash `/event create`, `/calendar`, two-way sync on **test guild** (T12b)

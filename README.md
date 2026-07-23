@@ -471,6 +471,20 @@ Win/loss from calendar event `match.result` feeds a **KPI strip on the Hub home 
 
 Tests: `tests/t10-team-kpis.test.mjs`. Helpers: `src/features/records/team-kpi-utils.js`. UI: `TeamKpiStrip.jsx`, `AnalyticsSection.jsx`.
 
+### HeLO history import & My matches
+
+Circle competitive/scrim history is imported from the public [HeLO](https://helo-system.de/) `/v3` API into calendar events (`match.heloMatchId`, result, map, faction). Circle-side Steam64s from HeLO `player_stats` are stored as `match.participantSteamIds` so logged-in users see:
+
+| Surface | Behavior |
+|---------|----------|
+| **Hub → My matches** | Recent games you played |
+| **Records → My matches** | Filter history to your Steam ID; **You played** badge |
+| **Match Brief** | **You played** when your Steam ID is on Circle’s side |
+
+Optional CRCON links (`match.crconUrl`) point at Circle stats hosts. Ops docs: [`docs/helo-import.md`](docs/helo-import.md). Scripts: `npm run import:helo`, `npm run backfill:helo-participants:local`.
+
+**Do not** auto-grant Tactika access from Google Sheets rosters (ECL / Comp signup) — reference Steam IDs only.
+
 ### Events API (subset)
 
 | Method | Path | Description |
@@ -497,6 +511,7 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | T5 Attach/detach tools on Brief | ✅ |
 | T9 Prep tasks | ✅ |
 | **T8** Match history | ✅ |
+| HeLO import + My matches | ✅ |
 | **Event lock** (calendar + linked tools) | ✅ |
 | **Tool lock** (strat / route / slideshow in-editor) | ✅ |
 | **T10** Team KPIs / charts | ✅ |
@@ -517,6 +532,8 @@ There are a lot of ideas (Planning section for rostering etc.?, More Guides? Tan
 
 - [User & editor guide](docs/user-guide.md) — for members and pin contributors
 - [Project overview](docs/project-overview.md)
+- [Feature summary](docs/tactika-features-summary.md) — shipped vs planned
+- [HeLO calendar import](docs/helo-import.md) — Circle history → events / My matches
 - [Folder structure](docs/folder-structure.md)
 - [Circle roles](docs/roles.md)
 - [API reference](docs/api.md)

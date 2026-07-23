@@ -2,6 +2,8 @@
 
 Import The Circle’s competitive/scrim history from the public HeLO `/v3` API into Tactika calendar events.
 
+**Status (Jul 2026):** Shipped on v2 (`hll-tactika-test`). Remote D1 has **101** Circle series matches with Circle-side `participantSteamIds` backfilled. UI: **Records → My matches**, Hub **My matches**, Match Brief **You played**.
+
 ## Quick start
 
 ```bash
@@ -23,6 +25,7 @@ node scripts/import-helo-history.mjs --apply
 # Or write directly into local / remote D1 (no session cookie)
 node scripts/import-helo-history.mjs --only Circle-PF-2026-07-12 --apply --local-d1
 node scripts/import-helo-history.mjs --apply --local-d1
+node scripts/import-helo-history.mjs --apply --remote-d1
 ```
 
 Re-runs are safe: events with the same `match.heloMatchId` are skipped.
@@ -34,6 +37,8 @@ See [`scripts/lib/helo-mapper.mjs`](../scripts/lib/helo-mapper.mjs). Events stor
 - `eventType`: `comp` / `scrim`
 - `match.opponent`, `mapId`, `faction`, `result` (`win`/`loss`)
 - `match.heloMatchId`, `match.heloUrl`
+- `match.participantSteamIds` (Circle-side Steam64 from HeLO `player_stats`)
+- Optional: `match.crconGameId`, `match.crconUrl` (allowlisted Circle stats hosts)
 - Score + tournament text in `description`
 
 ## Player participation (Steam ID → My matches)
@@ -43,6 +48,7 @@ HeLO `player_stats` (and CRCON scoreboards) use **Steam ID64**. Tactika stores C
 ```bash
 npm run backfill:helo-participants          # dry-run
 npm run backfill:helo-participants:local    # write local D1
+node scripts/backfill-helo-participants.mjs --apply --remote-d1
 ```
 
 **Roster spreadsheets** are useful Steam ID references only. Do **not** auto-grant Tactika site access from them — many entries are mercs, leavers, Epic/Game Pass IDs, nicknames, or incomplete Steam64s:
@@ -88,3 +94,5 @@ Do **not** scrape HLLRecords `/matches/:id` for mass import; use CRCON game ids 
 
 - `--local-d1` may auto-repair a missing `event_type` column on older local DBs (schema drift from early migrations).
 - Prefer `--local-d1` / `--remote-d1` for bulk backfill; use HTTP `--apply` when you already have an editor session cookie.
+- On Windows, remote D1 reads use wrangler’s JS entrypoint + `--command=…` (remote `--file` SELECTs often return a summary instead of rows).
+- Related: feature summary [`tactika-features-summary.md`](./tactika-features-summary.md) · tracker [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33)

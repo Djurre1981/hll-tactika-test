@@ -31,6 +31,7 @@
 | ✅ Done | **Event lock** | Lock events + linked strats/routes/slideshows | T1, T3, T5 |
 | ✅ Done | **Tool lock** | Lock/unlock strats, routes, slideshows in-editor | T1, T3, T5 |
 | ✅ Done | **T10** | Team win/loss stats | T2 |
+| ✅ Done | **HeLO import** | Circle history → calendar + My matches | T2, T8 — `3c6f1f8` |
 | ⬜ | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
 | ⬜ | **T0b** | Map Discord roles → Tactika roles | T0a |
@@ -78,7 +79,8 @@ Inspired by [RallyPoint](https://www.rallypoint.fyi/) ideas (#23). The Stratmake
 | Create-match wizard | Starts from Calendar / Hub → walks you through opponent, map, side, strat |
 | RSVP + countdown | Match Brief + **Home** dashboard card |
 | Prep tasks | Match Brief + “my tasks” on Home |
-| History / KPIs | Home strip + Management / Records |
+| History / KPIs | Home strip + Management / Records + **My matches** |
+| HeLO / CRCON links | Calendar event form + Match Brief |
 | Roster sync | **Management → Roster** |
 | Discord bot | Test Discord server first; Circle guild only after sign-off |
 
