@@ -8,6 +8,7 @@ import {
 } from "../calendar/calendar-utils.js";
 import { useEventQuery } from "../calendar/hooks/useEventsQuery.js";
 import { getStartingPointLabel } from "../../shared/mapMidpoints.js";
+import { EventScheduleIndicators } from "../calendar/EventScheduleIndicators.jsx";
 import { EventComponentsPanel } from "./EventComponentsPanel.jsx";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
 
@@ -114,6 +115,7 @@ export function MatchBriefPage() {
               {event.title}
             </h1>
             <p className="m-0 mt-2 text-[0.88rem] text-white/55">{formatEventSchedule(event)}</p>
+            <EventScheduleIndicators components={event.components} className="mt-2.5" />
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.12em] text-emerald-200">
             {eventTypeLabel(event.eventType)}

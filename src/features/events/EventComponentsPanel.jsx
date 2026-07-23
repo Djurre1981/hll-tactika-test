@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   COMPONENT_KINDS,
+  SCHEDULE_COMPONENT_KINDS,
   componentStatusLabel,
   groupSlotsByKind,
   hasLinkedComponents,
@@ -46,13 +47,26 @@ function ComponentRow({ item }) {
   );
 }
 
+function scheduleKindDef(kind) {
+  return SCHEDULE_COMPONENT_KINDS.find((def) => def.kind === kind);
+}
+
 function ComponentGroup({ kind, items }) {
   if (!items.length) return null;
   const def = COMPONENT_KINDS[kind];
+  const scheduleDef = scheduleKindDef(kind);
   return (
     <section>
-      <h3 className="m-0 mb-2 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/45">
-        {items.length === 1 ? def.label : def.plural}
+      <h3 className="m-0 mb-2 flex items-center gap-2 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/45">
+        {scheduleDef ? (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.62rem] normal-case tracking-normal ${scheduleDef.chipClass}`}
+          >
+            <i className={`fa-solid ${scheduleDef.icon}`} aria-hidden="true" />
+            {items.length}
+          </span>
+        ) : null}
+        <span>{items.length === 1 ? def.label : def.plural}</span>
       </h3>
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {items.map((item) => (
@@ -72,8 +86,8 @@ export function EventComponentsPanel({ components }) {
       <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-5 py-8 text-center">
         <p className="m-0 text-[0.95rem] text-white/70">Nothing linked yet</p>
         <p className="m-0 mt-2 text-[0.82rem] leading-relaxed text-white/40">
-          Strats, route plans, whiteboards, and roster links will appear here once attached.
-          Attach tools arrive in the next step (T5).
+          Link strats, route plans, or whiteboards from their editors, or attach them here once
+          that flow is available.
         </p>
       </div>
     );

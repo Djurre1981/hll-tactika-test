@@ -84,7 +84,11 @@ export function DayDetails({
                           {event.description}
                         </span>
                       ) : null}
-                      <EventScheduleIndicators components={event.components} />
+                      <EventScheduleIndicators
+                        components={event.components}
+                        className="mt-1"
+                        compact
+                      />
                     </span>
                   </Link>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">
