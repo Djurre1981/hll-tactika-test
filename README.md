@@ -465,6 +465,12 @@ Tool lock stacks with event lock — either lock blocks content edits (API **423
 
 Migration: `migrations/0019_tool_lock.sql`. Tests: `tests/tool-lock.test.mjs`.
 
+### Team KPIs (T10)
+
+Win/loss from calendar event `match.result` feeds a **KPI strip on the Hub home page** and **Management → Analytics** charts (by month, map, opponent). Client-side aggregation over the last 24 months — no new API. Charts use **Recharts**.
+
+Tests: `tests/t10-team-kpis.test.mjs`. Helpers: `src/features/records/team-kpi-utils.js`.
+
 ### Events API (subset)
 
 | Method | Path | Description |
@@ -493,7 +499,7 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | **T8** Match history | ✅ |
 | **Event lock** (calendar + linked tools) | ✅ |
 | **Tool lock** (strat / route / slideshow in-editor) | ✅ |
-| **T10** Team KPIs / charts | ⬜ next (unblocked) |
+| **T10** Team KPIs / charts | ✅ |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |
 | T6/T7 RSVP + hub next-match card | ⬜ |

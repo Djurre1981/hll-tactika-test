@@ -3,7 +3,7 @@ const NAV_ITEMS = [
   { id: "roster", label: "Roster", icon: "people" },
   { id: "folders", label: "Folders", icon: "folders" },
   { id: "history", label: "History", icon: "history" },
-  { id: "analytics", label: "Analytics", icon: "chart", placeholder: true },
+  { id: "analytics", label: "Analytics", icon: "chart" },
   { id: "schedule", label: "Schedule", icon: "timer", placeholder: true },
   { id: "settings", label: "Settings", icon: "settings", placeholder: true },
 ];

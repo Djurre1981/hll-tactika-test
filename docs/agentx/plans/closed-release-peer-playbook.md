@@ -30,7 +30,7 @@
 | ✅ Done | **T8** | Match history / records | T2 |
 | ✅ Done | **Event lock** | Lock events + linked strats/routes/slideshows | T1, T3, T5 |
 | ✅ Done | **Tool lock** | Lock/unlock strats, routes, slideshows in-editor | T1, T3, T5 |
-| ⬜ **Next (product)** | **T10** | Team win/loss stats | T2 |
+| ✅ Done | **T10** | Team win/loss stats | T2 |
 | ⬜ | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
 | ⬜ | **T0b** | Map Discord roles → Tactika roles | T0a |
@@ -45,7 +45,7 @@
 | ⬜ | **T12b** | Discord slash commands + two-way calendar | T12a, T0a–T0c, T1–T3 |
 | ⬜ | **Gate C** | Promote bot to Circle production Discord | All of Gate A + B on **test** server |
 
-**Suggested next:** **T10** (KPIs on Hub + Analytics) *or* **T0a** (Discord path). **T4** blocked on T0e.
+**Suggested next:** **T0a** (Discord path) or polish. **T4** blocked on T0e.
 
 ---
 
@@ -613,7 +613,7 @@ Migration: `0019_tool_lock.sql`.
 
 ---
 
-### T10 — Team KPIs / charts
+### T10 — Team KPIs / charts ✅ DONE
 
 **In plain English:**  
 Simple win% / form on Home and charts in Management Analytics.
@@ -622,26 +622,13 @@ Simple win% / form on Home and charts in Management Analytics.
 
 **Depends on:** T2.
 
-**One-go prompt:**
-
-```
-You are implementing Agentx task T10 (needs T2). Peer playbook: docs/agentx/plans/closed-release-peer-playbook.md
-
-GOAL: Aggregate win/loss; KPI strip on Hub; charts on Management Analytics. Call out lockfile if new chart lib.
-
-WRITE ONLY: aggregation helper, HomePage KPI, AnalyticsSection.jsx.
-
-SELF-CHECK:
-- [ ] Empty data safe
-- [ ] npx vite build
-- [ ] Call out lockfile if new dep
-Stop for PR. Plan T10.
-```
-
 **Verify:**
-- [ ] Empty season → no crash
-- [ ] With results → KPIs/charts sensible
-- [ ] `npx vite build` passes
+- [x] Empty season → no crash
+- [x] With results → KPIs/charts sensible
+- [x] `npm test` (t10-team-kpis)
+- [x] `npx vite build` passes
+
+Charts: **Recharts** (`recharts` in lockfile). Aggregation: `src/features/records/team-kpi-utils.js`.
 
 ---
 

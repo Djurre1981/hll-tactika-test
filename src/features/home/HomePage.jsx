@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 import { MyPrepTasksWidget } from "./MyPrepTasksWidget.jsx";
+import { TeamKpiStrip } from "./TeamKpiStrip.jsx";
 import { useHub } from "./HubContext.jsx";
 
 function formatEventMeta(event) {
@@ -112,19 +113,18 @@ export function HomePage() {
 
       <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
         <section
-          className="glass-surface flex min-h-[220px] flex-col justify-end gap-2 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
+          className="glass-surface flex min-h-[220px] flex-col gap-4 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
           aria-labelledby="dashboard-hero-title"
         >
-          <p className="m-0 text-[0.68rem] font-light uppercase tracking-[0.18em] text-white/40">
-            Overview
-          </p>
-          <h2 className="m-0 text-xl font-medium tracking-wide text-white" id="dashboard-hero-title">
-            Circle operations
-          </h2>
-          <p className="m-0 max-w-xl text-[0.88rem] font-light leading-relaxed text-white/60">
-            Jump into the climbing guide for pin intel, or open Stratmaker to plan the next match.
-            More Circle tools will land here as they come online.
-          </p>
+          <div>
+            <p className="m-0 text-[0.68rem] font-light uppercase tracking-[0.18em] text-white/40">
+              Team performance
+            </p>
+            <h2 className="m-0 mt-1.5 text-xl font-medium tracking-wide text-white" id="dashboard-hero-title">
+              Season at a glance
+            </h2>
+          </div>
+          <TeamKpiStrip />
         </section>
 
         <aside
