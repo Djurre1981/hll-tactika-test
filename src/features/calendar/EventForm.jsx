@@ -116,7 +116,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
         <label className="block text-sm">
           <span className="mb-1 block text-muted">Type</span>
           <select
-            className="glass-input w-full"
+            className="glass-select"
             value={eventType}
             onChange={(event) => setEventType(event.target.value)}
           >
@@ -165,7 +165,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Map</span>
             <select
-              className="glass-input w-full"
+              className="glass-select"
               value={match.mapId || ""}
               onChange={(event) => patchMatch({ mapId: event.target.value })}
             >
@@ -188,7 +188,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Starting strongpoint (optional)</span>
             <select
-              className="glass-input w-full"
+              className="glass-select"
               value={match.startingPoint || ""}
               disabled={!match.mapId}
               onChange={(event) => patchMatch({ startingPoint: event.target.value })}

@@ -60,19 +60,36 @@ body {
 }
 
 @layer components {
-  /* Native select list — dark fill for readable map/tool picks on glass panels */
+  /* Native select — dark closed field + readable dropdown list (calendar/tools) */
   .glass-select {
+    @apply w-full appearance-none rounded-2xl border border-white/[0.14] bg-[rgba(12,12,14,0.94)] px-3 py-2.5 pr-9 text-[0.875rem] font-normal leading-snug text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] outline-none transition;
     color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='rgba(255,255,255,0.72)' d='M1.5 1.5 6 6l4.5-4.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+
+  .glass-select:hover:not(:disabled) {
+    @apply border-white/20 bg-[rgba(10,10,12,0.97)];
+  }
+
+  .glass-select:focus {
+    @apply border-accent/55 bg-[rgba(8,8,10,0.98)] ring-2 ring-accent/25;
+  }
+
+  .glass-select:disabled {
+    @apply cursor-not-allowed opacity-45;
   }
 
   .glass-select option {
-    background-color: rgb(22, 22, 26);
-    color: rgba(255, 255, 255, 0.92);
+    background-color: rgb(14, 14, 16);
+    color: rgba(255, 255, 255, 0.96);
+    font-weight: 400;
   }
 
   .glass-select option:checked,
   .glass-select option:hover {
-    background-color: rgb(38, 38, 44);
+    background-color: rgb(36, 36, 42);
     color: #fff;
   }
 
