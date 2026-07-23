@@ -55,9 +55,13 @@ describe("management overview utils", () => {
   it("filters events by period and reverses rank filter", () => {
     const now = new Date("2026-07-01T00:00:00.000Z");
     const windowed = filterEventsByPeriod(events, "30d", now);
-    assert.equal(windowed.length, 0);
-    const year = filterEventsByPeriod(events, "year", now);
-    assert.equal(year.length, 2);
+    assert.equal(windowed.length, 2);
+    const oldOnly = filterEventsByPeriod(
+      [...events, { id: "old", startsAt: "2024-01-01T00:00:00.000Z" }],
+      "year",
+      now
+    );
+    assert.equal(oldOnly.length, 2);
     const ranked = applyRankFilter(
       [
         { steamId: "a", gamesPlayed: 10, winRate: 80 },
