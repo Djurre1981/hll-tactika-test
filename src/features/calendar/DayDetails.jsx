@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
+import { EventScheduleIndicators } from "./EventScheduleIndicators.jsx";
 
 const TYPE_LABELS = {
   scrim: "Scrim",
@@ -83,6 +84,7 @@ export function DayDetails({
                           {event.description}
                         </span>
                       ) : null}
+                      <EventScheduleIndicators components={event.components} />
                     </span>
                   </Link>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">

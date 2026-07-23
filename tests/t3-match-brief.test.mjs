@@ -10,6 +10,7 @@ import {
   formatEventSchedule,
   groupSlotsByKind,
   hasLinkedComponents,
+  eventScheduleComponentBadges,
   listEventComponentSlots,
   resolveComponentStatus,
 } from "../src/features/events/event-brief-utils.js";
@@ -41,6 +42,23 @@ describe("T3 — hasLinkedComponents", () => {
   it("detects when any link exists", () => {
     assert.equal(hasLinkedComponents(emptyEventComponents()), false);
     assert.equal(hasLinkedComponents({ ...emptyEventComponents(), stratIds: ["s1"] }), true);
+  });
+});
+
+describe("T3 — eventScheduleComponentBadges", () => {
+  it("returns badges for strats, routes, and whiteboards with counts", () => {
+    const badges = eventScheduleComponentBadges({
+      stratIds: ["s1", "s2"],
+      routePlanIds: ["r1"],
+      whiteboardIds: [],
+      rosterId: "roster-1",
+    });
+
+    assert.equal(badges.length, 2);
+    assert.equal(badges[0].kind, "strat");
+    assert.equal(badges[0].count, 2);
+    assert.equal(badges[1].kind, "routePlan");
+    assert.equal(badges[1].count, 1);
   });
 });
 

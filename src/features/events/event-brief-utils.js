@@ -87,6 +87,54 @@ export function hasLinkedComponents(components) {
   return listEventComponentSlots(components).length > 0;
 }
 
+/** Schedule sidebar: linked tool kinds with counts (strats, routes, whiteboards only). */
+export const SCHEDULE_COMPONENT_KINDS = [
+  {
+    kind: "strat",
+    idsKey: "stratIds",
+    icon: "fa-chess",
+    label: "Strat",
+    plural: "Strats",
+    chipClass: "border-accent/25 bg-accent/10 text-accent",
+  },
+  {
+    kind: "routePlan",
+    idsKey: "routePlanIds",
+    icon: "fa-route",
+    label: "Route plan",
+    plural: "Route plans",
+    chipClass: "border-sky-400/25 bg-sky-400/10 text-sky-200",
+  },
+  {
+    kind: "whiteboard",
+    idsKey: "whiteboardIds",
+    icon: "fa-chalkboard",
+    label: "Whiteboard",
+    plural: "Whiteboards",
+    chipClass: "border-violet-400/25 bg-violet-400/10 text-violet-200",
+  },
+];
+
+export function eventScheduleComponentBadges(components) {
+  const normalized = normalizeEventComponents(components);
+
+  return SCHEDULE_COMPONENT_KINDS.flatMap((def) => {
+    const count = normalized[def.idsKey]?.length || 0;
+    if (!count) return [];
+
+    const noun = count === 1 ? def.label.toLowerCase() : def.plural.toLowerCase();
+    return [
+      {
+        kind: def.kind,
+        count,
+        icon: def.icon,
+        chipClass: def.chipClass,
+        title: `${count} ${noun} linked`,
+      },
+    ];
+  });
+}
+
 export function groupSlotsByKind(slots) {
   const groups = {
     strat: [],
