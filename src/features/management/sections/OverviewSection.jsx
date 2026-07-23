@@ -20,14 +20,15 @@ import {
   mergeCombatIntoFormBoard,
   readinessClass,
   readinessLabel,
+  splitFormBoard,
 } from "../overview-utils.js";
 
 function Panel({ title, subtitle, children, className = "" }) {
   return (
-    <div className={`glass-panel flex min-h-[10rem] flex-col p-5 ${className}`}>
+    <div className={`glass-panel flex flex-col p-5 ${className}`}>
       <h3 className="m-0 text-[1.05rem] font-medium tracking-wide text-white">{title}</h3>
       {subtitle ? <p className="mt-1.5 text-[0.82rem] text-white/45">{subtitle}</p> : null}
-      <div className="mt-4 min-h-0 flex-1">{children}</div>
+      <div className="mt-4">{children}</div>
     </div>
   );
 }
@@ -202,97 +203,151 @@ function OrgaToolsCard({ nextEvent }) {
   );
 }
 
+function PlayerListRows({ rows, emptyLabel, valueFn }) {
+  if (!rows?.length) {
+    return <p className="m-0 text-[0.78rem] text-white/40">{emptyLabel}</p>;
+  }
+  return (
+    <ul className="m-0 flex list-none flex-col gap-1 p-0">
+      {rows.map((row) => (
+        <li key={row.steamId} className="flex items-center justify-between gap-2 text-[0.78rem]">
+          <span className="truncate text-white/85">{row.displayName}</span>
+          <span className="shrink-0 tabular-nums text-white/45">{valueFn(row)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function AttendancePulseCard({ nextEvent, rsvpData, participation }) {
   const counts = rsvpData?.counts;
   const hasRsvps = counts && counts.total > 0;
+  const top = participation?.top?.slice(0, 5) || [];
+  const bottom = participation?.bottom?.slice(0, 5) || [];
 
-  if (hasRsvps && nextEvent) {
-    return (
-      <div className="flex h-full flex-col">
-        <p className="m-0 text-[0.72rem] text-white/45">
-          Next:{" "}
-          <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
-            {nextEvent.title}
-          </Link>
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            ["In", counts.confirmed, "text-emerald-200"],
-            ["Maybe", counts.tentative, "text-amber-100"],
-            ["Out", counts.declined, "text-red-200"],
-            ["N/A", counts.unavailable, "text-white/55"],
-          ].map(([label, value, color]) => (
-            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-2">
-              <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">{label}</p>
-              <p className={`m-0 mt-1 text-[1.15rem] font-medium ${color}`}>{value}</p>
-            </div>
-          ))}
-        </div>
-        <p className="m-0 mt-auto pt-3 text-[0.7rem] text-white/35">
-          Live RSVP · {counts.total} response{counts.total === 1 ? "" : "s"}
-        </p>
-      </div>
-    );
-  }
-
-  const top = participation?.top?.slice(0, 3) || [];
   return (
-    <div className="flex h-full flex-col">
-      <p className="m-0 text-[0.72rem] text-white/45">
-        Played in last {participation?.poolSize || 0} comps (not RSVP).{" "}
-        {nextEvent ? (
-          <>
-            Set attendance on{" "}
+    <div className="flex flex-col gap-3">
+      {hasRsvps && nextEvent ? (
+        <div>
+          <p className="m-0 text-[0.68rem] text-white/45">
+            Next:{" "}
             <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
-              next brief
+              {nextEvent.title}
             </Link>
-            .
-          </>
-        ) : null}
-      </p>
-      {top.length ? (
-        <ul className="m-0 mt-3 flex list-none flex-col gap-1.5 p-0">
-          {top.map((row) => (
-            <li key={row.steamId} className="flex items-center justify-between gap-2 text-[0.8rem]">
-              <span className="truncate text-white/85">{row.displayName}</span>
-              <span className="shrink-0 text-white/45">
-                {row.gamesPlayed} · {row.participationRate}%
-              </span>
-            </li>
-          ))}
-        </ul>
+          </p>
+          <div className="mt-2 grid grid-cols-4 gap-1.5">
+            {[
+              ["In", counts.confirmed, "text-emerald-200"],
+              ["Maybe", counts.tentative, "text-amber-100"],
+              ["Out", counts.declined, "text-red-200"],
+              ["N/A", counts.unavailable, "text-white/55"],
+            ].map(([label, value, color]) => (
+              <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
+                <p className="m-0 text-[0.58rem] uppercase tracking-[0.1em] text-white/40">{label}</p>
+                <p className={`m-0 mt-0.5 text-[1rem] font-medium tabular-nums ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="m-0 mt-1.5 text-[0.65rem] text-white/35">
+            Live RSVP · {counts.total} response{counts.total === 1 ? "" : "s"}
+          </p>
+        </div>
       ) : (
-        <p className="m-0 mt-3 text-[0.8rem] text-white/40">No participation data yet.</p>
+        <p className="m-0 text-[0.7rem] text-white/45">
+          {nextEvent ? (
+            <>
+              No RSVPs yet — set attendance on{" "}
+              <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
+                next brief
+              </Link>
+              . Showing who played recent comps:
+            </>
+          ) : (
+            <>Showing who played recent comps (last {participation?.poolSize || 0}):</>
+          )}
+        </p>
       )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+            Regulars
+          </p>
+          <PlayerListRows
+            rows={top}
+            emptyLabel="No participation data yet."
+            valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
+          />
+        </div>
+        <div>
+          <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+            Rarely seen
+          </p>
+          <PlayerListRows
+            rows={bottom.filter((row) => !top.some((t) => t.steamId === row.steamId))}
+            emptyLabel="Pool too small to split."
+            valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
-function PlayerFormBoard({ rows, onSelect }) {
-  const list = (rows || []).slice(0, 5);
-  if (!list.length) {
-    return <p className="m-0 text-[0.8rem] text-white/40">No player form yet — need roster Steam IDs on matches.</p>;
+function PlayerFormBoard({ hotRows, coldRows, onSelect }) {
+  const hot = hotRows || [];
+  const cold = coldRows || [];
+
+  if (!hot.length && !cold.length) {
+    return (
+      <p className="m-0 text-[0.8rem] text-white/40">
+        No player form yet — need roster Steam IDs on matches.
+      </p>
+    );
+  }
+
+  function Row({ row }) {
+    return (
+      <li key={row.steamId}>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-transparent px-1 py-1 text-left text-[0.78rem] transition hover:border-white/10 hover:bg-white/[0.04]"
+          onClick={() => onSelect?.(row)}
+        >
+          <span className="min-w-0 truncate text-white/85">{row.displayName}</span>
+          <span className="shrink-0 tabular-nums text-white/45">
+            {row.winRate != null ? `${row.winRate}%` : "—"}
+            {row.kd != null ? ` · ${row.kd} K/D` : ""}
+            {` · ${row.gamesPlayed}g`}
+          </span>
+        </button>
+      </li>
+    );
   }
 
   return (
-    <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-      {list.map((row) => (
-        <li key={row.steamId}>
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-2 rounded-xl border border-transparent px-1.5 py-1 text-left text-[0.8rem] transition hover:border-white/10 hover:bg-white/[0.04]"
-            onClick={() => onSelect?.(row)}
-          >
-            <span className="truncate text-white/85">{row.displayName}</span>
-            <span className="shrink-0 text-white/45">
-              {row.winRate != null ? `${row.winRate}%` : "—"}
-              {row.kd != null ? ` · ${row.kd} K/D` : ""}
-              {row.kills != null ? ` · ${row.kills}K` : ` · ${row.gamesPlayed}g`}
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div>
+        <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-emerald-200/70">
+          In form
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+          {hot.length ? hot.map((row) => <Row key={row.steamId} row={row} />) : (
+            <li className="text-[0.75rem] text-white/40">Need more recorded results.</li>
+          )}
+        </ul>
+      </div>
+      <div>
+        <p className="m-0 mb-1.5 text-[0.62rem] uppercase tracking-[0.12em] text-red-200/70">
+          Cold
+        </p>
+        <ul className="m-0 flex list-none flex-col gap-0.5 p-0">
+          {cold.length ? cold.map((row) => <Row key={row.steamId} row={row} />) : (
+            <li className="text-[0.75rem] text-white/40">Need more recorded results.</li>
+          )}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -468,9 +523,11 @@ export function OverviewSection() {
   );
 
   const formRows = useMemo(
-    () => mergeCombatIntoFormBoard(participation.top, combatQuery.data || {}),
-    [participation.top, combatQuery.data]
+    () => mergeCombatIntoFormBoard(participation.rows, combatQuery.data || {}),
+    [participation.rows, combatQuery.data]
   );
+
+  const formBoard = useMemo(() => splitFormBoard(formRows), [formRows]);
 
   const seasonPulse = useMemo(
     () => buildSeasonPulse(historyQuery.data || [], events),
@@ -486,8 +543,8 @@ export function OverviewSection() {
     (defaultRosterId && membersQuery.isLoading);
 
   return (
-    <section className="glass-scroll flex h-full min-h-0 flex-col gap-4 overflow-y-auto pr-1">
-      <header>
+    <section className="glass-scroll flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain pr-1">
+      <header className="shrink-0 pb-4">
         <h2 className="m-0 text-[1.65rem] font-medium tracking-wide text-white">Overview</h2>
         <p className="mt-1.5 text-[0.9rem] text-white/50">
           Management hub — upcoming events, tasks, and org tools.
@@ -495,72 +552,82 @@ export function OverviewSection() {
       </header>
 
       {loading ? (
-        <div className="flex items-center gap-3 text-white/55">
+        <div className="mb-4 flex shrink-0 items-center gap-3 text-white/55">
           <Spinner />
           <span className="text-[0.85rem]">Loading management pulse…</span>
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Panel
-          title="Upcoming events"
-          subtitle="Tournament matches and clan events — readiness from tools, tasks, and RSVPs."
-          className="min-h-[16rem]"
-        >
-          <UpcomingEventsCard
-            events={events}
-            openTasksByEvent={openTasksByEvent}
-            rsvpCountsByEvent={rsvpCountsByEvent}
-          />
-        </Panel>
-
-        <div className="flex flex-col gap-4">
-          <Panel title="To-do list" subtitle="Staff prep tasks across upcoming events.">
-            <StaffTodoCard tasks={openTasks} />
-          </Panel>
-          <Panel title="Orga tools" subtitle="Quick links and live ops for the next match.">
-            <OrgaToolsCard nextEvent={nextEvent} />
-          </Panel>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-          <h3 className="m-0 text-[0.88rem] font-medium text-white">Attendance pulse</h3>
-          <div className="mt-2 min-h-0 flex-1">
-            <AttendancePulseCard
-              nextEvent={nextEvent}
-              rsvpData={nextRsvpQuery.data}
-              participation={participation}
+      <div className="flex min-h-0 flex-col gap-4 pb-2">
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <Panel
+            title="Upcoming events"
+            subtitle="Tournament matches and clan events — readiness from tools, tasks, and RSVPs."
+          >
+            <UpcomingEventsCard
+              events={events}
+              openTasksByEvent={openTasksByEvent}
+              rsvpCountsByEvent={rsvpCountsByEvent}
             />
+          </Panel>
+
+          <div className="flex flex-col gap-4">
+            <Panel title="To-do list" subtitle="Staff prep tasks across upcoming events.">
+              <StaffTodoCard tasks={openTasks} />
+            </Panel>
+            <Panel title="Orga tools" subtitle="Quick links and live ops for the next match.">
+              <OrgaToolsCard nextEvent={nextEvent} />
+            </Panel>
           </div>
         </div>
 
-        <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-          <h3 className="m-0 text-[0.88rem] font-medium text-white">Player form</h3>
-          <p className="m-0 mt-1 text-[0.7rem] text-white/40">Win rate when present · combat when ingested</p>
-          <div className="mt-2 min-h-0 flex-1">
-            <PlayerFormBoard rows={formRows} onSelect={setSelectedPlayer} />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+            <h3 className="m-0 text-[0.88rem] font-medium text-white">Attendance pulse</h3>
+            <p className="m-0 mt-1 text-[0.7rem] text-white/40">
+              Next-event RSVP + who shows for comps
+            </p>
+            <div className="mt-3">
+              <AttendancePulseCard
+                nextEvent={nextEvent}
+                rsvpData={nextRsvpQuery.data}
+                participation={participation}
+              />
+            </div>
+          </div>
+
+          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+            <h3 className="m-0 text-[0.88rem] font-medium text-white">Player form</h3>
+            <p className="m-0 mt-1 text-[0.7rem] text-white/40">
+              Win rate when present · combat when ingested · click for profile
+            </p>
+            <div className="mt-3">
+              <PlayerFormBoard
+                hotRows={formBoard.hot}
+                coldRows={formBoard.cold}
+                onSelect={setSelectedPlayer}
+              />
+            </div>
+          </div>
+
+          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+            <h3 className="m-0 text-[0.88rem] font-medium text-white">Season pulse</h3>
+            <div className="mt-3">
+              <SeasonPulseCard pulse={seasonPulse} />
+            </div>
           </div>
         </div>
 
-        <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-          <h3 className="m-0 text-[0.88rem] font-medium text-white">Season pulse</h3>
-          <div className="mt-2 min-h-0 flex-1">
-            <SeasonPulseCard pulse={seasonPulse} />
-          </div>
-        </div>
+        {roleDepth.length ? (
+          <p className="m-0 shrink-0 text-[0.75rem] text-white/35">
+            Depth chart:{" "}
+            {roleDepth
+              .slice(0, 8)
+              .map((row) => `${row.role.replace(/_/g, " ")} ×${row.count}`)
+              .join(" · ")}
+          </p>
+        ) : null}
       </div>
-
-      {roleDepth.length ? (
-        <p className="m-0 text-[0.75rem] text-white/35">
-          Depth chart:{" "}
-          {roleDepth
-            .slice(0, 8)
-            .map((row) => `${row.role.replace(/_/g, " ")} ×${row.count}`)
-            .join(" · ")}
-        </p>
-      ) : null}
 
       <PlayerProfileDrawer
         player={selectedPlayer}

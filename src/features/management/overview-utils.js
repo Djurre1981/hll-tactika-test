@@ -122,6 +122,34 @@ export function mergeCombatIntoFormBoard(participationRows, combatBySteamId = {}
   });
 }
 
+/**
+ * Split form board into hot (best win rate) and cold (worst) among players
+ * with enough recorded results.
+ */
+export function splitFormBoard(rows, { minGames = 3, limit = 5 } = {}) {
+  const eligible = (rows || []).filter(
+    (row) => row.gamesPlayed >= minGames && row.winRate != null && row.wins + row.losses >= 2
+  );
+  const byWinRate = [...eligible].sort((a, b) => {
+    if ((b.winRate ?? -1) !== (a.winRate ?? -1)) return (b.winRate ?? -1) - (a.winRate ?? -1);
+    return b.gamesPlayed - a.gamesPlayed;
+  });
+  const hot = byWinRate.slice(0, limit);
+  const hotIds = new Set(hot.map((r) => r.steamId));
+  const cold = [...byWinRate].reverse().filter((r) => !hotIds.has(r.steamId)).slice(0, limit);
+
+  // Fallback when few recorded results: use participation volume.
+  if (!hot.length && (rows || []).length) {
+    const byGames = [...rows].sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+    return {
+      hot: byGames.slice(0, limit),
+      cold: [...byGames].reverse().slice(0, limit).filter((r) => r.steamId !== byGames[0]?.steamId),
+    };
+  }
+
+  return { hot, cold };
+}
+
 export function buildSeasonPulse(events, upcomingEvents = [], now = new Date()) {
   const kpis = summarizeTeamKpis(events, now);
   const next = (upcomingEvents || [])[0] || null;

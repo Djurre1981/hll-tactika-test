@@ -8,6 +8,7 @@ import {
   buildRoleDepth,
   computeEventReadiness,
   mergeCombatIntoFormBoard,
+  splitFormBoard,
   summarizeRsvpCounts,
 } from "../src/features/management/overview-utils.js";
 import { extractCircleSlimStats } from "../scripts/lib/helo-player-stats.mjs";
@@ -65,6 +66,19 @@ describe("management overview utils", () => {
     });
     assert.equal(merged[0].kd, 2);
     assert.equal(merged[0].kills, 10);
+  });
+
+  it("splits form board into hot and cold", () => {
+    const rows = [
+      { steamId: "1", gamesPlayed: 10, wins: 8, losses: 2, winRate: 80 },
+      { steamId: "2", gamesPlayed: 10, wins: 2, losses: 8, winRate: 20 },
+      { steamId: "3", gamesPlayed: 8, wins: 5, losses: 3, winRate: 62 },
+      { steamId: "4", gamesPlayed: 1, wins: 1, losses: 0, winRate: 100 },
+    ];
+    const { hot, cold } = splitFormBoard(rows, { minGames: 3, limit: 2 });
+    assert.equal(hot[0].steamId, "1");
+    assert.ok(cold.some((r) => r.steamId === "2"));
+    assert.ok(!hot.some((r) => r.steamId === "4"));
   });
 
   it("summarizes RSVP counts", () => {
