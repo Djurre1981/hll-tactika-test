@@ -21,6 +21,7 @@ import {
 import { IconBtn } from "../strats/editor/sidePanelUtils.jsx";
 
 export function RoutesPanel({
+  planId,
   planTitle = "Route plan",
   eventId = null,
   dirty = false,
@@ -31,6 +32,7 @@ export function RoutesPanel({
   hoveredRouteId,
   onPlanTitleChange,
   onEventIdChange,
+  onPatchPlan,
   onSelectRoute,
   onHoverRoute,
   onAddRoute,
@@ -71,7 +73,12 @@ export function RoutesPanel({
 
         <div className={panelDivider} role="presentation" />
 
-        <RoutePlanEventPicker eventId={eventId} onEventIdChange={onEventIdChange} />
+        <RoutePlanEventPicker
+          planId={planId}
+          eventId={eventId}
+          onEventIdChange={onEventIdChange}
+          onPatchPlan={onPatchPlan}
+        />
 
         <div className={panelDivider} role="presentation" />
 

@@ -253,6 +253,32 @@ export function RouteplannerEditor({
     [persistPatch]
   );
 
+  const handlePlanLinkPatch = useCallback(
+    (patch) => {
+      const fullPatch = { ...patch };
+
+      if (patch.mapId !== undefined && patch.mapId !== mapId) {
+        setMapId(patch.mapId);
+        setObstacles([]);
+        obstaclesRef.current = [];
+        setObstacleVectorBuildId(null);
+        clearEffectiveGridCache();
+        clearAccessibilityVectorsCache();
+        fullPatch.obstacles = [];
+        fullPatch.obstacleVectorBuildId = null;
+      }
+
+      if (patch.factionId !== undefined) {
+        setFactionId(patch.factionId);
+        setMatchTimeSec(0);
+        setTimelinePlaying(false);
+      }
+
+      persistPatch(fullPatch);
+    },
+    [mapId, persistPatch]
+  );
+
   const applyObstacles = useCallback(
     (nextObstacles, { buildId } = {}) => {
       setObstacles(nextObstacles);
@@ -1513,6 +1539,7 @@ export function RouteplannerEditor({
       >
         <div className="pointer-events-auto h-full">
           <RoutesPanel
+            planId={plan?.id}
             planTitle={planTitle}
             eventId={eventId}
             dirty={dirty}
@@ -1523,6 +1550,7 @@ export function RouteplannerEditor({
             hoveredRouteId={hoveredRouteId}
             onPlanTitleChange={handlePlanTitleChange}
             onEventIdChange={handleEventIdChange}
+            onPatchPlan={handlePlanLinkPatch}
             onSelectRoute={(id) => {
               setSelectedRouteId(id);
               setSelectedWaypoint(null);
