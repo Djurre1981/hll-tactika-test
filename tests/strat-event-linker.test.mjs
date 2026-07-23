@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   eventPropertiesToStratPatch,
+  eventSlideMapId,
   eventTypeToStratType,
   findLinkedEventId,
   isUpcomingEvent,
 } from "../src/features/strats/editor/event-strat-sync.js";
+import { STRAT_MAP_IDS } from "../src/features/strats/editor/mapIds.js";
 
 describe("Strat event linker — eventTypeToStratType", () => {
   it("maps comp to tournament and other types to friendly", () => {
@@ -36,6 +38,17 @@ describe("Strat event linker — eventPropertiesToStratPatch", () => {
     assert.equal(patch.match.faction, "axis");
     assert.equal(patch.notes, "Scrim notes");
     assert.match(patch.match.date, /^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("Strat event linker — eventSlideMapId", () => {
+  it("returns map id when event match map is a known HLL map", () => {
+    assert.equal(
+      eventSlideMapId({ match: { mapId: "Driel" } }, STRAT_MAP_IDS),
+      "Driel"
+    );
+    assert.equal(eventSlideMapId({ match: { mapId: "" } }, STRAT_MAP_IDS), "");
+    assert.equal(eventSlideMapId({ match: { mapId: "NotAMap" } }, STRAT_MAP_IDS), "");
   });
 });
 

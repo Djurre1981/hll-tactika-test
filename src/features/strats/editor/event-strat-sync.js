@@ -3,6 +3,13 @@ export function eventTypeToStratType(eventType) {
   return eventType === "comp" ? "tournament" : "friendly";
 }
 
+/** Valid HLL map id from event match metadata, or empty string. */
+export function eventSlideMapId(event, validMapIds) {
+  const mapId = String(event?.match?.mapId || "").trim();
+  if (!mapId || !Array.isArray(validMapIds)) return "";
+  return validMapIds.includes(mapId) ? mapId : "";
+}
+
 function localDateFromIso(iso) {
   const date = iso ? new Date(iso) : null;
   if (!date || Number.isNaN(date.getTime())) return "";

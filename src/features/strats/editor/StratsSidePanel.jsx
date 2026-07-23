@@ -178,6 +178,7 @@ export function StratsSidePanel({
             onPatchStrat={onPatchStrat}
             onDuplicateStrat={onDuplicateStrat}
             onDeleteStrat={onDeleteStrat}
+            onChangeSlideMap={onChangeSlideMap}
           />
         ) : (
           <>

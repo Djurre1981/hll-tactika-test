@@ -68,6 +68,7 @@ export function StratDetailsPanel({
   onPatchStrat,
   onDuplicateStrat,
   onDeleteStrat,
+  onChangeSlideMap,
 }) {
   const [titleDraft, setTitleDraft] = useState(strat?.title || "");
   const [notesDraft, setNotesDraft] = useState(strat?.notes || "");
@@ -135,7 +136,13 @@ export function StratDetailsPanel({
           />
         </Accordion>
 
-        <StratEventLinker stratId={strat?.id} canEdit={canEdit} onPatchStrat={onPatchStrat} />
+        <StratEventLinker
+          stratId={strat?.id}
+          activeSlide={activeSlide}
+          canEdit={canEdit}
+          onPatchStrat={onPatchStrat}
+          onChangeSlideMap={onChangeSlideMap}
+        />
 
         <Accordion label="Team & type" value={tagsSummary}>
           <div className="flex flex-col gap-[0.35rem]">

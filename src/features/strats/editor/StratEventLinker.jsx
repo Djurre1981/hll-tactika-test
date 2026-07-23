@@ -14,11 +14,13 @@ import {
 } from "./editorUi.js";
 import {
   eventPropertiesToStratPatch,
+  eventSlideMapId,
   findLinkedEventId,
   formatStratEventOption,
   isUpcomingEvent,
   stratEventSummary,
 } from "./event-strat-sync.js";
+import { STRAT_MAP_IDS } from "./mapIds.js";
 
 function EventAccordion({ label, value, defaultOpen = false, children }) {
   return (
@@ -36,7 +38,13 @@ function EventAccordion({ label, value, defaultOpen = false, children }) {
   );
 }
 
-export function StratEventLinker({ stratId, canEdit, onPatchStrat }) {
+export function StratEventLinker({
+  stratId,
+  activeSlide,
+  canEdit,
+  onPatchStrat,
+  onChangeSlideMap,
+}) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const componentsMutation = useEventComponentsMutation();
@@ -142,6 +150,11 @@ export function StratEventLinker({ stratId, canEdit, onPatchStrat }) {
       if (Object.keys(patch).length) {
         await onPatchStrat?.(patch);
       }
+
+      const slideMapId = eventSlideMapId(selected, STRAT_MAP_IDS);
+      if (slideMapId && activeSlide?.id && onChangeSlideMap) {
+        await onChangeSlideMap(activeSlide.id, slideMapId);
+      }
     } catch (linkError) {
       setError(linkError?.message || "Could not link event.");
     } finally {
@@ -153,7 +166,7 @@ export function StratEventLinker({ stratId, canEdit, onPatchStrat }) {
     <EventAccordion label="Event" value={stratEventSummary(linkedEvent)} defaultOpen>
       <p className="m-0 text-[0.72rem] leading-snug text-white/40">
         Link this strat to a calendar event. Choosing an event attaches it to the match brief and
-        copies match details and type into this strat once.
+        copies match details, type, and the active slide map into this strat once.
       </p>
       <GlassSelect
         disabled={!canEdit || pending || eventsQuery.isLoading}
