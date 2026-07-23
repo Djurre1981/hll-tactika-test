@@ -5,6 +5,9 @@ import { RosterTable } from "../RosterTable.jsx";
 import {
   COMP_ROLES,
   COMP_SITUATIONS,
+  COMP_STATUSES,
+  DEFAULT_VISIBLE_STATUSES,
+  getCompStatus,
   getSituation,
   isValidT17Id,
   parseCompRoles,
@@ -12,6 +15,7 @@ import {
   ROSTER_COLOR_PRESETS,
   T17_ID_LENGTH,
 } from "../rosterRoles.js";
+import { buildPlayerDossier } from "../player-dossier-utils.js";
 import {
   useAddRosterMemberToRosterMutation,
   useCreateRosterMutation,
@@ -21,9 +25,12 @@ import {
   useRemoveMemberFromRosterMutation,
   useRosterMembersQuery,
   useRostersQuery,
+  useSeedRosterFromHeloMutation,
   useUpdateRosterMemberMutation,
   useUpdateRosterMutation,
 } from "../hooks/useRostersQuery.js";
+import { useMatchHistoryQuery } from "../../records/hooks/useMatchHistoryQuery.js";
+import { usePlayerStatsAggregatesQuery } from "../hooks/usePlayerStatsQuery.js";
 
 const fieldClass =
   "min-h-[2rem] min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.05] px-3 py-1.5 text-sm text-white/90";
@@ -135,13 +142,14 @@ function IconButton({ label, onClick, children }) {
 
 function exportMembersCsv(members, rosterName) {
   const rows = [
-    ["name", "steamid", "t17id", "role", "situation", "tournaments"],
+    ["name", "steamid", "t17id", "role", "situation", "status", "tournaments"],
     ...members.map((m) => [
       m.displayName || "",
       m.steamId || "",
       m.t17Id || "",
       (m.rosterRoles?.length ? m.rosterRoles : [m.rosterRole]).filter(Boolean).join(";"),
       m.situation || "member",
+      m.status || "active",
       parseTournaments(m.tournaments).join(";"),
     ]),
   ];
@@ -168,6 +176,7 @@ export function RosterSection() {
   const [filterSituations, setFilterSituations] = useState([]);
   const [filterRoles, setFilterRoles] = useState([]);
   const [filterTournaments, setFilterTournaments] = useState([]);
+  const [filterStatuses, setFilterStatuses] = useState([...DEFAULT_VISIBLE_STATUSES]);
   const [showAdd, setShowAdd] = useState(false);
   const [rosterMenuOpen, setRosterMenuOpen] = useState(false);
   const [rosterMenuMode, setRosterMenuMode] = useState(null);
@@ -204,10 +213,12 @@ export function RosterSection() {
   }, [rosterMenuOpen]);
 
   const membersQuery = useRosterMembersQuery(activeRosterId);
+  const historyQuery = useMatchHistoryQuery();
   const createRoster = useCreateRosterMutation();
   const updateRoster = useUpdateRosterMutation();
   const deleteRoster = useDeleteRosterMutation();
   const duplicateRoster = useDuplicateRosterMutation();
+  const seedFromHelo = useSeedRosterFromHeloMutation(activeRosterId);
   const addMember = useAddRosterMemberToRosterMutation(activeRosterId);
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
   const updateMember = useUpdateRosterMemberMutation(activeRosterId);
@@ -217,6 +228,17 @@ export function RosterSection() {
   const activeRoster = rosters.find((r) => r.id === activeRosterId) || null;
   const selected = members.find((m) => m.id === selectedId) || null;
   const cardOpen = Boolean(selected);
+
+  const steamIds = useMemo(
+    () => members.map((m) => m.steamId).filter(Boolean),
+    [members]
+  );
+  const combatQuery = usePlayerStatsAggregatesQuery(steamIds, steamIds.length > 0);
+
+  const selectedDossier = useMemo(() => {
+    if (!selected) return null;
+    return buildPlayerDossier(selected, historyQuery.data || [], combatQuery.data || {});
+  }, [selected, historyQuery.data, combatQuery.data]);
 
   const tournamentOptions = useMemo(() => {
     const set = new Set();
@@ -230,6 +252,10 @@ export function RosterSection() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return members.filter((member) => {
+      if (filterStatuses.length > 0) {
+        const status = getCompStatus(member.status).id;
+        if (!filterStatuses.includes(status)) return false;
+      }
       if (filterSituations.length > 0) {
         const situation = getSituation(member.situation).id;
         if (!filterSituations.includes(situation)) return false;
@@ -249,6 +275,7 @@ export function RosterSection() {
         member.t17Id,
         member.rosterRole,
         member.situation,
+        member.status,
         ...(member.tournaments || []),
       ]
         .filter(Boolean)
@@ -256,7 +283,7 @@ export function RosterSection() {
         .toLowerCase();
       return haystack.includes(needle);
     });
-  }, [members, query, filterSituations, filterRoles, filterTournaments]);
+  }, [members, query, filterSituations, filterRoles, filterTournaments, filterStatuses]);
 
   useEffect(() => {
     setSelectedId(null);
@@ -365,6 +392,10 @@ export function RosterSection() {
     updateMember.mutate({ id: member.id, situation });
   }
 
+  function handleSetStatus(member, status) {
+    updateMember.mutate({ id: member.id, status });
+  }
+
   function handleRemoveMember(member) {
     if (!window.confirm(`Remove “${member.displayName}” from this roster?`)) return;
     removeMember.mutate(member.id, {
@@ -405,6 +436,34 @@ export function RosterSection() {
     );
   }
 
+  function toggleFilterStatus(id) {
+    setFilterStatuses((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  function handleSeedFromHelo() {
+    if (!activeRosterId) return;
+    if (
+      !window.confirm(
+        "Add players found on HeLO-linked matches to this roster?\n\nThis does not grant site access. Existing members are linked if missing."
+      )
+    ) {
+      return;
+    }
+    setImportMessage("");
+    seedFromHelo.mutate(undefined, {
+      onSuccess: (data) => {
+        setImportMessage(
+          `HeLO seed: +${data.added || 0} new · ${data.linked || 0} linked · ${data.skipped || 0} already on roster (${data.totalSteamIds || 0} Steam IDs)`
+        );
+      },
+      onError: (err) => {
+        setImportMessage(err?.message || "HeLO seed failed");
+      },
+    });
+  }
+
   async function handleCsvFile(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -429,6 +488,7 @@ export function RosterSection() {
     updateRoster.isPending ||
     deleteRoster.isPending ||
     duplicateRoster.isPending ||
+    seedFromHelo.isPending ||
     addMember.isPending ||
     removeMember.isPending ||
     updateMember.isPending ||
@@ -676,6 +736,15 @@ export function RosterSection() {
           <button
             type="button"
             className={topBtnClass}
+            disabled={!activeRosterId || pending}
+            onClick={handleSeedFromHelo}
+            title="Add players from HeLO match participants (no site access)"
+          >
+            {seedFromHelo.isPending ? "Seeding…" : "Seed from HeLO"}
+          </button>
+          <button
+            type="button"
+            className={topBtnClass}
             disabled={!activeRosterId || members.length === 0}
             onClick={() => exportMembersCsv(members, activeRoster?.name)}
           >
@@ -714,7 +783,13 @@ export function RosterSection() {
             </div>
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
               {showFilters ? (
-                <div className="flex max-w-[min(36rem,70vw)] flex-wrap items-center justify-end gap-1.5">
+                <div className="flex max-w-[min(42rem,75vw)] flex-wrap items-center justify-end gap-1.5">
+                  <FilterDropdown
+                    label="Status"
+                    options={COMP_STATUSES}
+                    selected={filterStatuses}
+                    onToggle={toggleFilterStatus}
+                  />
                   <FilterDropdown
                     label="Situation"
                     options={COMP_SITUATIONS}
@@ -733,10 +808,24 @@ export function RosterSection() {
                     selected={filterTournaments}
                     onToggle={toggleFilterTournament}
                   />
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 px-2.5 py-1 text-[0.7rem] text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    onClick={() => setFilterStatuses([...DEFAULT_VISIBLE_STATUSES])}
+                  >
+                    Pool only
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 px-2.5 py-1 text-[0.7rem] text-white/55 hover:bg-white/[0.06] hover:text-white"
+                    onClick={() => setFilterStatuses([])}
+                  >
+                    Show all
+                  </button>
                 </div>
               ) : null}
               <IconButton
-                label="Filter by situation, role, or tournament"
+                label="Filter by status, situation, role, or tournament"
                 onClick={() => setShowFilters((v) => !v)}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -748,6 +837,7 @@ export function RosterSection() {
                     strokeWidth="1.6"
                     className={
                       showFilters ||
+                      filterStatuses.length !== DEFAULT_VISIBLE_STATUSES.length ||
                       filterSituations.length ||
                       filterRoles.length ||
                       filterTournaments.length
@@ -762,6 +852,7 @@ export function RosterSection() {
                     strokeLinejoin="round"
                     fill={
                       showFilters ||
+                      filterStatuses.length !== DEFAULT_VISIBLE_STATUSES.length ||
                       filterSituations.length ||
                       filterRoles.length ||
                       filterTournaments.length
@@ -838,6 +929,7 @@ export function RosterSection() {
               onOpenCard={(member) => setSelectedId(member.id)}
               onSetRoles={handleSetRoles}
               onSetSituation={handleSetSituation}
+              onSetStatus={handleSetStatus}
               onSetTournaments={handleSetTournaments}
               onSetT17Id={handleSetT17Id}
               onSetDisplayName={handleSetDisplayName}
@@ -855,7 +947,15 @@ export function RosterSection() {
               : "pointer-events-none max-h-0 translate-x-8 opacity-0 lg:max-h-none lg:w-0 lg:translate-x-6 lg:opacity-0",
           ].join(" ")}
         >
-          {cardOpen ? <PlayerCard member={selected} onClose={() => setSelectedId(null)} /> : null}
+          {cardOpen ? (
+            <PlayerCard
+              member={selected}
+              dossier={selectedDossier}
+              onClose={() => setSelectedId(null)}
+              onSetStatus={(status) => handleSetStatus(selected, status)}
+              statusPending={updateMember.isPending}
+            />
+          ) : null}
         </div>
       </div>
     </section>

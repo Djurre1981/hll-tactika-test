@@ -3,7 +3,7 @@ import { createRosterMember, listRosterMembers, resolveSteamAvatarUrl } from "..
 import { isValidSteamId64 } from "../lib/users-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
-const ROSTER_STATUSES = ["active", "inactive", "trial"];
+const ROSTER_STATUSES = ["active", "inactive", "trial", "na"];
 const ROSTER_SITUATIONS = ["member", "merc", "dual_clan"];
 const ROSTER_ROLES = [
   "squad_lead",

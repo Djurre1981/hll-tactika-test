@@ -170,6 +170,26 @@ export function getSituation(value) {
   return COMP_SITUATIONS.find((s) => s.id === id) || COMP_SITUATIONS[0];
 }
 
+/** Lifecycle / availability — separate from situation (member/merc). */
+export const COMP_STATUSES = [
+  { id: "active", label: "Active", hint: "In the pick pool" },
+  { id: "trial", label: "Trial", hint: "Trying out" },
+  { id: "inactive", label: "Inactive", hint: "On break / pause" },
+  { id: "na", label: "NA", hint: "Can't or won't play with Circle" },
+];
+
+export function getCompStatus(value) {
+  const id = String(value || "active").trim().toLowerCase();
+  return COMP_STATUSES.find((s) => s.id === id) || COMP_STATUSES[0];
+}
+
+/** Default Management roster list: people still in the pool. */
+export const DEFAULT_VISIBLE_STATUSES = ["active", "trial"];
+
+export function isPoolStatus(status) {
+  return DEFAULT_VISIBLE_STATUSES.includes(String(status || "active").toLowerCase());
+}
+
 export const T17_ID_LENGTH = 32;
 
 export function isValidT17Id(value) {

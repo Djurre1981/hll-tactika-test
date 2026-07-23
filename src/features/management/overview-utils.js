@@ -1,3 +1,4 @@
+import { isPoolStatus } from "./rosterRoles.js";
 import {
   eventHasParticipant,
   filterMatchHistory,
@@ -66,7 +67,7 @@ export function buildParticipationBoard(events, members, { limit = DEFAULT_RECEN
   const poolSize = history.length || 1;
 
   const rows = (members || [])
-    .filter((m) => m?.steamId && String(m.status || "active") === "active")
+    .filter((m) => m?.steamId && isPoolStatus(m.status))
     .map((member) => {
       const steamId = String(member.steamId);
       const played = history.filter((event) => eventHasParticipant(event, steamId));
@@ -179,7 +180,7 @@ export function summarizeRsvpCounts(rsvps = []) {
 export function buildRoleDepth(members) {
   const depth = new Map();
   for (const member of members || []) {
-    if (String(member.status || "active") !== "active") continue;
+    if (!isPoolStatus(member.status)) continue;
     const roles = Array.isArray(member.rosterRoles) && member.rosterRoles.length
       ? member.rosterRoles
       : member.rosterRole

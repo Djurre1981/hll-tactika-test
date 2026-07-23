@@ -1,19 +1,46 @@
+import { Link } from "react-router-dom";
 import {
   getCompRoles,
+  getCompStatus,
   getSituation,
   initials,
   parseTournaments,
   tournamentColor,
+  COMP_STATUSES,
 } from "./rosterRoles.js";
+import { buildPlayerDossier } from "./player-dossier-utils.js";
 
-export function PlayerCard({ member, onClose }) {
+function StatTile({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2.5">
+      <p className="m-0 text-[0.6rem] uppercase tracking-[0.12em] text-white/40">{label}</p>
+      <p className="m-0 mt-1 text-[1.05rem] font-medium text-white/85">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+function resultClass(result) {
+  if (result === "win") return "text-emerald-200";
+  if (result === "loss") return "text-red-200";
+  return "text-white/45";
+}
+
+export function PlayerCard({
+  member,
+  dossier,
+  onClose,
+  onSetStatus,
+  statusPending = false,
+}) {
   if (!member) return null;
 
   const roles = getCompRoles(member.rosterRoles?.length ? member.rosterRoles : member.rosterRole);
   const primary = roles[0];
   const situation = getSituation(member.situation);
+  const status = getCompStatus(member.status);
   const tournaments = parseTournaments(member.tournaments);
   const accent = primary.color;
+  const stats = dossier || buildPlayerDossier(member, [], {});
 
   return (
     <aside
@@ -66,7 +93,7 @@ export function PlayerCard({ member, onClose }) {
 
         <div className="relative z-[1] rounded-t-[1.75rem] bg-[#12141a] px-5 pb-6 pt-6 text-white">
           <p className="m-0 text-[0.7rem] uppercase tracking-[0.14em] text-white/40">
-            {situation.label}
+            {situation.label} · {status.label}
           </p>
           <h3 className="m-0 mt-1 text-[1.55rem] font-medium leading-tight text-white">
             {member.displayName}
@@ -83,15 +110,94 @@ export function PlayerCard({ member, onClose }) {
             </p>
           ) : null}
 
+          <div className="mt-4">
+            <p className="m-0 text-[0.6rem] uppercase tracking-[0.12em] text-white/40">Status</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {COMP_STATUSES.map((option) => {
+                const active = status.id === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    title={option.hint}
+                    disabled={statusPending || !onSetStatus}
+                    className={`rounded-full border px-2.5 py-1 text-[0.72rem] transition disabled:opacity-45 ${
+                      active
+                        ? "border-white/30 bg-white/15 text-white"
+                        : "border-white/10 bg-white/[0.04] text-white/55 hover:bg-white/[0.08]"
+                    }`}
+                    onClick={() => onSetStatus?.(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="mt-5 grid grid-cols-2 gap-2.5">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2.5">
-              <p className="m-0 text-[0.6rem] uppercase tracking-[0.12em] text-white/40">K/D</p>
-              <p className="m-0 mt-1 text-[1.1rem] font-medium text-white/85">—</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2.5">
-              <p className="m-0 text-[0.6rem] uppercase tracking-[0.12em] text-white/40">Last game</p>
-              <p className="m-0 mt-1 text-[0.85rem] font-medium text-white/85">—</p>
-            </div>
+            <StatTile label="K/D" value={stats.kd} />
+            <StatTile
+              label="Last game"
+              value={stats.lastGame ? stats.lastGame.when.replace(/,.*/, "") : "—"}
+            />
+            <StatTile label="Games" value={stats.gamesPlayed} />
+            <StatTile
+              label="Win %"
+              value={stats.winRate != null ? `${stats.winRate}%` : "—"}
+            />
+            <StatTile label="Record" value={stats.recordLabel} />
+            <StatTile label="Combat" value={stats.combatPoints} />
+          </div>
+
+          {stats.lastGame ? (
+            <p className="m-0 mt-2 text-[0.72rem] text-white/45">
+              Last:{" "}
+              <Link
+                to={`/events/${stats.lastGame.id}`}
+                className="text-sky-200/90 no-underline hover:text-sky-100"
+              >
+                {stats.lastGame.title}
+              </Link>
+              {stats.lastGame.result ? (
+                <span className={`ml-1 ${resultClass(stats.lastGame.result)}`}>
+                  ({stats.lastGame.result})
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+
+          <div className="mt-5">
+            <p className="m-0 text-[0.6rem] uppercase tracking-[0.12em] text-white/40">
+              Matches played
+            </p>
+            {stats.matches?.length ? (
+              <ul className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
+                {stats.matches.map((match) => (
+                  <li key={match.id}>
+                    <Link
+                      to={`/events/${match.id}`}
+                      className="block rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 no-underline transition hover:border-white/20 hover:bg-white/[0.07]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="m-0 text-[0.8rem] font-medium text-white/90">{match.title}</p>
+                        <span className={`shrink-0 text-[0.68rem] uppercase ${resultClass(match.result)}`}>
+                          {match.result || "—"}
+                        </span>
+                      </div>
+                      <p className="m-0 mt-0.5 text-[0.68rem] text-white/40">
+                        {match.when}
+                        {match.line ? ` · ${match.line}` : ""}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0 mt-2 text-[0.78rem] text-white/40">
+                No HeLO-linked matches for this Steam ID yet.
+              </p>
+            )}
           </div>
 
           <div className="mt-5">
@@ -142,7 +248,7 @@ export function PlayerCard({ member, onClose }) {
               className="rounded-lg px-3 py-1.5 text-[0.72rem] font-medium text-black"
               style={{ background: accent }}
             >
-              {situation.label}
+              {status.label}
             </span>
           </div>
         </div>

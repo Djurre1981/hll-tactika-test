@@ -121,6 +121,25 @@ export function useDuplicateRosterMutation() {
   });
 }
 
+export function useSeedRosterFromHeloMutation(rosterId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      apiClient(`/rosters/${rosterId}/seed-from-helo`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    onSuccess: () => {
+      if (rosterId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rosters.members(rosterId) });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roster.all });
+    },
+  });
+}
+
 export function useUpdateRosterMemberMutation(rosterId) {
   const queryClient = useQueryClient();
 

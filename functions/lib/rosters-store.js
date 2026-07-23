@@ -7,6 +7,7 @@ import {
   resolveSteamAvatarUrl,
   updateRosterMember,
 } from "./roster-store.js";
+import { fetchSteamProfiles } from "./steam.js";
 
 function rowToRoster(row) {
   return {
@@ -349,6 +350,96 @@ export async function ensureMemberAndAddToRoster(env, rosterId, memberData) {
   return addMemberToRoster(env, rosterId, member.id, {
     rosterRole: memberData.rosterRole || null,
   });
+}
+
+/**
+ * Seed a roster from Circle-side HeLO participant Steam IDs on calendar events.
+ * Does NOT grant site access — only creates/links roster_members.
+ */
+export async function seedRosterFromMatchParticipants(env, rosterId, createdBy) {
+  const roster = await getRoster(env, rosterId);
+  if (!roster) return { error: "Roster not found", status: 404 };
+
+  const db = requireDb(env);
+  const result = await db
+    .prepare(
+      `SELECT id, match_json FROM events
+       WHERE match_json IS NOT NULL AND match_json LIKE '%participantSteamIds%'`
+    )
+    .all();
+
+  const steamIds = new Set();
+  for (const row of result.results || []) {
+    try {
+      const match = JSON.parse(row.match_json || "{}");
+      const list = Array.isArray(match.participantSteamIds) ? match.participantSteamIds : [];
+      for (const raw of list) {
+        const id = String(raw || "").trim();
+        if (/^\d{17}$/.test(id)) steamIds.add(id);
+      }
+    } catch {
+      /* ignore corrupt rows */
+    }
+  }
+
+  const ids = [...steamIds];
+  if (!ids.length) {
+    return { added: 0, linked: 0, skipped: 0, totalSteamIds: 0 };
+  }
+
+  const profiles = await fetchSteamProfiles(ids, env);
+
+  let added = 0;
+  let linked = 0;
+  let skipped = 0;
+  const now = new Date().toISOString();
+
+  for (const steamId of ids) {
+    const existing = await findMemberBySteamId(env, steamId);
+    if (existing) {
+      const onRoster = await db
+        .prepare(
+          `SELECT roster_id FROM roster_memberships WHERE roster_id = ? AND member_id = ?`
+        )
+        .bind(rosterId, existing.id)
+        .first();
+      if (onRoster) {
+        skipped += 1;
+        continue;
+      }
+      await addMemberToRoster(env, rosterId, existing.id, {});
+      linked += 1;
+      continue;
+    }
+
+    const profile = profiles.get(steamId) || {};
+    const displayName =
+      String(profile.name || "").trim().slice(0, 80) || `Player ${steamId.slice(-4)}`;
+
+    await ensureMemberAndAddToRoster(env, rosterId, {
+      id: `roster-${crypto.randomUUID()}`,
+      displayName,
+      steamId,
+      avatarUrl: profile.avatar || null,
+      rosterRoles: ["infantry"],
+      situation: "member",
+      status: "active",
+      tournaments: [],
+      notes: "Seeded from HeLO match participants",
+      sortOrder: 0,
+      createdBy: createdBy || "helo-seed",
+      createdAt: now,
+      updatedAt: now,
+    });
+    added += 1;
+  }
+
+  return {
+    added,
+    linked,
+    skipped,
+    totalSteamIds: ids.length,
+  };
 }
 
 export { listRosterMembers };
