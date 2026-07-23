@@ -34,6 +34,7 @@ Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues
 | T3 | **Match Brief** page (`/events/:id`) | ✅ |
 | T5 | **Attach/detach** linked tools on Brief | ✅ |
 | T9 | **Prep tasks** — assign, complete, Hub my-tasks | ✅ |
+| T8 | **Match history** — HLL Records + Management History | ✅ |
 
 ### Match Brief UX
 
@@ -47,7 +48,6 @@ Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues
 
 | Step | Feature | Blocked by |
 |------|---------|------------|
-| T8 | Match history / HLL Records | — (T2 ✅) |
 | T10 | Team KPIs + analytics charts | — (T2 ✅) |
 | T6/T7 | RSVP + Hub next-match hero | T0c (Discord member sync) for full flow |
 | T4 | Create-match wizard | T0e (Discord notifications) |

@@ -448,9 +448,8 @@ Stop for PR. Human QA in Discord required. Plan T12b.
 - [x] Match Brief opens from calendar/hub and shows linked tools (T3) — [#39](https://github.com/Djurre1981/hll-tactika-test/pull/39)
 - [x] Match Brief attach/detach UI (T5) — `3f53569`
 - [x] Prep tasks on Brief (T9) — `d7cb96b`, migration `0017` on remote
-- [ ] Wizard can create event+strat link + notify (T4)
-- [ ] RSVP + hub next-match card (T6+T7)
-- [ ] Basic history/reports + KPIs (T8+T10)
+- [x] Match history / HLL Records (T8)
+- [ ] Team KPIs + Analytics charts (T10)
 - [ ] Roster duplicate/template (T11)
 - [ ] Discord webhook + reminders on test (T12a)
 - [ ] Slash `/event create`, `/calendar`, two-way sync on **test guild** (T12b)

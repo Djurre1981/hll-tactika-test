@@ -69,6 +69,10 @@ export function HomePage() {
       navigate("/tool/routeplanner");
       return;
     }
+    if (tool.id === "records") {
+      navigate("/records");
+      return;
+    }
     if (tool.id === "viewer") {
       window.location.assign("/climbing-guide-v1/");
     }
@@ -233,11 +237,11 @@ export function HomePage() {
             <button
               type="button"
               className={toolBtnClass}
-              onClick={() => handleToolClick({ id: "records", placeholder: true })}
+              onClick={() => handleToolClick({ id: "records" })}
             >
               <span className="text-[0.95rem] font-medium text-white">HLL Records</span>
               <span className="text-[0.78rem] font-light text-white/50">
-                VODs and result history — coming soon.
+                Match history, results, and links to briefs.
               </span>
             </button>
           </div>

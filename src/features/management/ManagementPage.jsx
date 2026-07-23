@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useHub } from "../home/HubContext.jsx";
 import { ManagementNav, MANAGEMENT_SECTIONS } from "./ManagementNav.jsx";
 import { FoldersSection } from "./sections/FoldersSection.jsx";
+import { HistorySection } from "./sections/HistorySection.jsx";
 import { OverviewSection } from "./sections/OverviewSection.jsx";
 import { RosterSection } from "./sections/RosterSection.jsx";
 
@@ -58,6 +59,9 @@ export function ManagementPage() {
           </div>
           <div className="box-border flex h-full min-h-0 flex-col overflow-auto">
             <FoldersSection />
+          </div>
+          <div className="box-border flex h-full min-h-0 flex-col overflow-auto">
+            <HistorySection />
           </div>
         </div>
       </div>

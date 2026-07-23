@@ -459,7 +459,7 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | T3 Match Brief page | ✅ |
 | T5 Attach/detach tools on Brief | ✅ |
 | T9 Prep tasks | ✅ |
-| **T8** Match history | ⬜ next (unblocked) |
+| **T8** Match history | ✅ |
 | **T10** Team KPIs / charts | ⬜ next (unblocked) |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |

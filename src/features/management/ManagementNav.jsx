@@ -2,6 +2,7 @@ const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: "overview" },
   { id: "roster", label: "Roster", icon: "people" },
   { id: "folders", label: "Folders", icon: "folders" },
+  { id: "history", label: "History", icon: "history" },
   { id: "analytics", label: "Analytics", icon: "chart", placeholder: true },
   { id: "schedule", label: "Schedule", icon: "timer", placeholder: true },
   { id: "settings", label: "Settings", icon: "settings", placeholder: true },
@@ -65,6 +66,20 @@ function NavIcon({ name }) {
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "history") {
+    return (
+      <svg className={svgClass} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M6 4h12v14H6zM8 8h8M8 12h8M8 16h5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     );
