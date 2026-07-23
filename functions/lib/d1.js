@@ -1,7 +1,7 @@
 /**
  * D1 helpers for Cloudflare Pages Functions.
  * Binding name: DB (see wrangler.toml).
- * Structured data → D1. Yjs snapshots → KV (PINS_KV) until renamed.
+ * Structured data → D1 (pins, users, steam_profiles, …). KV → audit (V1) / Yjs (V2).
  */
 
 export function getDb(env) {

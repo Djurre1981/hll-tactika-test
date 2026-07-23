@@ -8,7 +8,7 @@ import {
   pinHasSupportedVideo,
 } from "../../../lib/media-urls.js";
 import { isValidMapId } from "../../../lib/pin-fields.js";
-import { findPin, loadPinsData, savePinsData } from "../../../lib/pins-store.js";
+import { findPin, loadPinsData, upsertPin } from "../../../lib/pins-store.js";
 import { putUploadedImage } from "../../../lib/r2-media.js";
 import { errorResponse, json } from "../../../lib/response.js";
 
@@ -32,7 +32,7 @@ async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
 
   latest.pin.thumbnail = thumbnailUrl;
   try {
-    await savePinsData(env, fresh);
+    await upsertPin(env, mapId, latest.pin);
   } catch (error) {
     console.error(error);
     return { error: "Pin storage is not configured", status: 503 };
@@ -43,7 +43,7 @@ async function applyThumbnailIfEmpty(env, mapId, pinId, thumbnailUrl) {
 
 /**
  * Fill-if-empty compact thumbnail (editor/explicit use).
- * Browse preview should not call this — keep KV writes off the navigate path.
+ * Browse preview should not call this — keep pin writes off the navigate path.
  */
 export async function onRequestPost(context) {
   const auth = await requireAuth(context);

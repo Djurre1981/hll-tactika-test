@@ -4,7 +4,6 @@ const STEAM_FETCH_HEADERS = {
   Accept: "application/json,text/xml,application/xml",
   "User-Agent": "Mozilla/5.0 (compatible; HLL-Tactika/1.0)",
 };
-const PROFILE_CACHE_PREFIX = "steam-profile:";
 const PROFILE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PROFILE_BATCH_SIZE = 100;
 
@@ -87,22 +86,26 @@ function readXmlCdata(xml, tag) {
 }
 
 async function getCachedProfile(steamId, env) {
-  if (!env?.PINS_KV) {
+  if (!env?.DB) {
     return null;
   }
 
   try {
-    const cached = await env.PINS_KV.get(`${PROFILE_CACHE_PREFIX}${steamId}`, "json");
-    if (!cached?.name) {
+    const row = await env.DB.prepare(
+      "SELECT steam_id, name, avatar, cached_at FROM steam_profiles WHERE steam_id = ?"
+    )
+      .bind(String(steamId))
+      .first();
+    if (!row?.name) {
       return null;
     }
-    if (Date.now() - (cached.cachedAt || 0) > PROFILE_CACHE_TTL_MS) {
+    if (Date.now() - Number(row.cached_at || 0) > PROFILE_CACHE_TTL_MS) {
       return null;
     }
     return {
-      steamId,
-      name: cached.name,
-      avatar: cached.avatar || null,
+      steamId: String(row.steam_id),
+      name: row.name,
+      avatar: row.avatar || null,
     };
   } catch {
     return null;
@@ -110,19 +113,21 @@ async function getCachedProfile(steamId, env) {
 }
 
 async function cacheProfile(profile, env) {
-  if (!env?.PINS_KV || !profile?.steamId || !profile?.name) {
+  if (!env?.DB || !profile?.steamId || !profile?.name) {
     return;
   }
 
   try {
-    await env.PINS_KV.put(
-      `${PROFILE_CACHE_PREFIX}${profile.steamId}`,
-      JSON.stringify({
-        name: profile.name,
-        avatar: profile.avatar || null,
-        cachedAt: Date.now(),
-      })
-    );
+    await env.DB.prepare(
+      `INSERT INTO steam_profiles (steam_id, name, avatar, cached_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(steam_id) DO UPDATE SET
+         name = excluded.name,
+         avatar = excluded.avatar,
+         cached_at = excluded.cached_at`
+    )
+      .bind(String(profile.steamId), profile.name, profile.avatar || null, Date.now())
+      .run();
   } catch {
     // Ignore cache write failures.
   }

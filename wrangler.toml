@@ -6,8 +6,8 @@ pages_build_output_dir = "dist"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 is the primary structured store (pins, users, strats metadata).
-# KV remains for Yjs collaboration snapshots only (see docs/migration-plan.md).
+# D1 is the primary structured store (pins, users, steam_profiles, strats metadata).
+# KV remains for audit (V1) and Yjs collaboration snapshots (V2).
 [[d1_databases]]
 binding = "DB"
 database_name = "hll-tactika-db"

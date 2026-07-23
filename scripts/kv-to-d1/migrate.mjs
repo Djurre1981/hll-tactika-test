@@ -78,7 +78,8 @@ function pinInsertSql(row) {
   return (
     "INSERT INTO pins (" +
     "id, map_id, title, description, tag, faction, x, y, dir_x, dir_y, " +
-    "video_url, thumbnail, requires_json, media_items_json, created_by, created_by_name, created_at, updated_at" +
+    "video_url, thumbnail, requires_json, media_items_json, created_by, created_by_name, " +
+    "source_discord_message_id, created_at, updated_at" +
     ") VALUES (" +
     [
       row.id,
@@ -97,6 +98,7 @@ function pinInsertSql(row) {
       row.media_items_json,
       row.created_by,
       row.created_by_name,
+      row.source_discord_message_id,
       row.created_at,
       row.updated_at,
     ]
@@ -108,7 +110,8 @@ function pinInsertSql(row) {
     "dir_x=excluded.dir_x, dir_y=excluded.dir_y, video_url=excluded.video_url, " +
     "thumbnail=excluded.thumbnail, requires_json=excluded.requires_json, " +
     "media_items_json=excluded.media_items_json, created_by=excluded.created_by, " +
-    "created_by_name=excluded.created_by_name, updated_at=excluded.updated_at;"
+    "created_by_name=excluded.created_by_name, " +
+    "source_discord_message_id=excluded.source_discord_message_id, updated_at=excluded.updated_at;"
   );
 }
 

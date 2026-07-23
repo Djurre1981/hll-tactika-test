@@ -55,6 +55,9 @@ export function buildPinRows(pinsData) {
         media_items_json: Array.isArray(pin.mediaItems) ? jsonOrNull(pin.mediaItems) : null,
         created_by: pin.createdBy != null ? String(pin.createdBy) : null,
         created_by_name: pin.createdByName ? String(pin.createdByName) : null,
+        source_discord_message_id: pin.sourceDiscordMessageId
+          ? String(pin.sourceDiscordMessageId)
+          : null,
         created_at: pin.createdAt ? String(pin.createdAt) : stamp,
         updated_at: stamp,
       });

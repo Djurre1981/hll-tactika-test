@@ -12,7 +12,7 @@ import {
 import { canEnterEditorMode, canModifyPin } from "../lib/pin-permissions.js";
 import { resolveCreatorName } from "../lib/pin-creators.js";
 import { applyPinUpdates } from "../lib/pin-mutate.js";
-import { findPin, loadPinsData, savePinsData } from "../lib/pins-store.js";
+import { findPin, loadPinsData, upsertPin, upsertPins } from "../lib/pins-store.js";
 import { normalizePinTitle } from "../lib/pin-title.js";
 import { errorResponse, json } from "../lib/response.js";
 
@@ -178,11 +178,6 @@ export async function onRequestPost(context) {
     auth.session
   );
 
-  const data = await loadPinsData(context.env);
-  if (!data.pins[mapId]) {
-    data.pins[mapId] = [];
-  }
-
   const newPin = {
     ...mirrored.pin,
     id: `pin-${crypto.randomUUID()}`,
@@ -190,10 +185,8 @@ export async function onRequestPost(context) {
     createdByName,
   };
 
-  data.pins[mapId].push(newPin);
-
   try {
-    await savePinsData(context.env, data);
+    await upsertPin(context.env, mapId, newPin);
   } catch (error) {
     console.error(error);
     return errorResponse("Pin storage is not configured", 503);
@@ -202,7 +195,7 @@ export async function onRequestPost(context) {
   return json({ pin: newPin, mapId }, { status: 201 });
 }
 
-/** Batch-update pins on one map in a single KV write. Body: `{ mapId, pins: [{ id, ...fields }] }`. */
+/** Batch-update pins on one map. Body: `{ mapId, pins: [{ id, ...fields }] }`. */
 export async function onRequestPatch(context) {
   const auth = await requireAuth(context);
   if (auth.error) {
@@ -269,7 +262,7 @@ export async function onRequestPatch(context) {
   }
 
   try {
-    await savePinsData(context.env, data);
+    await upsertPins(context.env, mapId, updatedPins);
   } catch (error) {
     console.error(error);
     return errorResponse("Pin storage is not configured", 503);

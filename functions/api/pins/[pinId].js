@@ -4,7 +4,7 @@ import { validatePinMediaFields } from "../../lib/media-urls.js";
 import { isValidMapId } from "../../lib/pin-fields.js";
 import { canEnterEditorMode, canModifyPin } from "../../lib/pin-permissions.js";
 import { applyPinUpdates } from "../../lib/pin-mutate.js";
-import { findPin, loadPinsData, savePinsData } from "../../lib/pins-store.js";
+import { deletePin, findPin, loadPinsData, upsertPin } from "../../lib/pins-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 export async function onRequestPut(context) {
@@ -61,7 +61,7 @@ export async function onRequestPut(context) {
   found.pins[found.index] = mirrored.pin;
 
   try {
-    await savePinsData(context.env, data);
+    await upsertPin(context.env, mapId, mirrored.pin);
   } catch (error) {
     console.error(error);
     return errorResponse("Pin storage is not configured", 503);
@@ -99,10 +99,8 @@ export async function onRequestDelete(context) {
     return errorResponse("Not allowed to delete this trick", 403);
   }
 
-  found.pins.splice(found.index, 1);
-
   try {
-    await savePinsData(context.env, data);
+    await deletePin(context.env, pinId);
   } catch (error) {
     console.error(error);
     return errorResponse("Pin storage is not configured", 503);
