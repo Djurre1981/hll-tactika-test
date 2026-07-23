@@ -81,16 +81,38 @@ body {
     @apply cursor-not-allowed opacity-45;
   }
 
+  .glass-select-menu {
+    @apply rounded-2xl border border-white/[0.12] bg-[rgba(12,12,14,0.98)] shadow-[0_18px_52px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl;
+  }
+
+  .glass-select-option {
+    @apply cursor-pointer px-3 py-2.5 text-[0.875rem] text-white/90 transition;
+  }
+
+  .glass-select-option:hover,
+  .glass-select-option:focus-visible {
+    @apply bg-white/[0.09] text-white outline-none;
+  }
+
+  .glass-select-option-selected {
+    @apply bg-accent/18 text-accent;
+  }
+
+  .glass-select-option-selected:hover,
+  .glass-select-option-selected:focus-visible {
+    @apply bg-accent/24 text-accent;
+  }
+
+  /* Native fallback when GlassSelect is not used yet */
   .glass-select option {
     background-color: rgb(14, 14, 16);
     color: rgba(255, 255, 255, 0.96);
     font-weight: 400;
   }
 
-  .glass-select option:checked,
-  .glass-select option:hover {
-    background-color: rgb(36, 36, 42);
-    color: #fff;
+  .glass-select option:checked {
+    background-color: rgb(42, 38, 28);
+    color: rgb(196, 163, 90);
   }
 
   .glass-panel {

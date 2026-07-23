@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../shared/Button.jsx";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
@@ -67,6 +68,12 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
 
   const showMatchFields = isMatchEventType(eventType);
   const startingPointOptions = match.mapId ? getMidpointsForMap(match.mapId) : [];
+  const eventTypeOptions = EVENT_TYPES.map((type) => ({ value: type, label: type }));
+  const mapOptions = STRAT_MAP_IDS.map((id) => ({ value: id, label: id }));
+  const strongpointSelectOptions = startingPointOptions.map((opt) => ({
+    value: opt.id,
+    label: opt.label,
+  }));
 
   function patchMatch(partial) {
     setMatch((current) => {
@@ -115,17 +122,12 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           <span className="mb-1 block text-muted">Type</span>
-          <select
-            className="glass-select"
+          <GlassSelect
             value={eventType}
-            onChange={(event) => setEventType(event.target.value)}
-          >
-            {EVENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
+            onChange={setEventType}
+            options={eventTypeOptions}
+            placeholder=""
+          />
         </label>
         <label className="block text-sm">
           <span className="mb-1 block text-muted">Starts</span>
@@ -164,18 +166,12 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Map</span>
-            <select
-              className="glass-select"
+            <GlassSelect
               value={match.mapId || ""}
-              onChange={(event) => patchMatch({ mapId: event.target.value })}
-            >
-              <option value="">Select map…</option>
-              {STRAT_MAP_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
+              onChange={(mapId) => patchMatch({ mapId })}
+              options={mapOptions}
+              placeholder="Select map…"
+            />
           </label>
           <div className="block text-sm">
             <span className="mb-1 block text-muted">Faction</span>
@@ -187,19 +183,13 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Starting strongpoint (optional)</span>
-            <select
-              className="glass-select"
+            <GlassSelect
               value={match.startingPoint || ""}
+              onChange={(startingPoint) => patchMatch({ startingPoint })}
+              options={strongpointSelectOptions}
+              placeholder={match.mapId ? "Select strongpoint…" : "Select a map first"}
               disabled={!match.mapId}
-              onChange={(event) => patchMatch({ startingPoint: event.target.value })}
-            >
-              <option value="">{match.mapId ? "Select strongpoint…" : "Select a map first"}</option>
-              {startingPointOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <div className="block text-sm">
             <span className="mb-1 block text-muted">Result (optional)</span>
