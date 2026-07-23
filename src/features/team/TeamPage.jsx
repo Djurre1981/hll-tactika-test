@@ -5,6 +5,8 @@ import { Spinner } from "../../shared/Spinner.jsx";
 import { RosterTable } from "./RosterTable.jsx";
 import {
   useAddTeamMemberMutation,
+  useExportD1SqlMutation,
+  useExportKvMutation,
   useExportPinsMutation,
   useRemoveTeamMemberMutation,
   useTeamQuery,
@@ -25,6 +27,8 @@ export function TeamPage({ hub = false }) {
   const updateRole = useUpdateTeamMemberRoleMutation();
   const removeMember = useRemoveTeamMemberMutation();
   const exportPins = useExportPinsMutation();
+  const exportD1 = useExportD1SqlMutation();
+  const exportKv = useExportKvMutation();
   const testAlert = useTestDiscordAlertMutation();
   const users = team.data?.users || [];
   const isOwner = currentUser.role === "owner";
@@ -37,6 +41,8 @@ export function TeamPage({ hub = false }) {
     updateRole.isPending ||
     removeMember.isPending ||
     exportPins.isPending ||
+    exportD1.isPending ||
+    exportKv.isPending ||
     testAlert.isPending;
 
   function handleAdd(event) {
@@ -58,15 +64,41 @@ export function TeamPage({ hub = false }) {
   }
 
   function handleExportPins() {
-    setActionStatus({ message: "Preparing backup…", isError: false });
+    setActionStatus({ message: "Preparing pin backup…", isError: false });
     exportPins.mutate(undefined, {
       onSuccess: (data) =>
         setActionStatus({
-          message: `D1 backup downloaded (${data?.pinCount ?? "?"} pins).`,
+          message: `Pin backup downloaded (${data?.pinCount ?? "?"} pins).`,
           isError: false,
         }),
       onError: (error) =>
         setActionStatus({ message: error.message || "Could not export pins", isError: true }),
+    });
+  }
+
+  function handleExportD1() {
+    setActionStatus({ message: "Preparing full D1 SQL backup…", isError: false });
+    exportD1.mutate(undefined, {
+      onSuccess: () =>
+        setActionStatus({
+          message: "Full D1 SQL backup downloaded.",
+          isError: false,
+        }),
+      onError: (error) =>
+        setActionStatus({ message: error.message || "Could not export D1 backup", isError: true }),
+    });
+  }
+
+  function handleExportKv() {
+    setActionStatus({ message: "Preparing KV JSON backup…", isError: false });
+    exportKv.mutate(undefined, {
+      onSuccess: (data) =>
+        setActionStatus({
+          message: `KV backup downloaded (${data?.keyCount ?? "?"} keys, skipped ${data?.skippedCount ?? 0}).`,
+          isError: false,
+        }),
+      onError: (error) =>
+        setActionStatus({ message: error.message || "Could not export KV backup", isError: true }),
     });
   }
 
@@ -102,13 +134,29 @@ export function TeamPage({ hub = false }) {
         </h1>
         <p className="m-0 max-w-xl text-[0.88rem] font-light tracking-wide text-white/50">
           {isOwner
-            ? "Add or remove circle members. Owners can change roles, export pin backups, and test Discord alerts."
+            ? "Add or remove circle members. Owners can change roles, export backups, and test Discord alerts."
             : "Add or remove circle members and manage access."}
         </p>
       </header>
 
       {isOwner ? (
         <div className="mb-4 flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            className="glass-control"
+            onClick={handleExportD1}
+            disabled={actionPending}
+          >
+            Export full D1 SQL
+          </button>
+          <button
+            type="button"
+            className="glass-control"
+            onClick={handleExportKv}
+            disabled={actionPending}
+          >
+            Export KV JSON
+          </button>
           <button
             type="button"
             className="glass-control"

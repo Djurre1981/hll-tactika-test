@@ -44,18 +44,54 @@ export function useRemoveTeamMemberMutation() {
   });
 }
 
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function useExportPinsMutation() {
   return useMutation({
     mutationFn: async () => {
       const data = await apiClient("/admin/pins-full");
       const date = new Date().toISOString().slice(0, 10);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `pins-d1-backup-${date}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(
+        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+        `pins-d1-backup-${date}.json`,
+      );
+      return data;
+    },
+  });
+}
+
+export function useExportD1SqlMutation() {
+  return useMutation({
+    mutationFn: async () => {
+      const sql = await apiClient("/admin/backup-d1", {
+        headers: { Accept: "application/sql, text/plain, */*" },
+      });
+      if (typeof sql !== "string" || !sql.trim()) {
+        throw new Error("Empty D1 backup");
+      }
+      const date = new Date().toISOString().slice(0, 10);
+      downloadBlob(new Blob([sql], { type: "application/sql;charset=utf-8" }), `tactika-d1-backup-${date}.sql`);
+      return { bytes: sql.length };
+    },
+  });
+}
+
+export function useExportKvMutation() {
+  return useMutation({
+    mutationFn: async () => {
+      const data = await apiClient("/admin/backup-kv");
+      const date = new Date().toISOString().slice(0, 10);
+      downloadBlob(
+        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+        `tactika-kv-backup-${date}.json`,
+      );
       return data;
     },
   });
