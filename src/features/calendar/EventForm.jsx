@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Button } from "../../shared/Button.jsx";
+import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
-import { HQ_SPAWN_LABELS } from "../routeplanner/constants.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
-import { isMatchEventType, localDateTimeValue } from "./calendar-utils.js";
+import {
+  endDateTimeFromStart,
+  isMatchEventType,
+  localDateTimeValue,
+} from "./calendar-utils.js";
 
 const FACTION_OPTIONS = [
   { value: "axis", label: "Axis" },
@@ -14,11 +18,6 @@ const RESULT_OPTIONS = [
   { value: "win", label: "Win" },
   { value: "loss", label: "Loss" },
 ];
-
-const STARTING_POINT_OPTIONS = HQ_SPAWN_LABELS.map((label, index) => ({
-  value: String(index).padStart(2, "0"),
-  label,
-}));
 
 function TagToggle({ value, options, onChange }) {
   return (
@@ -54,19 +53,36 @@ function emptyMatchState() {
 
 export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pending, error, canDelete }) {
   const baseDate = initialEvent ? new Date(initialEvent.startsAt) : selectedDay;
+  const initialStartsAt = localDateTimeValue(baseDate);
   const [title, setTitle] = useState(initialEvent?.title || "");
   const [eventType, setEventType] = useState(initialEvent?.eventType || "scrim");
-  const [startsAt, setStartsAt] = useState(localDateTimeValue(baseDate));
+  const [startsAt, setStartsAt] = useState(initialStartsAt);
   const [endsAt, setEndsAt] = useState(
-    initialEvent?.endsAt ? localDateTimeValue(new Date(initialEvent.endsAt)) : ""
+    initialEvent?.endsAt
+      ? localDateTimeValue(new Date(initialEvent.endsAt))
+      : endDateTimeFromStart(initialStartsAt)
   );
   const [description, setDescription] = useState(initialEvent?.description || "");
   const [match, setMatch] = useState(initialEvent?.match || emptyMatchState());
 
   const showMatchFields = isMatchEventType(eventType);
+  const startingPointOptions = match.mapId ? getMidpointsForMap(match.mapId) : [];
 
   function patchMatch(partial) {
-    setMatch((current) => ({ ...current, ...partial }));
+    setMatch((current) => {
+      const next = { ...current, ...partial };
+      if (partial.mapId !== undefined && partial.mapId !== current.mapId) {
+        if (!isValidStartingPoint(partial.mapId, current.startingPoint)) {
+          next.startingPoint = "";
+        }
+      }
+      return next;
+    });
+  }
+
+  function handleStartsAtChange(value) {
+    setStartsAt(value);
+    setEndsAt(endDateTimeFromStart(value));
   }
 
   function handleSubmit(event) {
@@ -117,7 +133,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
             className="glass-input w-full"
             type="datetime-local"
             value={startsAt}
-            onChange={(event) => setStartsAt(event.target.value)}
+            onChange={(event) => handleStartsAtChange(event.target.value)}
           />
         </label>
       </div>
@@ -170,15 +186,16 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
             />
           </div>
           <label className="block text-sm">
-            <span className="mb-1 block text-muted">Starting point (optional)</span>
+            <span className="mb-1 block text-muted">Starting strongpoint (optional)</span>
             <select
               className="glass-input w-full"
               value={match.startingPoint || ""}
+              disabled={!match.mapId}
               onChange={(event) => patchMatch({ startingPoint: event.target.value })}
             >
-              <option value="">Not set</option>
-              {STARTING_POINT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+              <option value="">{match.mapId ? "Select strongpoint…" : "Select a map first"}</option>
+              {startingPointOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
                   {opt.label}
                 </option>
               ))}

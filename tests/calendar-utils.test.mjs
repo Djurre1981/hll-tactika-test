@@ -4,8 +4,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  endDateTimeFromStart,
   formatEventMatchSummary,
   isMatchEventType,
+  localDateTimeValue,
 } from "../src/features/calendar/calendar-utils.js";
 
 describe("T2 — isMatchEventType", () => {
@@ -32,7 +34,7 @@ describe("T2 — formatEventMatchSummary", () => {
         opponent: "42nd",
         mapId: "Foy",
         faction: "allies",
-        startingPoint: "01",
+        startingPoint: "22",
         result: "win",
       },
     });
@@ -40,7 +42,14 @@ describe("T2 — formatEventMatchSummary", () => {
     assert.match(summary, /vs 42nd/);
     assert.match(summary, /Foy/);
     assert.match(summary, /Allies/);
-    assert.match(summary, /HQ mid/);
+    assert.match(summary, /Southern Edge/);
     assert.match(summary, /Win/);
+  });
+});
+
+describe("T2 — endDateTimeFromStart", () => {
+  it("adds 150 minutes by default", () => {
+    const end = endDateTimeFromStart("2026-07-23T19:00");
+    assert.equal(end, "2026-07-23T21:30");
   });
 });
