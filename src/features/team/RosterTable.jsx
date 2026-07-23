@@ -104,7 +104,7 @@ export function RosterTable({
                   ) : (
                     <div className="h-9 w-9 rounded-full border border-border bg-bg" aria-hidden="true" />
                   )}
-                  <span className="font-medium">{user.name || "Unknown member"}</span>
+                  <span className="font-medium">{user.name || user.steamId || "Unknown member"}</span>
                 </div>
               </td>
               <td className="px-4 py-3 font-mono text-xs text-muted">{user.steamId}</td>

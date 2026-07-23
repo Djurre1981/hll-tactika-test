@@ -1,7 +1,7 @@
 import { requireAdmin, requireOwner } from "../../../lib/auth-request.js";
 import { ASSIGNABLE_ROLES, removeManagedUser, updateManagedUserRole } from "../../../lib/roles.js";
 import { fetchSteamProfile } from "../../../lib/steam.js";
-import { isValidSteamId64 } from "../../../lib/users-store.js";
+import { isValidSteamId64, saveUserProfile } from "../../../lib/users-store.js";
 import { errorResponse, json } from "../../../lib/response.js";
 
 export async function onRequestDelete(context) {
@@ -64,10 +64,12 @@ export async function onRequestPatch(context) {
   }
 
   const profile = await fetchSteamProfile(steamId, context.env);
+  await saveUserProfile(steamId, context.env, profile);
   return json({
     user: {
       steamId,
-      name: profile.name,
+      name: profile.name || result.member.name || null,
+      avatar: profile.avatar || result.member.avatar || null,
       role: result.member.role,
       removable: result.member.removable,
       roleEditable: result.member.roleEditable,

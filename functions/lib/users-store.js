@@ -90,7 +90,11 @@ function rowToUser(row) {
 
 async function migrateEnvUsers(env, data) {
   const envOwners = new Set(parseSteamIds(env.OWNER_STEAM_IDS));
-  const envAdmins = new Set(parseSteamIds(env.ADMIN_STEAM_IDS));
+  // Match getEnvAdminSteamIds: ALLOWED_STEAM_IDS is the admin fallback.
+  const adminIds = parseSteamIds(env.ADMIN_STEAM_IDS);
+  const envAdmins = new Set(
+    adminIds.length > 0 ? adminIds : parseSteamIds(env.ALLOWED_STEAM_IDS)
+  );
   const envAssists = new Set(parseSteamIds(env.ASSIST_STEAM_IDS));
   const envEditors = new Set(parseSteamIds(env.EDITOR_STEAM_IDS));
   const envViewers = new Set([
@@ -231,7 +235,7 @@ export async function saveUsersData(env, data) {
 
 export async function saveUserProfile(steamId, env, profile = {}) {
   const id = String(steamId).trim();
-  if (!id) {
+  if (!id || (!profile.name && !profile.avatar)) {
     return;
   }
 

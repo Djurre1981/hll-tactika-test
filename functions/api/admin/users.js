@@ -1,6 +1,6 @@
 import { requireAdmin } from "../../lib/auth-request.js";
 import { addManagedUser, listAllMembers } from "../../lib/roles.js";
-import { fetchSteamProfile } from "../../lib/steam.js";
+import { fetchSteamProfile, fetchSteamProfiles } from "../../lib/steam.js";
 import { isValidSteamId64, saveUserProfile } from "../../lib/users-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
@@ -12,12 +12,16 @@ function resolveMemberName(member, session) {
   return null;
 }
 
-function enrichMembers(members, session = null, { includeLastSignedIn = false } = {}) {
+function enrichMembers(members, session = null, profiles = new Map(), { includeLastSignedIn = false } = {}) {
   return members.map((member) => {
+    const profile = profiles.get(String(member.steamId));
     const enriched = {
       steamId: member.steamId,
-      name: resolveMemberName(member, session),
-      avatar: member.avatar || null,
+      name: resolveMemberName(
+        { ...member, name: member.name || profile?.name || null },
+        session
+      ),
+      avatar: member.avatar || profile?.avatar || null,
       role: member.role,
       removable: member.removable,
       roleEditable: member.roleEditable,
@@ -29,6 +33,31 @@ function enrichMembers(members, session = null, { includeLastSignedIn = false } 
   });
 }
 
+async function backfillMissingProfiles(members, env) {
+  const missingIds = members
+    .filter((member) => !member.name || !member.avatar)
+    .map((member) => member.steamId);
+  if (missingIds.length === 0) {
+    return new Map();
+  }
+
+  let profiles = new Map();
+  try {
+    profiles = await fetchSteamProfiles(missingIds, env);
+  } catch (error) {
+    console.error("Steam profile backfill failed:", error);
+    return profiles;
+  }
+
+  await Promise.all(
+    [...profiles.entries()]
+      .filter(([, profile]) => profile?.name)
+      .map(([steamId, profile]) => saveUserProfile(steamId, env, profile))
+  );
+
+  return profiles;
+}
+
 export async function onRequestGet(context) {
   const auth = await requireAdmin(context);
   if (auth.error) {
@@ -37,7 +66,8 @@ export async function onRequestGet(context) {
 
   try {
     const members = await listAllMembers(context.env, auth.role);
-    const users = enrichMembers(members, auth.session, {
+    const profiles = await backfillMissingProfiles(members, context.env);
+    const users = enrichMembers(members, auth.session, profiles, {
       includeLastSignedIn: auth.role === "owner",
     });
     return json({ users });
