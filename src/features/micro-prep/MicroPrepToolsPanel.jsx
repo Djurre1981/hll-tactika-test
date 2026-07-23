@@ -66,6 +66,7 @@ function selectionLabel(selected) {
 
 export function MicroPrepToolsPanel({
   disabled = false,
+  hideTitle = false,
   kernelRef,
   title,
   onTitleChange,
@@ -379,19 +380,23 @@ export function MicroPrepToolsPanel({
 
         <div className={panelDivider} />
 
-        <label className="block shrink-0">
-          <span className={sectionTitle}>Title</span>
-          <input
-            type="text"
-            value={title}
-            disabled={disabled}
-            onChange={(e) => onTitleChange?.(e.target.value)}
-            className={cx(glassInput, "mt-2")}
-            placeholder="Board title"
-          />
-        </label>
+        {!hideTitle ? (
+          <>
+            <label className="block shrink-0">
+              <span className={sectionTitle}>Title</span>
+              <input
+                type="text"
+                value={title}
+                disabled={disabled}
+                onChange={(e) => onTitleChange?.(e.target.value)}
+                className={cx(glassInput, "mt-2")}
+                placeholder="Board title"
+              />
+            </label>
 
-        <div className={panelDivider} />
+            <div className={panelDivider} />
+          </>
+        ) : null}
 
         <section className="pt-1">
           <h2 className={cx(sectionTitle, "mb-2")}>Tools</h2>

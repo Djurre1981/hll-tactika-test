@@ -56,6 +56,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
 
   const [slides, setSlides] = useState(null);
   const [activeSlideId, setActiveSlideId] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
   const slidesRef = useRef(null);
   const activeSlideIdRef = useRef(null);
   const slidesHydrated = useRef(false);
@@ -480,6 +481,7 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
         <div className="pointer-events-auto h-full">
           <MicroPrepToolsPanel
             disabled={!canEdit}
+            hideTitle={isSlideshow}
             kernelRef={kernelRef}
             title={displayTitle}
             onTitleChange={onTitleChange}
@@ -504,13 +506,21 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
         >
           <div className="pointer-events-auto h-full">
             <SlidesPanel
+              whiteboardId={boardId}
+              title={displayTitle}
+              slideCount={sortSlides(slides || []).length}
+              saving={mutation.isPending}
               slides={slides}
               activeSlideId={activeSlideId}
+              showDetails={showDetails}
+              onToggleDetails={() => setShowDetails((open) => !open)}
+              onTitleChange={onTitleChange}
               onSelect={onSelectSlide}
               onAdd={onAddSlide}
               onRemove={onRemoveSlide}
               onRename={onRenameSlide}
               disabled={!canEdit}
+              canEdit={canEdit}
             />
           </div>
         </div>
