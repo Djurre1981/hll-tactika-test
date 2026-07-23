@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
 
 const TYPE_LABELS = {
@@ -83,8 +84,17 @@ export function DayDetails({
                     </span>
                   ) : null}
                 </span>
-                <span className="self-center rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
-                  {TYPE_LABELS[event.eventType] || event.eventType}
+                <span className="flex min-w-0 flex-col items-end gap-1.5 self-stretch">
+                  <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
+                    {TYPE_LABELS[event.eventType] || event.eventType}
+                  </span>
+                  <Link
+                    to={`/events/${event.id}`}
+                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                    className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 no-underline transition hover:border-accent/35 hover:text-accent"
+                  >
+                    Brief
+                  </Link>
                 </span>
               </button>
             </li>

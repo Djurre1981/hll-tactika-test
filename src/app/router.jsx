@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
+import { MatchBriefPage } from "../features/events/MatchBriefPage.jsx";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
 import { TeamPage } from "../features/team/TeamPage.jsx";
 import { ManagementPage } from "../features/management/ManagementPage.jsx";
@@ -74,6 +75,7 @@ export function AppRouter() {
           <Route path="home" element={<HomePage />} />
           <Route path="dashboard" element={<Navigate to="/home" replace />} />
           <Route path="calendar" element={<CalendarPage hub />} />
+          <Route path="events/:eventId" element={<MatchBriefPage />} />
           <Route path="team" element={<StaffOnlyTeamPage hub />} />
           <Route path="management" element={<StaffOnlyManagementPage />} />
           <Route path="strats" element={<StratsPage hub />} />
