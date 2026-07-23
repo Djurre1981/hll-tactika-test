@@ -1,10 +1,10 @@
-import { requireAdmin, requireAuth } from "../../lib/auth-request.js";
+import { requireAdmin, requireAuth } from "../lib/auth-request.js";
 import {
   aggregateCombatBySteamId,
   listPlayerMatchStatsForEvent,
   listPlayerMatchStatsForSteamIds,
-} from "../../lib/player-match-stats-store.js";
-import { errorResponse, json } from "../../lib/response.js";
+} from "../lib/player-match-stats-store.js";
+import { errorResponse, json } from "../lib/response.js";
 
 /**
  * GET /api/player-stats?eventId=…
