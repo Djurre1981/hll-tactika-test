@@ -1,5 +1,6 @@
 import { requireAuth } from "../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../lib/pin-permissions.js";
+import { assertLinkedEventEditable } from "../../lib/event-component-link.js";
 import {
   deleteRoutePlan,
   getRoutePlan,
@@ -56,6 +57,11 @@ export async function onRequestPut(context) {
       return errorResponse("Not allowed to edit this route plan", 403);
     }
 
+    const linked = await assertLinkedEventEditable(context.env, "routePlan", id);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
+    }
+
     const input = body.plan || body;
     const title =
       typeof input.title === "string" && input.title.trim()
@@ -93,6 +99,10 @@ export async function onRequestDelete(context) {
     if (!existing) return errorResponse("Route plan not found", 404);
     if (!canDelete(existing, auth.session.steamId, auth.role)) {
       return errorResponse("Not allowed to delete this route plan", 403);
+    }
+    const linked = await assertLinkedEventEditable(context.env, "routePlan", id);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
     }
     await deleteRoutePlan(context.env, id);
     return json({ ok: true, id });

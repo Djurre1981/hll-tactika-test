@@ -88,7 +88,7 @@ function ComponentGroup({ kind, items, canEdit, pending, onDetach }) {
           <ComponentRow
             key={`${item.kind}-${item.id}`}
             item={item}
-            canEdit={canEdit}
+            canEdit={canEdit && !eventLocked}
             pending={pending}
             onDetach={onDetach}
           />
@@ -103,13 +103,14 @@ export function EventComponentsPanel({
   components,
   canEdit = false,
   canAttachRoster = false,
+  eventLocked = false,
 }) {
   const { resolved, isLoading } = useResolvedEventComponents(components);
   const grouped = groupSlotsByKind(resolved);
   const linked = hasLinkedComponents(components);
-  const actions = useEventComponentActions(canEdit ? eventId : null);
+  const actions = useEventComponentActions(canEdit && !eventLocked ? eventId : null);
 
-  const showAttach = canEdit && eventId;
+  const showAttach = canEdit && eventId && !eventLocked;
 
   return (
     <div className="flex flex-col gap-5">
@@ -153,28 +154,28 @@ export function EventComponentsPanel({
           <ComponentGroup
             kind="strat"
             items={grouped.strat}
-            canEdit={canEdit}
+            canEdit={canEdit && !eventLocked}
             pending={actions.pending}
             onDetach={actions.detach}
           />
           <ComponentGroup
             kind="routePlan"
             items={grouped.routePlan}
-            canEdit={canEdit}
+            canEdit={canEdit && !eventLocked}
             pending={actions.pending}
             onDetach={actions.detach}
           />
           <ComponentGroup
             kind="whiteboard"
             items={grouped.whiteboard}
-            canEdit={canEdit}
+            canEdit={canEdit && !eventLocked}
             pending={actions.pending}
             onDetach={actions.detach}
           />
           <ComponentGroup
             kind="roster"
             items={grouped.roster}
-            canEdit={canEdit}
+            canEdit={canEdit && !eventLocked}
             pending={actions.pending}
             onDetach={actions.detach}
           />

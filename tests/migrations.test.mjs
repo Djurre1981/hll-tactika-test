@@ -48,3 +48,14 @@ describe("T9 migration 0017_prep_tasks", () => {
     assert.match(sql, /assignee_steam_id/i);
   });
 });
+
+describe("Event lock migration 0018_event_lock", () => {
+  it("adds lock columns on events", () => {
+    const sql = readFileSync(join(root, "migrations/0018_event_lock.sql"), "utf8");
+    assert.match(sql, /locked INTEGER/i);
+    assert.match(sql, /lock_override INTEGER/i);
+    assert.match(sql, /locked_by TEXT/i);
+    assert.match(sql, /locked_at TEXT/i);
+    assert.match(sql, /ALTER TABLE events/i);
+  });
+});

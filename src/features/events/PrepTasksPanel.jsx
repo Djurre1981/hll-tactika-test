@@ -68,9 +68,9 @@ function PrepTaskRow({ task, canEdit, canComplete, memberName, pending, onToggle
   );
 }
 
-export function PrepTasksPanel({ eventId, canEdit = false }) {
+export function PrepTasksPanel({ eventId, canEdit = false, eventLocked = false }) {
   const user = useAuth();
-  const isEditor = canEdit || canEditEvents(user?.role);
+  const isEditor = (canEdit || canEditEvents(user?.role)) && !eventLocked;
   const tasksQuery = usePrepTasksQuery(eventId);
   const membersQuery = usePresenceMembersQuery(isEditor);
   const createMutation = useCreatePrepTaskMutation(eventId);
@@ -124,7 +124,7 @@ export function PrepTasksPanel({ eventId, canEdit = false }) {
   }
 
   async function handleToggle(task, completed) {
-    if (!user?.steamId) return;
+    if (!user?.steamId || eventLocked) return;
     const canComplete =
       isEditor || String(task.assigneeSteamId) === String(user.steamId);
     if (!canComplete) return;
@@ -216,7 +216,8 @@ export function PrepTasksPanel({ eventId, canEdit = false }) {
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {tasks.map((task) => {
             const canComplete =
-              isEditor || String(task.assigneeSteamId) === String(user?.steamId);
+              !eventLocked &&
+              (isEditor || String(task.assigneeSteamId) === String(user?.steamId));
             return (
               <PrepTaskRow
                 key={task.id}

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { EventLockBadge } from "../events/EventLockBadge.jsx";
 import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
 import { EventScheduleIndicators } from "./EventScheduleIndicators.jsx";
 
@@ -95,6 +96,7 @@ export function DayDetails({
                     <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
                       {TYPE_LABELS[event.eventType] || event.eventType}
                     </span>
+                    <EventLockBadge event={event} className="scale-90" />
                     {canEdit ? (
                       <button
                         type="button"

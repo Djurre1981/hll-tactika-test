@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "../../shared/Button.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
+import { EventLockBadge, EventLockIcon } from "../events/EventLockBadge.jsx";
+import { eventLockLabel } from "../events/event-lock.js";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
 import {
@@ -20,19 +22,20 @@ const RESULT_OPTIONS = [
   { value: "loss", label: "Loss" },
 ];
 
-function TagToggle({ value, options, onChange }) {
+function TagToggle({ value, options, onChange, disabled = false }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
+          disabled={disabled}
           className={`rounded-full border px-3 py-1 text-[0.78rem] transition ${
             value === opt.value
               ? "border-white/25 bg-white/15 text-white"
               : "border-white/10 bg-white/[0.04] text-white/70 hover:border-white/20"
-          }`}
-          onClick={() => onChange(value === opt.value ? "" : opt.value)}
+          } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+          onClick={() => !disabled && onChange(value === opt.value ? "" : opt.value)}
         >
           {opt.label}
         </button>
@@ -52,7 +55,23 @@ function emptyMatchState() {
   };
 }
 
-export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pending, error, canDelete }) {
+export function EventForm({
+  initialEvent,
+  selectedDay,
+  onSubmit,
+  onDelete,
+  onLock,
+  onUnlock,
+  pending,
+  lockPending,
+  error,
+  canDelete,
+  readOnly = false,
+  effectiveLocked = false,
+  lockReason = null,
+  canLock = false,
+  canUnlock = false,
+}) {
   const baseDate = initialEvent ? new Date(initialEvent.startsAt) : selectedDay;
   const initialStartsAt = localDateTimeValue(baseDate);
   const [title, setTitle] = useState(initialEvent?.title || "");
@@ -94,6 +113,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
 
   function handleSubmit(event) {
     event.preventDefault();
+    if (readOnly) return;
     onSubmit({
       title: title.trim(),
       eventType,
@@ -104,8 +124,49 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
     });
   }
 
+  const lockLabel = eventLockLabel(lockReason);
+  const inputDisabled = readOnly || pending;
+
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      {initialEvent ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <EventLockBadge event={initialEvent} />
+            <span className="text-[0.78rem] text-white/50">{lockLabel}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {canLock ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={lockPending || pending}
+                onClick={onLock}
+              >
+                <EventLockIcon locked className="mr-1.5 text-[0.75rem]" />
+                Lock event
+              </Button>
+            ) : null}
+            {canUnlock ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={lockPending || pending}
+                onClick={onUnlock}
+              >
+                <EventLockIcon locked={false} className="mr-1.5 text-[0.75rem]" />
+                Unlock event
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {readOnly ? (
+        <p className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 text-sm text-amber-50/90">
+          This event is locked. Properties cannot be changed.
+          {canUnlock ? " Use Unlock above if you need to edit it." : " Contact an administrator to unlock."}
+        </p>
+      ) : null}
       {error ? (
         <p className="rounded-2xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">
           {error}
@@ -116,6 +177,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
         <input
           className="glass-input w-full"
           value={title}
+          disabled={inputDisabled}
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
@@ -130,6 +192,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 onChange={setEventType}
                 options={eventTypeOptions}
                 placeholder=""
+                disabled={inputDisabled}
               />
             </label>
             <label className="block text-sm">
@@ -138,6 +201,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 className="glass-input w-full"
                 type="datetime-local"
                 value={startsAt}
+                disabled={inputDisabled}
                 onChange={(event) => handleStartsAtChange(event.target.value)}
               />
             </label>
@@ -148,6 +212,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
               className="glass-input w-full"
               type="datetime-local"
               value={endsAt}
+              disabled={inputDisabled}
               onChange={(event) => setEndsAt(event.target.value)}
             />
           </label>
@@ -156,6 +221,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
             <textarea
               className="glass-input min-h-24 w-full lg:min-h-[11.5rem]"
               value={description}
+              disabled={inputDisabled}
               onChange={(event) => setDescription(event.target.value)}
             />
           </label>
@@ -173,6 +239,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 maxLength={80}
                 placeholder="Opponent team name"
                 value={match.opponent || ""}
+                disabled={inputDisabled}
                 onChange={(event) => patchMatch({ opponent: event.target.value })}
               />
             </label>
@@ -183,6 +250,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 onChange={(mapId) => patchMatch({ mapId })}
                 options={mapOptions}
                 placeholder="Select map…"
+                disabled={inputDisabled}
               />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -191,6 +259,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 <TagToggle
                   value={match.faction || ""}
                   options={FACTION_OPTIONS}
+                  disabled={inputDisabled}
                   onChange={(value) => patchMatch({ faction: value })}
                 />
               </div>
@@ -199,6 +268,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 <TagToggle
                   value={match.result || ""}
                   options={RESULT_OPTIONS}
+                  disabled={inputDisabled}
                   onChange={(value) => patchMatch({ result: value })}
                 />
               </div>
@@ -210,7 +280,7 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
                 onChange={(startingPoint) => patchMatch({ startingPoint })}
                 options={strongpointSelectOptions}
                 placeholder={match.mapId ? "Select strongpoint…" : "Select a map first"}
-                disabled={!match.mapId}
+                disabled={inputDisabled || !match.mapId}
               />
             </label>
           </fieldset>
@@ -218,16 +288,18 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
       </div>
 
       <div className="flex flex-wrap justify-between gap-3">
-        {canDelete ? (
+        {canDelete && !readOnly ? (
           <Button type="button" variant="ghost" onClick={onDelete} disabled={pending}>
             Delete
           </Button>
         ) : (
           <span />
         )}
-        <Button type="submit" disabled={!title.trim() || pending}>
-          {pending ? "Saving..." : "Save event"}
-        </Button>
+        {!readOnly ? (
+          <Button type="submit" disabled={!title.trim() || pending}>
+            {pending ? "Saving..." : "Save event"}
+          </Button>
+        ) : null}
       </div>
     </form>
   );

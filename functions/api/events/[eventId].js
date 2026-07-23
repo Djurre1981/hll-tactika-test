@@ -1,5 +1,12 @@
 import { requireAuth, requireEditor, readJsonBody } from "../../lib/auth-request.js";
-import { deleteEvent, getEvent, updateEvent } from "../../lib/events-store.js";
+import {
+  deleteEvent,
+  getEvent,
+  lockEvent,
+  unlockEvent,
+  updateEvent,
+} from "../../lib/events-store.js";
+import { canUnlockEvents } from "../../lib/event-lock.js";
 import { errorResponse, json } from "../../lib/response.js";
 import { sanitizeEventBody } from "../events.js";
 
@@ -46,7 +53,34 @@ export async function onRequestPatch(context) {
     return parsed.error;
   }
 
-  const sanitized = sanitizeEventBody(parsed.body || {}, { partial: true });
+  const body = parsed.body || {};
+
+  if (body.lock === true) {
+    try {
+      const result = await lockEvent(context.env, eventId, auth.session.steamId);
+      if (result.error) return errorResponse(result.error, result.status || 400);
+      return json({ event: result.event });
+    } catch (error) {
+      console.error("PATCH /api/events/:eventId lock failed:", error);
+      return errorResponse("Failed to lock event", 500);
+    }
+  }
+
+  if (body.unlock === true) {
+    if (!canUnlockEvents(auth.role)) {
+      return errorResponse("Only administrators and owners can unlock events", 403);
+    }
+    try {
+      const result = await unlockEvent(context.env, eventId);
+      if (result.error) return errorResponse(result.error, result.status || 400);
+      return json({ event: result.event });
+    } catch (error) {
+      console.error("PATCH /api/events/:eventId unlock failed:", error);
+      return errorResponse("Failed to unlock event", 500);
+    }
+  }
+
+  const sanitized = sanitizeEventBody(body, { partial: true });
   if (sanitized.error) {
     return errorResponse(sanitized.error, 400);
   }
@@ -55,6 +89,9 @@ export async function onRequestPatch(context) {
     const event = await updateEvent(context.env, eventId, sanitized.event);
     if (!event) {
       return errorResponse("Event not found", 404);
+    }
+    if (event.error) {
+      return errorResponse(event.error, event.status || 400);
     }
     return json({ event });
   } catch (error) {
@@ -78,6 +115,9 @@ export async function onRequestDelete(context) {
     const event = await deleteEvent(context.env, eventId);
     if (!event) {
       return errorResponse("Event not found", 404);
+    }
+    if (event.error) {
+      return errorResponse(event.error, event.status || 400);
     }
     return json({ ok: true, eventId });
   } catch (error) {

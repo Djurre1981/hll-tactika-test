@@ -1,5 +1,6 @@
 import { requireAuth } from "../../../../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../../../../lib/pin-permissions.js";
+import { assertLinkedEventEditable } from "../../../../../lib/event-component-link.js";
 import { normalizeSlideName } from "../../../../../lib/strat-fields.js";
 import { canModifyStrat } from "../../../../../lib/strat-permissions.js";
 import { getStrat, saveStrat } from "../../../../../lib/strats-store.js";
@@ -56,6 +57,17 @@ export async function onRequestPost(context) {
       !canModifyStrat(target, auth.session.steamId, auth.role)
     ) {
       return errorResponse("Not allowed to duplicate this slide", 403);
+    }
+
+    const sourceLinked = await assertLinkedEventEditable(context.env, "strat", stratId);
+    if (sourceLinked.error) {
+      return errorResponse(sourceLinked.error, sourceLinked.status || 423);
+    }
+    if (targetStratId !== stratId) {
+      const targetLinked = await assertLinkedEventEditable(context.env, "strat", targetStratId);
+      if (targetLinked.error) {
+        return errorResponse(targetLinked.error, targetLinked.status || 423);
+      }
     }
 
     const sourceSlide = source.slides[slideIndex];

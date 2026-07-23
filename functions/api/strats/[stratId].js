@@ -1,5 +1,6 @@
 import { requireAuth } from "../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../lib/pin-permissions.js";
+import { assertLinkedEventEditable } from "../../lib/event-component-link.js";
 import { applyStratUpdates } from "../../lib/strat-fields.js";
 import { canDeleteStrat, canModifyStrat } from "../../lib/strat-permissions.js";
 import { deleteStrat, getStrat, saveStrat } from "../../lib/strats-store.js";
@@ -56,6 +57,11 @@ export async function onRequestPut(context) {
       return errorResponse("Strat is locked", 423);
     }
 
+    const linked = await assertLinkedEventEditable(context.env, "strat", stratId);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
+    }
+
     const built = applyStratUpdates(existing, body.strat || {});
     if (built.error) {
       return errorResponse(built.error, 400);
@@ -99,6 +105,11 @@ export async function onRequestDelete(context) {
 
     if (!canDeleteStrat(existing, auth.session.steamId, auth.role)) {
       return errorResponse("Not allowed to delete this strat", 403);
+    }
+
+    const linked = await assertLinkedEventEditable(context.env, "strat", stratId);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
     }
 
     await deleteStrat(context.env, stratId);

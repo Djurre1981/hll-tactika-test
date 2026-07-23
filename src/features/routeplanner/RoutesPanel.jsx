@@ -38,6 +38,7 @@ export function RoutesPanel({
   onAddRoute,
   onRemoveRoute,
   canAddRoute,
+  canEdit = true,
 }) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
 
@@ -56,6 +57,7 @@ export function RoutesPanel({
             <input
               type="text"
               value={planTitle}
+              disabled={!canEdit}
               onChange={(e) => onPlanTitleChange?.(e.target.value)}
               placeholder="Route plan title"
               className={cx(glassInput, "text-[0.82rem] font-normal text-white")}
@@ -66,7 +68,7 @@ export function RoutesPanel({
               {metaBits.join(" · ")}
             </p>
           </div>
-          <IconBtn title="Add route" disabled={!canAddRoute} onClick={onAddRoute}>
+          <IconBtn title="Add route" disabled={!canEdit || !canAddRoute} onClick={onAddRoute}>
             <i className="fa-solid fa-plus" aria-hidden="true" />
           </IconBtn>
         </div>
@@ -76,6 +78,7 @@ export function RoutesPanel({
         <RoutePlanEventPicker
           planId={planId}
           eventId={eventId}
+          canEditPlan={canEdit}
           onEventIdChange={onEventIdChange}
           onPatchPlan={onPatchPlan}
         />

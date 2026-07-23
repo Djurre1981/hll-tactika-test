@@ -1,6 +1,6 @@
 import { canEnterEditorMode } from "./pin-permissions.js";
 import { requireDb } from "./d1.js";
-import { getEvent } from "./events-store.js";
+import { assertEventEditable, getEvent } from "./events-store.js";
 
 const TASK_COLUMNS =
   "id, event_id, title, description, assignee_steam_id, completed, completed_at, created_by, created_at, updated_at";
@@ -95,6 +95,14 @@ export function classifyPrepTaskPatch(patch) {
   };
 }
 
+async function assertEventAllowsPrepTaskMutation(env, eventId) {
+  const event = await getEvent(env, eventId);
+  if (!event) return { error: "Event not found", status: 404 };
+  const editable = assertEventEditable(event);
+  if (editable.error) return editable;
+  return { ok: true, event };
+}
+
 export async function listPrepTasksForEvent(env, eventId) {
   const db = requireDb(env);
   const result = await db
@@ -146,8 +154,8 @@ export async function getPrepTask(env, eventId, taskId) {
 }
 
 export async function createPrepTask(env, eventId, input, createdBy) {
-  const event = await getEvent(env, eventId);
-  if (!event) return { error: "Event not found", status: 404 };
+  const allowed = await assertEventAllowsPrepTaskMutation(env, eventId);
+  if (allowed.error) return allowed;
 
   const now = new Date().toISOString();
   const task = {
@@ -192,6 +200,9 @@ export async function updatePrepTask(env, eventId, taskId, patch) {
   const existing = await getPrepTask(env, eventId, taskId);
   if (!existing) return { error: "Prep task not found", status: 404 };
 
+  const allowed = await assertEventAllowsPrepTaskMutation(env, eventId);
+  if (allowed.error) return allowed;
+
   const now = new Date().toISOString();
   const next = {
     ...existing,
@@ -228,6 +239,9 @@ export async function updatePrepTask(env, eventId, taskId, patch) {
 export async function deletePrepTask(env, eventId, taskId) {
   const existing = await getPrepTask(env, eventId, taskId);
   if (!existing) return { error: "Prep task not found", status: 404 };
+
+  const allowed = await assertEventAllowsPrepTaskMutation(env, eventId);
+  if (allowed.error) return allowed;
 
   const db = requireDb(env);
   await db

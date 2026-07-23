@@ -435,13 +435,30 @@ Editors link tools from their editors (Stratmaker, Routeplanner, Micro Prep) or 
 
 Migration: `migrations/0017_prep_tasks.sql`.
 
+### Event locking
+
+Events become **read-only** when locked so match-night records stay trustworthy.
+
+| Trigger | Who can override |
+|---------|------------------|
+| **Auto-lock** when start time is in the past, or match result is win/loss | Admin/owner **unlock** on calendar or Match Brief |
+| **Manual lock** before the match (any editor) | Admin/owner unlock |
+
+When locked, the event itself and everything linked to it are protected:
+
+- Event properties, delete, prep tasks, attach/detach on Match Brief
+- Linked **strats**, **route plans**, and **slideshows** (whiteboards) — editors see a padlock badge and read-only editors; API returns **423**
+
+Migration: `migrations/0018_event_lock.sql`. Tests: `tests/event-lock.test.mjs`, `tests/event-component-link.test.mjs`.
+
 ### Events API (subset)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/events?from=&to=` | List events in range |
-| `GET` | `/api/events/{eventId}` | Single event + `components` + `match` |
-| `POST` | `/api/events/{eventId}/components` | Attach/detach strat, routePlan, whiteboard, roster (editor+) |
+| `GET` | `/api/events/{eventId}` | Single event + `components` + `match` + lock state |
+| `PATCH` | `/api/events/{eventId}` | Update event (editor+); `{ lock: true }` manual lock; `{ unlock: true }` admin/owner only |
+| `POST` | `/api/events/{eventId}/components` | Attach/detach strat, routePlan, whiteboard, roster (editor+; blocked when locked) |
 | `GET` | `/api/events/{eventId}/prep-tasks` | List prep tasks for event |
 | `POST` | `/api/events/{eventId}/prep-tasks` | Create prep task (editor+) |
 | `PATCH` | `/api/events/{eventId}/prep-tasks/{taskId}` | Assignee toggles `completed`; editor can edit fields |
@@ -460,6 +477,7 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | T5 Attach/detach tools on Brief | ✅ |
 | T9 Prep tasks | ✅ |
 | **T8** Match history | ✅ |
+| **Event lock** (calendar + linked tools) | ✅ |
 | **T10** Team KPIs / charts | ⬜ next (unblocked) |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |

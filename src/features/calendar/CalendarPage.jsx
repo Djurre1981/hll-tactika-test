@@ -3,6 +3,11 @@ import { useAuth } from "../auth/AuthGate.jsx";
 import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
 import { Modal } from "../../shared/Modal.jsx";
+import {
+  canUnlockEvents,
+  enrichEventLockState,
+  isEventEffectivelyLocked,
+} from "../events/event-lock.js";
 import { DayDetails } from "./DayDetails.jsx";
 import { EventForm } from "./EventForm.jsx";
 import { MonthGrid } from "./MonthGrid.jsx";
@@ -15,6 +20,7 @@ import {
 import {
   useCreateEventMutation,
   useDeleteEventMutation,
+  useEventLockMutation,
   useEventsByMonthQuery,
   useUpdateEventMutation,
 } from "./hooks/useEventsQuery.js";
@@ -34,6 +40,7 @@ export function CalendarPage({ hub = false }) {
   const createEvent = useCreateEventMutation();
   const updateEvent = useUpdateEventMutation();
   const deleteEvent = useDeleteEventMutation();
+  const lockEvent = useEventLockMutation();
   const days = useMemo(() => buildMonthDays(monthDate), [monthDate]);
   const events = eventsQuery.data?.events || [];
   const monthLabel = new Intl.DateTimeFormat(undefined, {
@@ -81,8 +88,41 @@ export function CalendarPage({ hub = false }) {
     deleteEvent.mutate(modalState.event.id, { onSuccess: closeModal });
   }
 
+  function refreshModalEvent(event) {
+    setModalState((current) =>
+      current?.mode === "edit" && current.event?.id === event?.id
+        ? { ...current, event }
+        : current
+    );
+  }
+
+  function handleLockEvent() {
+    if (!modalState?.event?.id) return;
+    lockEvent.mutate(
+      { id: modalState.event.id, lock: true },
+      { onSuccess: refreshModalEvent }
+    );
+  }
+
+  function handleUnlockEvent() {
+    if (!modalState?.event?.id) return;
+    lockEvent.mutate(
+      { id: modalState.event.id, lock: false },
+      { onSuccess: refreshModalEvent }
+    );
+  }
+
+  const editEvent =
+    modalState?.mode === "edit" && modalState.event
+      ? enrichEventLockState(modalState.event)
+      : null;
+  const effectiveLocked = editEvent ? isEventEffectivelyLocked(editEvent) : false;
+
   const mutationError =
-    createEvent.error?.message || updateEvent.error?.message || deleteEvent.error?.message;
+    createEvent.error?.message ||
+    updateEvent.error?.message ||
+    deleteEvent.error?.message ||
+    lockEvent.error?.message;
   const sectionStyle = useFadeIn();
 
   const modal = (
@@ -95,13 +135,25 @@ export function CalendarPage({ hub = false }) {
       {modalState ? (
         <EventForm
           key={modalState.event?.id || "create"}
-          initialEvent={modalState.event}
+          initialEvent={editEvent || modalState.event}
           selectedDay={modalState.selectedDay}
           onSubmit={submitEvent}
           onDelete={handleDelete}
+          onLock={handleLockEvent}
+          onUnlock={handleUnlockEvent}
           pending={createEvent.isPending || updateEvent.isPending || deleteEvent.isPending}
+          lockPending={lockEvent.isPending}
           error={mutationError}
           canDelete={modalState.mode === "edit"}
+          readOnly={modalState.mode === "edit" && effectiveLocked}
+          effectiveLocked={effectiveLocked}
+          lockReason={editEvent?.lockReason ?? null}
+          canLock={modalState.mode === "edit" && canEdit && !effectiveLocked}
+          canUnlock={
+            modalState.mode === "edit" &&
+            canUnlockEvents(user.role) &&
+            effectiveLocked
+          }
         />
       ) : null}
     </Modal>

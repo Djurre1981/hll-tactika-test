@@ -10,6 +10,8 @@ import {
   useEventComponentsMutation,
   useEventsRangeQuery,
 } from "../calendar/hooks/useEventsQuery.js";
+import { EventLockBadge } from "../events/EventLockBadge.jsx";
+import { isEventEffectivelyLocked } from "../events/event-lock.js";
 import {
   accLabel,
   accShell,
@@ -77,6 +79,8 @@ export function WhiteboardEventLinker({ whiteboardId, canEditBoard }) {
     () => allEvents.find((event) => event.id === linkedEventId) || null,
     [allEvents, linkedEventId]
   );
+  const eventLocked = linkedEvent ? isEventEffectivelyLocked(linkedEvent) : false;
+  const canChangeLink = canEdit && !eventLocked;
 
   const createDefaultDay = useMemo(() => {
     const day = new Date();
@@ -124,7 +128,7 @@ export function WhiteboardEventLinker({ whiteboardId, canEditBoard }) {
   }
 
   async function handleEventChange(nextEventId) {
-    if (!canEdit || !whiteboardId || pending) return;
+    if (!canChangeLink || !whiteboardId || pending) return;
     if (nextEventId === linkedEventId) return;
 
     setError("");
@@ -191,19 +195,22 @@ export function WhiteboardEventLinker({ whiteboardId, canEditBoard }) {
           Link this slideshow to a calendar event so it appears on the match brief.
         </p>
         <GlassSelect
-          disabled={!canEdit || pending || eventsQuery.isLoading}
+          disabled={!canChangeLink || pending || eventsQuery.isLoading}
           value={linkedEventId}
           onChange={handleSelectChange}
           placeholder="None"
           options={eventOptions}
         />
         {linkedEvent ? (
-          <Link
-            to={`/events/${linkedEvent.id}`}
-            className="text-[0.72rem] text-accent no-underline hover:underline"
-          >
-            Open Match Brief
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <EventLockBadge event={linkedEvent} className="scale-90" />
+            <Link
+              to={`/events/${linkedEvent.id}`}
+              className="text-[0.72rem] text-accent no-underline hover:underline"
+            >
+              Open Match Brief
+            </Link>
+          </div>
         ) : null}
         {error ? <p className="m-0 text-[0.72rem] text-red-200/90">{error}</p> : null}
       </EventAccordion>

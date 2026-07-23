@@ -11,6 +11,7 @@ import { MapChrome } from "./MapChrome.jsx";
 import { CollabPeers } from "../../../shared/CollabPeers.jsx";
 import { EditorUserCluster } from "./EditorUserCluster.jsx";
 import { ImportStratSketchModal } from "./ImportStratSketchModal.jsx";
+import { LinkedEventLockBanner } from "../../events/LinkedEventLockBanner.jsx";
 import { STRAT_PANEL_WIDTH, useStratEditor } from "./hooks/useStratEditor.js";
 import { useStratPresentation } from "./hooks/useStratPresentation.js";
 import { apiClient } from "../../../lib/api-client.js";
@@ -27,6 +28,8 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     slides,
     activeSlide,
     canEdit,
+    linkedEvent,
+    canUnlockLinkedEvent,
     dirty,
     selected,
     setSelected,
@@ -147,6 +150,16 @@ export function StratEditor({ stratId, backTo = "/home" }) {
       onPointerMove={presenting ? presentation.onPointerMove : undefined}
       onPointerLeave={presenting ? presentation.onPointerLeave : undefined}
     >
+      {linkedEvent ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[40] p-3">
+          <div className="pointer-events-auto mx-auto max-w-xl">
+            <LinkedEventLockBanner
+              linkedEvent={linkedEvent}
+              canUnlockLinkedEvent={canUnlockLinkedEvent}
+            />
+          </div>
+        </div>
+      ) : null}
       <div className="absolute inset-0 z-0" aria-hidden="true">
         <div className={`absolute inset-0 ${presenting ? "bg-black" : "bg-[#0f0f0f]"}`} />
         {!presenting ? (

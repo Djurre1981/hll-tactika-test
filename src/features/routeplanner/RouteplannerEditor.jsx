@@ -96,6 +96,7 @@ export function RouteplannerEditor({
   onSave,
   saving = false,
   dirty = false,
+  canEdit = true,
   backTo = "/home",
 }) {
   const kernelRef = useRef(null);
@@ -222,6 +223,7 @@ export function RouteplannerEditor({
 
   const persistPatch = useCallback(
     (patch) => {
+      if (!canEdit) return;
       onSave?.({
         title: planTitle,
         eventId,
@@ -234,7 +236,7 @@ export function RouteplannerEditor({
         ...patch,
       });
     },
-    [onSave, planTitle, eventId, mapId, factionId, hqIndex, routes, obstacles, obstacleVectorBuildId]
+    [canEdit, onSave, planTitle, eventId, mapId, factionId, hqIndex, routes, obstacles, obstacleVectorBuildId]
   );
 
   const handlePlanTitleChange = useCallback(
@@ -551,7 +553,7 @@ export function RouteplannerEditor({
 
   const handleMapClick = useCallback(
     async (pt, event) => {
-      if (dragRef.current || obstacleInteractionRef.current) return;
+      if (!canEdit || dragRef.current || obstacleInteractionRef.current) return;
 
       if (obstacleEditMode && isPenTool(obstacleTool)) {
         if (suppressNextClickRef.current) {
@@ -733,7 +735,7 @@ export function RouteplannerEditor({
 
   const handleMapPointerDown = useCallback(
     (pt, event) => {
-      if (dragRef.current || !obstacleEditMode || !isPenTool(obstacleTool)) return;
+      if (!canEdit || dragRef.current || !obstacleEditMode || !isPenTool(obstacleTool)) return;
       if (event.button !== 0) return;
       if (penSessionRef.current?.points?.length) return;
 
@@ -745,7 +747,7 @@ export function RouteplannerEditor({
       };
       kernelRef.current?.setBlockPan(true);
     },
-    [obstacleEditMode, obstacleTool]
+    [canEdit, obstacleEditMode, obstacleTool]
   );
 
   const handleMapPointerUp = useCallback(
@@ -771,6 +773,7 @@ export function RouteplannerEditor({
 
   const handleMapContextMenu = useCallback(
     async (pt, event) => {
+      if (!canEdit) return;
       if (!showObstacles && selectedRouteId && !plottingRouteId) {
         const route = routesRef.current.find((r) => r.id === selectedRouteId);
         if (isRouteEditable(route)) {
@@ -1544,6 +1547,7 @@ export function RouteplannerEditor({
             eventId={eventId}
             dirty={dirty}
             saving={saving}
+            canEdit={canEdit}
             planFactionId={factionId}
             routes={routes}
             selectedRouteId={selectedRouteId}

@@ -165,3 +165,23 @@ export function useDeleteEventMutation() {
     onSettled: () => invalidateEvents(queryClient),
   });
 }
+
+export function useEventLockMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, lock }) =>
+      apiClient(`/events/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(lock ? { lock: true } : { unlock: true }),
+      }).then((data) => data.event),
+    onSuccess: (event) => {
+      if (!event?.id) return;
+      queryClient.setQueryData(queryKeys.events.byId(event.id), event);
+      patchEventsCaches(queryClient, (events) =>
+        events.map((item) => (item.id === event.id ? { ...item, ...event } : item))
+      );
+    },
+    onSettled: () => invalidateEvents(queryClient),
+  });
+}

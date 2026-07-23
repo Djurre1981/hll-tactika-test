@@ -10,6 +10,8 @@ import {
   useEventComponentsMutation,
   useEventsRangeQuery,
 } from "../calendar/hooks/useEventsQuery.js";
+import { EventLockBadge } from "../events/EventLockBadge.jsx";
+import { isEventEffectivelyLocked } from "../events/event-lock.js";
 import { fieldLabel } from "../strats/editor/editorUi.js";
 import {
   eventPropertiesToRoutePlanPatch,
@@ -23,11 +25,13 @@ const CREATE_VALUE = "__create_event__";
 export function RoutePlanEventPicker({
   planId,
   eventId,
+  canEditPlan = true,
   onEventIdChange,
   onPatchPlan,
 }) {
   const user = useAuth();
-  const canEdit = canEditEvents(user.role);
+  const canEditEventsHub = canEditEvents(user.role);
+  const canEdit = canEditPlan && canEditEventsHub;
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -60,6 +64,8 @@ export function RoutePlanEventPicker({
     () => allEvents.find((event) => event.id === linkedEventId) || null,
     [allEvents, linkedEventId]
   );
+  const eventLocked = linkedEvent ? isEventEffectivelyLocked(linkedEvent) : false;
+  const canChangeLink = canEdit && !eventLocked;
 
   const createDefaultDay = useMemo(() => {
     const day = new Date();
@@ -109,7 +115,7 @@ export function RoutePlanEventPicker({
   }
 
   async function handleEventChange(nextEventId) {
-    if (!canEdit || !planId || pending) return;
+    if (!canChangeLink || !planId || pending) return;
     if (nextEventId === linkedEventId) return;
 
     setError("");
@@ -199,7 +205,7 @@ export function RoutePlanEventPicker({
         </p>
         <GlassSelect
           value={linkedEventId}
-          disabled={!canEdit || pending || eventsQuery.isLoading}
+          disabled={!canChangeLink || pending || eventsQuery.isLoading}
           onChange={handleSelectChange}
           placeholder="None"
           options={eventOptions}
@@ -207,12 +213,15 @@ export function RoutePlanEventPicker({
       </label>
 
       {linkedEvent ? (
-        <Link
-          to={`/events/${linkedEvent.id}`}
-          className="mt-1.5 inline-block text-[0.72rem] text-accent no-underline hover:underline"
-        >
-          Open Match Brief
-        </Link>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <EventLockBadge event={linkedEvent} className="scale-90" />
+          <Link
+            to={`/events/${linkedEvent.id}`}
+            className="text-[0.72rem] text-accent no-underline hover:underline"
+          >
+            Open Match Brief
+          </Link>
+        </div>
       ) : null}
 
       {error ? (

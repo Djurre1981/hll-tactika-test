@@ -5,6 +5,8 @@ import {
   useEventComponentsMutation,
   useEventsRangeQuery,
 } from "../../calendar/hooks/useEventsQuery.js";
+import { EventLockBadge } from "../../events/EventLockBadge.jsx";
+import { isEventEffectivelyLocked } from "../../events/event-lock.js";
 import {
   accLabel,
   accShell,
@@ -74,6 +76,8 @@ export function StratEventLinker({
     () => allEvents.find((event) => event.id === linkedEventId) || null,
     [allEvents, linkedEventId]
   );
+  const eventLocked = linkedEvent ? isEventEffectivelyLocked(linkedEvent) : false;
+  const canChangeLink = canEdit && !eventLocked;
 
   const eventOptions = useMemo(() => {
     const opts = upcomingEvents.map((event) => ({
@@ -112,7 +116,7 @@ export function StratEventLinker({
   }
 
   async function handleEventChange(nextEventId) {
-    if (!canEdit || !stratId || pending) return;
+    if (!canChangeLink || !stratId || pending) return;
     if (nextEventId === linkedEventId) return;
 
     setError("");
@@ -169,19 +173,22 @@ export function StratEventLinker({
         copies match details, type, and the active slide map into this strat once.
       </p>
       <GlassSelect
-        disabled={!canEdit || pending || eventsQuery.isLoading}
+        disabled={!canChangeLink || pending || eventsQuery.isLoading}
         value={linkedEventId}
         onChange={handleEventChange}
         placeholder="None"
         options={eventOptions}
       />
       {linkedEvent ? (
-        <Link
-          to={`/events/${linkedEvent.id}`}
-          className="text-[0.72rem] text-accent no-underline hover:underline"
-        >
-          Open Match Brief
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <EventLockBadge event={linkedEvent} className="scale-90" />
+          <Link
+            to={`/events/${linkedEvent.id}`}
+            className="text-[0.72rem] text-accent no-underline hover:underline"
+          >
+            Open Match Brief
+          </Link>
+        </div>
       ) : null}
       {error ? <p className="m-0 text-[0.72rem] text-red-200/90">{error}</p> : null}
     </EventAccordion>

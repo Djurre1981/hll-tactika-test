@@ -99,6 +99,10 @@ export function createMemoryD1(seed = {}) {
         },
 
         async all() {
+          if (/FROM events\b/i.test(sql) && !/WHERE/i.test(sql)) {
+            return { results: rowsFor("events") };
+          }
+
           if (/FROM events\b/i.test(sql) && /starts_at >= \? AND starts_at < \?/i.test(sql)) {
             const [from, to] = binds;
             const filtered = rowsFor("events")
@@ -217,6 +221,10 @@ export function createMemoryD1(seed = {}) {
               event_type,
               match_json,
               components_json,
+              locked,
+              lock_override,
+              locked_by,
+              locked_at,
               created_by,
               created_at,
               updated_at,
@@ -230,8 +238,42 @@ export function createMemoryD1(seed = {}) {
               event_type,
               match_json,
               components_json,
+              locked: locked ?? 0,
+              lock_override: lock_override ?? 0,
+              locked_by: locked_by ?? null,
+              locked_at: locked_at ?? null,
               created_by,
               created_at,
+              updated_at,
+            });
+            return { success: true };
+          }
+
+          if (/UPDATE events\b/i.test(sql) && /SET locked = 1/i.test(sql)) {
+            const [locked_by, locked_at, updated_at, id] = binds;
+            const existing = findById("events", id);
+            if (!existing) return { success: false };
+            tables.events.set(id, {
+              ...existing,
+              locked: 1,
+              lock_override: 0,
+              locked_by,
+              locked_at,
+              updated_at,
+            });
+            return { success: true };
+          }
+
+          if (/UPDATE events\b/i.test(sql) && /SET locked = 0/i.test(sql) && /lock_override = 1/i.test(sql)) {
+            const [updated_at, id] = binds;
+            const existing = findById("events", id);
+            if (!existing) return { success: false };
+            tables.events.set(id, {
+              ...existing,
+              locked: 0,
+              lock_override: 1,
+              locked_by: null,
+              locked_at: null,
               updated_at,
             });
             return { success: true };
@@ -246,6 +288,10 @@ export function createMemoryD1(seed = {}) {
               event_type,
               match_json,
               components_json,
+              locked,
+              lock_override,
+              locked_by,
+              locked_at,
               updated_at,
               id,
             ] = binds;
@@ -260,6 +306,10 @@ export function createMemoryD1(seed = {}) {
               event_type,
               match_json,
               components_json,
+              locked: locked ?? existing.locked ?? 0,
+              lock_override: lock_override ?? existing.lock_override ?? 0,
+              locked_by: locked_by ?? existing.locked_by ?? null,
+              locked_at: locked_at ?? existing.locked_at ?? null,
               updated_at,
             });
             return { success: true };

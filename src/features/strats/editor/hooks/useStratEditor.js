@@ -11,6 +11,7 @@ import { useYjsRoom } from "../../../../lib/collab/useYjsRoom.js";
 import { useMutateStrat } from "./useMutateStrat.js";
 import { useStratAutosave } from "./useStratAutosave.js";
 import { useStratQuery } from "./useStratQuery.js";
+import { useLinkedEventLock } from "../../../events/hooks/useLinkedEventLock.js";
 import { getDefaultMapId, rememberMapId } from "../mapIds.js";
 import { STRAT_RASTER_FIT_DEFAULT } from "../stratBackground.js";
 import { prepareImageUpload, uploadImageFile } from "../../../../shared/prepareImageUpload.js";
@@ -56,6 +57,12 @@ export function useStratEditor(stratId) {
   const query = useStratQuery(stratId);
   const mutation = useMutateStrat(stratId);
 
+  const { eventLocked, linkedEvent, canUnlockLinkedEvent } = useLinkedEventLock({
+    kind: "strat",
+    toolId: stratId,
+    enabled: Boolean(stratId),
+  });
+
   const strat = query.data;
   const slides = localSlides || sortSlides(strat?.slides);
   const activeSlide = slides.find((s) => s.id === activeSlideId) || slides[0];
@@ -63,7 +70,8 @@ export function useStratEditor(stratId) {
   const canEdit =
     Boolean(strat) &&
     ["owner", "admin", "editor", "assist"].includes(user.role) &&
-    (!strat.locked || strat.createdBy === user.steamId || user.role === "owner");
+    (!strat.locked || strat.createdBy === user.steamId || user.role === "owner") &&
+    !eventLocked;
 
   useEffect(() => {
     if (!strat) return;
@@ -524,6 +532,9 @@ export function useStratEditor(stratId) {
     slides,
     activeSlide,
     canEdit,
+    eventLocked,
+    linkedEvent,
+    canUnlockLinkedEvent,
     dirty,
     selected,
     setSelected,

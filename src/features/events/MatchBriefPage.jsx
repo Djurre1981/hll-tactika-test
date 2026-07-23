@@ -13,6 +13,8 @@ import { canManageTeam } from "../../lib/roles.js";
 import { getStartingPointLabel } from "../../shared/mapMidpoints.js";
 import { EventScheduleIndicators } from "../calendar/EventScheduleIndicators.jsx";
 import { EventComponentsPanel } from "./EventComponentsPanel.jsx";
+import { EventLockBadge } from "./EventLockBadge.jsx";
+import { isEventEffectivelyLocked } from "./event-lock.js";
 import { PrepTasksPanel } from "./PrepTasksPanel.jsx";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
 
@@ -95,6 +97,7 @@ export function MatchBriefPage() {
   }
 
   const event = eventQuery.data;
+
   if (!event) {
     return (
       <section className="space-y-4">
@@ -105,6 +108,9 @@ export function MatchBriefPage() {
       </section>
     );
   }
+
+  const eventLocked = isEventEffectivelyLocked(event);
+  const canEditEvent = canEdit && !eventLocked;
 
   return (
     <div className="glass-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pr-1">
@@ -122,7 +128,10 @@ export function MatchBriefPage() {
               {event.title}
             </h1>
             <p className="m-0 mt-2 text-[0.88rem] text-white/55">{formatEventSchedule(event)}</p>
-            <EventScheduleIndicators components={event.components} className="mt-2.5" />
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <EventLockBadge event={event} />
+              <EventScheduleIndicators components={event.components} />
+            </div>
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.12em] text-emerald-200">
             {eventTypeLabel(event.eventType)}
@@ -139,9 +148,15 @@ export function MatchBriefPage() {
         </section>
       ) : null}
 
+      {eventLocked ? (
+        <p className="m-0 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-[0.85rem] text-amber-50/90">
+          This event is locked. Linked tools and prep tasks cannot be changed.
+        </p>
+      ) : null}
+
       <MatchFacts event={event} />
 
-      <PrepTasksPanel eventId={event.id} canEdit={canEdit} />
+      <PrepTasksPanel eventId={event.id} canEdit={canEditEvent} eventLocked={eventLocked} />
 
       <section>
         <h2 className="m-0 mb-3 text-[0.72rem] uppercase tracking-[0.16em] text-white/45">
@@ -150,8 +165,9 @@ export function MatchBriefPage() {
         <EventComponentsPanel
           eventId={event.id}
           components={event.components}
-          canEdit={canEdit}
-          canAttachRoster={canAttachRoster}
+          canEdit={canEditEvent}
+          canAttachRoster={canAttachRoster && !eventLocked}
+          eventLocked={eventLocked}
         />
       </section>
     </div>

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../auth/AuthGate.jsx";
 import { apiClient } from "../../lib/api-client.js";
 import { queryKeys } from "../../lib/query-keys.js";
+import { canEditEvents } from "../calendar/calendar-utils.js";
+import { useLinkedEventLock } from "../events/hooks/useLinkedEventLock.js";
+import { LinkedEventLockBanner } from "../events/LinkedEventLockBanner.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { RouteplannerEditor } from "./RouteplannerEditor.jsx";
 
@@ -23,10 +27,12 @@ function normalizePlan(raw) {
 }
 
 export function RouteplannerPage({ planId, backTo = "/home" }) {
+  const user = useAuth();
   const queryClient = useQueryClient();
   const saveTimer = useRef(null);
   const [dirty, setDirty] = useState(false);
   const latestPayload = useRef(null);
+  const roleCanEdit = canEditEvents(user?.role);
 
   const query = useQuery({
     queryKey: queryKeys.routePlans.byId(planId),
@@ -45,8 +51,17 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
     },
   });
 
+  const { eventLocked, linkedEvent, canUnlockLinkedEvent } = useLinkedEventLock({
+    kind: "routePlan",
+    toolId: planId,
+    planEventId: query.data?.eventId,
+    enabled: Boolean(query.data),
+  });
+  const canEdit = roleCanEdit && !eventLocked;
+
   const handleSave = useCallback(
     (payload) => {
+      if (!canEdit) return;
       latestPayload.current = {
         title:
           typeof payload.title === "string" && payload.title.trim()
@@ -68,7 +83,7 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
         if (latestPayload.current) mutation.mutate(latestPayload.current);
       }, 800);
     },
-    [mutation, query.data?.title, query.data?.eventId]
+    [canEdit, mutation, query.data?.title, query.data?.eventId]
   );
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
@@ -93,12 +108,25 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
   }
 
   return (
-    <RouteplannerEditor
-      plan={query.data}
-      onSave={handleSave}
-      saving={mutation.isPending}
-      dirty={dirty}
-      backTo={backTo}
-    />
+    <div className="relative h-full w-full">
+      {linkedEvent ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[40] p-3">
+          <div className="pointer-events-auto mx-auto max-w-xl">
+            <LinkedEventLockBanner
+              linkedEvent={linkedEvent}
+              canUnlockLinkedEvent={canUnlockLinkedEvent}
+            />
+          </div>
+        </div>
+      ) : null}
+      <RouteplannerEditor
+        plan={query.data}
+        onSave={handleSave}
+        saving={mutation.isPending}
+        dirty={dirty}
+        canEdit={canEdit}
+        backTo={backTo}
+      />
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   parseRoomId,
   putYjsSnapshot,
 } from "../../../lib/collab-rooms.js";
+import { assertLinkedEventEditable } from "../../../lib/event-component-link.js";
 import { getStrat, saveStrat } from "../../../lib/strats-store.js";
 import { getWhiteboard, saveWhiteboard } from "../../../lib/whiteboards-store.js";
 import { errorResponse, json } from "../../../lib/response.js";
@@ -19,6 +20,8 @@ function base64ToBytes(b64) {
 
 async function materializeStratSlide(env, parsed, objects) {
   if (!Array.isArray(objects)) return;
+  const linked = await assertLinkedEventEditable(env, "strat", parsed.stratId);
+  if (linked.error) return;
   const strat = await getStrat(env, parsed.stratId);
   if (!strat) return;
   const slides = (strat.slides || []).map((slide) =>
@@ -33,6 +36,8 @@ async function materializeStratSlide(env, parsed, objects) {
 
 async function materializeWhiteboard(env, parsed, scene) {
   if (!scene || typeof scene !== "object") return;
+  const linked = await assertLinkedEventEditable(env, "whiteboard", parsed.whiteboardId);
+  if (linked.error) return;
   const board = await getWhiteboard(env, parsed.whiteboardId);
   if (!board) return;
   await saveWhiteboard(env, {

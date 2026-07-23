@@ -28,6 +28,7 @@
 | ✅ Done | **T5** | Attach/detach tools on Brief | T1, T3 — `3f53569` |
 | ✅ Done | **T9** | Prep task checklist | T1, T3 — `d7cb96b` |
 | ✅ Done | **T8** | Match history / records | T2 |
+| ✅ Done | **Event lock** | Lock events + linked strats/routes/slideshows | T1, T3, T5 |
 | ⬜ **Next (product)** | **T10** | Team win/loss stats | T2 |
 | ⬜ | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
@@ -569,6 +570,26 @@ Stop for PR. Plan T8.
 - [ ] Past events with result appear
 - [ ] Can open into Brief / detail
 - [ ] `npx vite build` passes
+
+---
+
+### Event lock — calendar + linked tools ✅ DONE
+
+**In plain English:**  
+After a match (or when an editor locks early), the event and its linked strats, route plans, and slideshows become read-only. Only admin/owner can unlock.
+
+**Where:** Calendar event form, Match Brief, Stratmaker / Routeplanner / Micro Prep when linked.
+
+**Depends on:** T1, T3, T5.
+
+**Verify:**
+- [x] Past event or win/loss result auto-locks
+- [x] Editor can manual-lock before match date
+- [x] Admin/owner unlock restores edits
+- [x] Linked strat/route/whiteboard PUT blocked with 423 when locked
+- [x] `npm test` (event-lock + event-component-link)
+
+Migration: `0018_event_lock.sql`.
 
 ---
 

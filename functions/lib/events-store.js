@@ -1,4 +1,8 @@
 import { requireDb } from "./d1.js";
+import {
+  enrichEventLockState,
+  isEventEffectivelyLocked,
+} from "./event-lock.js";
 import { normalizeStratMatch } from "./strat-fields.js";
 import { getStrat } from "./strats-store.js";
 import { getRoutePlan } from "./route-plans-store.js";
@@ -79,7 +83,7 @@ function parseMatchJson(raw) {
 }
 
 function rowToEvent(row) {
-  return {
+  const event = {
     id: row.id,
     title: row.title,
     description: row.description || "",
@@ -88,13 +92,62 @@ function rowToEvent(row) {
     eventType: row.event_type,
     match: parseMatchJson(row.match_json),
     components: parseComponentsJson(row.components_json),
+    locked: Boolean(row.locked),
+    lockOverride: Boolean(row.lock_override),
+    lockedBy: row.locked_by || null,
+    lockedAt: row.locked_at || null,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  return enrichEventLockState(event);
 }
 
-const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, match_json, components_json, created_by, created_at, updated_at`;
+const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, match_json, components_json,
+  locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at`;
+
+export function assertEventEditable(event) {
+  if (isEventEffectivelyLocked(event)) {
+    return { error: "Event is locked", status: 423 };
+  }
+  return { ok: true };
+}
+
+export async function lockEvent(env, eventId, steamId) {
+  const existing = await getEvent(env, eventId);
+  if (!existing) return { error: "Event not found", status: 404 };
+
+  const now = new Date().toISOString();
+  const db = requireDb(env);
+  await db
+    .prepare(
+      `UPDATE events
+       SET locked = 1, lock_override = 0, locked_by = ?, locked_at = ?, updated_at = ?
+       WHERE id = ?`
+    )
+    .bind(steamId, now, now, eventId)
+    .run();
+
+  return { event: await getEvent(env, eventId) };
+}
+
+export async function unlockEvent(env, eventId) {
+  const existing = await getEvent(env, eventId);
+  if (!existing) return { error: "Event not found", status: 404 };
+
+  const now = new Date().toISOString();
+  const db = requireDb(env);
+  await db
+    .prepare(
+      `UPDATE events
+       SET locked = 0, lock_override = 1, locked_by = NULL, locked_at = NULL, updated_at = ?
+       WHERE id = ?`
+    )
+    .bind(now, eventId)
+    .run();
+
+  return { event: await getEvent(env, eventId) };
+}
 
 export async function listEvents(env, { from, to }) {
   const db = requireDb(env);
@@ -132,8 +185,9 @@ export async function createEvent(env, event) {
   await db
     .prepare(
       `INSERT INTO events
-       (id, title, description, starts_at, ends_at, event_type, match_json, components_json, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, title, description, starts_at, ends_at, event_type, match_json, components_json,
+        locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       event.id,
@@ -144,6 +198,10 @@ export async function createEvent(env, event) {
       event.eventType,
       JSON.stringify(match),
       JSON.stringify(components),
+      0,
+      0,
+      null,
+      null,
       event.createdBy,
       event.createdAt,
       event.updatedAt
@@ -156,6 +214,11 @@ export async function createEvent(env, event) {
 export async function updateEvent(env, eventId, updates) {
   const existing = await getEvent(env, eventId);
   if (!existing) return null;
+
+  const editable = assertEventEditable(existing);
+  if (editable.error) {
+    return { error: editable.error, status: editable.status };
+  }
 
   const next = {
     ...existing,
@@ -173,7 +236,8 @@ export async function updateEvent(env, eventId, updates) {
   await db
     .prepare(
       `UPDATE events
-       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, match_json = ?, components_json = ?, updated_at = ?
+       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, match_json = ?, components_json = ?,
+           locked = ?, lock_override = ?, locked_by = ?, locked_at = ?, updated_at = ?
        WHERE id = ?`
     )
     .bind(
@@ -184,6 +248,10 @@ export async function updateEvent(env, eventId, updates) {
       next.eventType,
       JSON.stringify(sanitizeEventMatch(next.match)),
       JSON.stringify(sanitizeEventComponents(next.components)),
+      next.locked ? 1 : 0,
+      next.lockOverride ? 1 : 0,
+      next.lockedBy || null,
+      next.lockedAt || null,
       next.updatedAt,
       eventId
     )
@@ -195,6 +263,11 @@ export async function updateEvent(env, eventId, updates) {
 export async function deleteEvent(env, eventId) {
   const existing = await getEvent(env, eventId);
   if (!existing) return null;
+
+  const editable = assertEventEditable(existing);
+  if (editable.error) {
+    return { error: editable.error, status: editable.status };
+  }
 
   const db = requireDb(env);
   await db.prepare("DELETE FROM events WHERE id = ?").bind(eventId).run();
@@ -232,6 +305,9 @@ async function assertComponentExists(env, type, id) {
 export async function mutateEventComponent(env, eventId, payload) {
   const event = await getEvent(env, eventId);
   if (!event) return { error: "Event not found", status: 404 };
+
+  const editable = assertEventEditable(event);
+  if (editable.error) return editable;
 
   const action = String(payload?.action || "").trim();
   const type = String(payload?.type || "").trim();
@@ -271,5 +347,6 @@ export async function mutateEventComponent(env, eventId, payload) {
   }
 
   const updated = await updateEvent(env, eventId, { components });
+  if (updated?.error) return updated;
   return { event: updated };
 }

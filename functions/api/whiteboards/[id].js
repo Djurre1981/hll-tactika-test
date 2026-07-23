@@ -1,5 +1,6 @@
 import { requireAuth } from "../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../lib/pin-permissions.js";
+import { assertLinkedEventEditable } from "../../lib/event-component-link.js";
 import {
   deleteWhiteboard,
   getWhiteboard,
@@ -64,6 +65,11 @@ export async function onRequestPut(context) {
       return errorResponse("Not allowed to edit this whiteboard", 403);
     }
 
+    const linked = await assertLinkedEventEditable(context.env, "whiteboard", id);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
+    }
+
     const input = body.whiteboard || {};
     const title =
       typeof input.title === "string" && input.title.trim()
@@ -113,6 +119,11 @@ export async function onRequestDelete(context) {
 
     if (!canDeleteBoard(existing, auth.session.steamId, auth.role)) {
       return errorResponse("Not allowed to delete this whiteboard", 403);
+    }
+
+    const linked = await assertLinkedEventEditable(context.env, "whiteboard", id);
+    if (linked.error) {
+      return errorResponse(linked.error, linked.status || 423);
     }
 
     await deleteWhiteboard(context.env, id);

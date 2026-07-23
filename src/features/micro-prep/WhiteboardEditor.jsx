@@ -28,6 +28,8 @@ import {
   slidePageUrl,
   sortSlides,
 } from "./slidesUtils.js";
+import { useLinkedEventLock } from "../events/hooks/useLinkedEventLock.js";
+import { LinkedEventLockBanner } from "../events/LinkedEventLockBanner.jsx";
 
 export const MICRO_PREP_PANEL_GAP = 16;
 export const MICRO_PREP_PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
@@ -65,6 +67,12 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
   const mutation = useMutateWhiteboard(boardId);
   const board = query.data;
   const isSlideshow = board?.mode === "slideshow";
+
+  const { eventLocked, linkedEvent, canUnlockLinkedEvent } = useLinkedEventLock({
+    kind: "whiteboard",
+    toolId: boardId,
+    enabled: Boolean(boardId),
+  });
 
   useEffect(() => {
     if (!board || themeHydrated.current) return;
@@ -122,7 +130,8 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     Boolean(board) &&
     ["owner", "admin", "editor", "assist"].includes(user.role) &&
     (["owner", "admin", "assist"].includes(user.role) ||
-      board.createdBy === user.steamId);
+      board.createdBy === user.steamId) &&
+    !eventLocked;
 
   const measureInsets = useCallback(() => {
     const shell = shellRef.current;
@@ -449,6 +458,16 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
 
   return (
     <div ref={shellRef} className={`relative h-full w-full overflow-hidden ${shellBg}`}>
+      {linkedEvent ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[40] p-3">
+          <div className="pointer-events-auto mx-auto max-w-xl">
+            <LinkedEventLockBanner
+              linkedEvent={linkedEvent}
+              canUnlockLinkedEvent={canUnlockLinkedEvent}
+            />
+          </div>
+        </div>
+      ) : null}
       {isSlideshow ? (
         <div
           className={`absolute inset-0 z-[1] flex items-center justify-center ${letterboxBg}`}
