@@ -445,7 +445,8 @@ Stop for PR. Human QA in Discord required. Plan T12b.
 ### Gate B — Product (can progress in parallel with Gate A after T0a skeleton)
 - [x] Event hub stores and returns component IDs (T1) — [#34](https://github.com/Djurre1981/hll-tactika-test/pull/34)
 - [x] Match metadata on events (T2) — [#35](https://github.com/Djurre1981/hll-tactika-test/pull/35), migration `0016` on remote
-- [ ] Match Brief opens from calendar/hub and shows linked tools (T3+T5)
+- [x] Match Brief opens from calendar/hub and shows linked tools (T3 — read-only links; T5 attach UI next) — [#39](https://github.com/Djurre1981/hll-tactika-test/pull/39)
+- [ ] Match Brief attach/detach UI (T5)
 - [ ] Wizard can create event+strat link + notify (T4)
 - [ ] RSVP + hub next-match card (T6+T7)
 - [ ] Prep tasks on Brief (T9)
