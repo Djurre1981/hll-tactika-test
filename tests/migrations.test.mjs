@@ -1,0 +1,33 @@
+/**
+ * Schema / migration smoke checks for PR #34 (T1 + folders sort_order fix).
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, it } from "node:test";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+describe("T1 migration 0014_event_components", () => {
+  it("adds components_json column with default empty object", () => {
+    const sql = readFileSync(join(root, "migrations/0014_event_components.sql"), "utf8");
+    assert.match(sql, /components_json/i);
+    assert.match(sql, /DEFAULT\s+'\{\}'/i);
+    assert.match(sql, /ALTER TABLE events/i);
+  });
+});
+
+describe("PR #34 migration 0015_strat_folders_sort_order", () => {
+  it("adds sort_order expected by folders-store", () => {
+    const sql = readFileSync(join(root, "migrations/0015_strat_folders_sort_order.sql"), "utf8");
+    assert.match(sql, /sort_order/i);
+    assert.match(sql, /strat_folders/i);
+  });
+
+  it("folders-store orders by sort_order", async () => {
+    const source = readFileSync(join(root, "functions/lib/folders-store.js"), "utf8");
+    assert.match(source, /sort_order/);
+    assert.match(source, /ORDER BY sort_order/i);
+  });
+});

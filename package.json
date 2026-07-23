@@ -32,7 +32,9 @@
     "import:obstacle-svg": "node scripts/import-obstacle-svg.mjs",
     "trace:mono-overlay-vectors": "node scripts/trace-mono-overlay-vectors.mjs",
     "extract:hq-spawns": "node scripts/extract-hq-spawns.mjs",
-    "extract:vehicles": "node scripts/extract-vehicles.mjs"
+    "extract:vehicles": "node scripts/extract-vehicles.mjs",
+    "test": "node --test tests/**/*.test.mjs",
+    "test:t1": "node --test tests/t1-event-hub.test.mjs tests/migrations.test.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
