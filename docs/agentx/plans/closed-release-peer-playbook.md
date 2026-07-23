@@ -26,6 +26,7 @@
 | ✅ Done | **T2** | Match details on calendar events | T1 — [#35](https://github.com/Djurre1981/hll-tactika-test/pull/35) |
 | ✅ Done | **T3** | Match Brief page | T1, T2 — [#39](https://github.com/Djurre1981/hll-tactika-test/pull/39) |
 | ✅ Done | **T5** | Attach/detach tools on Brief | T1, T3 — `3f53569` |
+| ✅ Done | **T9** | Prep task checklist | T1, T3 — `d7cb96b` |
 | ⬜ **Next (product)** | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
 | ⬜ | **T0b** | Map Discord roles → Tactika roles | T0a |
@@ -34,7 +35,6 @@
 | ⬜ | **T0e** | Notification messages | T0a, T0c |
 | ⬜ | **T6** | RSVP “I’m in / can’t” | T1, T0c |
 | ⬜ | **T7** | Hub next-match card | T3, T6 |
-| ⬜ | **T9** | Prep task checklist | T1, T3 |
 | ⬜ | **T8** | Match history / records | T2 |
 | ⬜ | **T10** | Team win/loss stats | T2 |
 | ⬜ | **T11** | Roster templates | T0d (T6 helps) |
@@ -42,7 +42,7 @@
 | ⬜ | **T12b** | Discord slash commands + two-way calendar | T12a, T0a–T0c, T1–T3 |
 | ⬜ | **Gate C** | Promote bot to Circle production Discord | All of Gate A + B on **test** server |
 
-**Suggested next:** **T4** (create-match wizard — blocked on T0e) *or* **T0a** (Discord path). **T8/T10/T9** also unblocked.
+**Suggested next:** **T4** (create-match wizard — blocked on T0e) *or* **T0a** (Discord path). **T8/T10** also unblocked.
 
 ---
 
