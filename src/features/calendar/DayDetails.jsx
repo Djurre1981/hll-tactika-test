@@ -29,7 +29,7 @@ export function DayDetails({
   canEdit,
   isLoading,
   onAdd,
-  onOpenEvent,
+  onEditEvent,
 }) {
   const dayEvents = eventsForDay(events, selectedDay).sort(
     (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
@@ -64,40 +64,45 @@ export function DayDetails({
           {dayEvents.map((event) => {
             const matchSummary = formatEventMatchSummary(event);
             return (
-            <li key={event.id}>
-              <button
-                type="button"
-                className="grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 rounded-2xl border border-white/[0.08] bg-black/20 px-3.5 py-3.5 text-left transition hover:border-white/15 hover:bg-white/[0.06]"
-                onClick={() => onOpenEvent(event)}
-              >
-                <span className="whitespace-nowrap text-[0.95rem] font-medium text-white">
-                  {formatTime(event.startsAt)}
-                </span>
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="text-[0.9rem] text-white/90">{event.title}</span>
-                  {matchSummary ? (
-                    <span className="truncate text-[0.78rem] text-sky-200/80">{matchSummary}</span>
-                  ) : null}
-                  {event.description ? (
-                    <span className="truncate text-[0.78rem] text-white/40">
-                      {event.description}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="flex min-w-0 flex-col items-end gap-1.5 self-stretch">
-                  <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
-                    {TYPE_LABELS[event.eventType] || event.eventType}
-                  </span>
+              <li key={event.id}>
+                <div className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-2xl border border-white/[0.08] bg-black/20 px-3.5 py-3.5 transition hover:border-white/15 hover:bg-white/[0.06]">
                   <Link
                     to={`/events/${event.id}`}
-                    onClick={(clickEvent) => clickEvent.stopPropagation()}
-                    className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 no-underline transition hover:border-accent/35 hover:text-accent"
+                    className="grid min-w-0 grid-cols-[auto_1fr] items-start gap-3 no-underline"
                   >
-                    Brief
+                    <span className="whitespace-nowrap text-[0.95rem] font-medium text-white">
+                      {formatTime(event.startsAt)}
+                    </span>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[0.9rem] text-white/90">{event.title}</span>
+                      {matchSummary ? (
+                        <span className="truncate text-[0.78rem] text-sky-200/80">{matchSummary}</span>
+                      ) : null}
+                      {event.description ? (
+                        <span className="truncate text-[0.78rem] text-white/40">
+                          {event.description}
+                        </span>
+                      ) : null}
+                    </span>
                   </Link>
-                </span>
-              </button>
-            </li>
+                  <span className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
+                      {TYPE_LABELS[event.eventType] || event.eventType}
+                    </span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        title="Edit event settings"
+                        aria-label={`Edit ${event.title}`}
+                        className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 transition hover:border-accent/35 hover:text-accent"
+                        onClick={() => onEditEvent?.(event)}
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </span>
+                </div>
+              </li>
             );
           })}
         </ul>

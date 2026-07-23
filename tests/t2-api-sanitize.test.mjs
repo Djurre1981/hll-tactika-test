@@ -101,7 +101,8 @@ describe("T2 — auth guards unchanged", () => {
     const dayDetails = readFileSync(join(root, "src/features/calendar/DayDetails.jsx"), "utf8");
 
     assert.match(calendarPage, /canEditEvents\(user\.role\)/);
-    assert.match(calendarPage, /mode: canEdit \? "edit" : "view"/);
+    assert.match(calendarPage, /if \(!canEdit\) return;/);
+    assert.match(dayDetails, /to=\{`\/events\/\$\{event\.id\}`\}/);
     assert.match(dayDetails, /canEdit \?/);
   });
 });

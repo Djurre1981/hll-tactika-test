@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { WEEKDAYS, eventsForDay, sameDay } from "./calendar-utils.js";
 
@@ -18,7 +19,6 @@ export function MonthGrid({
   onSelectDay,
   compact = false,
   onCreateDay,
-  onOpenEvent,
 }) {
   if (compact) {
     return (
@@ -111,24 +111,14 @@ export function MonthGrid({
               <span className="text-sm font-medium">{day.getDate()}</span>
               <div className="mt-3 space-y-2">
                 {dayEvents.slice(0, 3).map((event) => (
-                  <span
+                  <Link
                     key={event.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={(clickEvent) => {
-                      clickEvent.stopPropagation();
-                      onOpenEvent(event);
-                    }}
-                    onKeyDown={(keyEvent) => {
-                      if (keyEvent.key === "Enter") {
-                        keyEvent.stopPropagation();
-                        onOpenEvent(event);
-                      }
-                    }}
-                    className="block rounded-xl border border-accent/20 bg-black/25 px-2 py-1 text-xs text-text hover:border-accent/60"
+                    to={`/events/${event.id}`}
+                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                    className="block rounded-xl border border-accent/20 bg-black/25 px-2 py-1 text-xs text-text no-underline hover:border-accent/60"
                   >
                     {event.title}
-                  </span>
+                  </Link>
                 ))}
                 {dayEvents.length > 3 ? (
                   <span className="block text-xs text-muted">+{dayEvents.length - 3} more</span>

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
@@ -11,7 +10,6 @@ import {
   buildMonthDays,
   canEditEvents,
   eventsForDay,
-  formatEventMatchSummary,
   startOfMonth,
 } from "./calendar-utils.js";
 import {
@@ -61,8 +59,9 @@ export function CalendarPage({ hub = false }) {
     setModalState({ mode: "create", selectedDay: selected });
   }
 
-  function openEdit(event) {
-    setModalState({ mode: canEdit ? "edit" : "view", event });
+  function openEditEvent(event) {
+    if (!canEdit) return;
+    setModalState({ mode: "edit", event });
   }
 
   function closeModal() {
@@ -90,29 +89,10 @@ export function CalendarPage({ hub = false }) {
     <Modal
       open={Boolean(modalState)}
       onClose={closeModal}
-      size={modalState?.mode === "view" ? "default" : "wide"}
-      title={modalState?.mode === "view" ? "Event details" : "Event"}
+      size="wide"
+      title="Event"
     >
-      {modalState?.mode === "view" ? (
-        <div className="space-y-3 text-sm">
-          <p className="text-xl font-medium">{modalState.event.title}</p>
-          <p className="uppercase tracking-[0.16em] text-accent">
-            {modalState.event.eventType}
-          </p>
-          <p className="text-muted">{new Date(modalState.event.startsAt).toLocaleString()}</p>
-          {formatEventMatchSummary(modalState.event) ? (
-            <p className="text-sky-200">{formatEventMatchSummary(modalState.event)}</p>
-          ) : null}
-          {modalState.event.description ? <p>{modalState.event.description}</p> : null}
-          <Link
-            to={`/events/${modalState.event.id}`}
-            onClick={closeModal}
-            className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm text-white/90 no-underline transition hover:border-accent/40 hover:bg-white/10"
-          >
-            Open Match Brief
-          </Link>
-        </div>
-      ) : modalState ? (
+      {modalState ? (
         <EventForm
           key={modalState.event?.id || "create"}
           initialEvent={modalState.event}
@@ -198,7 +178,7 @@ export function CalendarPage({ hub = false }) {
             canEdit={canEdit}
             isLoading={eventsQuery.isLoading}
             onAdd={openCreate}
-            onOpenEvent={openEdit}
+            onEditEvent={openEditEvent}
           />
         </div>
         {modal}
@@ -246,7 +226,6 @@ export function CalendarPage({ hub = false }) {
         canEdit={canEdit}
         isLoading={eventsQuery.isLoading}
         onCreateDay={openCreate}
-        onOpenEvent={openEdit}
       />
       {modal}
     </section>
