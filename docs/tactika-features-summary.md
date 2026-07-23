@@ -10,13 +10,49 @@
 |------|---------|
 | **Auth** | Steam login, allowlist, roles (Comp Member → Owner) |
 | **Security** | Protected pin data, hybrid marker/detail split, audit hooks |
-| **Hub** | Dashboard with upcoming events, tool launcher, online presence |
-| **Calendar** | Month view, event CRUD (scrim / comp / practice / other) |
+| **Hub** | Dashboard with upcoming events, **My tasks** widget, tool launcher, online presence |
+| **Calendar** | Month view, event CRUD (scrim / comp / practice / other), match metadata (opponent, map, faction, result) |
+| **Match Brief** | `/events/:id` — match details, linked tools, prep task checklist |
+| **Event hub** | `components` on events: stratIds, routePlanIds, whiteboardIds, rosterId; attach/detach on Brief |
+| **Prep tasks** | Per-event assignments; assignees complete on Brief; Hub “My tasks” sidebar |
 | **Team / roster** | Site access roster, comp rosters with drag-and-drop, multiple named rosters |
 | **Management** | Staff section, clan roster (separate from site access) |
 | **Media** | R2 uploads for videos/images; external links (YouTube, Medal, etc.) |
 | **Collab** | Yjs live editing on Strat slides & Micro Prep; peer presence |
 | **Maps** | All 20 HLL tactical maps, pan/zoom, grid & strongpoint overlays (Maps Let Loose data) |
+
+---
+
+## Match Brief & intertool (shipped Jul 2026)
+
+Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues/33)) wires Calendar events into a single **Match Brief** command screen.
+
+| Step | Feature | Status |
+|------|---------|--------|
+| T1 | Event **components hub** (strat / route / whiteboard / roster IDs) | ✅ |
+| T2 | **Match metadata** on calendar events | ✅ |
+| T3 | **Match Brief** page (`/events/:id`) | ✅ |
+| T5 | **Attach/detach** linked tools on Brief | ✅ |
+| T9 | **Prep tasks** — assign, complete, Hub my-tasks | ✅ |
+
+### Match Brief UX
+
+- Open from Calendar or Hub upcoming games
+- Match facts, notes, linked-tool chips + deep links
+- Editors attach/detach existing strats, route plans, whiteboards, rosters
+- Tool editors (Stratmaker, Routeplanner, Micro Prep) can link events from their side panels
+- **Prep tasks:** editors assign; assignees checkbox-complete; **Home → My tasks** for open items
+
+### Still planned (RallyPoint / #23)
+
+| Step | Feature | Blocked by |
+|------|---------|------------|
+| T8 | Match history / HLL Records | — (T2 ✅) |
+| T10 | Team KPIs + analytics charts | — (T2 ✅) |
+| T6/T7 | RSVP + Hub next-match hero | T0c (Discord member sync) for full flow |
+| T4 | Create-match wizard | T0e (Discord notifications) |
+| T0a–T0e | Discord bot, role map, roster sync, notifications | — |
+| T12 | Discord posts, reminders, slash commands | T0 + T2 |
 
 ---
 
@@ -131,7 +167,7 @@ Phases **0–8** are done (D1, React shell, auth, dashboard, calendar, Strat bro
 
 | Issue | Topic |
 |-------|--------|
-| #23 | **RallyPoint-style features** — match wizard, RSVP, match brief, Discord push, analytics, prep tasks |
+| #23 | **RallyPoint-style features** — match wizard, RSVP, Discord push, analytics *(Match Brief + prep tasks ✅ Jul 2026; see #33)* |
 | #12 | **Tool integrations** — HLLRecords links, RCON stats, signups, notifications, match analytics, inbox |
 | #13 | **Engagement** — pin ratings, contribution XP/tiers |
 | #5 | Link **roster matches ↔ strats** |
@@ -171,8 +207,8 @@ Phases **0–8** are done (D1, React shell, auth, dashboard, calendar, Strat bro
 
 ## Summary
 
-**Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab.
+**Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab, plus a **Match Brief** hub for match-night prep (linked tools + prep tasks).
 
-**Planned work** clusters around match-day operations (RallyPoint-style scheduling, RSVP, Discord bot), deeper cross-linking between tools, Strat/Micro Prep UX polish, and optional engagement/analytics layers — with Routeplanner’s main gaps being roster-linked drivers and tighter calendar/match workflow integration.
+**Planned work** clusters around RSVP, Discord bot/membership sync, match history/KPIs, create-match wizard, and deeper cross-linking — see [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33) for the ordered checklist.
 
-*Generated July 22, 2026*
+*Updated July 23, 2026*

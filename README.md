@@ -409,6 +409,63 @@ Migration: `migrations/0013_route_plans.sql` (`route_plans` table).
 - Acceleration / torque-curve timing model
 - Pathfinding blocked by frontier wall (today: ETA-only wait at wall crossing)
 
+## Calendar & Match Brief (closed-release hub)
+
+The **Hub → Calendar** schedules scrims, comps, practice blocks, and other events. Each event is the **match-night folder** for linked tools and prep — inspired by [RallyPoint](https://www.rallypoint.fyi/) ideas ([#23](https://github.com/Djurre1981/hll-tactika-test/issues/23)). Progress: [#33 closed-release tracker](https://github.com/Djurre1981/hll-tactika-test/issues/33).
+
+**Staging:** [hll-tactika-test.pages.dev](https://hll-tactika-test.pages.dev/)
+
+### Match Brief (`/events/:eventId`)
+
+Open from **Calendar** (click an event) or **Hub → Upcoming games**. The brief shows:
+
+| Section | What it shows |
+|---------|----------------|
+| **Match details** | Opponent, map, faction, starting strongpoint, result (when set on the event) |
+| **Prep tasks** | Editor-assigned checklist items; assignees tick their own tasks complete |
+| **Linked tools** | Attached strats, route plans, whiteboards, roster — with Open / attach / detach (editors) |
+
+Editors link tools from their editors (Stratmaker, Routeplanner, Micro Prep) or **attach existing assets on the brief**. Route plans keep `eventId` in sync when attached from the brief.
+
+### Prep tasks
+
+- **Editors** assign tasks to circle members (title + assignee picker).
+- **Assignees** mark their own tasks complete on the Match Brief (editors can complete any task).
+- **Hub → My tasks** (right sidebar) lists your open assignments across upcoming matches and links to each brief.
+
+Migration: `migrations/0017_prep_tasks.sql`.
+
+### Events API (subset)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/events?from=&to=` | List events in range |
+| `GET` | `/api/events/{eventId}` | Single event + `components` + `match` |
+| `POST` | `/api/events/{eventId}/components` | Attach/detach strat, routePlan, whiteboard, roster (editor+) |
+| `GET` | `/api/events/{eventId}/prep-tasks` | List prep tasks for event |
+| `POST` | `/api/events/{eventId}/prep-tasks` | Create prep task (editor+) |
+| `PATCH` | `/api/events/{eventId}/prep-tasks/{taskId}` | Assignee toggles `completed`; editor can edit fields |
+| `DELETE` | `/api/events/{eventId}/prep-tasks/{taskId}` | Remove task (editor+) |
+| `GET` | `/api/prep-tasks/mine?from=&to=` | Incomplete tasks for signed-in user |
+
+Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agentx/plans/closed-release-peer-playbook.md).
+
+### Closed release — shipped vs next
+
+| Step | Status |
+|------|--------|
+| T1 Event hub (component IDs) | ✅ |
+| T2 Match metadata on events | ✅ |
+| T3 Match Brief page | ✅ |
+| T5 Attach/detach tools on Brief | ✅ |
+| T9 Prep tasks | ✅ |
+| **T8** Match history | ⬜ next (unblocked) |
+| **T10** Team KPIs / charts | ⬜ next (unblocked) |
+| **T0a** Discord bot skeleton | ⬜ next (parallel track) |
+| T4 Create-match wizard | ⬜ blocked on T0e notifications |
+| T6/T7 RSVP + hub next-match card | ⬜ |
+| T0a–T0e Discord membership + roster sync | ⬜ |
+
 ## Roadmap
 
 - Fixing any bugs after release.
