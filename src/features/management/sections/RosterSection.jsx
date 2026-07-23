@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "../../../shared/Spinner.jsx";
+import { useAuth } from "../../auth/AuthGate.jsx";
+import {
+  useAddTeamMemberMutation,
+  useRemoveTeamMemberMutation,
+  useTeamQuery,
+  useUpdateTeamMemberRoleMutation,
+} from "../../team/hooks/useTeamQuery.js";
 import { PlayerCard } from "../PlayerCard.jsx";
 import { RosterTable } from "../RosterTable.jsx";
 import {
@@ -170,6 +177,7 @@ function exportMembersCsv(members, rosterName) {
 }
 
 export function RosterSection() {
+  const currentUser = useAuth();
   const [activeRosterId, setActiveRosterId] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
@@ -227,8 +235,21 @@ export function RosterSection() {
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
   const updateMember = useUpdateRosterMemberMutation(activeRosterId);
   const importCsv = useImportRosterCsvMutation(activeRosterId);
+  const teamQuery = useTeamQuery();
+  const addTeamMember = useAddTeamMemberMutation();
+  const updateTeamRole = useUpdateTeamMemberRoleMutation();
+  const removeTeamMember = useRemoveTeamMemberMutation();
 
   const members = membersQuery.data?.members || [];
+  const authBySteamId = useMemo(() => {
+    const map = new Map();
+    for (const user of teamQuery.data?.users || []) {
+      const id = String(user.steamId || "").trim();
+      if (id) map.set(id, user);
+    }
+    return map;
+  }, [teamQuery.data?.users]);
+  const canEditAuth = currentUser?.role === "owner";
   const activeRoster = rosters.find((r) => r.id === activeRosterId) || null;
   const selected = members.find((m) => m.id === selectedId) || null;
   const cardOpen = Boolean(selected);
@@ -424,6 +445,34 @@ export function RosterSection() {
     updateMember.mutate({ id: member.id, displayName });
   }
 
+  async function handleSetAuthorization(member, nextRole) {
+    const steamId = String(member.steamId || "").trim();
+    if (!steamId || !canEditAuth) return;
+
+    const existing = authBySteamId.get(steamId) || null;
+    const role = String(nextRole || "").trim();
+
+    try {
+      if (!role) {
+        if (!existing?.removable) return;
+        await removeTeamMember.mutateAsync(steamId);
+        setImportMessage(`Removed site access for ${member.displayName}`);
+        return;
+      }
+
+      if (!existing) {
+        await addTeamMember.mutateAsync(steamId);
+      }
+
+      if (!existing || existing.role !== role) {
+        await updateTeamRole.mutateAsync({ steamId, role });
+      }
+      setImportMessage(`Authorization: ${member.displayName} → ${role}`);
+    } catch (err) {
+      setImportMessage(err?.message || "Failed to update authorization");
+    }
+  }
+
   function toggleFilterSituation(id) {
     setFilterSituations((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -547,17 +596,24 @@ export function RosterSection() {
     addMember.isPending ||
     removeMember.isPending ||
     updateMember.isPending ||
-    importCsv.isPending;
+    importCsv.isPending ||
+    addTeamMember.isPending ||
+    updateTeamRole.isPending ||
+    removeTeamMember.isPending;
   const error =
     rostersQuery.error?.message ||
     membersQuery.error?.message ||
+    teamQuery.error?.message ||
     createRoster.error?.message ||
     updateRoster.error?.message ||
     deleteRoster.error?.message ||
     addMember.error?.message ||
     removeMember.error?.message ||
     updateMember.error?.message ||
-    importCsv.error?.message;
+    importCsv.error?.message ||
+    addTeamMember.error?.message ||
+    updateTeamRole.error?.message ||
+    removeTeamMember.error?.message;
 
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -999,6 +1055,8 @@ export function RosterSection() {
               members={filtered}
               selectedId={selectedId}
               tournamentOptions={tournamentOptions}
+              authBySteamId={authBySteamId}
+              canEditAuth={canEditAuth}
               onOpenCard={(member) => setSelectedId(member.id)}
               onSetRoles={handleSetRoles}
               onSetSituation={handleSetSituation}
@@ -1006,6 +1064,7 @@ export function RosterSection() {
               onSetTournaments={handleSetTournaments}
               onSetT17Id={handleSetT17Id}
               onSetDisplayName={handleSetDisplayName}
+              onSetAuthorization={handleSetAuthorization}
               onRemoveMember={handleRemoveMember}
               actionPending={pending}
             />

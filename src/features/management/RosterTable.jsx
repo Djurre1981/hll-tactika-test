@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import {
   COMP_ROLES,
   COMP_SITUATIONS,
@@ -13,6 +14,9 @@ import {
   T17_ID_LENGTH,
   tournamentColor,
 } from "./rosterRoles.js";
+
+const AUTH_ROLES = ["viewer", "editor", "assist", "admin"];
+const AUTH_ROLE_OPTIONS = AUTH_ROLES.map((role) => ({ value: role, label: role }));
 
 function useOutsideClose(open, onClose) {
   const ref = useRef(null);
@@ -474,10 +478,53 @@ function T17Cell({ member, disabled, onSave }) {
   );
 }
 
+function AuthorizationCell({
+  member,
+  authUser,
+  canEditAuth,
+  disabled,
+  onChange,
+}) {
+  const steamId = String(member.steamId || "").trim();
+  if (!steamId) {
+    return <span className="text-[0.72rem] text-white/30">—</span>;
+  }
+
+  const role = authUser?.role || "";
+  const locked = role === "owner" || (authUser && authUser.roleEditable === false);
+  const showSelect = canEditAuth && !locked;
+
+  if (!showSelect) {
+    if (!role) {
+      return <span className="text-[0.72rem] text-white/30">—</span>;
+    }
+    return (
+      <span className="inline-flex rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-0.5 text-[0.72rem] uppercase tracking-wide text-white/75">
+        {role}
+      </span>
+    );
+  }
+
+  return (
+    <div onClick={(event) => event.stopPropagation()}>
+      <GlassSelect
+        className="min-w-[6.5rem]"
+        value={role}
+        disabled={disabled}
+        onChange={(value) => onChange?.(member, value || "")}
+        placeholder="—"
+        options={AUTH_ROLE_OPTIONS}
+      />
+    </div>
+  );
+}
+
 export function RosterTable({
   members,
   selectedId,
   tournamentOptions = [],
+  authBySteamId = null,
+  canEditAuth = false,
   onOpenCard,
   onSetRoles,
   onSetSituation,
@@ -485,6 +532,7 @@ export function RosterTable({
   onSetTournaments,
   onSetT17Id,
   onSetDisplayName,
+  onSetAuthorization,
   onRemoveMember,
   actionPending = false,
 }) {
@@ -496,13 +544,14 @@ export function RosterTable({
 
   return (
     <div className="hub-scroll min-h-0 flex-1 overflow-auto">
-      <table className="w-full min-w-[64rem] border-collapse text-left">
+      <table className="w-full min-w-[72rem] border-collapse text-left">
         <thead className="sticky top-0 z-[1] bg-[rgba(18,18,22,0.92)] backdrop-blur-md">
           <tr className="text-[0.62rem] font-normal uppercase tracking-[0.12em] text-white/40">
             <th className="w-[14rem] max-w-[14rem] px-2 py-2 font-normal">Member</th>
             <th className="w-[9rem] px-2 py-2 pr-1 font-normal">Steam ID</th>
             <th className="w-[13rem] px-1 py-2 pl-1 font-normal">T17 ID</th>
             <th className="px-2 py-2 font-normal">Role</th>
+            <th className="px-2 py-2 font-normal">Authorization</th>
             <th className="px-2 py-2 font-normal">Situation</th>
             <th className="px-2 py-2 font-normal">Status</th>
             <th className="px-2 py-2 font-normal">Tournament</th>
@@ -514,6 +563,7 @@ export function RosterTable({
             const selected = member.id === selectedId;
             const status = getCompStatus(member.status);
             const dimmed = status.id === "na" || status.id === "inactive";
+            const authUser = authBySteamId?.get(String(member.steamId || "").trim()) || null;
             return (
               <tr
                 key={member.id}
@@ -557,6 +607,15 @@ export function RosterTable({
                     member={member}
                     disabled={actionPending}
                     onChange={(roles) => onSetRoles?.(member, roles)}
+                  />
+                </td>
+                <td className="px-2 py-1.5 align-middle">
+                  <AuthorizationCell
+                    member={member}
+                    authUser={authUser}
+                    canEditAuth={canEditAuth}
+                    disabled={actionPending}
+                    onChange={onSetAuthorization}
                   />
                 </td>
                 <td className="px-2 py-1.5 align-middle">
