@@ -6,7 +6,23 @@ import {
 } from "../records/match-history-utils.js";
 import { summarizeTeamKpis } from "../records/team-kpi-utils.js";
 
-const DEFAULT_RECENT_LIMIT = 30;
+export const PULSE_PERIODS = [
+  { id: "30d", label: "30 days", shortLabel: "30d" },
+  { id: "year", label: "1 year", shortLabel: "1y" },
+  { id: "all", label: "All-time", shortLabel: "All" },
+];
+
+/** Filter past events to a rolling window. `all` keeps everything passed in. */
+export function filterEventsByPeriod(events, periodId = "30d", now = new Date()) {
+  const list = events || [];
+  if (periodId === "all") return list;
+  const days = periodId === "year" ? 365 : 30;
+  const cutoff = now.getTime() - days * 86_400_000;
+  return list.filter((event) => {
+    const start = Date.parse(event?.startsAt);
+    return Number.isFinite(start) && start >= cutoff && start <= now.getTime();
+  });
+}
 
 /** Count linked tools on an event components object. */
 export function countLinkedTools(components) {
@@ -59,11 +75,11 @@ export function readinessClass(score) {
 }
 
 /**
- * Rank roster members by participation in recent recorded/past matches.
+ * Rank roster members by participation in past matches (optionally period-filtered by caller).
  * Label clearly as participation (not RSVP attendance).
  */
-export function buildParticipationBoard(events, members, { limit = DEFAULT_RECENT_LIMIT, now = new Date() } = {}) {
-  const history = filterMatchHistory(events, {}, now).slice(0, limit);
+export function buildParticipationBoard(events, members, { now = new Date() } = {}) {
+  const history = filterMatchHistory(events, {}, now);
   const poolSize = history.length || 1;
 
   const rows = (members || [])
@@ -100,6 +116,23 @@ export function buildParticipationBoard(events, members, { limit = DEFAULT_RECEN
     top: rows.slice(0, 5),
     bottom: [...rows].reverse().slice(0, 5),
   };
+}
+
+/** Sort direction for ranked boards: best (desc) or worst (asc). */
+export function applyRankFilter(rows, rank = "best", metric = "gamesPlayed") {
+  const list = [...(rows || [])];
+  const dir = rank === "worst" ? 1 : -1;
+  list.sort((a, b) => {
+    if (metric === "winRate") {
+      const aw = a.winRate ?? -1;
+      const bw = b.winRate ?? -1;
+      if (aw !== bw) return dir * (aw - bw) || (b.gamesPlayed - a.gamesPlayed);
+      return b.gamesPlayed - a.gamesPlayed;
+    }
+    if (a.gamesPlayed !== b.gamesPlayed) return dir * (a.gamesPlayed - b.gamesPlayed);
+    return dir * ((a.winRate ?? -1) - (b.winRate ?? -1));
+  });
+  return list;
 }
 
 /** Merge combat aggregates onto participation rows when stats are available. */

@@ -4,9 +4,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  applyRankFilter,
   buildParticipationBoard,
   buildRoleDepth,
   computeEventReadiness,
+  filterEventsByPeriod,
   mergeCombatIntoFormBoard,
   splitFormBoard,
   summarizeRsvpCounts,
@@ -48,6 +50,23 @@ describe("management overview utils", () => {
     assert.equal(board.rows[0].gamesPlayed, 2);
     assert.equal(board.rows[0].winRate, 50);
     assert.equal(board.rows[1].gamesPlayed, 1);
+  });
+
+  it("filters events by period and reverses rank filter", () => {
+    const now = new Date("2026-07-01T00:00:00.000Z");
+    const windowed = filterEventsByPeriod(events, "30d", now);
+    assert.equal(windowed.length, 0);
+    const year = filterEventsByPeriod(events, "year", now);
+    assert.equal(year.length, 2);
+    const ranked = applyRankFilter(
+      [
+        { steamId: "a", gamesPlayed: 10, winRate: 80 },
+        { steamId: "b", gamesPlayed: 3, winRate: 20 },
+      ],
+      "worst",
+      "gamesPlayed"
+    );
+    assert.equal(ranked[0].steamId, "b");
   });
 
   it("computes readiness from tools and open tasks", () => {

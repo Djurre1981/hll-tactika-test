@@ -11,13 +11,16 @@ import {
 } from "../hooks/useRostersQuery.js";
 import { usePlayerStatsAggregatesQuery } from "../hooks/usePlayerStatsQuery.js";
 import {
+  applyRankFilter,
   buildParticipationBoard,
   buildRoleDepth,
   buildSeasonPulse,
   computeEventReadiness,
+  filterEventsByPeriod,
   formatCountdown,
   formatEventWhen,
   mergeCombatIntoFormBoard,
+  PULSE_PERIODS,
   readinessClass,
   readinessLabel,
 } from "../overview-utils.js";
@@ -202,13 +205,93 @@ function OrgaToolsCard({ nextEvent }) {
   );
 }
 
+function PeriodSelector({ value, onChange }) {
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-black/20 p-0.5" role="group" aria-label="Period">
+      {PULSE_PERIODS.map((period) => {
+        const active = value === period.id;
+        return (
+          <button
+            key={period.id}
+            type="button"
+            title={period.label}
+            className={[
+              "rounded-full px-2.5 py-1 text-[0.68rem] transition",
+              active
+                ? "bg-white/15 text-white"
+                : "text-white/45 hover:bg-white/[0.06] hover:text-white/75",
+            ].join(" ")}
+            aria-pressed={active}
+            onClick={() => onChange?.(period.id)}
+          >
+            {period.shortLabel}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RankToggle({ value, onChange }) {
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-black/20 p-0.5" role="group" aria-label="Best or worst">
+      <button
+        type="button"
+        title="Best"
+        aria-label="Best"
+        aria-pressed={value === "best"}
+        className={[
+          "grid h-7 w-7 place-items-center rounded-full transition",
+          value === "best"
+            ? "bg-emerald-400/20 text-emerald-300"
+            : "text-white/35 hover:bg-white/[0.06] hover:text-emerald-200/80",
+        ].join(" ")}
+        onClick={() => onChange?.("best")}
+      >
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M7 11v9H4.5A1.5 1.5 0 0 1 3 18.5V13a2 2 0 0 1 2-2h2Zm0 0V8.2C7 5.9 8.8 4 11.2 4c.9 0 1.6.7 1.6 1.6V9h4.7c1.5 0 2.6 1.4 2.3 2.8l-1.3 6A2.3 2.3 0 0 1 16.3 20H7"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        title="Worst"
+        aria-label="Worst"
+        aria-pressed={value === "worst"}
+        className={[
+          "grid h-7 w-7 place-items-center rounded-full transition",
+          value === "worst"
+            ? "bg-red-400/20 text-red-300"
+            : "text-white/35 hover:bg-white/[0.06] hover:text-red-200/80",
+        ].join(" ")}
+        onClick={() => onChange?.("worst")}
+      >
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M7 13V4H4.5A1.5 1.5 0 0 0 3 5.5V11a2 2 0 0 0 2 2h2Zm0 0v2.8C7 18.1 8.8 20 11.2 20c.9 0 1.6-.7 1.6-1.6V15h4.7c1.5 0 2.6-1.4 2.3-2.8l-1.3-6A2.3 2.3 0 0 0 16.3 4H7"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function RankedScrollList({ rows, emptyLabel, valueFn, onSelect }) {
   if (!rows?.length) {
     return <p className="m-0 text-[0.78rem] text-white/40">{emptyLabel}</p>;
   }
 
   return (
-    <ul className="glass-scroll m-0 max-h-[18rem] list-none space-y-0.5 overflow-y-auto overscroll-contain p-0 pr-1">
+    <ul className="glass-scroll m-0 max-h-[9rem] list-none space-y-0.5 overflow-y-auto overscroll-contain p-0 pr-1">
       {rows.map((row, index) => {
         const content = (
           <>
@@ -238,54 +321,46 @@ function RankedScrollList({ rows, emptyLabel, valueFn, onSelect }) {
   );
 }
 
-function AttendancePulseCard({ nextEvent, rsvpData, participation }) {
+function AttendancePulseCard({ nextEvent, rsvpData, participation, rows }) {
   const counts = rsvpData?.counts;
   const hasRsvps = counts && counts.total > 0;
-  const rows = (participation?.rows || []).filter((row) => row.gamesPlayed > 0);
+  const list = (rows || []).filter((row) => row.gamesPlayed > 0);
 
   return (
-    <div className="flex min-h-0 flex-col gap-3">
+    <div className="flex min-h-0 flex-col gap-2">
       {hasRsvps && nextEvent ? (
         <div className="shrink-0">
-          <p className="m-0 text-[0.68rem] text-white/45">
-            Next:{" "}
-            <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
-              {nextEvent.title}
-            </Link>
-          </p>
-          <div className="mt-2 grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {[
               ["In", counts.confirmed, "text-emerald-200"],
               ["Maybe", counts.tentative, "text-amber-100"],
               ["Out", counts.declined, "text-red-200"],
               ["N/A", counts.unavailable, "text-white/55"],
             ].map(([label, value, color]) => (
-              <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5">
-                <p className="m-0 text-[0.58rem] uppercase tracking-[0.1em] text-white/40">{label}</p>
-                <p className={`m-0 mt-0.5 text-[1rem] font-medium tabular-nums ${color}`}>{value}</p>
+              <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1">
+                <p className="m-0 text-[0.55rem] uppercase tracking-[0.1em] text-white/40">{label}</p>
+                <p className={`m-0 text-[0.95rem] font-medium tabular-nums ${color}`}>{value}</p>
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <p className="m-0 shrink-0 text-[0.7rem] text-white/45">
+        <p className="m-0 shrink-0 text-[0.68rem] text-white/40">
+          {participation?.poolSize || 0} comps in period
           {nextEvent ? (
             <>
-              No RSVPs yet — set attendance on{" "}
+              {" · "}
               <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
-                next brief
+                RSVP
               </Link>
-              .
             </>
-          ) : (
-            <>Played in last {participation?.poolSize || 0} comps.</>
-          )}
+          ) : null}
         </p>
       )}
 
       <RankedScrollList
-        rows={rows}
-        emptyLabel="No players with matches yet."
+        rows={list}
+        emptyLabel="No players with matches in this period."
         valueFn={(row) => `${row.gamesPlayed} · ${row.participationRate}%`}
       />
     </div>
@@ -298,7 +373,7 @@ function PlayerFormBoard({ rows, onSelect }) {
   return (
     <RankedScrollList
       rows={list}
-      emptyLabel="No players with matches yet."
+      emptyLabel="No players with matches in this period."
       onSelect={onSelect}
       valueFn={(row) =>
         [
@@ -424,6 +499,9 @@ function PlayerProfileDrawer({ player, onClose, roleDepth }) {
 
 export function OverviewSection() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [pulsePeriod, setPulsePeriod] = useState("30d");
+  const [attendanceRank, setAttendanceRank] = useState("best");
+  const [formRank, setFormRank] = useState("best");
 
   const range = useMemo(() => {
     const now = new Date();
@@ -479,24 +557,33 @@ export function OverviewSection() {
     return map;
   }, [nextEvent?.id, nextRsvpQuery.data]);
 
+  const periodEvents = useMemo(
+    () => filterEventsByPeriod(historyQuery.data || [], pulsePeriod),
+    [historyQuery.data, pulsePeriod]
+  );
+
   const participation = useMemo(
-    () => buildParticipationBoard(historyQuery.data || [], members),
-    [historyQuery.data, members]
+    () => buildParticipationBoard(periodEvents, members),
+    [periodEvents, members]
+  );
+
+  const attendanceRows = useMemo(
+    () => applyRankFilter(participation.rows, attendanceRank, "gamesPlayed"),
+    [participation.rows, attendanceRank]
   );
 
   const formRows = useMemo(() => {
     const merged = mergeCombatIntoFormBoard(participation.rows, combatQuery.data || {});
-    return [...merged]
-      .filter((row) => row.gamesPlayed > 0)
-      .sort((a, b) => {
-        if ((b.winRate ?? -1) !== (a.winRate ?? -1)) return (b.winRate ?? -1) - (a.winRate ?? -1);
-        return b.gamesPlayed - a.gamesPlayed;
-      });
-  }, [participation.rows, combatQuery.data]);
+    return applyRankFilter(
+      merged.filter((row) => row.gamesPlayed > 0),
+      formRank,
+      "winRate"
+    );
+  }, [participation.rows, combatQuery.data, formRank]);
 
   const seasonPulse = useMemo(
-    () => buildSeasonPulse(historyQuery.data || [], events),
-    [historyQuery.data, events]
+    () => buildSeasonPulse(periodEvents, events),
+    [periodEvents, events]
   );
 
   const roleDepth = useMemo(() => buildRoleDepth(members), [members]);
@@ -506,6 +593,8 @@ export function OverviewSection() {
     historyQuery.isLoading ||
     openTasksQuery.isLoading ||
     (defaultRosterId && membersQuery.isLoading);
+
+  const periodLabel = PULSE_PERIODS.find((p) => p.id === pulsePeriod)?.label || "Period";
 
   return (
     <section className="glass-scroll flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain pr-1">
@@ -546,33 +635,48 @@ export function OverviewSection() {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="m-0 text-[0.72rem] uppercase tracking-[0.12em] text-white/35">
+            Squad pulse · {periodLabel}
+          </p>
+          <PeriodSelector value={pulsePeriod} onChange={setPulsePeriod} />
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="glass-surface flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-            <h3 className="m-0 text-[0.88rem] font-medium text-white">Attendance pulse</h3>
-            <p className="m-0 mt-1 text-[0.7rem] text-white/40">
-              Ranked by comps played · scroll for full list
-            </p>
+          <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="m-0 text-[0.88rem] font-medium text-white">Attendance pulse</h3>
+                <p className="m-0 mt-1 text-[0.7rem] text-white/40">Ranked by comps played</p>
+              </div>
+              <RankToggle value={attendanceRank} onChange={setAttendanceRank} />
+            </div>
             <div className="mt-3 min-h-0">
               <AttendancePulseCard
                 nextEvent={nextEvent}
                 rsvpData={nextRsvpQuery.data}
                 participation={participation}
+                rows={attendanceRows}
               />
             </div>
           </div>
 
-          <div className="glass-surface flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-            <h3 className="m-0 text-[0.88rem] font-medium text-white">Player form</h3>
-            <p className="m-0 mt-1 text-[0.7rem] text-white/40">
-              Ranked by win rate · click for profile
-            </p>
+          <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="m-0 text-[0.88rem] font-medium text-white">Player form</h3>
+                <p className="m-0 mt-1 text-[0.7rem] text-white/40">Ranked by win rate · click profile</p>
+              </div>
+              <RankToggle value={formRank} onChange={setFormRank} />
+            </div>
             <div className="mt-3 min-h-0">
               <PlayerFormBoard rows={formRows} onSelect={setSelectedPlayer} />
             </div>
           </div>
 
-          <div className="glass-surface flex flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+          <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
             <h3 className="m-0 text-[0.88rem] font-medium text-white">Season pulse</h3>
+            <p className="m-0 mt-1 text-[0.7rem] text-white/40">{periodLabel} team results</p>
             <div className="mt-3">
               <SeasonPulseCard pulse={seasonPulse} />
             </div>
