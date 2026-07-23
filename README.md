@@ -50,7 +50,7 @@ Furthermore, access is fully controlled: Steam sign-in, an approved-member allow
 
 Strats mode is a team-internal planning workspace for drawing attack routes, defensive lines, rally points, and callouts directly on tactical maps. Each **strat** is a saved document with metadata, notes, and one or more **slides** (like slides in a deck). Every slide can use a different map and holds its own vector drawings.
 
-Open **Strats** from the app (catalog / editor). Drawing tools live in the left sidebar; strat metadata, slide list, and the active slide editor live in the right panel. Map overlay toggles sit in the bottom chrome.
+Open **Strats** from the app (catalog / editor). Drawing tools live in the left sidebar; strat metadata, slide list, and the active slide editor live in the right panel. Map overlay toggles sit in the bottom chrome. **Present** (side panel) opens fullscreen slideshow mode with speaker notes and a laser pointer.
 
 ### Strat documents
 
@@ -71,13 +71,16 @@ Strats (and folders) are stored in **Cloudflare D1**. Authenticated members can 
 
 ### Slides
 
-Each slide has a **name**, **map**, and **objects** array (drawings). Slides can be:
+Each slide has a **name**, **map** (or **custom background**), and **objects** array (drawings). Slides can be:
 
 - **Added**, **renamed** (double-click name in list), and **deleted**
 - **Reordered** with drag-and-drop or up/down buttons
 - **Navigated** with prev/next buttons on the map, keyboard arrows (when no shape is selected), or by clicking in the slide list
 - **Duplicated** to another strat or into a **new strat** (duplicate dialog with search)
 - Previewed via **thumbnails** rendered from slide objects
+- Given a **custom background** (upload PNG/JPEG/WebP) instead of an HLL map — grid, strongpoints, and accessibility overlays are disabled on that slide
+- Configured with **per-slide strongpoint sectors** (which map sectors show on the overlay; saved on the slide)
+- Linked to a **route plan** (read-only overlay; see Stratmaker embed below)
 
 Opening a slide switches the map if its `mapId` differs from the current view.
 
@@ -93,6 +96,8 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 | **Curved line** | Cubic Bézier (two endpoints + two control points); optional arrowheads |
 | **Rectangle** | Box shape (filled or outline) |
 | **Circle** | Ellipse / circle |
+| **Measure line** | Distance readout between two points (Maps Let Loose–style) |
+| **Measure radius** | Radius readout from center + edge point |
 | **Text** | Click map, enter label; double-click selected text to edit |
 | **Icons** | Place StratSketch-style tactical markers with optional label |
 | **HLL Objects** | Place Hell Let Loose markers (garrisons, OPs, vehicles, classes, …) |
@@ -118,14 +123,35 @@ Tools are in the left sidebar. All coordinates are map percentages (0–100) so 
 
 ### Map chrome
 
-Bottom-center toolbar on the strat map:
+Bottom-center toolbar on the strat map (strongpoint panel stacks above it, same width):
 
 | Control | Effect |
 |---------|--------|
 | **Reset view** | Fit the map to the viewport |
 | **Grid** | Toggle grid overlay |
-| **Strongpoints** | Toggle strongpoint overlay |
+| **Accessibility** | Toggle accessibility overlay |
+| **Strongpoints** | Open strongpoint options panel (chevron on globe icon) |
 | **Show spawn radius** | Toggle HLL spawn radius art (see above) |
+
+**Strongpoint options panel** (opens above the toolbar):
+
+| Option | Effect |
+|--------|--------|
+| **Show strongpoints** | Master toggle for strongpoint sector art on the map |
+| **Show strongpoint names** | Toggle named strongpoint labels (independent of sector art) |
+| **Visible sectors** | 5×5 grid (Maps Let Loose layout): green = visible, grey = hidden, hatched = HQ; **Enable all** / **Disable all** |
+
+Sector visibility is saved **per slide** (`visibleStrongpoints`: omitted = all sectors, `[]` = none, partial list = selected only). Strongpoint names use `public/data/strongpoint-names.json` and respect visible sectors.
+
+### Presentation mode
+
+From the side panel **Present** button (2×2 header grid with New, Import, Present, Strat details):
+
+- Fullscreen slideshow of the current strat’s slides
+- **← / →**, **Space**, **Page Up/Down** to change slides; **Escape** to exit
+- **Speaker notes** panel (strat-level notes from Strat details)
+- **Laser pointer** toggle; UI chrome auto-hides after idle
+- Editing tools and side panels are hidden while presenting
 
 ### Drawing modifiers (Shift / Alt)
 
@@ -178,7 +204,7 @@ All routes require Steam auth. Create/update/delete require editor role.
 | `POST` | `/api/strats/{stratId}/duplicate` | Duplicate entire strat |
 | `POST` | `/api/strats/{stratId}/slides/{slideId}/duplicate` | Duplicate slide (optionally into another strat) |
 
-Slide payloads include a sanitized `objects[]` array. Supported object types: `pen`, `line`, `curve`, `rect`, `ellipse`, `text`, `icon`, `hll`, `ping`. Legacy `arrow` objects are normalized to `line` with an end arrowhead. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
+Slide payloads include a sanitized `objects[]` array and optional `visibleStrongpoints` (sector keys such as `"11"`, `"23"`). Supported object types: `pen`, `line`, `curve`, `rect`, `ellipse`, `text`, `icon`, `hll`, `ping`, `measure-line`, `measure-radius`. Legacy `arrow` objects are normalized to `line` with an end arrowhead. Server-side validation lives in `functions/lib/strat-fields.js` and `functions/lib/strat-objects.js`.
 
 Related APIs: folders (`/api/folders`), StratSketch import (`/api/strats/import-stratsketch`).
 
@@ -189,8 +215,11 @@ v2 Stratmaker (React) lives under `src/features/strats/` with drawing in `map-ke
 | Path | Role |
 |------|------|
 | `src/features/strats/browser/` | Strat catalog, folders, search |
-| `src/features/strats/editor/` | Stratmaker page, tools panel, map chrome, canvas bridge |
-| `map-kernel/` | Map viewer, scene graph, canvas renderer, interaction, selection handles |
+| `src/features/strats/editor/` | Stratmaker page, tools panel, map chrome, strongpoint popover, presentation mode, canvas bridge |
+| `map-kernel/` | Map viewer, scene graph, canvas renderer, interaction, selection handles, measure tools, map overlays |
+| `map-kernel/strongpoint-labels.js` | Strongpoint name labels (PNG diff or bundled label data) |
+| `map-kernel/map-spawns-data.js` | Strongpoint sector grid data loader |
+| `src/shared/strongpointSectors.js` | Sector grid helpers (MLL parity) |
 | `map-kernel/icons/` | StratSketch icon pack, resolve helpers, HLL object catalog |
 | `public/assets/hll-objects/` | HLL placeable SVGs (Maps Let Loose–compatible sizes; PNGs kept as vectorize sources) |
 | `src/lib/collab/` | Yjs provider + kernel/whiteboard bridges |
@@ -519,8 +548,9 @@ Map images live in `maps/no-grid/`. Spawn data is in `data/map-spawns.json` (gen
 | Select / draw | Left sidebar tools |
 | Finish draw → Select | **Right-click** on the map |
 | Pan map | Drag (blocked while drawing or dragging a selection) |
-| Map overlays | Bottom map chrome (grid, strongpoints, spawn radius, fit) |
-| New / open / import | Editor side panel |
+| Map overlays | Bottom map chrome (grid, accessibility, strongpoints panel, spawn radius, fit) |
+| Present strat | Side panel **Present** → fullscreen; **←/→** or **Space** for slides; **Escape** to exit |
+| New / open / import / details | Editor side panel (2×2 icon header + slide list) |
 | Edit slides | Side panel slide list |
 | Copy / paste shapes | **Ctrl+C** / **Ctrl+V** / **Ctrl+X** |
 | Undo / redo | **Ctrl+Z** / **Ctrl+Y** |
