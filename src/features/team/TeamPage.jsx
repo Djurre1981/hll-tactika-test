@@ -60,7 +60,11 @@ export function TeamPage({ hub = false }) {
   function handleExportPins() {
     setActionStatus({ message: "Preparing backup…", isError: false });
     exportPins.mutate(undefined, {
-      onSuccess: () => setActionStatus({ message: "Backup downloaded.", isError: false }),
+      onSuccess: (data) =>
+        setActionStatus({
+          message: `D1 backup downloaded (${data?.pinCount ?? "?"} pins).`,
+          isError: false,
+        }),
       onError: (error) =>
         setActionStatus({ message: error.message || "Could not export pins", isError: true }),
     });
@@ -111,7 +115,7 @@ export function TeamPage({ hub = false }) {
             onClick={handleExportPins}
             disabled={actionPending}
           >
-            Export full pin backup
+            Export D1 pin backup
           </button>
           <button
             type="button"

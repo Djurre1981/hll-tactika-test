@@ -233,10 +233,10 @@ async function onExportPins() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pins-backup-${date}.json`;
+    link.download = `pins-d1-backup-${date}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setStatus("Backup downloaded.");
+    setStatus(`D1 backup downloaded (${data.pinCount ?? "?"} pins).`);
   } catch (error) {
     console.error(error);
     setStatus(error.message || "Could not export pins", true);

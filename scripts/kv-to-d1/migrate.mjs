@@ -27,24 +27,27 @@ function parseArgs(argv) {
     dryRun: argv.includes("--dry-run"),
     remote: argv.includes("--remote"),
     preview: argv.includes("--preview"),
+    pinsOnly: argv.includes("--pins-only"),
     help: argv.includes("--help") || argv.includes("-h"),
   };
 }
 
 function wrangler(args, { input } = {}) {
+  const isWin = process.platform === "win32";
   const result = spawnSync(
-    process.platform === "win32" ? "npx.cmd" : "npx",
+    isWin ? "npx.cmd" : "npx",
     ["wrangler", ...args],
     {
       cwd: ROOT,
       encoding: "utf8",
       input,
       maxBuffer: 64 * 1024 * 1024,
+      shell: isWin,
     },
   );
   if (result.status !== 0) {
     throw new Error(
-      `wrangler ${args.join(" ")} failed:\n${result.stderr || result.stdout}`,
+      `wrangler ${args.join(" ")} failed:\n${result.stderr || result.stdout || result.error || "unknown"}`,
     );
   }
   return result.stdout;
@@ -63,7 +66,12 @@ function getKvJson(key, namespaceId, remote) {
   else args.push("--local");
   const raw = wrangler(args).trim();
   if (!raw) return null;
-  return JSON.parse(raw);
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end < start) {
+    throw new Error(`KV key "${key}" response was not JSON`);
+  }
+  return JSON.parse(raw.slice(start, end + 1));
 }
 
 function sqlLiteral(value) {
@@ -175,9 +183,10 @@ function applySql(sql, { remote, preview, dryRun }) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
-    console.log(`Usage: node scripts/kv-to-d1/migrate.mjs [--dry-run] [--remote] [--preview]
+    console.log(`Usage: node scripts/kv-to-d1/migrate.mjs [--dry-run] [--remote] [--preview] [--pins-only]
 
 Migrates KV keys "pins" and "users" into D1 (Phase 0, lead roadmap).
+Use --pins-only to upsert pins without touching users.
 Does not delete KV keys. Writes JSON backups under data/kv-d1-backup/.`);
     process.exit(0);
   }
@@ -191,33 +200,31 @@ Does not delete KV keys. Writes JSON backups under data/kv-d1-backup/.`);
   console.log(`D1 target: ${DB_NAME} (${opts.remote ? "remote" : "local"}${opts.preview ? ", preview" : ""})`);
 
   const pinsData = getKvJson("pins", namespaceId, opts.remote);
-  const usersData = getKvJson("users", namespaceId, opts.remote);
-
   if (!pinsData?.pins) {
     throw new Error('KV key "pins" missing or invalid');
   }
-  if (!usersData?.users) {
-    throw new Error('KV key "users" missing or invalid');
-  }
 
   const pinsBackup = writeBackup("pins", pinsData);
-  const usersBackup = writeBackup("users", usersData);
   console.log(`Backup pins → ${pinsBackup}`);
-  console.log(`Backup users → ${usersBackup}`);
 
   const pinRows = buildPinRows(pinsData);
-  const { users: userRows, revoked } = buildUserRows(usersData);
-
   console.log(`Pins to upsert: ${pinRows.length}`);
-  console.log(`Users to upsert: ${userRows.length}`);
-  console.log(`Revoked to upsert: ${revoked.length}`);
 
-  const statements = [
-    "PRAGMA foreign_keys = ON;",
-    ...pinRows.map(pinInsertSql),
-    ...userRows.map(userInsertSql),
-    ...revoked.map(revokedInsertSql),
-  ];
+  const statements = ["PRAGMA foreign_keys = ON;", ...pinRows.map(pinInsertSql)];
+
+  if (!opts.pinsOnly) {
+    const usersData = getKvJson("users", namespaceId, opts.remote);
+    if (!usersData?.users) {
+      throw new Error('KV key "users" missing or invalid (pass --pins-only to skip)');
+    }
+    const usersBackup = writeBackup("users", usersData);
+    console.log(`Backup users → ${usersBackup}`);
+    const { users: userRows, revoked } = buildUserRows(usersData);
+    console.log(`Users to upsert: ${userRows.length}`);
+    console.log(`Revoked to upsert: ${revoked.length}`);
+    statements.push(...userRows.map(userInsertSql), ...revoked.map(revokedInsertSql));
+  }
+
   const sql = statements.join("\n");
 
   applySql(sql, opts);

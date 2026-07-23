@@ -53,7 +53,7 @@ export function useExportPinsMutation() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `pins-backup-${date}.json`;
+      link.download = `pins-d1-backup-${date}.json`;
       link.click();
       URL.revokeObjectURL(url);
       return data;
