@@ -506,4 +506,87 @@ export async function seedRosterFromMatchParticipants(
   };
 }
 
+/**
+ * Fill Steam persona names/avatars for seeded placeholders ("Player 1234").
+ * Processes up to `limit` members per call — re-run while remaining > 0.
+ */
+export async function enrichRosterMemberProfiles(env, rosterId, { limit = 20 } = {}) {
+  const roster = await getRoster(env, rosterId);
+  if (!roster) return { error: "Roster not found", status: 404 };
+
+  const db = requireDb(env);
+  const result = await db
+    .prepare(
+      `SELECT rm.id, rm.display_name, rm.steam_id, rm.avatar_url
+       FROM roster_memberships m
+       JOIN roster_members rm ON rm.id = m.member_id
+       WHERE m.roster_id = ?
+         AND rm.steam_id IS NOT NULL
+         AND (
+           rm.display_name LIKE 'Player %'
+           OR rm.avatar_url IS NULL
+           OR TRIM(rm.avatar_url) = ''
+         )
+       ORDER BY rm.display_name COLLATE NOCASE ASC`
+    )
+    .bind(rosterId)
+    .all();
+
+  const pending = result.results || [];
+  const batch = pending.slice(0, Math.max(1, Math.min(40, Number(limit) || 20)));
+  const remainingAfter = Math.max(0, pending.length - batch.length);
+
+  if (!batch.length) {
+    return { updated: 0, remaining: 0, done: true, pending: 0 };
+  }
+
+  let profiles = new Map();
+  try {
+    profiles = await fetchSteamProfiles(
+      batch.map((row) => row.steam_id),
+      env
+    );
+  } catch {
+    profiles = new Map();
+  }
+
+  let updated = 0;
+  let failed = 0;
+  const now = new Date().toISOString();
+
+  for (const row of batch) {
+    try {
+      const profile = profiles.get(String(row.steam_id)) || {};
+      const nextName = String(profile.name || "").trim().slice(0, 80);
+      const nextAvatar = profile.avatar || null;
+      const isPlaceholder = /^Player \d{1,6}$/i.test(String(row.display_name || "").trim());
+      const displayName = nextName && isPlaceholder ? nextName : row.display_name;
+      const avatarUrl = nextAvatar || row.avatar_url || null;
+
+      if (displayName === row.display_name && avatarUrl === (row.avatar_url || null)) {
+        continue;
+      }
+
+      await db
+        .prepare(
+          `UPDATE roster_members SET display_name = ?, avatar_url = ?, updated_at = ? WHERE id = ?`
+        )
+        .bind(displayName, avatarUrl, now, row.id)
+        .run();
+      updated += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return {
+    updated,
+    failed,
+    processed: batch.length,
+    pending: pending.length,
+    remaining: remainingAfter,
+    done: remainingAfter === 0,
+  };
+}
+
 export { listRosterMembers };

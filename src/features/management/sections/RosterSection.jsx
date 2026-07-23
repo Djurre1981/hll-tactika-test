@@ -21,6 +21,7 @@ import {
   useCreateRosterMutation,
   useDeleteRosterMutation,
   useDuplicateRosterMutation,
+  useEnrichRosterProfilesMutation,
   useImportRosterCsvMutation,
   useRemoveMemberFromRosterMutation,
   useRosterMembersQuery,
@@ -219,6 +220,7 @@ export function RosterSection() {
   const deleteRoster = useDeleteRosterMutation();
   const duplicateRoster = useDuplicateRosterMutation();
   const seedFromHelo = useSeedRosterFromHeloMutation(activeRosterId);
+  const enrichProfiles = useEnrichRosterProfilesMutation(activeRosterId);
   const addMember = useAddRosterMemberToRosterMutation(activeRosterId);
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
   const updateMember = useUpdateRosterMemberMutation(activeRosterId);
@@ -442,11 +444,29 @@ export function RosterSection() {
     );
   }
 
+  function handleEnrichProfiles() {
+    if (!activeRosterId) return;
+    setImportMessage("Resolving Steam names…");
+    enrichProfiles.mutate(undefined, {
+      onSuccess: (data) => {
+        const rem = Number(data.remaining) || 0;
+        setImportMessage(
+          `Steam names: updated ${data.updated || 0}${data.failed ? ` · ${data.failed} failed` : ""}${
+            rem > 0 ? ` · ${rem} still pending — click again` : " · done"
+          }`
+        );
+      },
+      onError: (err) => {
+        setImportMessage(err?.message || "Steam name resolve failed");
+      },
+    });
+  }
+
   function handleSeedFromHelo() {
     if (!activeRosterId) return;
     if (
       !window.confirm(
-        "Add players found on HeLO-linked matches to this roster?\n\nThis does not grant site access. Existing members are linked if missing."
+        "Add players found on HeLO-linked matches to this roster?\n\nThis does not grant site access. Existing members are linked if missing.\nNames are filled afterwards via Resolve Steam names."
       )
     ) {
       return;
@@ -457,9 +477,12 @@ export function RosterSection() {
         const rem = Number(data.remaining) || 0;
         setImportMessage(
           `HeLO seed: +${data.added || 0} new · ${data.linked || 0} linked · ${data.skipped || 0} already on roster · ${data.failed || 0} failed (${data.totalSteamIds || 0} Steam IDs total)${
-            rem > 0 ? ` · ${rem} still pending — click Seed again` : " · done"
+            rem > 0 ? ` · ${rem} still pending — click Seed again` : " · done — resolving Steam names…"
           }`
         );
+        if (!(rem > 0)) {
+          handleEnrichProfiles();
+        }
       },
       onError: (err) => {
         setImportMessage(err?.message || "HeLO seed failed — hard-refresh; partial data may already be saved");
@@ -492,6 +515,7 @@ export function RosterSection() {
     deleteRoster.isPending ||
     duplicateRoster.isPending ||
     seedFromHelo.isPending ||
+    enrichProfiles.isPending ||
     addMember.isPending ||
     removeMember.isPending ||
     updateMember.isPending ||
@@ -744,6 +768,15 @@ export function RosterSection() {
             title="Add players from HeLO match participants (no site access)"
           >
             {seedFromHelo.isPending ? "Seeding…" : "Seed from HeLO"}
+          </button>
+          <button
+            type="button"
+            className={topBtnClass}
+            disabled={!activeRosterId || pending || members.length === 0}
+            onClick={handleEnrichProfiles}
+            title="Fill Steam persona names/avatars for Player #### placeholders"
+          >
+            {enrichProfiles.isPending ? "Resolving names…" : "Resolve Steam names"}
           </button>
           <button
             type="button"

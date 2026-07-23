@@ -170,6 +170,47 @@ export function useSeedRosterFromHeloMutation(rosterId) {
   });
 }
 
+export function useEnrichRosterProfilesMutation(rosterId) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      let updated = 0;
+      let failed = 0;
+      let rounds = 0;
+      let pending = 0;
+      for (let i = 0; i < 30; i += 1) {
+        rounds += 1;
+        const data = await apiClient(`/rosters/${rosterId}/enrich-profiles`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        updated += Number(data.updated) || 0;
+        failed += Number(data.failed) || 0;
+        pending = Number(data.pending) || pending;
+        if (data.done || !(Number(data.remaining) > 0)) {
+          return { ...data, updated, failed, rounds, pending };
+        }
+      }
+      return {
+        updated,
+        failed,
+        rounds,
+        pending,
+        done: false,
+        remaining: 1,
+        note: "Stopped after max rounds — click Resolve names again",
+      };
+    },
+    onSuccess: () => {
+      if (rosterId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.rosters.members(rosterId) });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.roster.all });
+    },
+  });
+}
+
 export function useUpdateRosterMemberMutation(rosterId) {
   const queryClient = useQueryClient();
 

@@ -276,10 +276,13 @@ export async function fetchSteamProfiles(steamIds, env) {
     }
   }
 
-  await Promise.all(
-    missing
-      .filter((steamId) => !profiles.has(String(steamId)))
-      .map(async (steamId) => {
+  // Cap parallel community scrapes — large Promise.all blows Workers time limits.
+  const stillMissing = missing.filter((steamId) => !profiles.has(String(steamId)));
+  const SCRAPE_CONCURRENCY = 8;
+  for (let i = 0; i < stillMissing.length; i += SCRAPE_CONCURRENCY) {
+    const chunk = stillMissing.slice(i, i + SCRAPE_CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (steamId) => {
         const id = String(steamId);
         const miniProfile = await fetchSteamProfileFromMiniprofile(id);
         if (miniProfile?.name) {
@@ -297,7 +300,8 @@ export async function fetchSteamProfiles(steamIds, env) {
 
         profiles.set(id, { steamId: id, name: null, avatar: null });
       })
-  );
+    );
+  }
 
   return profiles;
 }
