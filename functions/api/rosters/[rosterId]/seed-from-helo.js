@@ -22,13 +22,15 @@ export async function onRequestPost(context) {
     const result = await seedRosterFromMatchParticipants(
       context.env,
       rosterId,
-      auth.session.steamId
+      auth.session.steamId,
+      // Profiles optional — default off so seed finishes under Worker limits.
+      { limit: 50, enrichProfiles: false }
     );
     if (result.error) return errorResponse(result.error, result.status || 400);
     return json({
       rosterId,
       ...result,
-      note: "Seeded from match participants only — site access unchanged",
+      note: "Seeded from match participants only — site access unchanged. Re-run while remaining > 0.",
     });
   } catch (error) {
     console.error("POST /api/rosters/:rosterId/seed-from-helo failed:", error);

@@ -454,12 +454,15 @@ export function RosterSection() {
     setImportMessage("");
     seedFromHelo.mutate(undefined, {
       onSuccess: (data) => {
+        const rem = Number(data.remaining) || 0;
         setImportMessage(
-          `HeLO seed: +${data.added || 0} new · ${data.linked || 0} linked · ${data.skipped || 0} already on roster (${data.totalSteamIds || 0} Steam IDs)`
+          `HeLO seed: +${data.added || 0} new · ${data.linked || 0} linked · ${data.skipped || 0} already on roster · ${data.failed || 0} failed (${data.totalSteamIds || 0} Steam IDs total)${
+            rem > 0 ? ` · ${rem} still pending — click Seed again` : " · done"
+          }`
         );
       },
       onError: (err) => {
-        setImportMessage(err?.message || "HeLO seed failed");
+        setImportMessage(err?.message || "HeLO seed failed — hard-refresh; partial data may already be saved");
       },
     });
   }

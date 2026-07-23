@@ -183,9 +183,9 @@ export async function resolveSteamAvatarUrl(env, steamId, existingAvatarUrl = nu
   }
 }
 
-/** Backfill avatar_url for members missing it; persists and returns updated list. */
-export async function backfillMemberAvatars(env, members) {
-  const needs = (members || []).filter((m) => m.steamId && !m.avatarUrl);
+/** Backfill avatar_url for members missing it; caps work per request for Workers limits. */
+export async function backfillMemberAvatars(env, members, { max = 8 } = {}) {
+  const needs = (members || []).filter((m) => m.steamId && !m.avatarUrl).slice(0, max);
   if (needs.length === 0) return members;
 
   let profiles;

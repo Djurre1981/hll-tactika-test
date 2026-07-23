@@ -1,6 +1,5 @@
 import { requireDb } from "./d1.js";
 import {
-  backfillMemberAvatars,
   createRosterMember,
   getRosterMember,
   listRosterMembers,
@@ -198,8 +197,9 @@ export async function listRosterMembersInRoster(env, rosterId) {
     .bind(rosterId)
     .all();
 
-  const members = (result.results || []).map(rowToMember);
-  return backfillMemberAvatars(env, members);
+  // Do not Steam-backfill on list — large rosters time out the Worker and the
+  // UI falls back to a stale 1-row cache. Avatars resolve on PlayerCard / add.
+  return (result.results || []).map(rowToMember);
 }
 
 export async function findMemberBySteamId(env, steamId) {
@@ -264,8 +264,7 @@ export async function addMemberToRoster(env, rosterId, memberId, { rosterRole = 
     .bind(rosterId, memberId, rosterRole || member.rosterRole || null, sortOrder, new Date().toISOString())
     .run();
 
-  const members = await listRosterMembersInRoster(env, rosterId);
-  return { member: members.find((m) => m.id === memberId) || member };
+  return { member };
 }
 
 export async function removeMemberFromRoster(env, rosterId, memberId) {
@@ -355,8 +354,17 @@ export async function ensureMemberAndAddToRoster(env, rosterId, memberData) {
 /**
  * Seed a roster from Circle-side HeLO participant Steam IDs on calendar events.
  * Does NOT grant site access — only creates/links roster_members.
+ *
+ * Designed for Workers time limits: processes up to `limit` new Steam IDs per call
+ * (default 40). Call again while `remaining > 0`. Steam profile fetch is optional
+ * and batched lightly so a timeout still returns partial progress.
  */
-export async function seedRosterFromMatchParticipants(env, rosterId, createdBy) {
+export async function seedRosterFromMatchParticipants(
+  env,
+  rosterId,
+  createdBy,
+  { limit = 40, enrichProfiles = true } = {}
+) {
   const roster = await getRoster(env, rosterId);
   if (!roster) return { error: "Roster not found", status: 404 };
 
@@ -382,63 +390,119 @@ export async function seedRosterFromMatchParticipants(env, rosterId, createdBy) 
     }
   }
 
-  const ids = [...steamIds];
-  if (!ids.length) {
-    return { added: 0, linked: 0, skipped: 0, totalSteamIds: 0 };
+  const allIds = [...steamIds];
+  if (!allIds.length) {
+    return {
+      added: 0,
+      linked: 0,
+      skipped: 0,
+      failed: 0,
+      totalSteamIds: 0,
+      remaining: 0,
+      done: true,
+    };
   }
 
-  const profiles = await fetchSteamProfiles(ids, env);
+  // Who still needs to be created or linked onto this roster?
+  const existingOnRoster = await db
+    .prepare(
+      `SELECT rm.steam_id
+       FROM roster_memberships m
+       JOIN roster_members rm ON rm.id = m.member_id
+       WHERE m.roster_id = ? AND rm.steam_id IS NOT NULL`
+    )
+    .bind(rosterId)
+    .all();
+  const alreadyOnRoster = new Set(
+    (existingOnRoster.results || []).map((row) => String(row.steam_id || "").trim()).filter(Boolean)
+  );
+
+  const pendingIds = allIds.filter((id) => !alreadyOnRoster.has(id));
+  const batch = pendingIds.slice(0, Math.max(1, Math.min(80, Number(limit) || 40)));
+  const remainingAfter = Math.max(0, pendingIds.length - batch.length);
+
+  let profiles = new Map();
+  if (enrichProfiles && batch.length) {
+    try {
+      profiles = await fetchSteamProfiles(batch, env);
+    } catch {
+      profiles = new Map();
+    }
+  }
 
   let added = 0;
   let linked = 0;
-  let skipped = 0;
+  let skipped = allIds.length - pendingIds.length;
+  let failed = 0;
   const now = new Date().toISOString();
+  const errors = [];
 
-  for (const steamId of ids) {
-    const existing = await findMemberBySteamId(env, steamId);
-    if (existing) {
-      const onRoster = await db
+  // Fast path: insert members + memberships without per-row avatar resolve or
+  // listRosterMembersInRoster (those blow Workers CPU/time on large seeds).
+  for (const steamId of batch) {
+    try {
+      const existing = await findMemberBySteamId(env, steamId);
+      let memberId = existing?.id || null;
+
+      if (!memberId) {
+        const profile = profiles.get(steamId) || {};
+        const displayName =
+          String(profile.name || "").trim().slice(0, 80) || `Player ${steamId.slice(-4)}`;
+        const member = await createRosterMember(env, {
+          id: `roster-${crypto.randomUUID()}`,
+          displayName,
+          steamId,
+          avatarUrl: profile.avatar || null,
+          rosterRoles: ["infantry"],
+          situation: "member",
+          status: "active",
+          tournaments: [],
+          notes: "Seeded from HeLO match participants",
+          sortOrder: 0,
+          createdBy: createdBy || "helo-seed",
+          createdAt: now,
+          updatedAt: now,
+        });
+        memberId = member.id;
+        added += 1;
+      }
+
+      const already = await db
         .prepare(
           `SELECT roster_id FROM roster_memberships WHERE roster_id = ? AND member_id = ?`
         )
-        .bind(rosterId, existing.id)
+        .bind(rosterId, memberId)
         .first();
-      if (onRoster) {
-        skipped += 1;
+      if (already) {
+        if (existing) skipped += 1;
         continue;
       }
-      await addMemberToRoster(env, rosterId, existing.id, {});
-      linked += 1;
-      continue;
+
+      await db
+        .prepare(
+          `INSERT INTO roster_memberships (roster_id, member_id, roster_role, sort_order, created_at)
+           VALUES (?, ?, ?, ?, ?)`
+        )
+        .bind(rosterId, memberId, "infantry", 0, now)
+        .run();
+
+      if (existing) linked += 1;
+    } catch (err) {
+      failed += 1;
+      errors.push({ steamId, error: err?.message || "seed failed" });
     }
-
-    const profile = profiles.get(steamId) || {};
-    const displayName =
-      String(profile.name || "").trim().slice(0, 80) || `Player ${steamId.slice(-4)}`;
-
-    await ensureMemberAndAddToRoster(env, rosterId, {
-      id: `roster-${crypto.randomUUID()}`,
-      displayName,
-      steamId,
-      avatarUrl: profile.avatar || null,
-      rosterRoles: ["infantry"],
-      situation: "member",
-      status: "active",
-      tournaments: [],
-      notes: "Seeded from HeLO match participants",
-      sortOrder: 0,
-      createdBy: createdBy || "helo-seed",
-      createdAt: now,
-      updatedAt: now,
-    });
-    added += 1;
   }
 
   return {
     added,
     linked,
     skipped,
-    totalSteamIds: ids.length,
+    failed,
+    totalSteamIds: allIds.length,
+    processed: batch.length,
+    remaining: remainingAfter,
+    done: remainingAfter === 0,
+    errors: errors.slice(0, 10),
   };
 }
 

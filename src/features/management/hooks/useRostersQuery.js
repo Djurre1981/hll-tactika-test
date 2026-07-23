@@ -125,11 +125,41 @@ export function useSeedRosterFromHeloMutation(rosterId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () =>
-      apiClient(`/rosters/${rosterId}/seed-from-helo`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      }),
+    mutationFn: async () => {
+      let added = 0;
+      let linked = 0;
+      let skipped = 0;
+      let failed = 0;
+      let totalSteamIds = 0;
+      let rounds = 0;
+      // Chunked seed — Workers time out if we try everyone in one request.
+      for (let i = 0; i < 20; i += 1) {
+        rounds += 1;
+        const data = await apiClient(`/rosters/${rosterId}/seed-from-helo`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        added += Number(data.added) || 0;
+        linked += Number(data.linked) || 0;
+        skipped = Number(data.skipped) || skipped;
+        failed += Number(data.failed) || 0;
+        totalSteamIds = Number(data.totalSteamIds) || totalSteamIds;
+        if (data.done || !(Number(data.remaining) > 0)) {
+          return { ...data, added, linked, skipped, failed, totalSteamIds, rounds };
+        }
+      }
+      return {
+        added,
+        linked,
+        skipped,
+        failed,
+        totalSteamIds,
+        rounds,
+        done: false,
+        remaining: 1,
+        note: "Stopped after max rounds — click Seed again to continue",
+      };
+    },
     onSuccess: () => {
       if (rosterId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.rosters.members(rosterId) });
