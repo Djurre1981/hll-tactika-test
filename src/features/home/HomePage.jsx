@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 import { useHub } from "./HubContext.jsx";
@@ -77,6 +77,7 @@ export function HomePage() {
     events.length > 0
       ? events.map((event) => ({
           key: event.id,
+          eventId: event.id,
           meta: formatEventMeta(event),
           title: event.title,
           sub: formatEventTime(event.startsAt),
@@ -132,20 +133,42 @@ export function HomePage() {
             Upcoming games
           </h2>
           <div className="flex min-h-0 flex-col gap-2 overflow-auto pr-1">
-            {upcomingCards.map((card) => (
-              <article
-                key={card.key}
-                className={`rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 ${
-                  card.muted ? "opacity-55" : ""
-                }`}
-              >
-                <p className="m-0 mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/40">
-                  {card.meta}
-                </p>
-                <p className="m-0 text-[0.95rem] font-medium text-white">{card.title}</p>
-                <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
-              </article>
-            ))}
+            {upcomingCards.map((card) => {
+              const inner = (
+                <>
+                  <p className="m-0 mb-1 text-[0.65rem] uppercase tracking-[0.14em] text-white/40">
+                    {card.meta}
+                  </p>
+                  <p className="m-0 text-[0.95rem] font-medium text-white">{card.title}</p>
+                  <p className="m-0 mt-0.5 text-[0.78rem] text-white/45">{card.sub}</p>
+                </>
+              );
+
+              if (card.eventId) {
+                return (
+                  <Link
+                    key={card.key}
+                    to={`/events/${card.eventId}`}
+                    className={`block rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 no-underline transition hover:border-accent/35 hover:bg-white/[0.08] ${
+                      card.muted ? "opacity-55" : ""
+                    }`}
+                  >
+                    {inner}
+                  </Link>
+                );
+              }
+
+              return (
+                <article
+                  key={card.key}
+                  className={`rounded-[1.125rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 ${
+                    card.muted ? "opacity-55" : ""
+                  }`}
+                >
+                  {inner}
+                </article>
+              );
+            })}
           </div>
         </aside>
 

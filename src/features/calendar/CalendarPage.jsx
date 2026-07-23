@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
@@ -103,6 +104,13 @@ export function CalendarPage({ hub = false }) {
             <p className="text-sky-200">{formatEventMatchSummary(modalState.event)}</p>
           ) : null}
           {modalState.event.description ? <p>{modalState.event.description}</p> : null}
+          <Link
+            to={`/events/${modalState.event.id}`}
+            onClick={closeModal}
+            className="inline-flex rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm text-white/90 no-underline transition hover:border-accent/40 hover:bg-white/10"
+          >
+            Open Match Brief
+          </Link>
         </div>
       ) : modalState ? (
         <EventForm
