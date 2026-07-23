@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
+import { useAuth } from "../auth/AuthGate.jsx";
 import { useMatchHistoryQuery } from "./hooks/useMatchHistoryQuery.js";
 import {
+  countParticipantMatches,
+  eventHasParticipant,
   filterMatchHistory,
   formatHistoryEventWhen,
   hasRecordedResult,
@@ -24,12 +27,15 @@ function StatChip({ label, value }) {
   );
 }
 
-export function MatchHistoryPanel({ compact = false }) {
+export function MatchHistoryPanel({ compact = false, defaultMineOnly = false }) {
+  const user = useAuth();
+  const mySteamId = String(user?.steamId || "").trim();
   const historyQuery = useMatchHistoryQuery();
   const [resultFilter, setResultFilter] = useState("");
   const [mapFilter, setMapFilter] = useState("");
   const [opponentFilter, setOpponentFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [mineOnly, setMineOnly] = useState(Boolean(defaultMineOnly && mySteamId));
 
   const allEvents = historyQuery.data || [];
 
@@ -39,8 +45,9 @@ export function MatchHistoryPanel({ compact = false }) {
       mapId: mapFilter || undefined,
       opponent: opponentFilter || undefined,
       eventType: typeFilter || undefined,
+      participantSteamId: mineOnly && mySteamId ? mySteamId : undefined,
     }),
-    [resultFilter, mapFilter, opponentFilter, typeFilter]
+    [resultFilter, mapFilter, opponentFilter, typeFilter, mineOnly, mySteamId]
   );
 
   const filtered = useMemo(
@@ -48,7 +55,20 @@ export function MatchHistoryPanel({ compact = false }) {
     [allEvents, filters]
   );
 
-  const stats = useMemo(() => summarizeMatchHistory(allEvents), [allEvents]);
+  const stats = useMemo(() => {
+    if (mineOnly && mySteamId) {
+      return summarizeMatchHistory(
+        filterMatchHistory(allEvents, { participantSteamId: mySteamId })
+      );
+    }
+    return summarizeMatchHistory(allEvents);
+  }, [allEvents, mineOnly, mySteamId]);
+
+  const myMatchCount = useMemo(
+    () => countParticipantMatches(allEvents, mySteamId),
+    [allEvents, mySteamId]
+  );
+
   const mapOptions = useMemo(
     () => uniqueMapIds(allEvents).map((mapId) => ({ value: mapId, label: mapId })),
     [allEvents]
@@ -85,7 +105,23 @@ export function MatchHistoryPanel({ compact = false }) {
         </div>
       ) : null}
 
-      <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/15 p-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/15 p-3 sm:grid-cols-2 lg:grid-cols-5">
+        {mySteamId ? (
+          <label className="flex min-w-0 cursor-pointer items-end gap-2 pb-2 sm:col-span-2 lg:col-span-1">
+            <input
+              type="checkbox"
+              className="size-4 accent-[var(--accent,#7dd3fc)]"
+              checked={mineOnly}
+              onChange={(event) => setMineOnly(event.target.checked)}
+            />
+            <span className="text-[0.82rem] text-white/75">
+              My matches
+              <span className="mt-0.5 block text-[0.65rem] uppercase tracking-[0.12em] text-white/40">
+                {myMatchCount} linked
+              </span>
+            </span>
+          </label>
+        ) : null}
         <label className="block min-w-0">
           <span className="mb-1.5 block text-[0.68rem] uppercase tracking-[0.12em] text-white/40">
             Result
@@ -142,9 +178,13 @@ export function MatchHistoryPanel({ compact = false }) {
 
       {!filtered.length ? (
         <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.02] px-5 py-10 text-center">
-          <p className="m-0 text-[0.95rem] text-white/70">No past matches found</p>
+          <p className="m-0 text-[0.95rem] text-white/70">
+            {mineOnly ? "No matches linked to your Steam ID yet" : "No past matches found"}
+          </p>
           <p className="m-0 mt-2 text-[0.82rem] text-white/40">
-            Schedule scrims on the calendar and record results on the event to build history.
+            {mineOnly
+              ? "Participation is matched from HeLO/CRCON scoreboards when your Steam ID was on Circle’s side."
+              : "Schedule scrims on the calendar and record results on the event to build history."}
           </p>
         </div>
       ) : (
@@ -152,6 +192,7 @@ export function MatchHistoryPanel({ compact = false }) {
           {filtered.map((event) => {
             const result = event.match?.result || "";
             const matchLine = historyMatchLine(event);
+            const youPlayed = eventHasParticipant(event, mySteamId);
             return (
               <li key={event.id}>
                 <Link
@@ -169,6 +210,11 @@ export function MatchHistoryPanel({ compact = false }) {
                         >
                           {historyResultLabel(result)}
                         </span>
+                        {youPlayed ? (
+                          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.12em] text-sky-100">
+                            You played
+                          </span>
+                        ) : null}
                       </div>
                       <p className="m-0 mt-2 truncate text-[0.98rem] font-medium text-white">
                         {event.title}
@@ -205,7 +251,8 @@ export function RecordsPage() {
         </h1>
         <p className="m-0 max-w-2xl text-[0.88rem] leading-relaxed text-white/55">
           Browse past scrims and comps, filter by map or opponent, and open the Match Brief for
-          linked strats, routes, and prep.
+          linked strats, routes, and prep. Use <span className="text-white/75">My matches</span> to
+          see games where your Steam ID was on Circle’s side (from HeLO/CRCON scoreboards).
         </p>
       </header>
       <MatchHistoryPanel />

@@ -53,6 +53,8 @@ describe("T2 — sanitizeEventMatch", () => {
     assert.equal(match.startingPoint, "01");
     assert.equal(match.result, "win");
     assert.equal(match.date, "");
+    assert.equal(match.heloMatchId, "");
+    assert.equal(match.heloUrl, "");
   });
 
   it("rejects invalid faction and result values", () => {
@@ -62,6 +64,25 @@ describe("T2 — sanitizeEventMatch", () => {
     });
     assert.equal(match.faction, "");
     assert.equal(match.result, "");
+  });
+
+  it("keeps HeLO match id and https helo-system.de URL", () => {
+    const match = sanitizeEventMatch({
+      heloMatchId: "  Circle-PF-2026-07-12  ",
+      heloUrl: "https://helo-system.de/statistics/matches/Circle-PF-2026-07-12?series=2024",
+    });
+    assert.equal(match.heloMatchId, "Circle-PF-2026-07-12");
+    assert.equal(
+      match.heloUrl,
+      "https://helo-system.de/statistics/matches/Circle-PF-2026-07-12?series=2024"
+    );
+  });
+
+  it("drops non-HeLO external URLs", () => {
+    const match = sanitizeEventMatch({
+      heloUrl: "https://evil.example/phish",
+    });
+    assert.equal(match.heloUrl, "");
   });
 });
 

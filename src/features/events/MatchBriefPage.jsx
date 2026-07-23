@@ -17,6 +17,27 @@ import { EventLockBadge } from "./EventLockBadge.jsx";
 import { isEventEffectivelyLocked } from "./event-lock.js";
 import { PrepTasksPanel } from "./PrepTasksPanel.jsx";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
+import { eventHasParticipant } from "../records/match-history-utils.js";
+
+function linkifyText(text) {
+  const parts = String(text || "").split(/(https?:\/\/[^\s]+)/g);
+  return parts.map((part, index) => {
+    if (/^https?:\/\//i.test(part)) {
+      return (
+        <a
+          key={`link-${index}`}
+          className="break-all text-accent underline-offset-2 hover:underline"
+          href={part}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={`text-${index}`}>{part}</span>;
+  });
+}
 
 function MatchFacts({ event }) {
   const match = event?.match;
@@ -63,6 +84,31 @@ function MatchFacts({ event }) {
           No match details set yet. Edit the event on the calendar to add opponent, map, and side.
         </p>
       )}
+      {match?.heloUrl || match?.crconUrl ? (
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-white/10 pt-3 text-[0.85rem]">
+          {match.heloUrl ? (
+            <a
+              className="text-accent underline-offset-2 hover:underline"
+              href={match.heloUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              HeLO match{match.heloMatchId ? ` (${match.heloMatchId})` : ""}
+            </a>
+          ) : null}
+          {match.crconUrl ? (
+            <a
+              className="text-accent underline-offset-2 hover:underline"
+              href={match.crconUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="May show Cloudflare 403 until the stats site challenge passes"
+            >
+              CRCON scoreboard{match.crconGameId ? ` (#${match.crconGameId})` : ""}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -111,6 +157,7 @@ export function MatchBriefPage() {
 
   const eventLocked = isEventEffectivelyLocked(event);
   const canEditEvent = canEdit && !eventLocked;
+  const youPlayed = eventHasParticipant(event, user?.steamId);
 
   return (
     <div className="glass-scroll flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pr-1">
@@ -131,6 +178,11 @@ export function MatchBriefPage() {
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               <EventLockBadge event={event} />
               <EventScheduleIndicators components={event.components} />
+              {youPlayed ? (
+                <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.12em] text-sky-100">
+                  You played
+                </span>
+              ) : null}
             </div>
           </div>
           <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.12em] text-emerald-200">
@@ -139,11 +191,16 @@ export function MatchBriefPage() {
         </div>
       </header>
 
+      {youPlayed ? (
+        <p className="m-0 rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-3 text-[0.85rem] text-sky-50/90">
+          Your Steam ID was on Circle’s side for this match (HeLO/CRCON scoreboard link).
+        </p>
+      ) : null}
       {event.description ? (
         <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
           <h2 className="m-0 mb-2 text-[0.72rem] uppercase tracking-[0.16em] text-white/45">Notes</h2>
           <p className="m-0 whitespace-pre-wrap text-[0.9rem] leading-relaxed text-white/75">
-            {event.description}
+            {linkifyText(event.description)}
           </p>
         </section>
       ) : null}

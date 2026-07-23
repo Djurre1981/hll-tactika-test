@@ -26,6 +26,11 @@ describe("T2 — sanitizeEventBody (API)", () => {
       startingPoint: "",
       opponent: "",
       result: "",
+      heloMatchId: "",
+      heloUrl: "",
+      crconGameId: "",
+      crconUrl: "",
+      participantSteamIds: [],
     });
   });
 

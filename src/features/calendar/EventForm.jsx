@@ -52,6 +52,11 @@ function emptyMatchState() {
     startingPoint: "",
     opponent: "",
     result: "",
+    heloMatchId: "",
+    heloUrl: "",
+    crconGameId: "",
+    crconUrl: "",
+    participantSteamIds: [],
   };
 }
 
@@ -283,6 +288,32 @@ export function EventForm({
                 disabled={inputDisabled || !match.mapId}
               />
             </label>
+            {match.heloUrl ? (
+              <p className="text-sm text-muted">
+                HeLO:{" "}
+                <a
+                  className="text-accent underline-offset-2 hover:underline"
+                  href={match.heloUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {match.heloMatchId || "Open match"}
+                </a>
+              </p>
+            ) : null}
+            {match.crconUrl ? (
+              <p className="text-sm text-muted">
+                CRCON:{" "}
+                <a
+                  className="text-accent underline-offset-2 hover:underline"
+                  href={match.crconUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {match.crconGameId ? `Game ${match.crconGameId}` : "Open scoreboard"}
+                </a>
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
       </div>

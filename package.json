@@ -35,7 +35,12 @@
     "extract:vehicles": "node scripts/extract-vehicles.mjs",
     "test": "node --test tests/**/*.test.mjs",
     "test:t1": "node --test tests/t1-event-hub.test.mjs tests/migrations.test.mjs",
-    "test:t2": "node --test tests/t2-match-details.test.mjs tests/t2-api-sanitize.test.mjs tests/calendar-utils.test.mjs tests/migrations.test.mjs"
+    "test:t2": "node --test tests/t2-match-details.test.mjs tests/t2-api-sanitize.test.mjs tests/calendar-utils.test.mjs tests/migrations.test.mjs",
+    "import:helo": "node scripts/import-helo-history.mjs",
+    "import:helo:pilot": "node scripts/import-helo-history.mjs --only Circle-PF-2026-07-12",
+    "import:helo:apply-local": "node scripts/import-helo-history.mjs --apply --local-d1",
+    "backfill:helo-participants": "node scripts/backfill-helo-participants.mjs",
+    "backfill:helo-participants:local": "node scripts/backfill-helo-participants.mjs --apply --local-d1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

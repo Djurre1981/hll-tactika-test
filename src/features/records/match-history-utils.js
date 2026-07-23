@@ -42,7 +42,26 @@ export function filterMatchHistory(events, filters = {}, now = new Date()) {
     );
   }
 
+  const steamId = String(filters.participantSteamId || "").trim();
+  if (steamId) {
+    list = list.filter((event) => eventHasParticipant(event, steamId));
+  }
+
   return list.sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt));
+}
+
+/** True when event.match.participantSteamIds includes this Steam ID64. */
+export function eventHasParticipant(event, steamId) {
+  const id = String(steamId || "").trim();
+  if (!id) return false;
+  const list = event?.match?.participantSteamIds;
+  if (!Array.isArray(list)) return false;
+  return list.some((entry) => String(entry) === id);
+}
+
+export function countParticipantMatches(events, steamId, now = new Date()) {
+  if (!steamId) return 0;
+  return filterMatchHistory(events, { participantSteamId: steamId }, now).length;
 }
 
 export function uniqueMapIds(events) {

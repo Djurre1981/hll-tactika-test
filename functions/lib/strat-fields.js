@@ -61,16 +61,75 @@ function normalizeStartingPoint(value) {
   return "";
 }
 
+const HELO_MATCH_ID_MAX = 120;
+const HELO_URL_MAX = 500;
+const CRCON_URL_MAX = 500;
+
+function normalizeHeloMatchId(value) {
+  return String(value || "")
+    .trim()
+    .slice(0, HELO_MATCH_ID_MAX);
+}
+
+function normalizeHeloUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/^https:\/\/(?:[\w.-]+\.)?helo-system\.de\//i.test(raw)) {
+    return "";
+  }
+  return raw.slice(0, HELO_URL_MAX);
+}
+
+function normalizeCrconUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (!/^https:\/\/stats[14]\.the-circle\.team\/games\/\d+/i.test(raw)) {
+    return "";
+  }
+  return raw.slice(0, CRCON_URL_MAX);
+}
+
+function normalizeCrconGameId(value) {
+  const raw = String(value || "").trim();
+  if (!/^\d+$/.test(raw)) return "";
+  return raw.slice(0, 20);
+}
+
+const STEAM_ID64_RE = /^7656119\d{10}$/;
+
+/** Normalize a list of Steam ID64 strings (Circle match participants). */
+export function normalizeParticipantSteamIds(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const raw of value) {
+    const id = String(raw || "").trim();
+    if (!STEAM_ID64_RE.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+export function emptyStratMatch() {
+  return {
+    date: "",
+    faction: "",
+    mapId: "",
+    startingPoint: "",
+    opponent: "",
+    result: "",
+    heloMatchId: "",
+    heloUrl: "",
+    crconGameId: "",
+    crconUrl: "",
+    participantSteamIds: [],
+  };
+}
+
 export function normalizeStratMatch(match) {
   if (!match || typeof match !== "object") {
-    return {
-      date: "",
-      faction: "",
-      mapId: "",
-      startingPoint: "",
-      opponent: "",
-      result: "",
-    };
+    return emptyStratMatch();
   }
 
   return {
@@ -80,6 +139,11 @@ export function normalizeStratMatch(match) {
     startingPoint: normalizeStartingPoint(match.startingPoint),
     opponent: String(match.opponent || "").trim().slice(0, 80),
     result: normalizeStratResult(match.result),
+    heloMatchId: normalizeHeloMatchId(match.heloMatchId),
+    heloUrl: normalizeHeloUrl(match.heloUrl),
+    crconGameId: normalizeCrconGameId(match.crconGameId),
+    crconUrl: normalizeCrconUrl(match.crconUrl),
+    participantSteamIds: normalizeParticipantSteamIds(match.participantSteamIds),
   };
 }
 

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 import { MyPrepTasksWidget } from "./MyPrepTasksWidget.jsx";
+import { MyMatchesWidget } from "./MyMatchesWidget.jsx";
 import { TeamKpiStrip } from "./TeamKpiStrip.jsx";
 import { useHub } from "./HubContext.jsx";
 
@@ -137,6 +138,7 @@ export function HomePage() {
           >
             Upcoming games
           </h2>
+          <MyMatchesWidget />
           <MyPrepTasksWidget />
           <div className="flex min-h-0 flex-col gap-2 overflow-auto pr-1">
             {upcomingCards.map((card) => {
