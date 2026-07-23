@@ -7,6 +7,12 @@ import {
   updateRosterMember,
 } from "./roster-store.js";
 import { fetchSteamProfiles } from "./steam.js";
+import {
+  fetchSheetImportRows,
+  isPlaceholderDisplayName,
+  SHEET_SOURCES,
+} from "./sheets-roster.js";
+import { isValidSteamId64 } from "./users-store.js";
 
 function rowToRoster(row) {
   return {
@@ -586,6 +592,214 @@ export async function enrichRosterMemberProfiles(env, rosterId, { limit = 20 } =
     pending: pending.length,
     remaining: remainingAfter,
     done: remainingAfter === 0,
+  };
+}
+
+async function resolveSheetTargetRoster(env, sourceId, createdBy) {
+  const meta = SHEET_SOURCES[sourceId];
+  if (!meta) return null;
+
+  const rosters = await listRosters(env);
+  const needle = meta.rosterName.toLowerCase();
+  let roster = rosters.find((r) => String(r.name || "").trim().toLowerCase() === needle) || null;
+
+  // Comp Roster is often the default id from migrations.
+  if (!roster && sourceId === "comp") {
+    roster = rosters.find((r) => r.id === "roster-default") || null;
+  }
+
+  if (roster) return roster;
+
+  const now = new Date().toISOString();
+  return createRoster(env, {
+    id: `rosters-${crypto.randomUUID()}`,
+    name: meta.rosterName,
+    tournament: sourceId === "ecl" ? "ECL" : null,
+    color: sourceId === "ecl" ? "#e07a3a" : "#5b8def",
+    notes: `Auto-created for ${meta.label} import`,
+    sortOrder: sourceId === "ecl" ? 1 : 0,
+    isTemplate: false,
+    createdBy: createdBy || "sheets-import",
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+function shouldUpdateDisplayName(existingName, sheetName) {
+  const next = String(sheetName || "").trim();
+  if (!next) return false;
+  const current = String(existingName || "").trim();
+  if (!current || isPlaceholderDisplayName(current)) return true;
+  // Prefer sheet Discord/player name over a different stub, but don't thrash real names
+  // that already match ignoring case.
+  return false;
+}
+
+function mergeTournaments(existing, incoming) {
+  const set = new Set([...(existing || []), ...(incoming || [])].map((t) => String(t).trim()).filter(Boolean));
+  return [...set];
+}
+
+/**
+ * Import ECL + Comp Google Sheets into matching rosters (chunked).
+ * Does NOT grant site access.
+ */
+export async function importSheetsIntoRosters(env, { createdBy, offset = 0, limit = 40 } = {}) {
+  const fetched = await fetchSheetImportRows();
+  const allRows = fetched.rows || [];
+  const start = Math.max(0, Number(offset) || 0);
+  const batchSize = Math.max(1, Math.min(80, Number(limit) || 40));
+  const batch = allRows.slice(start, start + batchSize);
+  const remainingAfter = Math.max(0, allRows.length - (start + batch.length));
+
+  const targets = {
+    ecl: await resolveSheetTargetRoster(env, "ecl", createdBy),
+    comp: await resolveSheetTargetRoster(env, "comp", createdBy),
+  };
+
+  const db = requireDb(env);
+  const now = new Date().toISOString();
+  let added = 0;
+  let linked = 0;
+  let updated = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors = [];
+  const bySource = {
+    ecl: { added: 0, linked: 0, updated: 0, skipped: 0, failed: 0 },
+    comp: { added: 0, linked: 0, updated: 0, skipped: 0, failed: 0 },
+  };
+
+  for (const row of batch) {
+    const source = row.source === "ecl" ? "ecl" : "comp";
+    const roster = targets[source];
+    if (!roster) {
+      failed += 1;
+      bySource[source].failed += 1;
+      errors.push({ steamId: row.steamId, error: `Missing ${source} roster` });
+      continue;
+    }
+    if (!isValidSteamId64(row.steamId)) {
+      skipped += 1;
+      bySource[source].skipped += 1;
+      continue;
+    }
+
+    try {
+      const existing = await findMemberBySteamId(env, row.steamId);
+      let memberId = existing?.id || null;
+      let createdNew = false;
+      let didUpdate = false;
+
+      if (!memberId) {
+        const member = await createRosterMember(env, {
+          id: `roster-${crypto.randomUUID()}`,
+          displayName: row.displayName,
+          steamId: row.steamId,
+          avatarUrl: null,
+          rosterRoles: row.rosterRoles || ["infantry"],
+          situation: row.situation || "member",
+          status: row.status || "active",
+          tournaments: row.tournaments || [],
+          notes: row.notes || "",
+          sortOrder: 0,
+          createdBy: createdBy || "sheets-import",
+          createdAt: now,
+          updatedAt: now,
+        });
+        memberId = member.id;
+        createdNew = true;
+        added += 1;
+        bySource[source].added += 1;
+      } else {
+        const patch = {};
+        if (shouldUpdateDisplayName(existing.displayName, row.displayName)) {
+          patch.displayName = row.displayName;
+        }
+        if (row.situation === "merc" && existing.situation !== "merc") {
+          patch.situation = "merc";
+        }
+        if (row.status === "active" && existing.status === "trial") {
+          patch.status = "active";
+        }
+        const nextTournaments = mergeTournaments(existing.tournaments, row.tournaments);
+        if (nextTournaments.length !== (existing.tournaments || []).length) {
+          patch.tournaments = nextTournaments;
+        }
+        // Fill roles only when member still has the default single infantry (or empty).
+        const existingRoles = existing.rosterRoles || [];
+        if (
+          row.rosterRoles?.length &&
+          (existingRoles.length === 0 ||
+            (existingRoles.length === 1 && existingRoles[0] === "infantry"))
+        ) {
+          patch.rosterRoles = row.rosterRoles;
+        }
+        if (row.notes && !existing.notes) {
+          patch.notes = row.notes;
+        }
+
+        if (Object.keys(patch).length) {
+          await updateRosterMember(env, memberId, patch);
+          updated += 1;
+          bySource[source].updated += 1;
+          didUpdate = true;
+        }
+      }
+
+      const already = await db
+        .prepare(
+          `SELECT roster_id FROM roster_memberships WHERE roster_id = ? AND member_id = ?`
+        )
+        .bind(roster.id, memberId)
+        .first();
+
+      if (already) {
+        if (!createdNew && !didUpdate) {
+          skipped += 1;
+          bySource[source].skipped += 1;
+        }
+        continue;
+      }
+
+      await db
+        .prepare(
+          `INSERT INTO roster_memberships (roster_id, member_id, roster_role, sort_order, created_at)
+           VALUES (?, ?, ?, ?, ?)`
+        )
+        .bind(roster.id, memberId, row.rosterRoles?.[0] || "infantry", 0, now)
+        .run();
+
+      if (!createdNew) {
+        linked += 1;
+        bySource[source].linked += 1;
+      }
+    } catch (err) {
+      failed += 1;
+      bySource[source].failed += 1;
+      errors.push({ steamId: row.steamId, error: err?.message || "import failed" });
+    }
+  }
+
+  return {
+    added,
+    linked,
+    updated,
+    skipped,
+    failed,
+    processed: batch.length,
+    offset: start,
+    nextOffset: start + batch.length,
+    remaining: remainingAfter,
+    done: remainingAfter === 0,
+    sheetCounts: fetched.counts,
+    skippedInvalid: fetched.skippedInvalid,
+    bySource,
+    targets: {
+      ecl: targets.ecl ? { id: targets.ecl.id, name: targets.ecl.name } : null,
+      comp: targets.comp ? { id: targets.comp.id, name: targets.comp.name } : null,
+    },
+    errors: errors.slice(0, 15),
   };
 }
 

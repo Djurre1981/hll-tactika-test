@@ -211,6 +211,72 @@ export function useEnrichRosterProfilesMutation(rosterId) {
   });
 }
 
+export function useImportSheetsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      let added = 0;
+      let linked = 0;
+      let updated = 0;
+      let skipped = 0;
+      let failed = 0;
+      let offset = 0;
+      let rounds = 0;
+      let last = null;
+      for (let i = 0; i < 20; i += 1) {
+        rounds += 1;
+        const data = await apiClient("/rosters/import-sheets", {
+          method: "POST",
+          body: JSON.stringify({ offset, limit: 40 }),
+        });
+        last = data;
+        added += Number(data.added) || 0;
+        linked += Number(data.linked) || 0;
+        updated += Number(data.updated) || 0;
+        skipped += Number(data.skipped) || 0;
+        failed += Number(data.failed) || 0;
+        offset = Number(data.nextOffset) || offset + 40;
+        if (data.done || !(Number(data.remaining) > 0)) {
+          return {
+            ...data,
+            added,
+            linked,
+            updated,
+            skipped,
+            failed,
+            rounds,
+          };
+        }
+      }
+      return {
+        ...(last || {}),
+        added,
+        linked,
+        updated,
+        skipped,
+        failed,
+        rounds,
+        done: false,
+        remaining: 1,
+        note: "Stopped after max rounds — click Import from Sheets again",
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roster.all });
+      // Members for both Comp + ECL may have changed
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "rosters" &&
+          query.queryKey[2] === "members",
+      });
+    },
+  });
+}
+
 export function useUpdateRosterMemberMutation(rosterId) {
   const queryClient = useQueryClient();
 

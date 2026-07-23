@@ -23,6 +23,7 @@ import {
   useDuplicateRosterMutation,
   useEnrichRosterProfilesMutation,
   useImportRosterCsvMutation,
+  useImportSheetsMutation,
   useRemoveMemberFromRosterMutation,
   useRosterMembersQuery,
   useRostersQuery,
@@ -221,6 +222,7 @@ export function RosterSection() {
   const duplicateRoster = useDuplicateRosterMutation();
   const seedFromHelo = useSeedRosterFromHeloMutation(activeRosterId);
   const enrichProfiles = useEnrichRosterProfilesMutation(activeRosterId);
+  const importSheets = useImportSheetsMutation();
   const addMember = useAddRosterMemberToRosterMutation(activeRosterId);
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
   const updateMember = useUpdateRosterMemberMutation(activeRosterId);
@@ -444,6 +446,31 @@ export function RosterSection() {
     );
   }
 
+  function handleImportSheets() {
+    if (
+      !window.confirm(
+        "Import ECL + Comp Google Sheets into their matching rosters?\n\n• ECL sheet → ECL Roster\n• Comp recruit sheet → Comp Roster\n\nOnly valid Steam64 rows are imported. Epic/Game Pass/nicknames are skipped. Does not grant site access."
+      )
+    ) {
+      return;
+    }
+    setImportMessage("Importing from Google Sheets…");
+    importSheets.mutate(undefined, {
+      onSuccess: (data) => {
+        const invalid = data.skippedInvalid?.total || 0;
+        const rem = Number(data.remaining) || 0;
+        setImportMessage(
+          `Sheets: +${data.added || 0} new · ${data.linked || 0} linked · ${data.updated || 0} updated · ${data.skipped || 0} already · ${data.failed || 0} failed · ${invalid} non-Steam skipped (${data.sheetCounts?.total || 0} Steam rows)${
+            rem > 0 ? ` · ${rem} pending — click again` : " · done"
+          }`
+        );
+      },
+      onError: (err) => {
+        setImportMessage(err?.message || "Sheets import failed");
+      },
+    });
+  }
+
   function handleEnrichProfiles() {
     if (!activeRosterId) return;
     setImportMessage("Resolving Steam names…");
@@ -516,6 +543,7 @@ export function RosterSection() {
     duplicateRoster.isPending ||
     seedFromHelo.isPending ||
     enrichProfiles.isPending ||
+    importSheets.isPending ||
     addMember.isPending ||
     removeMember.isPending ||
     updateMember.isPending ||
@@ -768,6 +796,15 @@ export function RosterSection() {
             title="Add players from HeLO match participants (no site access)"
           >
             {seedFromHelo.isPending ? "Seeding…" : "Seed from HeLO"}
+          </button>
+          <button
+            type="button"
+            className={topBtnClass}
+            disabled={pending}
+            onClick={handleImportSheets}
+            title="Pull ECL + Comp Google Sheets into matching rosters (Steam64 only, no site access)"
+          >
+            {importSheets.isPending ? "Importing sheets…" : "Import from Sheets"}
           </button>
           <button
             type="button"

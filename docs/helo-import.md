@@ -68,6 +68,8 @@ Management Overview **Player form** merges these aggregates when present.
 - [ECL roster 2026.1](https://docs.google.com/spreadsheets/d/1QvnsG-LQmMXoT5BgcfgJKVkdAOL5To5HekJ5Jgk87PQ/edit)
 - [Circle Comp | Rosters](https://docs.google.com/spreadsheets/d/1GZv4Q-xILC7ry8ESXjN3cqYEimxco6PRwYxgDGywz3Q/edit?gid=521785014) (recruit form; mixed Steam64 / Epic / names)
 
+Management **Import from Sheets** pulls both published CSVs into **ECL Roster** and **Comp Roster** (Steam64 only; upgrades `Player ####` placeholders). Re-click to refresh — still never grants site access.
+
 ## Phase 2 — CRCON enrichment (browser session works)
 
 Public CRCON bases:
