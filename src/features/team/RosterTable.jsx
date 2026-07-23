@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { Button } from "../../shared/Button.jsx";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 
 const ROLES = ["viewer", "editor", "assist", "admin"];
+const roleOptions = ROLES.map((role) => ({ value: role, label: role }));
 const SORTERS = {
   name: (user) => user.name || user.steamId,
   steamId: (user) => user.steamId,
@@ -108,18 +110,14 @@ export function RosterTable({
               <td className="px-4 py-3 font-mono text-xs text-muted">{user.steamId}</td>
               <td className="px-4 py-3">
                 {canEditRoles && user.roleEditable ? (
-                  <select
-                    className="rounded border border-border bg-bg px-2 py-1 text-text"
+                  <GlassSelect
+                    className="min-w-[6.5rem]"
                     value={user.role}
                     disabled={actionPending}
-                    onChange={(event) => onRoleChange(user.steamId, event.target.value)}
-                  >
-                    {ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => onRoleChange(user.steamId, value)}
+                    placeholder=""
+                    options={roleOptions}
+                  />
                 ) : (
                   <span className="rounded bg-bg px-2 py-1 text-xs uppercase tracking-wide text-accent">
                     {user.role}

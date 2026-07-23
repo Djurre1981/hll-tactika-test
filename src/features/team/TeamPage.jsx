@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthGate.jsx";
+import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
 import { RosterTable } from "./RosterTable.jsx";
 import {
@@ -12,6 +13,7 @@ import {
 } from "./hooks/useTeamQuery.js";
 
 const ROLE_FILTERS = ["all", "owner", "admin", "assist", "editor", "viewer"];
+const roleFilterOptions = ROLE_FILTERS.map((role) => ({ value: role, label: role }));
 
 export function TeamPage({ hub = false }) {
   const currentUser = useAuth();
@@ -149,21 +151,16 @@ export function TeamPage({ hub = false }) {
       </form>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="text-sm text-white/55" htmlFor="role-filter">
+        <label className="flex items-center gap-3 text-sm text-white/55">
           Filter role
+          <GlassSelect
+            className="min-w-[7rem]"
+            value={roleFilter}
+            onChange={setRoleFilter}
+            placeholder=""
+            options={roleFilterOptions}
+          />
         </label>
-        <select
-          id="role-filter"
-          className="glass-input"
-          value={roleFilter}
-          onChange={(event) => setRoleFilter(event.target.value)}
-        >
-          {ROLE_FILTERS.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
         <span className="text-sm text-white/45">
           {filteredUsers.length} of {users.length} members
         </span>
