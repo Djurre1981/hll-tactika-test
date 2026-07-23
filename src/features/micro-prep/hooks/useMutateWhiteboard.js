@@ -6,13 +6,20 @@ export function useMutateWhiteboard(boardId) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (patch) =>
-      apiClient(`/whiteboards/${boardId}`, {
+    mutationFn: (patch) => {
+      if (patch?.lock === true || patch?.unlock === true) {
+        return apiClient(`/whiteboards/${boardId}`, {
+          method: "PUT",
+          body: JSON.stringify(patch),
+        });
+      }
+      return apiClient(`/whiteboards/${boardId}`, {
         method: "PUT",
         body: JSON.stringify({ whiteboard: patch }),
-      }),
+      });
+    },
     onSuccess: (data) => {
-      queryClient.setQueryData(queryKeys.whiteboards.byId(boardId), data);
+      queryClient.setQueryData(queryKeys.whiteboards.byId(boardId), data.whiteboard || data);
       queryClient.invalidateQueries({ queryKey: queryKeys.whiteboards.all });
     },
   });

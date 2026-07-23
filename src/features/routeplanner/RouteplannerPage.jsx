@@ -7,7 +7,9 @@ import { queryKeys } from "../../lib/query-keys.js";
 import { canEditEvents } from "../calendar/calendar-utils.js";
 import { useLinkedEventLock } from "../events/hooks/useLinkedEventLock.js";
 import { LinkedEventLockBanner } from "../events/LinkedEventLockBanner.jsx";
+import { ToolLockControl } from "../events/ToolLockControl.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
+import { canManageToolLock, isToolLocked } from "../../lib/tool-lock.js";
 import { RouteplannerEditor } from "./RouteplannerEditor.jsx";
 
 function normalizePlan(raw) {
@@ -23,6 +25,9 @@ function normalizePlan(raw) {
     routes: Array.isArray(inner.routes) ? inner.routes : [],
     obstacles: Array.isArray(inner.obstacles) ? inner.obstacles : [],
     obstacleVectorBuildId: inner.obstacleVectorBuildId ?? null,
+    createdBy: raw.createdBy,
+    locked: Boolean(raw.locked),
+    lockedBy: raw.lockedBy || null,
   };
 }
 
@@ -57,7 +62,24 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
     planEventId: query.data?.eventId,
     enabled: Boolean(query.data),
   });
-  const canEdit = roleCanEdit && !eventLocked;
+  const canManageToolLockState = canManageToolLock(
+    user?.role,
+    query.data?.createdBy,
+    user?.steamId
+  );
+  const toolLocked = isToolLocked(query.data);
+  const canEdit = roleCanEdit && !eventLocked && !toolLocked;
+
+  const lockMutation = useMutation({
+    mutationFn: (lock) =>
+      apiClient(`/route-plans/${planId}`, {
+        method: "PUT",
+        body: JSON.stringify(lock ? { lock: true } : { unlock: true }),
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.routePlans.byId(planId), normalizePlan(data.plan));
+    },
+  });
 
   const handleSave = useCallback(
     (payload) => {
@@ -125,6 +147,10 @@ export function RouteplannerPage({ planId, backTo = "/home" }) {
         saving={mutation.isPending}
         dirty={dirty}
         canEdit={canEdit}
+        canManageToolLock={canManageToolLockState && !eventLocked}
+        toolLocked={toolLocked}
+        lockPending={lockMutation.isPending}
+        onToggleToolLock={(nextLocked) => lockMutation.mutate(nextLocked)}
         backTo={backTo}
       />
     </div>

@@ -12,6 +12,7 @@ import { useMutateStrat } from "./useMutateStrat.js";
 import { useStratAutosave } from "./useStratAutosave.js";
 import { useStratQuery } from "./useStratQuery.js";
 import { useLinkedEventLock } from "../../../events/hooks/useLinkedEventLock.js";
+import { canManageToolLock, isToolLocked } from "../../../../lib/tool-lock.js";
 import { getDefaultMapId, rememberMapId } from "../mapIds.js";
 import { STRAT_RASTER_FIT_DEFAULT } from "../stratBackground.js";
 import { prepareImageUpload, uploadImageFile } from "../../../../shared/prepareImageUpload.js";
@@ -67,11 +68,23 @@ export function useStratEditor(stratId) {
   const slides = localSlides || sortSlides(strat?.slides);
   const activeSlide = slides.find((s) => s.id === activeSlideId) || slides[0];
 
+  const canManageToolLockState = canManageToolLock(user.role, strat?.createdBy, user?.steamId);
+
   const canEdit =
     Boolean(strat) &&
     ["owner", "admin", "editor", "assist"].includes(user.role) &&
-    (!strat.locked || strat.createdBy === user.steamId || user.role === "owner") &&
+    !isToolLocked(strat) &&
     !eventLocked;
+
+  const toggleStratLock = useCallback(
+    async (nextLocked) => {
+      await mutation.mutateAsync({
+        locked: nextLocked,
+        lockedBy: nextLocked ? user.steamId : null,
+      });
+    },
+    [mutation, user.steamId]
+  );
 
   useEffect(() => {
     if (!strat) return;
@@ -535,6 +548,9 @@ export function useStratEditor(stratId) {
     eventLocked,
     linkedEvent,
     canUnlockLinkedEvent,
+    canManageToolLock: canManageToolLockState,
+    toolLocked: isToolLocked(strat),
+    toggleStratLock,
     dirty,
     selected,
     setSelected,

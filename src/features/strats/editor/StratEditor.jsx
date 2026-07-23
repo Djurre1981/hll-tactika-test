@@ -28,8 +28,12 @@ export function StratEditor({ stratId, backTo = "/home" }) {
     slides,
     activeSlide,
     canEdit,
+    eventLocked,
     linkedEvent,
     canUnlockLinkedEvent,
+    canManageToolLock,
+    toolLocked,
+    toggleStratLock,
     dirty,
     selected,
     setSelected,
@@ -299,6 +303,10 @@ export function StratEditor({ stratId, backTo = "/home" }) {
             dirty={dirty}
             saving={mutation.isPending}
             canEdit={canEdit}
+            canManageToolLock={canManageToolLock && !eventLocked}
+            toolLocked={toolLocked}
+            lockPending={mutation.isPending}
+            onToggleToolLock={toggleStratLock}
             showDetails={showDetails}
             onToggleDetails={() => setShowDetails((v) => !v)}
             onSelectSlide={editor.handleSelectSlide}

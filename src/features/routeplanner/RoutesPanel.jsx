@@ -6,6 +6,7 @@ import {
   getRouteVehicleLabel,
 } from "./route-vehicles.js";
 import { RoutePlanEventPicker } from "./RoutePlanEventPicker.jsx";
+import { ToolLockControl } from "../events/ToolLockControl.jsx";
 import {
   cx,
   glassIconBtn,
@@ -39,6 +40,10 @@ export function RoutesPanel({
   onRemoveRoute,
   canAddRoute,
   canEdit = true,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
 }) {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId);
 
@@ -74,6 +79,14 @@ export function RoutesPanel({
         </div>
 
         <div className={panelDivider} role="presentation" />
+
+        <ToolLockControl
+          locked={toolLocked}
+          canManage={canManageToolLock}
+          pending={lockPending}
+          onLock={() => onToggleToolLock?.(true)}
+          onUnlock={() => onToggleToolLock?.(false)}
+        />
 
         <RoutePlanEventPicker
           planId={planId}

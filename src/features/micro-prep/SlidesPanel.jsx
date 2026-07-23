@@ -31,6 +31,10 @@ export function SlidesPanel({
   onRename,
   disabled = false,
   canEdit = false,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
 }) {
   const sorted = sortSlides(slides);
   const metaBits = [
@@ -72,6 +76,10 @@ export function SlidesPanel({
           <MicroPrepDetailsPanel
             whiteboardId={whiteboardId}
             canEdit={canEdit}
+            canManageToolLock={canManageToolLock}
+            toolLocked={toolLocked}
+            lockPending={lockPending}
+            onToggleToolLock={onToggleToolLock}
             onBack={onToggleDetails}
           />
         ) : (

@@ -1,7 +1,16 @@
 import { cx, glassBtn, sectionTitle } from "../strats/editor/editorUi.js";
+import { ToolLockControl } from "../events/ToolLockControl.jsx";
 import { WhiteboardEventLinker } from "./WhiteboardEventLinker.jsx";
 
-export function MicroPrepDetailsPanel({ whiteboardId, canEdit, onBack }) {
+export function MicroPrepDetailsPanel({
+  whiteboardId,
+  canEdit,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
+  onBack,
+}) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-[0.55rem] overflow-hidden">
       <header className="flex shrink-0 flex-col gap-[0.45rem] border-b border-white/[0.08] pb-[0.55rem]">
@@ -13,6 +22,13 @@ export function MicroPrepDetailsPanel({ whiteboardId, canEdit, onBack }) {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-[0.45rem] overflow-y-auto pr-0.5">
+        <ToolLockControl
+          locked={toolLocked}
+          canManage={canManageToolLock}
+          pending={lockPending}
+          onLock={() => onToggleToolLock?.(true)}
+          onUnlock={() => onToggleToolLock?.(false)}
+        />
         <WhiteboardEventLinker whiteboardId={whiteboardId} canEditBoard={canEdit} />
       </div>
     </div>

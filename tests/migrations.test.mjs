@@ -59,3 +59,11 @@ describe("Event lock migration 0018_event_lock", () => {
     assert.match(sql, /ALTER TABLE events/i);
   });
 });
+
+describe("Tool lock migration 0019_tool_lock", () => {
+  it("adds lock columns on route plans and whiteboards", () => {
+    const sql = readFileSync(join(root, "migrations/0019_tool_lock.sql"), "utf8");
+    assert.match(sql, /route_plans ADD COLUMN locked/i);
+    assert.match(sql, /whiteboards ADD COLUMN locked/i);
+  });
+});

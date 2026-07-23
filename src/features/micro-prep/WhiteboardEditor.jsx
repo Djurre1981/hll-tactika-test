@@ -29,6 +29,7 @@ import {
   sortSlides,
 } from "./slidesUtils.js";
 import { useLinkedEventLock } from "../events/hooks/useLinkedEventLock.js";
+import { canManageToolLock, isToolLocked } from "../../lib/tool-lock.js";
 import { LinkedEventLockBanner } from "../events/LinkedEventLockBanner.jsx";
 
 export const MICRO_PREP_PANEL_GAP = 16;
@@ -126,12 +127,24 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
     ? Boolean(activeSlide?.pageUrl)
     : Boolean(resolvedPageUrl);
 
+  const canManageToolLockState = canManageToolLock(user.role, board?.createdBy, user?.steamId);
+
   const canEdit =
     Boolean(board) &&
     ["owner", "admin", "editor", "assist"].includes(user.role) &&
     (["owner", "admin", "assist"].includes(user.role) ||
       board.createdBy === user.steamId) &&
+    !isToolLocked(board) &&
     !eventLocked;
+
+  const toggleBoardLock = useCallback(
+    async (nextLocked) => {
+      await mutation.mutateAsync(
+        nextLocked ? { lock: true } : { unlock: true }
+      );
+    },
+    [mutation]
+  );
 
   const measureInsets = useCallback(() => {
     const shell = shellRef.current;
@@ -540,6 +553,10 @@ export function WhiteboardEditor({ boardId, backTo = "/home" }) {
               onRename={onRenameSlide}
               disabled={!canEdit}
               canEdit={canEdit}
+              canManageToolLock={canManageToolLockState && !eventLocked}
+              toolLocked={isToolLocked(board)}
+              lockPending={mutation.isPending}
+              onToggleToolLock={toggleBoardLock}
             />
           </div>
         </div>

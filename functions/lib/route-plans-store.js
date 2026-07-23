@@ -16,6 +16,8 @@ function rowToPlan(row, { includePlan = true } = {}) {
     title: row.title,
     mapId: parsed.mapId || null,
     factionId: parsed.factionId || null,
+    locked: Boolean(row.locked),
+    lockedBy: row.locked_by || null,
     createdBy: row.created_by,
     createdByName: row.created_by_name || "",
     createdAt: row.created_at,
@@ -28,7 +30,7 @@ function rowToPlan(row, { includePlan = true } = {}) {
 }
 
 const FULL_COLUMNS =
-  "id, title, plan_json, created_by, created_by_name, created_at, updated_at";
+  "id, title, plan_json, locked, locked_by, created_by, created_by_name, created_at, updated_at";
 
 export async function listRoutePlans(env) {
   const db = requireDb(env);
@@ -52,17 +54,21 @@ export async function saveRoutePlan(env, plan) {
   await db
     .prepare(
       `INSERT INTO route_plans (
-        id, title, plan_json, created_by, created_by_name, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, title, plan_json, locked, locked_by, created_by, created_by_name, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         plan_json = excluded.plan_json,
+        locked = excluded.locked,
+        locked_by = excluded.locked_by,
         updated_at = excluded.updated_at`
     )
     .bind(
       plan.id,
       plan.title,
       JSON.stringify(plan.plan || {}),
+      plan.locked ? 1 : 0,
+      plan.lockedBy || null,
       plan.createdBy,
       plan.createdByName || null,
       plan.createdAt,

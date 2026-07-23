@@ -52,6 +52,10 @@ export function StratsSidePanel({
   dirty,
   saving,
   canEdit,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
   showDetails,
   onToggleDetails,
   onSelectSlide,
@@ -174,6 +178,10 @@ export function StratsSidePanel({
             strat={strat}
             activeSlide={active}
             canEdit={canEdit}
+            canManageToolLock={canManageToolLock}
+            toolLocked={toolLocked}
+            lockPending={lockPending}
+            onToggleToolLock={onToggleToolLock}
             onBack={onToggleDetails}
             onPatchStrat={onPatchStrat}
             onDuplicateStrat={onDuplicateStrat}

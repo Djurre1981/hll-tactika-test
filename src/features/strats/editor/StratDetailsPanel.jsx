@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { GlassSelect } from "../../../shared/GlassSelect.jsx";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import { StratEventLinker } from "./StratEventLinker.jsx";
+import { ToolLockControl } from "../../events/ToolLockControl.jsx";
 import {
   accLabel,
   accShell,
@@ -64,6 +65,10 @@ export function StratDetailsPanel({
   strat,
   activeSlide,
   canEdit,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
   onBack,
   onPatchStrat,
   onDuplicateStrat,
@@ -119,6 +124,14 @@ export function StratDetailsPanel({
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-[0.45rem] overflow-y-auto pr-0.5">
+        <ToolLockControl
+          locked={toolLocked}
+          canManage={canManageToolLock}
+          pending={lockPending}
+          onLock={() => onToggleToolLock?.(true)}
+          onUnlock={() => onToggleToolLock?.(false)}
+        />
+
         <Accordion label="Title" value={titleDraft || "Untitled Strat"} defaultOpen>
           <input
             type="text"

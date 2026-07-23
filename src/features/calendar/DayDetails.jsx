@@ -93,10 +93,12 @@ export function DayDetails({
                     </span>
                   </Link>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">
-                    <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
-                      {TYPE_LABELS[event.eventType] || event.eventType}
-                    </span>
-                    <EventLockBadge event={event} className="scale-90" />
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[0.68rem] capitalize tracking-wide text-emerald-200">
+                        {TYPE_LABELS[event.eventType] || event.eventType}
+                      </span>
+                      <EventLockBadge event={event} />
+                    </div>
                     {canEdit ? (
                       <button
                         type="button"

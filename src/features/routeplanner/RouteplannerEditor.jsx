@@ -97,6 +97,10 @@ export function RouteplannerEditor({
   saving = false,
   dirty = false,
   canEdit = true,
+  canManageToolLock = false,
+  toolLocked = false,
+  lockPending = false,
+  onToggleToolLock,
   backTo = "/home",
 }) {
   const kernelRef = useRef(null);
@@ -1548,6 +1552,10 @@ export function RouteplannerEditor({
             dirty={dirty}
             saving={saving}
             canEdit={canEdit}
+            canManageToolLock={canManageToolLock}
+            toolLocked={toolLocked}
+            lockPending={lockPending}
+            onToggleToolLock={onToggleToolLock}
             planFactionId={factionId}
             routes={routes}
             selectedRouteId={selectedRouteId}

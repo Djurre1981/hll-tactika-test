@@ -451,6 +451,20 @@ When locked, the event itself and everything linked to it are protected:
 
 Migration: `migrations/0018_event_lock.sql`. Tests: `tests/event-lock.test.mjs`, `tests/event-component-link.test.mjs`.
 
+### Per-tool locking
+
+Strats, route plans, and slideshows can be locked **independently** inside each editor (Strat details, Routes panel, Slideshow details). Creator, admin, or owner can lock/unlock; other editors see read-only when locked.
+
+| Where | Who can lock/unlock |
+|-------|---------------------|
+| Stratmaker → Strat details | Creator, admin, owner |
+| Routeplanner → Routes panel | Creator, admin, owner |
+| Micro Prep → Slideshow details | Creator, admin, owner |
+
+Tool lock stacks with event lock — either lock blocks content edits (API **423**). Lock-only updates (`locked` / `lockedBy`) still allowed for authorized users.
+
+Migration: `migrations/0019_tool_lock.sql`. Tests: `tests/tool-lock.test.mjs`.
+
 ### Events API (subset)
 
 | Method | Path | Description |
@@ -478,6 +492,7 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | T9 Prep tasks | ✅ |
 | **T8** Match history | ✅ |
 | **Event lock** (calendar + linked tools) | ✅ |
+| **Tool lock** (strat / route / slideshow in-editor) | ✅ |
 | **T10** Team KPIs / charts | ⬜ next (unblocked) |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |

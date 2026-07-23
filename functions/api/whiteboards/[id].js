@@ -7,6 +7,10 @@ import {
   saveWhiteboard,
 } from "../../lib/whiteboards-store.js";
 import { errorResponse, json } from "../../lib/response.js";
+import {
+  assertToolContentEditable,
+  canManageToolLock,
+} from "../../lib/tool-lock.js";
 
 function canModifyBoard(board, steamId, role) {
   if (role === "owner" || role === "admin" || role === "assist") return true;
@@ -65,12 +69,34 @@ export async function onRequestPut(context) {
       return errorResponse("Not allowed to edit this whiteboard", 403);
     }
 
+    if (body.lock === true || body.unlock === true) {
+      if (!canManageToolLock(auth.session.steamId, auth.role, existing.createdBy)) {
+        return errorResponse("Not allowed to change lock", 403);
+      }
+      const linked = await assertLinkedEventEditable(context.env, "whiteboard", id);
+      if (linked.error) {
+        return errorResponse(linked.error, linked.status || 423);
+      }
+      const whiteboard = await saveWhiteboard(context.env, {
+        ...existing,
+        locked: body.lock === true,
+        lockedBy: body.lock === true ? auth.session.steamId : null,
+        updatedAt: new Date().toISOString(),
+      });
+      return json({ whiteboard });
+    }
+
+    const input = body.whiteboard || {};
+    const editable = assertToolContentEditable(existing, auth.session.steamId, auth.role, input);
+    if (editable.error) {
+      return errorResponse(editable.error, editable.status || 423);
+    }
+
     const linked = await assertLinkedEventEditable(context.env, "whiteboard", id);
     if (linked.error) {
       return errorResponse(linked.error, linked.status || 423);
     }
 
-    const input = body.whiteboard || {};
     const title =
       typeof input.title === "string" && input.title.trim()
         ? input.title.trim().slice(0, 200)

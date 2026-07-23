@@ -7,6 +7,10 @@ import {
   saveRoutePlan,
 } from "../../lib/route-plans-store.js";
 import { errorResponse, json } from "../../lib/response.js";
+import {
+  assertToolContentEditable,
+  canManageToolLock,
+} from "../../lib/tool-lock.js";
 
 function canModify(plan, steamId, role) {
   if (role === "owner" || role === "admin" || role === "assist") return true;
@@ -57,6 +61,29 @@ export async function onRequestPut(context) {
       return errorResponse("Not allowed to edit this route plan", 403);
     }
 
+    if (body.lock === true || body.unlock === true) {
+      if (!canManageToolLock(auth.session.steamId, auth.role, existing.createdBy)) {
+        return errorResponse("Not allowed to change lock", 403);
+      }
+      const linked = await assertLinkedEventEditable(context.env, "routePlan", id);
+      if (linked.error) {
+        return errorResponse(linked.error, linked.status || 423);
+      }
+      const now = new Date().toISOString();
+      const saved = await saveRoutePlan(context.env, {
+        ...existing,
+        locked: body.lock === true,
+        lockedBy: body.lock === true ? auth.session.steamId : null,
+        updatedAt: now,
+      });
+      return json({ plan: saved });
+    }
+
+    const editable = assertToolContentEditable(existing, auth.session.steamId, auth.role, body.plan || body);
+    if (editable.error) {
+      return errorResponse(editable.error, editable.status || 423);
+    }
+
     const linked = await assertLinkedEventEditable(context.env, "routePlan", id);
     if (linked.error) {
       return errorResponse(linked.error, linked.status || 423);
@@ -74,6 +101,8 @@ export async function onRequestPut(context) {
       ...existing,
       title,
       plan,
+      locked: existing.locked,
+      lockedBy: existing.lockedBy,
       updatedAt: new Date().toISOString(),
     };
 

@@ -29,6 +29,7 @@
 | ✅ Done | **T9** | Prep task checklist | T1, T3 — `d7cb96b` |
 | ✅ Done | **T8** | Match history / records | T2 |
 | ✅ Done | **Event lock** | Lock events + linked strats/routes/slideshows | T1, T3, T5 |
+| ✅ Done | **Tool lock** | Lock/unlock strats, routes, slideshows in-editor | T1, T3, T5 |
 | ⬜ **Next (product)** | **T10** | Team win/loss stats | T2 |
 | ⬜ | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
@@ -590,6 +591,25 @@ After a match (or when an editor locks early), the event and its linked strats, 
 - [x] `npm test` (event-lock + event-component-link)
 
 Migration: `0018_event_lock.sql`.
+
+---
+
+### Tool lock — in-editor strat / route / slideshow ✅ DONE
+
+**In plain English:**  
+Creator, admin, or owner can lock a strat, route plan, or slideshow inside its editor without locking the whole calendar event.
+
+**Where:** Stratmaker strat details, Routeplanner routes panel, Micro Prep slideshow details. Schedule sidebar lock pill aligned with type pill.
+
+**Depends on:** T1, T3, T5 (same linked-tool surfaces as event lock).
+
+**Verify:**
+- [x] Creator / admin / owner see Lock / Unlock in each tool
+- [x] Locked tool blocks content PUT with 423
+- [x] Lock-only unlock allowed for authorized users
+- [x] `npm test` (tool-lock + migrations 0019)
+
+Migration: `0019_tool_lock.sql`.
 
 ---
 

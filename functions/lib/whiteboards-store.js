@@ -19,6 +19,8 @@ function rowToWhiteboard(row, { includeScene = true } = {}) {
     title: row.title,
     mode: normalizeBoardMode(row.mode),
     backgroundUrl: row.background_url || null,
+    locked: Boolean(row.locked),
+    lockedBy: row.locked_by || null,
     createdBy: row.created_by,
     createdByName: row.created_by_name || "",
     createdAt: row.created_at,
@@ -33,10 +35,10 @@ function rowToWhiteboard(row, { includeScene = true } = {}) {
 }
 
 const FULL_COLUMNS =
-  "id, title, mode, scene_json, background_url, created_by, created_by_name, created_at, updated_at";
+  "id, title, mode, scene_json, background_url, locked, locked_by, created_by, created_by_name, created_at, updated_at";
 
 const META_COLUMNS =
-  "id, title, mode, background_url, created_by, created_by_name, created_at, updated_at";
+  "id, title, mode, background_url, locked, locked_by, created_by, created_by_name, created_at, updated_at";
 
 export async function listWhiteboards(env, { meta = false } = {}) {
   const db = requireDb(env);
@@ -68,13 +70,15 @@ export async function saveWhiteboard(env, board) {
   await db
     .prepare(
       `INSERT INTO whiteboards (
-        id, title, mode, scene_json, background_url, created_by, created_by_name, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, title, mode, scene_json, background_url, locked, locked_by, created_by, created_by_name, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         mode = excluded.mode,
         scene_json = excluded.scene_json,
         background_url = excluded.background_url,
+        locked = excluded.locked,
+        locked_by = excluded.locked_by,
         updated_at = excluded.updated_at`
     )
     .bind(
@@ -83,6 +87,8 @@ export async function saveWhiteboard(env, board) {
       mode,
       JSON.stringify(board.scene || {}),
       board.backgroundUrl || null,
+      board.locked ? 1 : 0,
+      board.lockedBy || null,
       board.createdBy,
       board.createdByName || null,
       board.createdAt,
