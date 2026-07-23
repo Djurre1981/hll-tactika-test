@@ -3,10 +3,13 @@ import { Spinner } from "../../shared/Spinner.jsx";
 import {
   FACTION_LABELS,
   RESULT_LABELS,
+  canEditEvents,
   formatEventMatchSummary,
   isMatchEventType,
 } from "../calendar/calendar-utils.js";
 import { useEventQuery } from "../calendar/hooks/useEventsQuery.js";
+import { useAuth } from "../auth/AuthGate.jsx";
+import { canManageTeam } from "../../lib/roles.js";
 import { getStartingPointLabel } from "../../shared/mapMidpoints.js";
 import { EventScheduleIndicators } from "../calendar/EventScheduleIndicators.jsx";
 import { EventComponentsPanel } from "./EventComponentsPanel.jsx";
@@ -63,6 +66,9 @@ function MatchFacts({ event }) {
 
 export function MatchBriefPage() {
   const { eventId } = useParams();
+  const user = useAuth();
+  const canEdit = canEditEvents(user?.role);
+  const canAttachRoster = canManageTeam(user?.role);
   const eventQuery = useEventQuery(eventId);
 
   if (eventQuery.isLoading) {
@@ -138,7 +144,12 @@ export function MatchBriefPage() {
         <h2 className="m-0 mb-3 text-[0.72rem] uppercase tracking-[0.16em] text-white/45">
           Linked tools
         </h2>
-        <EventComponentsPanel components={event.components} />
+        <EventComponentsPanel
+          eventId={event.id}
+          components={event.components}
+          canEdit={canEdit}
+          canAttachRoster={canAttachRoster}
+        />
       </section>
     </div>
   );
