@@ -45,7 +45,18 @@ export const queryKeys = {
   },
   prepTasks: {
     mineRoot: ["prep-tasks", "mine"],
+    openRoot: ["prep-tasks", "open"],
     byEvent: (eventId) => ["prep-tasks", "event", eventId],
     mine: (from, to) => ["prep-tasks", "mine", from, to],
+    open: (from, to) => ["prep-tasks", "open", from, to],
+  },
+  rsvps: {
+    root: ["rsvps"],
+    byEvent: (eventId) => ["rsvps", "event", eventId],
+  },
+  playerStats: {
+    root: ["player-stats"],
+    byEvent: (eventId) => ["player-stats", "event", eventId],
+    aggregates: (steamIdsKey) => ["player-stats", "aggregates", steamIdsKey],
   },
 };

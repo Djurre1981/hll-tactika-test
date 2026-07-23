@@ -51,6 +51,18 @@ npm run backfill:helo-participants:local    # write local D1
 node scripts/backfill-helo-participants.mjs --apply --remote-d1
 ```
 
+## Player combat stats (slim snapshot)
+
+HeLO import (`--local-d1` / `--remote-d1`) also writes Circle-side rows into `player_match_stats` (kills, deaths, combat/support/off/def points, playtime, kpm). Backfill existing events:
+
+```bash
+npm run backfill:helo-player-stats
+npm run backfill:helo-player-stats:local
+node scripts/backfill-helo-player-stats.mjs --apply --remote-d1
+```
+
+Management Overview **Player form** merges these aggregates when present.
+
 **Roster spreadsheets** are useful Steam ID references only. Do **not** auto-grant Tactika site access from them — many entries are mercs, leavers, Epic/Game Pass IDs, nicknames, or incomplete Steam64s:
 
 - [ECL roster 2026.1](https://docs.google.com/spreadsheets/d/1QvnsG-LQmMXoT5BgcfgJKVkdAOL5To5HekJ5Jgk87PQ/edit)

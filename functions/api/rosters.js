@@ -45,6 +45,12 @@ export function sanitizeRosterMetaBody(body, { partial = false } = {}) {
     roster.sortOrder = 0;
   }
 
+  if (Object.hasOwn(body, "isTemplate") || (!partial && body.isTemplate !== undefined)) {
+    roster.isTemplate = Boolean(body.isTemplate);
+  } else if (!partial) {
+    roster.isTemplate = false;
+  }
+
   return { roster };
 }
 

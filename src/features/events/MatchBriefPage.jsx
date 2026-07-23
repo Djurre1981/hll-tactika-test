@@ -16,6 +16,7 @@ import { EventComponentsPanel } from "./EventComponentsPanel.jsx";
 import { EventLockBadge } from "./EventLockBadge.jsx";
 import { isEventEffectivelyLocked } from "./event-lock.js";
 import { PrepTasksPanel } from "./PrepTasksPanel.jsx";
+import { RsvpBar } from "./RsvpBar.jsx";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
 import { eventHasParticipant } from "../records/match-history-utils.js";
 
@@ -212,6 +213,8 @@ export function MatchBriefPage() {
       ) : null}
 
       <MatchFacts event={event} />
+
+      <RsvpBar eventId={event.id} />
 
       <PrepTasksPanel eventId={event.id} canEdit={canEditEvent} eventLocked={eventLocked} />
 

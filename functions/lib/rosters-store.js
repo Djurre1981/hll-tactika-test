@@ -16,6 +16,7 @@ function rowToRoster(row) {
     color: row.color || null,
     notes: row.notes || "",
     sortOrder: Number(row.sort_order) || 0,
+    isTemplate: Boolean(row.is_template),
     memberCount: Number(row.member_count) || 0,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -85,7 +86,7 @@ export async function listRosters(env) {
   const db = requireDb(env);
   const result = await db
     .prepare(
-      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order,
+      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order, r.is_template,
               r.created_by, r.created_at, r.updated_at,
               COUNT(m.member_id) AS member_count
        FROM rosters r
@@ -102,7 +103,7 @@ export async function getRoster(env, rosterId) {
   const db = requireDb(env);
   const row = await db
     .prepare(
-      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order,
+      `SELECT r.id, r.name, r.tournament, r.color, r.notes, r.sort_order, r.is_template,
               r.created_by, r.created_at, r.updated_at,
               (SELECT COUNT(*) FROM roster_memberships m WHERE m.roster_id = r.id) AS member_count
        FROM rosters r
@@ -119,8 +120,8 @@ export async function createRoster(env, roster) {
   await db
     .prepare(
       `INSERT INTO rosters
-       (id, name, tournament, color, notes, sort_order, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, name, tournament, color, notes, sort_order, is_template, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       roster.id,
@@ -129,6 +130,7 @@ export async function createRoster(env, roster) {
       roster.color || null,
       roster.notes || null,
       roster.sortOrder ?? 0,
+      roster.isTemplate ? 1 : 0,
       roster.createdBy,
       roster.createdAt,
       roster.updatedAt
@@ -152,7 +154,7 @@ export async function updateRoster(env, rosterId, updates) {
   await db
     .prepare(
       `UPDATE rosters
-       SET name = ?, tournament = ?, color = ?, notes = ?, sort_order = ?, updated_at = ?
+       SET name = ?, tournament = ?, color = ?, notes = ?, sort_order = ?, is_template = ?, updated_at = ?
        WHERE id = ?`
     )
     .bind(
@@ -161,6 +163,7 @@ export async function updateRoster(env, rosterId, updates) {
       next.color || null,
       next.notes || null,
       next.sortOrder ?? 0,
+      next.isTemplate ? 1 : 0,
       next.updatedAt,
       rosterId
     )
@@ -281,6 +284,48 @@ export async function removeMemberFromRoster(env, rosterId, memberId) {
     .run();
 
   return { rosterId, memberId };
+}
+
+/** Duplicate a roster and copy memberships. Optionally mark the copy as a template. */
+export async function duplicateRoster(env, sourceRosterId, { name, isTemplate = false, createdBy }) {
+  const source = await getRoster(env, sourceRosterId);
+  if (!source) return { error: "Roster not found", status: 404 };
+
+  const members = await listRosterMembersInRoster(env, sourceRosterId);
+  const now = new Date().toISOString();
+  const copy = await createRoster(env, {
+    id: `rosters-${crypto.randomUUID()}`,
+    name: name || `${source.name} (copy)`,
+    tournament: source.tournament,
+    color: source.color,
+    notes: source.notes,
+    sortOrder: source.sortOrder + 1,
+    isTemplate: Boolean(isTemplate),
+    createdBy: createdBy || "system",
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const db = requireDb(env);
+  if (members.length) {
+    const stmts = members.map((member, index) =>
+      db
+        .prepare(
+          `INSERT INTO roster_memberships (roster_id, member_id, roster_role, sort_order, created_at)
+           VALUES (?, ?, ?, ?, ?)`
+        )
+        .bind(
+          copy.id,
+          member.id,
+          member.rosterRole || null,
+          member.sortOrder ?? index,
+          now
+        )
+    );
+    await db.batch(stmts);
+  }
+
+  return { roster: await getRoster(env, copy.id) };
 }
 
 export async function ensureMemberAndAddToRoster(env, rosterId, memberData) {

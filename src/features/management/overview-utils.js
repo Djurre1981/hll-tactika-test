@@ -1,0 +1,196 @@
+import {
+  eventHasParticipant,
+  filterMatchHistory,
+  hasRecordedResult,
+} from "../records/match-history-utils.js";
+import { summarizeTeamKpis } from "../records/team-kpi-utils.js";
+
+const DEFAULT_RECENT_LIMIT = 30;
+
+/** Count linked tools on an event components object. */
+export function countLinkedTools(components) {
+  if (!components || typeof components !== "object") return 0;
+  const strats = Array.isArray(components.stratIds) ? components.stratIds.length : 0;
+  const routes = Array.isArray(components.routePlanIds) ? components.routePlanIds.length : 0;
+  const boards = Array.isArray(components.whiteboardIds) ? components.whiteboardIds.length : 0;
+  const roster = components.rosterId ? 1 : 0;
+  return strats + routes + boards + roster;
+}
+
+/**
+ * Readiness score 0–100 for an upcoming event.
+ * Weights: tools 35, open prep tasks 35, RSVP confirmed count 30 (optional).
+ */
+export function computeEventReadiness(event, { openPrepCount = 0, rsvpCounts = null } = {}) {
+  const tools = countLinkedTools(event?.components);
+  const toolScore = Math.min(1, tools / 3) * 35;
+
+  const prepScore =
+    openPrepCount <= 0 ? 35 : Math.max(0, 35 - Math.min(35, openPrepCount * 8));
+
+  let rsvpScore = 15;
+  if (rsvpCounts && typeof rsvpCounts === "object") {
+    const confirmed = Number(rsvpCounts.confirmed) || 0;
+    const tentative = Number(rsvpCounts.tentative) || 0;
+    const declined = Number(rsvpCounts.declined) || 0;
+    const unavailable = Number(rsvpCounts.unavailable) || 0;
+    const total = confirmed + tentative + declined + unavailable;
+    if (total > 0) {
+      rsvpScore = Math.min(30, (confirmed / Math.max(total, 1)) * 30 + Math.min(tentative, 5));
+    } else {
+      rsvpScore = 0;
+    }
+  }
+
+  return Math.round(Math.min(100, toolScore + prepScore + rsvpScore));
+}
+
+export function readinessLabel(score) {
+  if (score >= 75) return "Ready";
+  if (score >= 45) return "In progress";
+  return "Needs prep";
+}
+
+export function readinessClass(score) {
+  if (score >= 75) return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  if (score >= 45) return "border-amber-400/30 bg-amber-400/10 text-amber-100";
+  return "border-white/15 bg-white/[0.04] text-white/55";
+}
+
+/**
+ * Rank roster members by participation in recent recorded/past matches.
+ * Label clearly as participation (not RSVP attendance).
+ */
+export function buildParticipationBoard(events, members, { limit = DEFAULT_RECENT_LIMIT, now = new Date() } = {}) {
+  const history = filterMatchHistory(events, {}, now).slice(0, limit);
+  const poolSize = history.length || 1;
+
+  const rows = (members || [])
+    .filter((m) => m?.steamId && String(m.status || "active") === "active")
+    .map((member) => {
+      const steamId = String(member.steamId);
+      const played = history.filter((event) => eventHasParticipant(event, steamId));
+      const withResult = played.filter(hasRecordedResult);
+      const wins = withResult.filter((e) => e.match.result === "win").length;
+      const losses = withResult.filter((e) => e.match.result === "loss").length;
+      const recorded = wins + losses;
+      return {
+        memberId: member.id,
+        steamId,
+        displayName: member.displayName || steamId,
+        avatarUrl: member.avatarUrl || null,
+        rosterRole: member.rosterRole || null,
+        gamesPlayed: played.length,
+        participationRate: Math.round((played.length / poolSize) * 100),
+        wins,
+        losses,
+        winRate: recorded ? Math.round((wins / recorded) * 100) : null,
+      };
+    })
+    .filter((row) => row.gamesPlayed > 0)
+    .sort((a, b) => {
+      if (b.gamesPlayed !== a.gamesPlayed) return b.gamesPlayed - a.gamesPlayed;
+      return (b.winRate ?? -1) - (a.winRate ?? -1);
+    });
+
+  return {
+    poolSize: history.length,
+    rows,
+    top: rows.slice(0, 5),
+    bottom: [...rows].reverse().slice(0, 5),
+  };
+}
+
+/** Merge combat aggregates onto participation rows when stats are available. */
+export function mergeCombatIntoFormBoard(participationRows, combatBySteamId = {}) {
+  return (participationRows || []).map((row) => {
+    const combat = combatBySteamId[row.steamId] || null;
+    return {
+      ...row,
+      kills: combat?.kills ?? null,
+      deaths: combat?.deaths ?? null,
+      combatPoints: combat?.combatPoints ?? null,
+      matchesWithStats: combat?.matches ?? null,
+      kd:
+        combat && combat.deaths > 0
+          ? Math.round((combat.kills / combat.deaths) * 100) / 100
+          : combat && combat.kills > 0
+            ? combat.kills
+            : null,
+    };
+  });
+}
+
+export function buildSeasonPulse(events, upcomingEvents = [], now = new Date()) {
+  const kpis = summarizeTeamKpis(events, now);
+  const next = (upcomingEvents || [])[0] || null;
+  return {
+    ...kpis,
+    nextOpponent: next?.match?.opponent || null,
+    nextEventId: next?.id || null,
+    nextTitle: next?.title || null,
+    nextStartsAt: next?.startsAt || null,
+  };
+}
+
+export function formatCountdown(startsAt, now = new Date()) {
+  const start = Date.parse(startsAt);
+  if (!Number.isFinite(start)) return null;
+  const diffMs = start - now.getTime();
+  if (diffMs <= 0) return "Started";
+  const hours = Math.floor(diffMs / 3_600_000);
+  const days = Math.floor(hours / 24);
+  if (days >= 2) return `in ${days}d`;
+  if (hours >= 24) return `in ${days}d ${hours % 24}h`;
+  if (hours >= 1) return `in ${hours}h`;
+  const mins = Math.max(1, Math.floor(diffMs / 60_000));
+  return `in ${mins}m`;
+}
+
+export function formatEventWhen(startsAt) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(startsAt));
+}
+
+export const RSVP_STATUSES = ["confirmed", "tentative", "declined", "unavailable"];
+
+export function emptyRsvpCounts() {
+  return { confirmed: 0, tentative: 0, declined: 0, unavailable: 0, total: 0 };
+}
+
+export function summarizeRsvpCounts(rsvps = []) {
+  const counts = emptyRsvpCounts();
+  for (const row of rsvps) {
+    const status = String(row?.status || "").trim();
+    if (RSVP_STATUSES.includes(status)) {
+      counts[status] += 1;
+      counts.total += 1;
+    }
+  }
+  return counts;
+}
+
+/** Role coverage depth for active roster members. */
+export function buildRoleDepth(members) {
+  const depth = new Map();
+  for (const member of members || []) {
+    if (String(member.status || "active") !== "active") continue;
+    const roles = Array.isArray(member.rosterRoles) && member.rosterRoles.length
+      ? member.rosterRoles
+      : member.rosterRole
+        ? [member.rosterRole]
+        : ["unassigned"];
+    for (const role of roles) {
+      const key = String(role || "unassigned");
+      depth.set(key, (depth.get(key) || 0) + 1);
+    }
+  }
+  return [...depth.entries()]
+    .map(([role, count]) => ({ role, count }))
+    .sort((a, b) => b.count - a.count || a.role.localeCompare(b.role));
+}

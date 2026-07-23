@@ -105,6 +105,22 @@ export function useImportRosterCsvMutation(rosterId) {
   });
 }
 
+export function useDuplicateRosterMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ rosterId, name, isTemplate }) =>
+      apiClient(`/rosters/${rosterId}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ name, isTemplate }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
+    },
+  });
+}
+
 export function useUpdateRosterMemberMutation(rosterId) {
   const queryClient = useQueryClient();
 

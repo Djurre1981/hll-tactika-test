@@ -7,6 +7,7 @@ function invalidatePrepTasks(queryClient, eventId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.prepTasks.byEvent(eventId) });
   }
   queryClient.invalidateQueries({ queryKey: queryKeys.prepTasks.mineRoot });
+  queryClient.invalidateQueries({ queryKey: queryKeys.prepTasks.openRoot });
 }
 
 export function usePrepTasksQuery(eventId, enabled = true) {
@@ -23,6 +24,19 @@ export function useMyPrepTasksQuery({ from, to, enabled = true } = {}) {
     queryFn: () => {
       const search = new URLSearchParams({ from, to });
       return apiClient(`/prep-tasks/mine?${search.toString()}`).then((d) => d.tasks || []);
+    },
+    enabled: Boolean(from && to) && enabled,
+    staleTime: 30_000,
+  });
+}
+
+/** Staff: all incomplete prep tasks in a date window. */
+export function useOpenPrepTasksQuery({ from, to, enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.prepTasks.open(from, to),
+    queryFn: () => {
+      const search = new URLSearchParams({ from, to });
+      return apiClient(`/prep-tasks/open?${search.toString()}`).then((d) => d.tasks || []);
     },
     enabled: Boolean(from && to) && enabled,
     staleTime: 30_000,

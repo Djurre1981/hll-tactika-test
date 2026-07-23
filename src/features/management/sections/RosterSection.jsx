@@ -16,6 +16,7 @@ import {
   useAddRosterMemberToRosterMutation,
   useCreateRosterMutation,
   useDeleteRosterMutation,
+  useDuplicateRosterMutation,
   useImportRosterCsvMutation,
   useRemoveMemberFromRosterMutation,
   useRosterMembersQuery,
@@ -206,6 +207,7 @@ export function RosterSection() {
   const createRoster = useCreateRosterMutation();
   const updateRoster = useUpdateRosterMutation();
   const deleteRoster = useDeleteRosterMutation();
+  const duplicateRoster = useDuplicateRosterMutation();
   const addMember = useAddRosterMemberToRosterMutation(activeRosterId);
   const removeMember = useRemoveMemberFromRosterMutation(activeRosterId);
   const updateMember = useUpdateRosterMemberMutation(activeRosterId);
@@ -294,6 +296,31 @@ export function RosterSection() {
         const next = rosters.find((r) => r.id !== id);
         setActiveRosterId(next?.id || null);
       },
+    });
+  }
+
+  function handleDuplicateRoster() {
+    if (!activeRoster) return;
+    duplicateRoster.mutate(
+      {
+        rosterId: activeRoster.id,
+        name: `${activeRoster.name} (copy)`,
+        isTemplate: Boolean(activeRoster.isTemplate),
+      },
+      {
+        onSuccess: (data) => {
+          setRosterMenuOpen(false);
+          if (data?.roster?.id) setActiveRosterId(data.roster.id);
+        },
+      },
+    );
+  }
+
+  function handleToggleTemplate() {
+    if (!activeRoster) return;
+    updateRoster.mutate({
+      id: activeRoster.id,
+      isTemplate: !activeRoster.isTemplate,
     });
   }
 
@@ -401,6 +428,7 @@ export function RosterSection() {
     createRoster.isPending ||
     updateRoster.isPending ||
     deleteRoster.isPending ||
+    duplicateRoster.isPending ||
     addMember.isPending ||
     removeMember.isPending ||
     updateMember.isPending ||
@@ -439,6 +467,7 @@ export function RosterSection() {
               />
               <span className="min-w-0 flex-1 truncate">
                 {activeRoster?.name || "Select roster"}
+                {activeRoster?.isTemplate ? " · template" : ""}
                 {activeRoster ? (
                   <span className="text-white/40"> ({activeRoster.memberCount})</span>
                 ) : null}
@@ -601,6 +630,24 @@ export function RosterSection() {
                           }}
                         >
                           Rename
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-xl px-2.5 py-2 text-left text-[0.82rem] text-white/75 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+                          disabled={!activeRoster || pending}
+                          onClick={handleDuplicateRoster}
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="w-full rounded-xl px-2.5 py-2 text-left text-[0.82rem] text-white/75 hover:bg-white/[0.06] hover:text-white disabled:opacity-40"
+                          disabled={!activeRoster || pending}
+                          onClick={handleToggleTemplate}
+                        >
+                          {activeRoster?.isTemplate ? "Unset template" : "Mark as template"}
                         </button>
                         <button
                           type="button"

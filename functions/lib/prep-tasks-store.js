@@ -139,6 +139,27 @@ export async function listIncompletePrepTasksForAssignee(env, steamId, { from, t
   return (result.results || []).map(rowToMyPrepTask);
 }
 
+/** Staff queue: all incomplete prep tasks for events in a date window (any assignee). */
+export async function listOpenPrepTasksInRange(env, { from, to }) {
+  const db = requireDb(env);
+  const result = await db
+    .prepare(
+      `SELECT pt.id, pt.event_id, pt.title, pt.description, pt.assignee_steam_id,
+              pt.completed, pt.completed_at, pt.created_by, pt.created_at, pt.updated_at,
+              e.title AS event_title, e.starts_at AS event_starts_at, e.event_type AS event_event_type
+       FROM prep_tasks pt
+       INNER JOIN events e ON e.id = pt.event_id
+       WHERE pt.completed = 0
+         AND e.starts_at >= ?
+         AND e.starts_at < ?
+       ORDER BY e.starts_at ASC, pt.created_at ASC`
+    )
+    .bind(from, to)
+    .all();
+
+  return (result.results || []).map(rowToMyPrepTask);
+}
+
 export async function getPrepTask(env, eventId, taskId) {
   const db = requireDb(env);
   const row = await db

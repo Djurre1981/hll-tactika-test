@@ -28,6 +28,10 @@ import {
   HELO_BASE,
   heloMatchToEvent,
 } from "./lib/helo-mapper.mjs";
+import {
+  extractCircleSlimStats,
+  slimStatToInsertSql,
+} from "./lib/helo-player-stats.mjs";
 
 const PAGE_SIZE = 50;
 const DB_NAME = "hll-tactika-db";
@@ -221,6 +225,15 @@ function eventToInsertSql(event) {
   };
 }
 
+function playerStatsSqlForMapped(row, eventId) {
+  const helo = row.heloMatch;
+  if (!helo) return [];
+  const faction = row.event?.match?.faction || "";
+  const stats = extractCircleSlimStats(helo, eventId, faction);
+  const now = new Date().toISOString();
+  return stats.map((stat) => slimStatToInsertSql(stat, now));
+}
+
 function ensureEventsSchema(flag) {
   const out = wranglerD1(flag, {
     command: "PRAGMA table_info(events);",
@@ -295,21 +308,28 @@ function applyViaD1(mapped, flag) {
       continue;
     }
     const { id, sql } = eventToInsertSql(row.event);
-    batch.push({ heloMatchId: row.heloMatchId, id, sql });
+    const statsSql = playerStatsSqlForMapped(row, id);
+    batch.push({ heloMatchId: row.heloMatchId, id, sql, statsSql });
   }
 
   // Execute in chunks via temp SQL files (wrangler command length limits)
-  const CHUNK = 15;
+  const CHUNK = 8;
   for (let i = 0; i < batch.length; i += CHUNK) {
     const chunk = batch.slice(i, i + CHUNK);
     const tmp = path.join(os.tmpdir(), `helo-import-${Date.now()}-${i}.sql`);
-    fs.writeFileSync(tmp, chunk.map((c) => c.sql).join("\n"), "utf8");
+    const parts = [];
+    for (const item of chunk) {
+      parts.push(item.sql);
+      parts.push(...(item.statsSql || []));
+    }
+    fs.writeFileSync(tmp, parts.join("\n"), "utf8");
     try {
       wranglerD1(flag, { file: tmp });
       for (const item of chunk) {
         created += 1;
         existing.add(item.heloMatchId);
-        console.log(`ok    ${item.heloMatchId} → ${item.id}`);
+        const nStats = item.statsSql?.length || 0;
+        console.log(`ok    ${item.heloMatchId} → ${item.id}${nStats ? ` (+${nStats} player stats)` : ""}`);
       }
     } catch (err) {
       failed += chunk.length;
@@ -461,7 +481,7 @@ async function main() {
       continue;
     }
     warnings.push(...result.warnings);
-    mapped.push(result);
+    mapped.push({ ...result, heloMatch: helo });
   }
 
   console.log(`HeLO matches fetched: ${heloMatches.length}`);
