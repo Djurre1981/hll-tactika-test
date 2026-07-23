@@ -33,7 +33,7 @@ export function Modal({ open, onClose, title, children, size = "default" }) {
             Close
           </Button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
+        <div className="glass-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
           {children}
         </div>
       </div>

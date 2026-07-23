@@ -66,7 +66,7 @@ export function VisualSelect({
           role="listbox"
           aria-label={label}
           className={cx(
-            "absolute left-0 right-0 z-40 mt-1 max-h-56 overflow-y-auto rounded-[10px] border border-solid border-white/12 bg-[rgba(28,28,30,0.96)] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-md",
+            "glass-scroll absolute left-0 right-0 z-40 mt-1 max-h-56 overflow-y-auto rounded-[10px] border border-solid border-white/12 bg-[rgba(28,28,30,0.96)] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur-md",
             menuClassName
           )}
         >

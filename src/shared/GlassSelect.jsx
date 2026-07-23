@@ -95,7 +95,7 @@ export function GlassSelect({
       role="listbox"
       data-glass-select-menu={listId}
       style={menuStyle}
-      className="glass-select-menu overflow-y-auto overscroll-contain py-1"
+      className="glass-select-menu glass-scroll overflow-y-auto overscroll-contain"
     >
       {placeholder ? (
         <li
