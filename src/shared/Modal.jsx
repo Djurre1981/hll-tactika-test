@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { Button } from "./Button.jsx";
 
-export function Modal({ open, onClose, title, children }) {
+const MODAL_WIDTH = {
+  default: "max-w-md",
+  wide: "max-w-4xl",
+};
+
+export function Modal({ open, onClose, title, children, size = "default" }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
@@ -13,12 +18,14 @@ export function Modal({ open, onClose, title, children }) {
 
   if (!open) return null;
 
+  const widthClass = MODAL_WIDTH[size] || MODAL_WIDTH.default;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm sm:items-center">
       <div
         role="dialog"
         aria-modal="true"
-        className="glass-panel my-4 flex w-full max-w-md max-h-[min(90vh,calc(100dvh-2rem))] flex-col p-5 sm:my-auto"
+        className={`glass-panel my-4 flex w-full ${widthClass} max-h-[min(90vh,calc(100dvh-2rem))] flex-col overflow-hidden p-5 sm:my-auto`}
       >
         <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">{title}</h2>

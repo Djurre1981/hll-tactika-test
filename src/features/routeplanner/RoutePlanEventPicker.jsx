@@ -105,7 +105,7 @@ export function RoutePlanEventPicker({ eventId, onEventIdChange }) {
         <p className="m-0 mt-1.5 text-[0.64rem] text-red-300/90">{eventsQuery.error.message}</p>
       ) : null}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Event">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} size="wide" title="Event">
         <EventForm
           key="routeplan-create-event"
           selectedDay={createDefaultDay}

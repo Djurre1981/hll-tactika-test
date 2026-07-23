@@ -119,97 +119,104 @@ export function EventForm({ initialEvent, selectedDay, onSubmit, onDelete, pendi
           onChange={(event) => setTitle(event.target.value)}
         />
       </label>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">
-          <span className="mb-1 block text-muted">Type</span>
-          <GlassSelect
-            value={eventType}
-            onChange={setEventType}
-            options={eventTypeOptions}
-            placeholder=""
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="mb-1 block text-muted">Starts</span>
-          <input
-            className="glass-input w-full"
-            type="datetime-local"
-            value={startsAt}
-            onChange={(event) => handleStartsAtChange(event.target.value)}
-          />
-        </label>
-      </div>
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted">Ends</span>
-        <input
-          className="glass-input w-full"
-          type="datetime-local"
-          value={endsAt}
-          onChange={(event) => setEndsAt(event.target.value)}
-        />
-      </label>
 
-      {showMatchFields ? (
-        <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <legend className="px-1 text-[0.72rem] uppercase tracking-[0.14em] text-white/45">
-            Match details
-          </legend>
+      <div className={`grid gap-5 ${showMatchFields ? "lg:grid-cols-2" : ""}`}>
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Type</span>
+              <GlassSelect
+                value={eventType}
+                onChange={setEventType}
+                options={eventTypeOptions}
+                placeholder=""
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Starts</span>
+              <input
+                className="glass-input w-full"
+                type="datetime-local"
+                value={startsAt}
+                onChange={(event) => handleStartsAtChange(event.target.value)}
+              />
+            </label>
+          </div>
           <label className="block text-sm">
-            <span className="mb-1 block text-muted">Opponent</span>
+            <span className="mb-1 block text-muted">Ends</span>
             <input
               className="glass-input w-full"
-              maxLength={80}
-              placeholder="Opponent team name"
-              value={match.opponent || ""}
-              onChange={(event) => patchMatch({ opponent: event.target.value })}
+              type="datetime-local"
+              value={endsAt}
+              onChange={(event) => setEndsAt(event.target.value)}
             />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block text-muted">Map</span>
-            <GlassSelect
-              value={match.mapId || ""}
-              onChange={(mapId) => patchMatch({ mapId })}
-              options={mapOptions}
-              placeholder="Select map…"
+            <span className="mb-1 block text-muted">Notes</span>
+            <textarea
+              className="glass-input min-h-24 w-full lg:min-h-[11.5rem]"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
             />
           </label>
-          <div className="block text-sm">
-            <span className="mb-1 block text-muted">Faction</span>
-            <TagToggle
-              value={match.faction || ""}
-              options={FACTION_OPTIONS}
-              onChange={(value) => patchMatch({ faction: value })}
-            />
-          </div>
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted">Starting strongpoint (optional)</span>
-            <GlassSelect
-              value={match.startingPoint || ""}
-              onChange={(startingPoint) => patchMatch({ startingPoint })}
-              options={strongpointSelectOptions}
-              placeholder={match.mapId ? "Select strongpoint…" : "Select a map first"}
-              disabled={!match.mapId}
-            />
-          </label>
-          <div className="block text-sm">
-            <span className="mb-1 block text-muted">Result (optional)</span>
-            <TagToggle
-              value={match.result || ""}
-              options={RESULT_OPTIONS}
-              onChange={(value) => patchMatch({ result: value })}
-            />
-          </div>
-        </fieldset>
-      ) : null}
+        </div>
 
-      <label className="block text-sm">
-        <span className="mb-1 block text-muted">Notes</span>
-        <textarea
-          className="glass-input min-h-24 w-full"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </label>
+        {showMatchFields ? (
+          <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <legend className="px-1 text-[0.72rem] uppercase tracking-[0.14em] text-white/45">
+              Match details
+            </legend>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Opponent</span>
+              <input
+                className="glass-input w-full"
+                maxLength={80}
+                placeholder="Opponent team name"
+                value={match.opponent || ""}
+                onChange={(event) => patchMatch({ opponent: event.target.value })}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Map</span>
+              <GlassSelect
+                value={match.mapId || ""}
+                onChange={(mapId) => patchMatch({ mapId })}
+                options={mapOptions}
+                placeholder="Select map…"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="block text-sm">
+                <span className="mb-1 block text-muted">Faction</span>
+                <TagToggle
+                  value={match.faction || ""}
+                  options={FACTION_OPTIONS}
+                  onChange={(value) => patchMatch({ faction: value })}
+                />
+              </div>
+              <div className="block text-sm">
+                <span className="mb-1 block text-muted">Result (optional)</span>
+                <TagToggle
+                  value={match.result || ""}
+                  options={RESULT_OPTIONS}
+                  onChange={(value) => patchMatch({ result: value })}
+                />
+              </div>
+            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Starting strongpoint (optional)</span>
+              <GlassSelect
+                value={match.startingPoint || ""}
+                onChange={(startingPoint) => patchMatch({ startingPoint })}
+                options={strongpointSelectOptions}
+                placeholder={match.mapId ? "Select strongpoint…" : "Select a map first"}
+                disabled={!match.mapId}
+              />
+            </label>
+          </fieldset>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap justify-between gap-3">
         {canDelete ? (
           <Button type="button" variant="ghost" onClick={onDelete} disabled={pending}>

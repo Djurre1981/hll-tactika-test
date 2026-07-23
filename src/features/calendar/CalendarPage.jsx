@@ -89,6 +89,7 @@ export function CalendarPage({ hub = false }) {
     <Modal
       open={Boolean(modalState)}
       onClose={closeModal}
+      size={modalState?.mode === "view" ? "default" : "wide"}
       title={modalState?.mode === "view" ? "Event details" : "Event"}
     >
       {modalState?.mode === "view" ? (
