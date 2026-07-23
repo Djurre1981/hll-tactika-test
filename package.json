@@ -34,7 +34,8 @@
     "extract:hq-spawns": "node scripts/extract-hq-spawns.mjs",
     "extract:vehicles": "node scripts/extract-vehicles.mjs",
     "test": "node --test tests/**/*.test.mjs",
-    "test:t1": "node --test tests/t1-event-hub.test.mjs tests/migrations.test.mjs"
+    "test:t1": "node --test tests/t1-event-hub.test.mjs tests/migrations.test.mjs",
+    "test:t2": "node --test tests/t2-match-details.test.mjs tests/migrations.test.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",

@@ -1,4 +1,4 @@
-import { eventsForDay } from "./calendar-utils.js";
+import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
 
 const TYPE_LABELS = {
   scrim: "Scrim",
@@ -60,7 +60,9 @@ export function DayDetails({
         <p className="mt-6 text-[0.9rem] text-white/40">No events this day.</p>
       ) : (
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-          {dayEvents.map((event) => (
+          {dayEvents.map((event) => {
+            const matchSummary = formatEventMatchSummary(event);
+            return (
             <li key={event.id}>
               <button
                 type="button"
@@ -72,6 +74,9 @@ export function DayDetails({
                 </span>
                 <span className="flex min-w-0 flex-col gap-0.5">
                   <span className="text-[0.9rem] text-white/90">{event.title}</span>
+                  {matchSummary ? (
+                    <span className="truncate text-[0.78rem] text-sky-200/80">{matchSummary}</span>
+                  ) : null}
                   {event.description ? (
                     <span className="truncate text-[0.78rem] text-white/40">
                       {event.description}
@@ -83,7 +88,8 @@ export function DayDetails({
                 </span>
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </aside>

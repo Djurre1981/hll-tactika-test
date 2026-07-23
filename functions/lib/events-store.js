@@ -1,4 +1,5 @@
 import { requireDb } from "./d1.js";
+import { normalizeStratMatch } from "./strat-fields.js";
 import { getStrat } from "./strats-store.js";
 import { getRoutePlan } from "./route-plans-store.js";
 import { getWhiteboard } from "./whiteboards-store.js";
@@ -18,6 +19,15 @@ export function emptyEventComponents() {
     whiteboardIds: [],
     rosterId: null,
   };
+}
+
+export function emptyEventMatch() {
+  return normalizeStratMatch({});
+}
+
+/** Normalize match_json from DB or API into a safe shape. */
+export function sanitizeEventMatch(input) {
+  return normalizeStratMatch(input);
 }
 
 function uniqueIds(values) {
@@ -59,6 +69,15 @@ function parseComponentsJson(raw) {
   }
 }
 
+function parseMatchJson(raw) {
+  if (!raw) return emptyEventMatch();
+  try {
+    return sanitizeEventMatch(JSON.parse(raw));
+  } catch {
+    return emptyEventMatch();
+  }
+}
+
 function rowToEvent(row) {
   return {
     id: row.id,
@@ -67,6 +86,7 @@ function rowToEvent(row) {
     startsAt: row.starts_at,
     endsAt: row.ends_at || "",
     eventType: row.event_type,
+    match: parseMatchJson(row.match_json),
     components: parseComponentsJson(row.components_json),
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -74,7 +94,7 @@ function rowToEvent(row) {
   };
 }
 
-const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, components_json, created_by, created_at, updated_at`;
+const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, match_json, components_json, created_by, created_at, updated_at`;
 
 export async function listEvents(env, { from, to }) {
   const db = requireDb(env);
@@ -108,11 +128,12 @@ export async function getEvent(env, eventId) {
 export async function createEvent(env, event) {
   const db = requireDb(env);
   const components = sanitizeEventComponents(event.components);
+  const match = sanitizeEventMatch(event.match);
   await db
     .prepare(
       `INSERT INTO events
-       (id, title, description, starts_at, ends_at, event_type, components_json, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, title, description, starts_at, ends_at, event_type, match_json, components_json, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       event.id,
@@ -121,6 +142,7 @@ export async function createEvent(env, event) {
       event.startsAt,
       event.endsAt || null,
       event.eventType,
+      JSON.stringify(match),
       JSON.stringify(components),
       event.createdBy,
       event.createdAt,
@@ -142,6 +164,8 @@ export async function updateEvent(env, eventId, updates) {
       updates.components !== undefined
         ? sanitizeEventComponents(updates.components)
         : existing.components,
+    match:
+      updates.match !== undefined ? sanitizeEventMatch(updates.match) : existing.match,
     updatedAt: new Date().toISOString(),
   };
 
@@ -149,7 +173,7 @@ export async function updateEvent(env, eventId, updates) {
   await db
     .prepare(
       `UPDATE events
-       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, components_json = ?, updated_at = ?
+       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, match_json = ?, components_json = ?, updated_at = ?
        WHERE id = ?`
     )
     .bind(
@@ -158,6 +182,7 @@ export async function updateEvent(env, eventId, updates) {
       next.startsAt,
       next.endsAt || null,
       next.eventType,
+      JSON.stringify(sanitizeEventMatch(next.match)),
       JSON.stringify(sanitizeEventComponents(next.components)),
       next.updatedAt,
       eventId
