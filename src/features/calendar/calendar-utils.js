@@ -37,3 +37,44 @@ export function buildMonthDays(monthDate) {
 export function eventsForDay(events, day) {
   return events.filter((event) => sameDay(new Date(event.startsAt), day));
 }
+
+const MATCH_EVENT_TYPES = new Set(["scrim", "comp"]);
+
+export function isMatchEventType(eventType) {
+  return MATCH_EVENT_TYPES.has(String(eventType || "").trim());
+}
+
+const FACTION_LABELS = {
+  axis: "Axis",
+  allies: "Allies",
+};
+
+const RESULT_LABELS = {
+  win: "Win",
+  loss: "Loss",
+};
+
+const STARTING_POINT_LABELS = {
+  "00": "HQ north",
+  "01": "HQ mid",
+  "02": "HQ south",
+  na: "N/A",
+};
+
+/** One-line match summary for calendar lists (empty string when no match facts). */
+export function formatEventMatchSummary(event) {
+  const match = event?.match;
+  if (!match || typeof match !== "object") return "";
+
+  const parts = [];
+  if (match.opponent) parts.push(`vs ${match.opponent}`);
+  if (match.mapId) parts.push(match.mapId);
+  if (match.faction) parts.push(FACTION_LABELS[match.faction] || match.faction);
+  if (match.startingPoint) {
+    parts.push(STARTING_POINT_LABELS[match.startingPoint] || match.startingPoint);
+  }
+  if (match.result) parts.push(RESULT_LABELS[match.result] || match.result);
+  return parts.join(" · ");
+}
+
+export { FACTION_LABELS, RESULT_LABELS, STARTING_POINT_LABELS };

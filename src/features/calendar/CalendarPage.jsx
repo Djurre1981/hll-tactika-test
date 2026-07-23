@@ -10,6 +10,7 @@ import {
   buildMonthDays,
   canEditEvents,
   eventsForDay,
+  formatEventMatchSummary,
   startOfMonth,
 } from "./calendar-utils.js";
 import {
@@ -97,6 +98,9 @@ export function CalendarPage({ hub = false }) {
             {modalState.event.eventType}
           </p>
           <p className="text-muted">{new Date(modalState.event.startsAt).toLocaleString()}</p>
+          {formatEventMatchSummary(modalState.event) ? (
+            <p className="text-sky-200">{formatEventMatchSummary(modalState.event)}</p>
+          ) : null}
           {modalState.event.description ? <p>{modalState.event.description}</p> : null}
         </div>
       ) : modalState ? (

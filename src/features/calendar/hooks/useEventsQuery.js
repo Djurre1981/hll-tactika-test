@@ -99,6 +99,14 @@ export function useCreateEventMutation() {
           whiteboardIds: [],
           rosterId: null,
         },
+        match: event.match || {
+          date: "",
+          faction: "",
+          mapId: "",
+          startingPoint: "",
+          opponent: "",
+          result: "",
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

@@ -31,3 +31,12 @@ describe("PR #34 migration 0015_strat_folders_sort_order", () => {
     assert.match(source, /ORDER BY sort_order/i);
   });
 });
+
+describe("T2 migration 0016_event_match_json", () => {
+  it("adds match_json column with default empty object", () => {
+    const sql = readFileSync(join(root, "migrations/0016_event_match_json.sql"), "utf8");
+    assert.match(sql, /match_json/i);
+    assert.match(sql, /DEFAULT\s+'\{\}'/i);
+    assert.match(sql, /ALTER TABLE events/i);
+  });
+});

@@ -3,7 +3,9 @@ import {
   listEvents,
   createEvent,
   emptyEventComponents,
+  emptyEventMatch,
   sanitizeEventComponents,
+  sanitizeEventMatch,
 } from "../lib/events-store.js";
 import { errorResponse, json } from "../lib/response.js";
 
@@ -80,6 +82,12 @@ function sanitizeEventBody(body, { partial = false } = {}) {
     event.components = sanitizeEventComponents(body.components);
   } else if (!partial) {
     event.components = emptyEventComponents();
+  }
+
+  if (Object.hasOwn(body, "match")) {
+    event.match = sanitizeEventMatch(body.match);
+  } else if (!partial) {
+    event.match = emptyEventMatch();
   }
 
   return { event };
