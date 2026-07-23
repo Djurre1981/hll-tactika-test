@@ -13,7 +13,7 @@
 | **Tool launcher** | Climbing Guide, Stratmaker, Routeplanner, Micro Prep, Calendar, Records, Management (staff) |
 | **Presence** | Online teammates under your avatar |
 
-![Hub layout](media/hub-overview.png)
+![Hub layout](placeholder)
 
 ## RSVP from the hub
 

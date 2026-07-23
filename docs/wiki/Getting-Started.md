@@ -16,7 +16,7 @@ After login you land on the **Dashboard** (home). From here you can:
 - Check **My matches** and **My tasks**
 - See who’s online (bubbles under your avatar)
 
-![Where to look on the hub](media/hub-overview.png)
+![Where to look on the hub](placeholder)
 
 *Top right: avatar menu (Admin / Sign out) and **?** help. Center: widgets and tool tiles.*
 

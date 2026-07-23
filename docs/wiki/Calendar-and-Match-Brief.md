@@ -34,7 +34,7 @@ Open an event from Calendar or hub → **Match Brief** (`/events/:id`).
 2. Or link the event from inside Stratmaker, Routeplanner, or Micro Prep side panels.
 3. Detach when the link is wrong — the tool itself is not deleted.
 
-![Match Brief layout](media/match-brief-overview.jpg)
+![Match Brief layout](placeholder)
 
 *Match Brief: facts, linked-tool chips, prep tasks, and RSVP in one place.*
 

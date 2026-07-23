@@ -225,6 +225,6 @@ Phases **0–8** are done (D1, React shell, auth, dashboard, calendar, Strat bro
 
 **Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab, plus a **Match Brief** hub for match-night prep (linked tools + prep tasks), **imported HeLO history for Circle and Circle Jr**, per-player **My matches** / combat form, Hub RSVP, and Management **Match + Strat history**.
 
-**Planned work** clusters around Discord bot/membership sync, create-match wizard, deeper CRCON/HLLRecords profile links, and cross-linking — see [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33) for the ordered checklist. **Member wiki:** in-app **?** help (source `docs/wiki`) synced to [Tactika Wiki](https://github.com/Djurre1981/hll-tactika-test/wiki) · Roles: [`roles.md`](./roles.md).
+**Planned work** clusters around Discord bot/membership sync, create-match wizard, deeper CRCON/HLLRecords profile links, and cross-linking — see [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33) for the ordered checklist. **Member wiki:** in-app **?** help (source `docs/wiki`) · Roles: [`roles.md`](./roles.md).
 
 *Updated July 23, 2026*

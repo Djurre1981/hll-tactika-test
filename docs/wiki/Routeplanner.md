@@ -20,7 +20,7 @@ Hub → **Routeplanner** → open or create a plan (`/routeplanner/{id}`).
 - **Frontier wall** (first ~120s) and arrival ETA are shown on the map / timeline.
 - Use the **timeline scrubber** and playback to compare multiple routes.
 
-![Routeplanner timeline](media/routeplanner-timeline.jpg)
+![Routeplanner timeline](placeholder)
 
 *Routeplanner: paths on the map plus timeline scrub for ETAs.*
 

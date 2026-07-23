@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import { renderWikiMarkdown } from "../src/features/help/renderWikiMarkdown.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wikiDir = path.join(root, "docs", "wiki");
@@ -39,19 +40,21 @@ test("wiki sidebar pages exist as markdown files", () => {
   }
 });
 
-test("wiki Home and linked media resolve", () => {
+test("wiki Home has no GitHub wiki referral and uses placeholders", () => {
   const home = fs.readFileSync(path.join(wikiDir, "Home.md"), "utf8");
   assert.match(home, /Getting started/i);
-  const mediaRefs = [...home.matchAll(/!\[[^\]]*\]\((media\/[^)]+)\)/g)].map(
-    (m) => m[1]
-  );
-  assert.ok(mediaRefs.length >= 1);
-  for (const rel of mediaRefs) {
-    assert.ok(
-      fs.existsSync(path.join(wikiDir, rel)),
-      `missing media ${rel}`
-    );
-  }
+  assert.doesNotMatch(home, /github\.com\/.*\/wiki/i);
+  assert.doesNotMatch(home, /GitHub wiki/i);
+  assert.match(home, /!\[[^\]]*\]\(placeholder\)/);
+});
+
+test("wiki pages do not ship screenshot media files", () => {
+  const mediaDir = path.join(wikiDir, "media");
+  if (!fs.existsSync(mediaDir)) return;
+  const files = fs
+    .readdirSync(mediaDir)
+    .filter((f) => !f.startsWith(".") && f !== ".gitkeep");
+  assert.deepEqual(files, [], `unexpected media files: ${files.join(", ")}`);
 });
 
 test("wiki markdown renders via marked", () => {
@@ -59,4 +62,11 @@ test("wiki markdown renders via marked", () => {
   const html = marked.parse(md);
   assert.match(String(html), /<h1>/i);
   assert.match(String(html), /Sign in/i);
+});
+
+test("wiki image markdown becomes dark placeholders", () => {
+  const html = renderWikiMarkdown("![Hub overview](placeholder)");
+  assert.match(html, /wiki-media-placeholder/);
+  assert.match(html, /Screenshot placeholder/);
+  assert.doesNotMatch(html, /<img\b/i);
 });

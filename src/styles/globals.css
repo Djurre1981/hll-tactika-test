@@ -461,6 +461,9 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.86rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 0.65rem;
+  overflow: hidden;
 }
 
 .wiki-prose th,
@@ -469,10 +472,12 @@ body {
   padding: 0.45rem 0.6rem;
   text-align: left;
   vertical-align: top;
+  background: transparent;
+  color: inherit;
 }
 
 .wiki-prose th {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -481,14 +486,25 @@ body {
   margin: 1rem 0 1.25rem;
 }
 
-.wiki-prose .wiki-figure img {
-  display: block;
+.wiki-prose .wiki-media-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  max-height: min(420px, 50vh);
-  object-fit: cover;
-  object-position: top center;
+  min-height: clamp(8.5rem, 22vh, 14rem);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 45%),
+    rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.wiki-prose .wiki-media-placeholder-mark {
+  font-size: 0.72rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .wiki-prose .wiki-figcaption {
