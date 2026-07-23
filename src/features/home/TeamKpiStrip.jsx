@@ -86,7 +86,7 @@ export function TeamKpiStrip() {
 
       <p className="m-0 text-[0.78rem] text-white/45">
         Based on the last 24 months of calendar results.{" "}
-        <Link to="/home/management#analytics" className="text-sky-200/90 no-underline hover:text-sky-100">
+        <Link to="/management#analytics" className="text-sky-200/90 no-underline hover:text-sky-100">
           Open analytics
         </Link>
         {" · "}

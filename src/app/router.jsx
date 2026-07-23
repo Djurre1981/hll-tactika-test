@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { MatchBriefPage } from "../features/events/MatchBriefPage.jsx";
 import { RecordsPage } from "../features/records/MatchHistoryPanel.jsx";
 import { CalendarPage } from "../features/calendar/CalendarPage.jsx";
@@ -62,6 +62,11 @@ function StaffOnlyManagementPage() {
   );
 }
 
+function ManagementLegacyRedirect() {
+  const { hash } = useLocation();
+  return <Navigate to={`/management${hash || ""}`} replace />;
+}
+
 function RouteplannerEditorRoute() {
   const { id } = useParams();
   return <RouteplannerPage planId={id} />;
@@ -80,6 +85,7 @@ export function AppRouter() {
           <Route path="events/:eventId" element={<MatchBriefPage />} />
           <Route path="team" element={<StaffOnlyTeamPage hub />} />
           <Route path="management" element={<StaffOnlyManagementPage />} />
+          <Route path="home/management" element={<ManagementLegacyRedirect />} />
           <Route path="strats" element={<StratsPage hub />} />
         </Route>
         <Route element={<EditorShell />}>
