@@ -23,13 +23,13 @@
 | Status | Step | Plain name | Depends on |
 |--------|------|------------|------------|
 | ✅ Done | **T1** | Event backpack (data hooks) | — |
+| ✅ Done | **T2** | Match details on calendar events | T1 — [#35](https://github.com/Djurre1981/hll-tactika-test/pull/35) |
+| ⬜ **Next (product)** | **T3** | Match Brief page | T1, T2 ✅ |
 | ⬜ Next candidates | **T0a** | Test Discord bot (read members) | — |
-| ⬜ | **T2** | Match details on calendar events | T1 |
 | ⬜ | **T0b** | Map Discord roles → Tactika roles | T0a |
 | ⬜ | **T0c** | Sync members + Steam↔Discord link | T0b |
 | ⬜ | **T0d** | Roster from Discord (replace Apollobot) | T0c |
 | ⬜ | **T0e** | Notification messages | T0a, T0c |
-| ⬜ | **T3** | Match Brief page | T1, T2 |
 | ⬜ | **T5** | Attach/detach tools on Brief | T1, T3 |
 | ⬜ | **T4** | Create-match wizard | T1, T2, T0e |
 | ⬜ | **T6** | RSVP “I’m in / can’t” | T1, T0c |
@@ -42,7 +42,7 @@
 | ⬜ | **T12b** | Discord slash commands + two-way calendar | T12a, T0a–T0c, T1–T3 |
 | ⬜ | **Gate C** | Promote bot to Circle production Discord | All of Gate A + B on **test** server |
 
-**Suggested next after T1:** **T2** (product path) *or* **T0a** (Discord path). They can run in parallel if two people own different files.
+**Suggested next:** **T3** (Match Brief — product path) *or* **T0a** (Discord path). T8/T10 also unblocked (depend on T2 only) but Brief is the main product milestone.
 
 ---
 
