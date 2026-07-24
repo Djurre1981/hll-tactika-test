@@ -29,10 +29,21 @@ const MIME = {
 
 function copyExtraToDist() {
   const dist = path.join(root, "dist");
+  if (!fs.existsSync(dist)) return;
   for (const file of STATIC_FILES) {
-    const from = path.join(root, file);
-    if (!fs.existsSync(from)) continue;
-    fs.copyFileSync(from, path.join(dist, file));
+    const candidates = [
+      path.join(PUBLIC, file),
+      path.join(root, file),
+    ];
+    const from = candidates.find(
+      (p) => fs.existsSync(p) && fs.statSync(p).isFile()
+    );
+    if (!from) continue;
+    try {
+      fs.copyFileSync(from, path.join(dist, file));
+    } catch (err) {
+      console.warn(`[serve-repo-static] skip ${file}:`, err.message);
+    }
   }
 }
 
