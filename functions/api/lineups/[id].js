@@ -2,6 +2,7 @@ import { requireAuth, requireAdmin, readJsonBody } from "../../lib/auth-request.
 import {
   deleteLineup,
   getLineup,
+  getLineupFairnessStats,
   lockLineup,
   saveLineupLayout,
   unlockLineup,
@@ -23,7 +24,8 @@ export async function onRequestGet(context) {
   try {
     const lineup = await getLineup(context.env, id);
     if (!lineup) return errorResponse("Lineup not found", 404);
-    return json({ lineup });
+    const fairnessStats = await getLineupFairnessStats(context.env, lineup);
+    return json({ lineup, fairnessStats });
   } catch (error) {
     console.error("GET /api/lineups/:id failed:", error);
     return errorResponse("Failed to load lineup", 500);
@@ -46,7 +48,8 @@ export async function onRequestPatch(context) {
     if (body.lock === true) {
       const result = await lockLineup(context.env, id, auth.session.steamId);
       if (result.error) return errorResponse(result.error, result.status || 400);
-      return json({ lineup: result.lineup });
+      const fairnessStats = await getLineupFairnessStats(context.env, result.lineup);
+      return json({ lineup: result.lineup, fairnessStats });
     }
 
     if (body.unlock === true) {

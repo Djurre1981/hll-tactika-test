@@ -35,9 +35,12 @@ export function useLineupCollab({
     const handle = () => {
       const layout = map.get("layout");
       if (!layout || typeof layout !== "object") return;
+      const remoteUpdatedAt = map.get("updatedAt");
       applyingRemote.current = true;
       try {
-        onRemoteRef.current?.(JSON.parse(JSON.stringify(layout)));
+        onRemoteRef.current?.(JSON.parse(JSON.stringify(layout)), {
+          updatedAt: remoteUpdatedAt || null,
+        });
       } finally {
         queueMicrotask(() => {
           applyingRemote.current = false;
@@ -51,23 +54,38 @@ export function useLineupCollab({
   }, [collab.doc]);
 
   const publishLayout = useCallback(
-    (layout) => {
+    (layout, updatedAt = null) => {
       if (!canWrite || !collab.doc || applyingRemote.current) return;
       const map = collab.doc.getMap("lineup");
       collab.doc.transact(() => {
         map.set("layout", JSON.parse(JSON.stringify(layout)));
+        if (updatedAt) map.set("updatedAt", updatedAt);
       });
     },
     [canWrite, collab.doc]
   );
 
   const seedIfEmpty = useCallback(
-    (layout) => {
+    (layout, updatedAt = null) => {
       if (!canWrite || !collab.doc || !layout) return;
       const map = collab.doc.getMap("lineup");
       if (map.get("layout")) return;
       collab.doc.transact(() => {
         map.set("layout", JSON.parse(JSON.stringify(layout)));
+        if (updatedAt) map.set("updatedAt", updatedAt);
+      });
+    },
+    [canWrite, collab.doc]
+  );
+
+  /** Force-replace collab layout (e.g. after Reset layout). */
+  const forcePublishLayout = useCallback(
+    (layout, updatedAt = null) => {
+      if (!canWrite || !collab.doc || !layout) return;
+      const map = collab.doc.getMap("lineup");
+      collab.doc.transact(() => {
+        map.set("layout", JSON.parse(JSON.stringify(layout)));
+        if (updatedAt) map.set("updatedAt", updatedAt);
       });
     },
     [canWrite, collab.doc]
@@ -78,5 +96,6 @@ export function useLineupCollab({
     peers: collab.peers,
     publishLayout,
     seedIfEmpty,
+    forcePublishLayout,
   };
 }

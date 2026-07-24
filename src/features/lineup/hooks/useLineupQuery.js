@@ -8,7 +8,10 @@ export function useLineupQuery(lineupId) {
     enabled: Boolean(lineupId),
     queryFn: async () => {
       const data = await apiClient(`/lineups/${lineupId}`);
-      return data.lineup;
+      return {
+        lineup: data.lineup,
+        fairnessStats: data.fairnessStats || {},
+      };
     },
   });
 }
@@ -21,10 +24,20 @@ export function useLineupMutation(lineupId) {
         method: "PATCH",
         body: JSON.stringify(body),
       });
-      return data.lineup;
+      return {
+        lineup: data.lineup,
+        fairnessStats: data.fairnessStats,
+      };
     },
-    onSuccess: (lineup) => {
-      queryClient.setQueryData(queryKeys.lineups.byId(lineupId), lineup);
+    onSuccess: (data) => {
+      const lineup = data?.lineup;
+      queryClient.setQueryData(queryKeys.lineups.byId(lineupId), (prev) => ({
+        lineup,
+        fairnessStats:
+          data?.fairnessStats !== undefined
+            ? data.fairnessStats
+            : prev?.fairnessStats || {},
+      }));
       if (lineup?.eventId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(lineup.eventId) });
       }

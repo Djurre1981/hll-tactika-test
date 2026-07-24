@@ -10,21 +10,26 @@
 
 ## Board
 
-- **Command:** Commander, Artillery (DAP squad), Streamer (size 36/49).
-- **Sectors:** North/West (red), Meat Grind (green), South/East (blue), Defence (orange), Flex (black), Recon (grey), Tanks (light blue). A sector can contain **multiple squads**.
-- **Reserves:** confirmed players not in a playing slot (no-show replacements).
-- **Nodes:** task overlay (N/Mid/S HQ — Engineer + 3 Support each + SL for nodes). Does **not** add roster slots; assignees must already be on infantry.
+- **Command:** Commander, Artillery (DAP squad).
+- **Streamers (external):** Streamer Axis + Streamer Allies + stream URL each (not roster slots; list picker later).
+- **Board grid:** (1A–1B) title · (1C) Command · (1D) Artillery · (2B–2D) Tank 1–3 · (3B–3D) North/West · Meat Grind · South/East · (4B–4D) Defence · Flex · Recon. Column A = RSVP pool + reserves.
+- **Reserves:** confirmed players not in a playing slot. When playing slots hit LineUp size (49/36/18), remaining confirmed RSVPs are **auto-filled into reserves**.
+- **Streamers:** header pulldown (left of Force RSVP) — Axis/Allies name + stream URL.
+- **Nodes:** Support/Engineer on infantry auto-fill the nodes overlay. Each assignee shows **SL for nodes** from their squad’s SL.
 
-## Presence
+## Assigning
 
-Checkboxes mark **show / no-show** (briefing attendance). Manual in v1; Discord voice sync comes later.
+Drag confirmed players from the RSVP pool onto role slots (or reserves). Pool badges show lifetime **confirmed RSVP count / times benched** (`12r / 3b`) so admins can rotate fairly.
 
+## Fairness tracking
+
+On **Lock** (or auto-lock after match end), Tactika snapshots who confirmed, who played, and who sat reserve. Lifetime totals appear on the pool and reserve list.
 ## Rules (blocked on save)
 
-- Playing slots = LineUp size
-- ≤ 20 squads (Commander / Streamer do not count; Arty / tanks / recon / infantry do)
+- Playing slots ≤ LineUp size (streamers excluded); start sparse and add squads with **+**
+- ≤ 20 squads (Commander does not count; Arty / tanks / recon / infantry do)
 - Infantry ≤6, armor ≤3, recon ≤2; ≤3 armor squads, ≤2 recon
-- Only **RSVP confirmed** players; Admin **Force RSVP** backdoor on the board
+- Only **RSVP confirmed** players; Admin **Force RSVP** backdoor
 - Nodes assignees must already sit on an infantry squad
 
 ## Lock

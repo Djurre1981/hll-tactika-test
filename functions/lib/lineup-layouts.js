@@ -2,8 +2,12 @@
  * Default LineUp board layouts for roster sizes 18 / 36 / 49.
  * Sector colors match Circle convention. A sector may contain multiple squads.
  *
- * Squad budget (game): ≤20 squads/team. Commander and streamer do NOT count;
- * artillery, recon, and armor DO.
+ * Defaults start with **one squad per sector**; admins add more via +.
+ *
+ * Squad budget (game): ≤20 squads/team. Commander does NOT count;
+ * artillery, recon, and armor DO. Streamers are external (not roster slots).
+ *
+ * Default infantry roles: SL, Support, MG, Engineer.
  */
 
 export const ROSTER_SIZES = [18, 36, 49];
@@ -17,6 +21,15 @@ export const SECTOR_COLORS = {
   flex: { key: "black", hex: "#111111", label: "Flex" },
   recon: { key: "grey", hex: "#7f8c8d", label: "Recon" },
   tanks: { key: "lightblue", hex: "#5dade2", label: "Tanks" },
+};
+
+/** Map infantry sector → preferred nodes HQ block. */
+export const SECTOR_TO_NODES = {
+  north: "north",
+  meat: "middle",
+  south: "south",
+  defence: "middle",
+  flex: "middle",
 };
 
 export function sanitizeRosterSize(value) {
@@ -37,15 +50,15 @@ function slot(id, role = "rifleman") {
   };
 }
 
-function infantrySquad(id, label, size) {
-  const slots = [slot(`${id}-sl`, "sl")];
-  for (let i = 1; i < size; i += 1) {
-    slots.push(slot(`${id}-p${i}`, "rifleman"));
-  }
+/** Standard infantry: SL, Support, MG, Engineer (optionally truncated). */
+function infantrySquad(id, label, roles = ["sl", "support", "mg", "engineer"]) {
+  const slots = roles.map((role) =>
+    slot(`${id}-${role === "sl" ? "sl" : role}`, role)
+  );
   return { id, type: "infantry", label, slots };
 }
 
-function armorSquad(id, label, size) {
+function armorSquad(id, label, size = 3) {
   if (size >= 3) {
     return {
       id,
@@ -75,14 +88,24 @@ function reconSquad(id, label) {
   };
 }
 
+function nodeSlot(id, role) {
+  return {
+    id,
+    role,
+    steamId: null,
+    displayName: "",
+    slSteamId: null,
+    slDisplayName: "",
+  };
+}
+
 function emptyNodeBlock(prefix) {
   return {
-    slSquadId: null,
     slots: [
-      { id: `${prefix}-eng`, role: "engineer", steamId: null, displayName: "" },
-      { id: `${prefix}-s1`, role: "support", steamId: null, displayName: "" },
-      { id: `${prefix}-s2`, role: "support", steamId: null, displayName: "" },
-      { id: `${prefix}-s3`, role: "support", steamId: null, displayName: "" },
+      nodeSlot(`${prefix}-eng`, "engineer"),
+      nodeSlot(`${prefix}-s1`, "support"),
+      nodeSlot(`${prefix}-s2`, "support"),
+      nodeSlot(`${prefix}-s3`, "support"),
     ],
   };
 }
@@ -92,6 +115,13 @@ function emptyNodes() {
     north: emptyNodeBlock("nodes-n"),
     middle: emptyNodeBlock("nodes-m"),
     south: emptyNodeBlock("nodes-s"),
+  };
+}
+
+function emptyStreamers() {
+  return {
+    axis: { name: "", url: "" },
+    allies: { name: "", url: "" },
   };
 }
 
@@ -106,8 +136,8 @@ function sector(id, colorKey, squads) {
   };
 }
 
-function specials({ streamer = true } = {}) {
-  const list = [
+function specials() {
+  return [
     {
       id: "special-commander",
       role: "commander",
@@ -125,23 +155,16 @@ function specials({ streamer = true } = {}) {
       displayName: "",
     },
   ];
-  if (streamer) {
-    list.push({
-      id: "special-streamer",
-      role: "streamer",
-      countsAsSquad: false,
-      steamId: null,
-      present: false,
-      displayName: "",
-    });
-  }
-  return list;
 }
 
-/** Count playing slots (specials + all squad slots). Nodes/reserves excluded. */
+/** Count Circle playing slots (specials + squads). Streamers excluded. */
 export function countPlayingSlots(layout) {
-  let n = (layout.specials || []).length;
-  for (const sec of layout.sectors || []) {
+  let n = 0;
+  for (const sp of layout?.specials || []) {
+    if (sp.role === "streamer") continue;
+    n += 1;
+  }
+  for (const sec of layout?.sectors || []) {
     for (const sq of sec.squads || []) {
       n += (sq.slots || []).length;
     }
@@ -152,46 +175,73 @@ export function countPlayingSlots(layout) {
 /** Squads that consume the ≤20 game budget. */
 export function countSquadBudget(layout) {
   let n = 0;
-  for (const sp of layout.specials || []) {
+  for (const sp of layout?.specials || []) {
     if (sp.countsAsSquad) n += 1;
   }
-  for (const sec of layout.sectors || []) {
+  for (const sec of layout?.sectors || []) {
     n += (sec.squads || []).length;
   }
   return n;
 }
 
+/** Default empty squad template for a sector (used by + button). */
+export function createSquadTemplate(sectorId, existingSquads = []) {
+  const existing = Array.isArray(existingSquads) ? existingSquads : [];
+  const ids = new Set(existing.map((s) => String(s.id)));
+  const nextIndex = () => {
+    let i = existing.length + 1;
+    return i;
+  };
+
+  const sid = String(sectorId || "");
+  if (sid === "tanks") {
+    let n = nextIndex();
+    while (ids.has(`tank-${n}`)) n += 1;
+    return armorSquad(`tank-${n}`, `Tank ${n}`, 3);
+  }
+  if (sid === "recon") {
+    let n = nextIndex();
+    while (ids.has(`recon-${n}`)) n += 1;
+    return reconSquad(`recon-${n}`, `Recon ${n}`);
+  }
+
+  const prefix =
+    sid === "defence" ? "def" : sid === "flex" ? "flex" : sid || "squad";
+  let n = nextIndex();
+  while (ids.has(`${prefix}-${n}`)) n += 1;
+
+  const label =
+    sid === "defence"
+      ? n === 1
+        ? "Defence"
+        : `Defence ${n}`
+      : sid === "flex"
+        ? n === 1
+          ? "Flex"
+          : `Flex ${n}`
+        : sid === "north" || sid === "meat" || sid === "south"
+          ? `SL-${n}`
+          : `Squad ${n}`;
+
+  return infantrySquad(`${prefix}-${n}`, label);
+}
+
 function layout36() {
+  // Three tank windows (2B–2D); one squad elsewhere — add more with +
   return {
     rosterSize: 36,
-    specials: specials({ streamer: true }),
+    specials: specials(),
+    streamers: emptyStreamers(),
     sectors: [
       sector("tanks", "tanks", [
         armorSquad("tank-1", "Tank 1", 3),
         armorSquad("tank-2", "Tank 2", 3),
-        armorSquad("tank-flex", "Flex Tank", 2),
+        armorSquad("tank-3", "Tank 3", 3),
       ]),
-      sector("north", "north", [
-        infantrySquad("north-1", "SL-1", 2),
-        infantrySquad("north-2", "SL-2", 2),
-        infantrySquad("north-3", "SL-3", 2),
-      ]),
-      sector("meat", "meat", [
-        infantrySquad("meat-1", "SL-1", 2),
-        infantrySquad("meat-2", "SL-2", 2),
-        infantrySquad("meat-3", "SL-3", 2),
-      ]),
-      sector("south", "south", [
-        infantrySquad("south-1", "SL-1", 2),
-        infantrySquad("south-2", "SL-2", 2),
-        infantrySquad("south-3", "SL-3", 2),
-      ]),
-      sector("defence", "defence", [
-        infantrySquad("def-1", "SL-1", 1),
-        infantrySquad("def-2", "SL-2", 1),
-        infantrySquad("def-3", "SL-3", 1),
-      ]),
-      sector("flex", "flex", [infantrySquad("flex-1", "Flex MG", 2)]),
+      sector("north", "north", [infantrySquad("north-1", "SL-1")]),
+      sector("meat", "meat", [infantrySquad("meat-1", "SL-1")]),
+      sector("south", "south", [infantrySquad("south-1", "SL-1")]),
+      sector("defence", "defence", [infantrySquad("def-1", "Defence")]),
       sector("recon", "recon", [reconSquad("recon-1", "Recon 1")]),
     ],
     reserves: [],
@@ -202,38 +252,20 @@ function layout36() {
 function layout49() {
   return {
     rosterSize: 49,
-    specials: specials({ streamer: true }),
+    specials: specials(),
+    streamers: emptyStreamers(),
     sectors: [
       sector("tanks", "tanks", [
         armorSquad("tank-1", "Tank 1", 3),
         armorSquad("tank-2", "Tank 2", 3),
         armorSquad("tank-3", "Tank 3", 3),
       ]),
-      sector("north", "north", [
-        infantrySquad("north-1", "SL-1", 3),
-        infantrySquad("north-2", "SL-2", 3),
-        infantrySquad("north-3", "SL-3", 3),
-      ]),
-      sector("meat", "meat", [
-        infantrySquad("meat-1", "SL-1", 3),
-        infantrySquad("meat-2", "SL-2", 3),
-        infantrySquad("meat-3", "SL-3", 3),
-      ]),
-      sector("south", "south", [
-        infantrySquad("south-1", "SL-1", 3),
-        infantrySquad("south-2", "SL-2", 3),
-        infantrySquad("south-3", "SL-3", 3),
-      ]),
-      sector("defence", "defence", [
-        infantrySquad("def-1", "SL-1", 1),
-        infantrySquad("def-2", "SL-2", 1),
-        infantrySquad("def-3", "SL-3", 1),
-      ]),
-      sector("flex", "flex", [infantrySquad("flex-1", "Flex", 3)]),
-      sector("recon", "recon", [
-        reconSquad("recon-1", "Recon 1"),
-        reconSquad("recon-2", "Recon 2"),
-      ]),
+      sector("north", "north", [infantrySquad("north-1", "SL-1")]),
+      sector("meat", "meat", [infantrySquad("meat-1", "SL-1")]),
+      sector("south", "south", [infantrySquad("south-1", "SL-1")]),
+      sector("defence", "defence", [infantrySquad("def-1", "Defence")]),
+      sector("flex", "flex", [infantrySquad("flex-1", "Flex")]),
+      sector("recon", "recon", [reconSquad("recon-1", "Recon 1")]),
     ],
     reserves: [],
     nodes: emptyNodes(),
@@ -243,12 +275,15 @@ function layout49() {
 function layout18() {
   return {
     rosterSize: 18,
-    specials: specials({ streamer: false }),
+    specials: specials(),
+    streamers: emptyStreamers(),
     sectors: [
       sector("tanks", "tanks", [armorSquad("tank-1", "Tank 1", 3)]),
-      sector("meat", "meat", [infantrySquad("meat-1", "Meat Grind", 6)]),
-      sector("north", "north", [infantrySquad("north-1", "North / West", 3)]),
-      sector("defence", "defence", [infantrySquad("def-1", "Defence", 2)]),
+      sector("north", "north", [infantrySquad("north-1", "SL-1")]),
+      sector("meat", "meat", [infantrySquad("meat-1", "SL-1")]),
+      sector("defence", "defence", [
+        infantrySquad("def-1", "Defence", ["sl", "support", "mg"]),
+      ]),
       sector("recon", "recon", [reconSquad("recon-1", "Recon 1")]),
     ],
     reserves: [],
@@ -270,9 +305,9 @@ export function buildDefaultLayout(rosterSize) {
   }
   const layout = BUILDERS[sanitized.rosterSize]();
   const playing = countPlayingSlots(layout);
-  if (playing !== sanitized.rosterSize) {
+  if (playing < 1 || playing > sanitized.rosterSize) {
     throw new Error(
-      `Layout ${sanitized.rosterSize} has ${playing} playing slots (expected ${sanitized.rosterSize})`
+      `Layout ${sanitized.rosterSize} has ${playing} playing slots (expected 1–${sanitized.rosterSize})`
     );
   }
   if (countSquadBudget(layout) > 20) {

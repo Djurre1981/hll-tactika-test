@@ -14,6 +14,8 @@ const MAX_ARMOR_SQUADS = 3;
 const MAX_RECON_SQUADS = 2;
 const MAX_SQUADS = 20;
 
+export { MAX_ARMOR_SQUADS, MAX_RECON_SQUADS, MAX_SQUADS, SQUAD_TYPE_CAPS };
+
 function collectSquads(layout) {
   const squads = [];
   for (const sec of layout.sectors || []) {
@@ -27,6 +29,7 @@ function collectSquads(layout) {
 function collectPlayingSteamIds(layout) {
   const ids = [];
   for (const sp of layout.specials || []) {
+    if (sp.role === "streamer") continue;
     if (sp.steamId) ids.push(String(sp.steamId));
   }
   for (const sq of collectSquads(layout)) {
@@ -66,11 +69,14 @@ export function validateLineupLayout(layout, { rosterSize, confirmedSteamIds } =
   }
 
   const playingSlots = countPlayingSlots(layout);
-  if (playingSlots !== expectedSize) {
+  if (playingSlots > expectedSize) {
     return {
-      error: `Playing slots (${playingSlots}) must equal roster size (${expectedSize})`,
+      error: `Playing slots (${playingSlots}) exceed roster size (${expectedSize})`,
       status: 400,
     };
+  }
+  if (playingSlots < 1) {
+    return { error: "Layout needs at least one playing slot", status: 400 };
   }
 
   const squadBudget = countSquadBudget(layout);
@@ -157,14 +163,10 @@ export function validateLineupLayout(layout, { rosterSize, confirmedSteamIds } =
   }
 
   const infantry = infantrySteamIds(layout);
-  const squadIds = new Set(squads.map((sq) => sq.id));
   const nodeBlocks = layout.nodes || {};
   for (const [name, block] of Object.entries(nodeBlocks)) {
     if (!block || typeof block !== "object") {
       return { error: `Invalid nodes block: ${name}`, status: 400 };
-    }
-    if (block.slSquadId && !squadIds.has(block.slSquadId)) {
-      return { error: `Nodes ${name}: SL squad not found`, status: 400 };
     }
     for (const ns of block.slots || []) {
       if (!ns.steamId) continue;

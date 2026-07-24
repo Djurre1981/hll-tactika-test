@@ -17,6 +17,7 @@ export async function onRequestPost(context) {
     const result = await createLineupForEvent(context.env, eventId, {
       createdBy: auth.session.steamId,
       rosterSize: parsed.body?.rosterSize,
+      reset: Boolean(parsed.body?.reset),
     });
     if (result.error) {
       return errorResponse(result.error, result.status || 400);
