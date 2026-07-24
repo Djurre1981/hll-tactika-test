@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../../lib/api-client.js";
-import { queryKeys } from "../../lib/query-keys.js";
+import { apiClient } from "../../../lib/api-client.js";
+import { queryKeys } from "../../../lib/query-keys.js";
 
 export function useLineupQuery(lineupId) {
   return useQuery({

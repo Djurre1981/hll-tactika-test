@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useYjsRoom } from "../../lib/collab/useYjsRoom.js";
+import { useYjsRoom } from "../../../lib/collab/useYjsRoom.js";
 
 /**
  * Sync lineup.layout via Yjs map key "layout".
