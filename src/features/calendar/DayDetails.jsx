@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { EventLockBadge } from "../events/EventLockBadge.jsx";
+import { isEventEffectivelyLocked } from "../events/event-lock.js";
+import { RaincheckFlow } from "../events/RaincheckFlow.jsx";
 import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
 import { EventScheduleIndicators } from "./EventScheduleIndicators.jsx";
 
@@ -33,6 +36,7 @@ export function DayDetails({
   onAdd,
   onEditEvent,
 }) {
+  const [raincheckEventId, setRaincheckEventId] = useState(null);
   const dayEvents = eventsForDay(events, selectedDay).sort(
     (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
   );
@@ -65,6 +69,7 @@ export function DayDetails({
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
           {dayEvents.map((event) => {
             const matchSummary = formatEventMatchSummary(event);
+            const canRaincheck = !isEventEffectivelyLocked(event);
             return (
               <li key={event.id}>
                 <div className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-2xl border border-white/[0.08] bg-black/20 px-3.5 py-3.5 transition hover:border-white/15 hover:bg-white/[0.06]">
@@ -99,17 +104,28 @@ export function DayDetails({
                       </span>
                       <EventLockBadge event={event} />
                     </div>
-                    {canEdit ? (
-                      <button
-                        type="button"
-                        title="Edit event settings"
-                        aria-label={`Edit ${event.title}`}
-                        className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 transition hover:border-accent/35 hover:text-accent"
-                        onClick={() => onEditEvent?.(event)}
-                      >
-                        Edit
-                      </button>
-                    ) : null}
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {canRaincheck ? (
+                        <button
+                          type="button"
+                          className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 transition hover:border-red-400/35 hover:text-red-100"
+                          onClick={() => setRaincheckEventId(event.id)}
+                        >
+                          Raincheck
+                        </button>
+                      ) : null}
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          title="Edit event settings"
+                          aria-label={`Edit ${event.title}`}
+                          className="rounded-full border border-white/10 px-2 py-0.5 text-[0.64rem] uppercase tracking-[0.08em] text-white/45 transition hover:border-accent/35 hover:text-accent"
+                          onClick={() => onEditEvent?.(event)}
+                        >
+                          Edit
+                        </button>
+                      ) : null}
+                    </div>
                   </span>
                 </div>
               </li>
@@ -117,6 +133,12 @@ export function DayDetails({
           })}
         </ul>
       )}
+
+      <RaincheckFlow
+        open={Boolean(raincheckEventId)}
+        onClose={() => setRaincheckEventId(null)}
+        initialEventId={raincheckEventId}
+      />
     </aside>
   );
 }

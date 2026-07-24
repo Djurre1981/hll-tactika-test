@@ -152,7 +152,7 @@ export function PrepTasksPanel({ eventId, canEdit = false, eventLocked = false }
     }
   }
 
-  const tasks = tasksQuery.data || [];
+  const tasks = Array.isArray(tasksQuery.data) ? tasksQuery.data : [];
   const incompleteCount = tasks.filter((task) => !task.completed).length;
 
   return (

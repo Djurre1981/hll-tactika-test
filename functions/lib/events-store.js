@@ -99,6 +99,7 @@ function rowToEvent(row) {
     startsAt: row.starts_at,
     endsAt: row.ends_at || "",
     eventType: row.event_type,
+    signupTarget: row.signup_target == null ? null : Number(row.signup_target),
     rosterSize: row.roster_size == null ? null : Number(row.roster_size),
     match: parseMatchJson(row.match_json),
     components: parseComponentsJson(row.components_json),
@@ -110,11 +111,14 @@ function rowToEvent(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (event.signupTarget != null && !Number.isInteger(event.signupTarget)) {
+    event.signupTarget = null;
+  }
   if (![18, 36, 49].includes(event.rosterSize)) event.rosterSize = null;
   return enrichEventLockState(event);
 }
 
-const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, roster_size, match_json, components_json,
+const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, signup_target, roster_size, match_json, components_json,
   locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at`;
 
 function normalizeRosterSize(value) {
@@ -200,6 +204,10 @@ export async function createEvent(env, event) {
   const db = requireDb(env);
   const components = sanitizeEventComponents(event.components);
   const match = sanitizeEventMatch(event.match);
+  const signupTarget =
+    event.signupTarget == null || event.signupTarget === ""
+      ? null
+      : Number(event.signupTarget);
   const rosterSize = normalizeRosterSize(event.rosterSize);
   if (rosterSize?.error) {
     throw new Error(rosterSize.error);
@@ -208,9 +216,9 @@ export async function createEvent(env, event) {
   await db
     .prepare(
       `INSERT INTO events
-       (id, title, description, starts_at, ends_at, event_type, roster_size, match_json, components_json,
+       (id, title, description, starts_at, ends_at, event_type, signup_target, roster_size, match_json, components_json,
         locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       event.id,
@@ -219,6 +227,7 @@ export async function createEvent(env, event) {
       event.startsAt,
       event.endsAt || null,
       event.eventType,
+      Number.isInteger(signupTarget) ? signupTarget : null,
       rosterSize,
       JSON.stringify(match),
       JSON.stringify(components),
@@ -244,6 +253,16 @@ export async function updateEvent(env, eventId, updates) {
     return { error: editable.error, status: editable.status };
   }
 
+  let signupTarget = existing.signupTarget;
+  if (updates.signupTarget !== undefined) {
+    if (updates.signupTarget == null || updates.signupTarget === "") {
+      signupTarget = null;
+    } else {
+      const n = Number(updates.signupTarget);
+      signupTarget = Number.isInteger(n) ? n : existing.signupTarget;
+    }
+  }
+
   let rosterSize = existing.rosterSize;
   if (updates.rosterSize !== undefined) {
     const normalized = normalizeRosterSize(updates.rosterSize);
@@ -262,6 +281,7 @@ export async function updateEvent(env, eventId, updates) {
         : existing.components,
     match:
       updates.match !== undefined ? sanitizeEventMatch(updates.match) : existing.match,
+    signupTarget,
     rosterSize,
     updatedAt: new Date().toISOString(),
   };
@@ -270,7 +290,7 @@ export async function updateEvent(env, eventId, updates) {
   await db
     .prepare(
       `UPDATE events
-       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, roster_size = ?,
+       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, signup_target = ?, roster_size = ?,
            match_json = ?, components_json = ?,
            locked = ?, lock_override = ?, locked_by = ?, locked_at = ?, updated_at = ?
        WHERE id = ?`
@@ -281,6 +301,7 @@ export async function updateEvent(env, eventId, updates) {
       next.startsAt,
       next.endsAt || null,
       next.eventType,
+      next.signupTarget,
       next.rosterSize,
       JSON.stringify(sanitizeEventMatch(next.match)),
       JSON.stringify(sanitizeEventComponents(next.components)),

@@ -36,9 +36,12 @@ export function countLinkedTools(components) {
 
 /**
  * Readiness score 0–100 for an upcoming event.
- * Weights: tools 35, open prep tasks 35, RSVP confirmed count 30 (optional).
+ * Weights: tools 35, open prep tasks 35, RSVP confirmed vs target (or responses) 30.
  */
-export function computeEventReadiness(event, { openPrepCount = 0, rsvpCounts = null } = {}) {
+export function computeEventReadiness(
+  event,
+  { openPrepCount = 0, rsvpCounts = null, seats = null } = {}
+) {
   const tools = countLinkedTools(event?.components);
   const toolScore = Math.min(1, tools / 3) * 35;
 
@@ -46,13 +49,24 @@ export function computeEventReadiness(event, { openPrepCount = 0, rsvpCounts = n
     openPrepCount <= 0 ? 35 : Math.max(0, 35 - Math.min(35, openPrepCount * 8));
 
   let rsvpScore = 15;
+  const target =
+    seats?.target != null
+      ? Number(seats.target)
+      : event?.signupTarget != null
+        ? Number(event.signupTarget)
+        : null;
+
   if (rsvpCounts && typeof rsvpCounts === "object") {
     const confirmed = Number(rsvpCounts.confirmed) || 0;
     const tentative = Number(rsvpCounts.tentative) || 0;
     const declined = Number(rsvpCounts.declined) || 0;
     const unavailable = Number(rsvpCounts.unavailable) || 0;
-    const total = confirmed + tentative + declined + unavailable;
-    if (total > 0) {
+    const waitlist = Number(rsvpCounts.waitlist) || 0;
+    const total = confirmed + tentative + declined + unavailable + waitlist;
+
+    if (Number.isInteger(target) && target > 0) {
+      rsvpScore = Math.min(30, (confirmed / target) * 30 + Math.min(tentative, 5));
+    } else if (total > 0) {
       rsvpScore = Math.min(30, (confirmed / Math.max(total, 1)) * 30 + Math.min(tentative, 5));
     } else {
       rsvpScore = 0;
@@ -219,10 +233,23 @@ export function formatEventWhen(startsAt) {
   }).format(new Date(startsAt));
 }
 
-export const RSVP_STATUSES = ["confirmed", "tentative", "declined", "unavailable"];
+export const RSVP_STATUSES = [
+  "confirmed",
+  "tentative",
+  "declined",
+  "unavailable",
+  "waitlist",
+];
 
 export function emptyRsvpCounts() {
-  return { confirmed: 0, tentative: 0, declined: 0, unavailable: 0, total: 0 };
+  return {
+    confirmed: 0,
+    tentative: 0,
+    declined: 0,
+    unavailable: 0,
+    waitlist: 0,
+    total: 0,
+  };
 }
 
 export function summarizeRsvpCounts(rsvps = []) {

@@ -1,9 +1,10 @@
 import { requireAuth, readJsonBody } from "../../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../../lib/pin-permissions.js";
+import { getEvent } from "../../../lib/events-store.js";
 import {
   listRsvpsForEvent,
+  presentRsvpPayload,
   sanitizeRsvpStatus,
-  summarizeRsvpCounts,
   upsertRsvp,
 } from "../../../lib/rsvps-store.js";
 import { errorResponse, json } from "../../../lib/response.js";
@@ -21,13 +22,19 @@ export async function onRequestGet(context) {
   if (!eventId) return errorResponse("Missing event id", 400);
 
   try {
+    const event = await getEvent(context.env, eventId);
+    if (!event) return errorResponse("Event not found", 404);
+
     const rsvps = await listRsvpsForEvent(context.env, eventId);
-    const mine = rsvps.find((row) => row.steamId === auth.session.steamId) || null;
-    return json({
-      rsvps,
-      counts: summarizeRsvpCounts(rsvps),
-      mine,
-    });
+    const canSeeAllReasons = canEnterEditorMode(auth.role);
+    return json(
+      presentRsvpPayload({
+        rsvps,
+        event,
+        viewerSteamId: auth.session.steamId,
+        canSeeAllReasons,
+      })
+    );
   } catch (error) {
     console.error("GET /api/events/:eventId/rsvps failed:", error);
     return errorResponse("Failed to load RSVPs", 500);
@@ -47,9 +54,10 @@ async function upsertOwnOrEditorRsvp(context) {
   const sanitized = sanitizeRsvpStatus(parsed.body?.status);
   if (sanitized.error) return errorResponse(sanitized.error, 400);
 
+  const isEditor = canEnterEditorMode(auth.role);
   let steamId = auth.session.steamId;
   if (Object.hasOwn(parsed.body || {}, "steamId")) {
-    if (!canEnterEditorMode(auth.role)) {
+    if (!isEditor) {
       return errorResponse("Editor access required to set RSVP for others", 403);
     }
     steamId = String(parsed.body.steamId || "").trim();
@@ -57,14 +65,25 @@ async function upsertOwnOrEditorRsvp(context) {
   }
 
   try {
-    const result = await upsertRsvp(context.env, eventId, steamId, sanitized.status);
+    const result = await upsertRsvp(context.env, eventId, steamId, {
+      status: sanitized.status,
+      reasonCode: parsed.body?.reasonCode,
+      reasonNote: parsed.body?.reasonNote,
+      forceConfirm: Boolean(parsed.body?.forceConfirm),
+      isEditor,
+    });
     if (result.error) return errorResponse(result.error, result.status || 400);
-    const rsvps = await listRsvpsForEvent(context.env, eventId);
+
+    const event = await getEvent(context.env, eventId);
     return json({
       rsvp: result.rsvp,
-      rsvps,
-      counts: summarizeRsvpCounts(rsvps),
-      mine: rsvps.find((row) => row.steamId === auth.session.steamId) || null,
+      ...presentRsvpPayload({
+        rsvps: result.rsvps,
+        event,
+        viewerSteamId: auth.session.steamId,
+        canSeeAllReasons: isEditor,
+        promoted: result.promoted,
+      }),
     });
   } catch (error) {
     console.error("RSVP upsert failed:", error);
@@ -72,7 +91,7 @@ async function upsertOwnOrEditorRsvp(context) {
   }
 }
 
-/** PUT /api/events/:eventId/rsvps — set RSVP (body: { status, steamId? }) */
+/** PUT /api/events/:eventId/rsvps — set RSVP (body: { status, reasonCode?, reasonNote?, steamId? }) */
 export async function onRequestPut(context) {
   return upsertOwnOrEditorRsvp(context);
 }

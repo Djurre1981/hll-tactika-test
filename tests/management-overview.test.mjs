@@ -164,18 +164,27 @@ describe("rsvps store sanitize", () => {
     assert.equal(sanitizeRsvpStatus("TENTATIVE").status, "tentative");
   });
 
+  it("accepts waitlist status", () => {
+    assert.equal(sanitizeRsvpStatus("waitlist").status, "waitlist");
+  });
+
   it("rejects invalid status", () => {
     assert.match(sanitizeRsvpStatus("maybe").error || "", /status/);
   });
 
   it("counts server-side", () => {
-    const counts = serverRsvpCounts([{ status: "unavailable" }, { status: "confirmed" }]);
+    const counts = serverRsvpCounts([
+      { status: "unavailable" },
+      { status: "confirmed" },
+      { status: "waitlist" },
+    ]);
     assert.equal(counts.unavailable, 1);
     assert.equal(counts.confirmed, 1);
+    assert.equal(counts.waitlist, 1);
   });
 });
 
-describe("management migrations 0020–0022", () => {
+describe("management migrations 0020–0023", () => {
   it("creates rsvps table", () => {
     const sql = readFileSync(join(root, "migrations/0020_rsvps.sql"), "utf8");
     assert.match(sql, /CREATE TABLE IF NOT EXISTS rsvps/i);
@@ -191,5 +200,11 @@ describe("management migrations 0020–0022", () => {
   it("adds roster is_template", () => {
     const sql = readFileSync(join(root, "migrations/0022_roster_templates.sql"), "utf8");
     assert.match(sql, /is_template/i);
+  });
+
+  it("adds raincheck columns", () => {
+    const sql = readFileSync(join(root, "migrations/0023_rsvp_raincheck.sql"), "utf8");
+    assert.match(sql, /signup_target/i);
+    assert.match(sql, /waitlist/);
   });
 });

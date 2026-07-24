@@ -4,6 +4,7 @@ import { useDashboardQuery } from "./hooks/useDashboardQuery.js";
 import { MyPrepTasksWidget } from "./MyPrepTasksWidget.jsx";
 import { MyMatchesWidget } from "./MyMatchesWidget.jsx";
 import { TeamKpiStrip } from "./TeamKpiStrip.jsx";
+import { NextMatchHero } from "./NextMatchHero.jsx";
 import { useHub } from "./HubContext.jsx";
 
 function formatEventMeta(event) {
@@ -52,6 +53,7 @@ export function HomePage() {
   const { showToast } = useHub();
   const name = user.name || "Operator";
   const events = upcoming.data?.events || [];
+  const nextEvent = events[0] || null;
   const canStrats = user.role && user.role !== "viewer";
 
   function handleToolClick(tool) {
@@ -112,23 +114,99 @@ export function HomePage() {
         </p>
       </header>
 
-      <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)] md:grid-rows-[minmax(200px,1fr)_auto]">
-        <section
-          className="glass-surface flex min-h-[220px] min-w-0 flex-col gap-4 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 md:col-start-1 md:row-start-1"
-          aria-labelledby="dashboard-hero-title"
-        >
-          <div>
-            <p className="m-0 text-[0.68rem] font-light uppercase tracking-[0.18em] text-white/40">
-              Team performance
-            </p>
-            <h2 className="m-0 mt-1.5 text-xl font-medium tracking-wide text-white" id="dashboard-hero-title">
-              Season at a glance
-            </h2>
-          </div>
-          <TeamKpiStrip />
-        </section>
+      <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[minmax(0,1.65fr)_minmax(260px,0.78fr)]">
+        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto overscroll-contain pr-0.5">
+          <NextMatchHero event={nextEvent} />
 
-        <aside className="glass-surface flex min-h-0 min-w-0 flex-col gap-4 overflow-auto rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4 md:col-start-2 md:row-span-2 md:row-start-1">
+          <section
+            className="glass-surface flex shrink-0 min-w-0 flex-col gap-4 rounded-[1.375rem] border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6"
+            aria-labelledby="dashboard-hero-title"
+          >
+            <div>
+              <p className="m-0 text-[0.68rem] font-light uppercase tracking-[0.18em] text-white/40">
+                Team performance
+              </p>
+              <h2
+                className="m-0 mt-1.5 text-xl font-medium tracking-wide text-white"
+                id="dashboard-hero-title"
+              >
+                Season at a glance
+              </h2>
+            </div>
+            <TeamKpiStrip />
+          </section>
+
+          <section className="min-w-0 shrink-0 pb-1" aria-labelledby="dashboard-tools-title">
+            <h2
+              className="m-0 mb-3 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
+              id="dashboard-tools-title"
+            >
+              The Circle Tools
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid min-h-[7.5rem] min-w-0 grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  className={`${toolBtnSplitClass} min-w-0`}
+                  disabled={!canStrats}
+                  aria-disabled={!canStrats}
+                  onClick={() => handleToolClick({ id: "strats" })}
+                >
+                  <span className="text-[0.88rem] font-medium leading-tight text-white">Stratmaker</span>
+                  <span className="text-[0.72rem] font-light leading-snug text-white/50">
+                    Draw and share ops on the tactical map.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`${toolBtnSplitClass} min-w-0`}
+                  disabled={!canStrats}
+                  aria-disabled={!canStrats}
+                  onClick={() => handleToolClick({ id: "routeplanner" })}
+                >
+                  <span className="text-[0.88rem] font-medium leading-tight text-white">Routeplanner</span>
+                  <span className="text-[0.72rem] font-light leading-snug text-white/50">
+                    Timed transport truck routes on the tacmap.
+                  </span>
+                </button>
+              </div>
+              <button
+                type="button"
+                className={`${toolBtnClass} min-w-0`}
+                disabled={!canStrats}
+                aria-disabled={!canStrats}
+                onClick={() => handleToolClick({ id: "micro-prep" })}
+              >
+                <span className="text-[0.95rem] font-medium text-white">Micro Prep</span>
+                <span className="text-[0.78rem] font-light text-white/50">
+                  Brainstorm and sketch on a shared whiteboard.
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`${toolBtnClass} min-w-0`}
+                onClick={() => handleToolClick({ id: "viewer" })}
+              >
+                <span className="text-[0.95rem] font-medium text-white">Climbing Guide</span>
+                <span className="text-[0.78rem] font-light text-white/50">
+                  Interactive climb and MG spot map.
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`${toolBtnClass} min-w-0`}
+                onClick={() => handleToolClick({ id: "records" })}
+              >
+                <span className="text-[0.95rem] font-medium text-white">HLL Records</span>
+                <span className="text-[0.78rem] font-light text-white/50">
+                  Match history, results, and links to briefs.
+                </span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <aside className="glass-surface flex min-h-0 min-w-0 flex-col gap-4 overflow-auto rounded-[1.375rem] border border-white/10 bg-white/[0.055] p-4">
           <MyMatchesWidget />
           <MyPrepTasksWidget />
           <section className="flex min-h-0 flex-col" aria-labelledby="dashboard-upcoming-title">
@@ -178,75 +256,6 @@ export function HomePage() {
             </div>
           </section>
         </aside>
-
-        <section className="min-w-0 md:col-start-1 md:row-start-2" aria-labelledby="dashboard-tools-title">
-          <h2
-            className="m-0 mb-3 text-[0.72rem] font-normal uppercase tracking-[0.16em] text-white/50"
-            id="dashboard-tools-title"
-          >
-            The Circle Tools
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="grid min-h-[7.5rem] min-w-0 grid-cols-2 gap-3">
-              <button
-                type="button"
-                className={`${toolBtnSplitClass} min-w-0`}
-                disabled={!canStrats}
-                aria-disabled={!canStrats}
-                onClick={() => handleToolClick({ id: "strats" })}
-              >
-                <span className="text-[0.88rem] font-medium leading-tight text-white">Stratmaker</span>
-                <span className="text-[0.72rem] font-light leading-snug text-white/50">
-                  Draw and share ops on the tactical map.
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`${toolBtnSplitClass} min-w-0`}
-                disabled={!canStrats}
-                aria-disabled={!canStrats}
-                onClick={() => handleToolClick({ id: "routeplanner" })}
-              >
-                <span className="text-[0.88rem] font-medium leading-tight text-white">Routeplanner</span>
-                <span className="text-[0.72rem] font-light leading-snug text-white/50">
-                  Timed transport truck routes on the tacmap.
-                </span>
-              </button>
-            </div>
-            <button
-              type="button"
-              className={`${toolBtnClass} min-w-0`}
-              disabled={!canStrats}
-              aria-disabled={!canStrats}
-              onClick={() => handleToolClick({ id: "micro-prep" })}
-            >
-              <span className="text-[0.95rem] font-medium text-white">Micro Prep</span>
-              <span className="text-[0.78rem] font-light text-white/50">
-                Brainstorm and sketch on a shared whiteboard.
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`${toolBtnClass} min-w-0`}
-              onClick={() => handleToolClick({ id: "viewer" })}
-            >
-              <span className="text-[0.95rem] font-medium text-white">Climbing Guide</span>
-              <span className="text-[0.78rem] font-light text-white/50">
-                Interactive climb and MG spot map.
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`${toolBtnClass} min-w-0`}
-              onClick={() => handleToolClick({ id: "records" })}
-            >
-              <span className="text-[0.95rem] font-medium text-white">HLL Records</span>
-              <span className="text-[0.78rem] font-light text-white/50">
-                Match history, results, and links to briefs.
-              </span>
-            </button>
-          </div>
-        </section>
       </div>
     </>
   );

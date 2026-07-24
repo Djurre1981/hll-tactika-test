@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button.jsx";
 
 const MODAL_WIDTH = {
@@ -12,16 +13,21 @@ export function Modal({ open, onClose, title, children, size = "default" }) {
     const onKey = (e) => {
       if (e.key === "Escape") onClose?.();
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const widthClass = MODAL_WIDTH[size] || MODAL_WIDTH.default;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm sm:items-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm sm:items-center">
       <div
         role="dialog"
         aria-modal="true"
@@ -37,6 +43,7 @@ export function Modal({ open, onClose, title, children, size = "default" }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
