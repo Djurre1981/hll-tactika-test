@@ -9,7 +9,9 @@ Follow `AGENTS.md` in this repo (or the project that imported Agentx).
 
 ## Always
 
-- Branch + PR — never push straight to `main`/`master`
+- Follow `src/ai-context.md` for architecture & conventions
+- Reuse long-lived branches (`main` / `testing` / `agentx`) — do **not** create a new branch per feature unless the user asks
+- Commit / push / merge to `main` only when the user asks (then it is allowed)
 - One writer per file/module
 - Verify (build/tests) before claiming done; if you can’t run checks, say so
 - Prefer small, reviewable changes over big dumps
@@ -32,4 +34,4 @@ Use skill `agentx-handoff` so the next session doesn’t guess.
 | `/worktree` | 2+ local agents that must not collide |
 | Cloud agent | Long / risky / overnight; full isolation |
 
-Do not invent a multi-agent fleet unless the user asks. Default = one agent, one task, one branch.
+Do not invent a multi-agent fleet unless the user asks. Default = one agent, one task, current checkout.

@@ -1,9 +1,9 @@
 ---
-description: File ownership, no main pushes, PR-first shipping
+description: File ownership, long-lived branches, ship when asked
 alwaysApply: true
 ---
 
-# Ownership and PRs
+# Ownership and shipping
 
 ## File ownership
 
@@ -13,13 +13,14 @@ alwaysApply: true
 
 ## Git
 
-- Create a descriptive branch: `agentx/<short-topic>`
+- Work on the current long-lived branch (`main`, `testing`, or `agentx`)
+- Do **not** create `agentx/<topic>` (or other) branches per feature unless the user asks
+- Commit, push, or merge to `main` only when the user asks — then it is allowed
 - Do not force-push shared branches unless the user asks
-- Do not merge your own PR unless the user asks
 
 ## Shipping
 
-- Prefer a PR with a short summary + test plan (skill `agentx-ship`)
+- Open a PR (skill `agentx-ship`) only when the user asks
 - Call out: lockfile changes, migrations, env vars, breaking API changes
 
 ## Shared-config warning
