@@ -16,6 +16,7 @@ export const queryKeys = {
     root: ["rosters"],
     all: ["rosters", "list"],
     members: (rosterId) => ["rosters", rosterId, "members"],
+    fairness: (rosterId) => ["rosters", rosterId, "fairness"],
   },
   folders: {
     all: ["folders"],

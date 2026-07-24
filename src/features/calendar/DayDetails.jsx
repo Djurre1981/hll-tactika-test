@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EventLockBadge } from "../events/EventLockBadge.jsx";
 import { isEventEffectivelyLocked } from "../events/event-lock.js";
 import { RaincheckFlow } from "../events/RaincheckFlow.jsx";
+import { RsvpCountStrip } from "../events/RsvpCountStrip.jsx";
+import { useEventsRsvpsQuery } from "../events/hooks/useEventsRsvpsQuery.js";
 import { eventsForDay, formatEventMatchSummary } from "./calendar-utils.js";
 import { EventScheduleIndicators } from "./EventScheduleIndicators.jsx";
 
@@ -37,9 +39,15 @@ export function DayDetails({
   onEditEvent,
 }) {
   const [raincheckEventId, setRaincheckEventId] = useState(null);
-  const dayEvents = eventsForDay(events, selectedDay).sort(
-    (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
+  const dayEvents = useMemo(
+    () =>
+      eventsForDay(events, selectedDay).sort(
+        (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
+      ),
+    [events, selectedDay],
   );
+  const dayEventIds = useMemo(() => dayEvents.map((e) => e.id).filter(Boolean), [dayEvents]);
+  const dayRsvps = useEventsRsvpsQuery(dayEventIds);
 
   return (
     <aside className="flex min-h-0 flex-col overflow-auto rounded-[22px] border border-white/10 bg-white/[0.04] p-4">
@@ -70,6 +78,7 @@ export function DayDetails({
           {dayEvents.map((event) => {
             const matchSummary = formatEventMatchSummary(event);
             const canRaincheck = !isEventEffectivelyLocked(event);
+            const rsvpCounts = dayRsvps.counts.get(event.id) || null;
             return (
               <li key={event.id}>
                 <div className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-2xl border border-white/[0.08] bg-black/20 px-3.5 py-3.5 transition hover:border-white/15 hover:bg-white/[0.06]">
@@ -95,6 +104,7 @@ export function DayDetails({
                         className="mt-1"
                         compact
                       />
+                      <RsvpCountStrip counts={rsvpCounts} compact className="mt-1" />
                     </span>
                   </Link>
                   <span className="flex shrink-0 flex-col items-end gap-1.5">

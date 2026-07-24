@@ -407,7 +407,7 @@ export function LineUpPage() {
           >
             ← Match Brief
           </Link>
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <h1 className="m-0 text-[clamp(1.3rem,2vw,1.75rem)] font-medium text-white">
               LineUp · {lineup.rosterSize}
             </h1>
@@ -427,6 +427,13 @@ export function LineUpPage() {
             >
               squads {squadsFilled}/{MAX_SQUADS}
             </span>
+            {layout ? (
+              <StreamersPulldown
+                streamers={layout.streamers}
+                disabled={readOnly}
+                onChange={(streamers) => applyLayout(setStreamers(layout, streamers))}
+              />
+            ) : null}
             {bothFull && canEdit && !locked ? (
               <button
                 type="button"
@@ -443,13 +450,6 @@ export function LineUpPage() {
             {dirty ? " · Saving…" : ""}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {layout ? (
-              <StreamersPulldown
-                streamers={layout.streamers}
-                disabled={readOnly}
-                onChange={(streamers) => applyLayout(setStreamers(layout, streamers))}
-              />
-            ) : null}
             {canEdit ? (
               <>
                 <button

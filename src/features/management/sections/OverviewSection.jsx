@@ -2,19 +2,21 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Spinner } from "../../../shared/Spinner.jsx";
 import { useOpenPrepTasksQuery } from "../../events/hooks/usePrepTasksQuery.js";
-import { useEventRsvpsQuery } from "../../events/hooks/useRsvpsQuery.js";
+import { useEventsRsvpsQuery } from "../../events/hooks/useEventsRsvpsQuery.js";
+import { RsvpCountStrip } from "../../events/RsvpCountStrip.jsx";
 import { useMatchHistoryQuery } from "../../records/hooks/useMatchHistoryQuery.js";
 import { useEventsRangeQuery } from "../../calendar/hooks/useEventsQuery.js";
 import {
+  useRosterFairnessQuery,
   useRosterMembersQuery,
   useRostersQuery,
 } from "../hooks/useRostersQuery.js";
 import { usePlayerStatsAggregatesQuery } from "../hooks/usePlayerStatsQuery.js";
 import {
   applyRankFilter,
+  buildDeservesBoard,
   buildParticipationBoard,
   buildRoleDepth,
-  buildSeasonPulse,
   computeEventReadiness,
   filterEventsByPeriod,
   formatCountdown,
@@ -32,21 +34,6 @@ function Panel({ title, subtitle, children, className = "" }) {
       {subtitle ? <p className="mt-1.5 text-[0.82rem] text-white/45">{subtitle}</p> : null}
       <div className="mt-4">{children}</div>
     </div>
-  );
-}
-
-function FormBadge({ result }) {
-  const isWin = result === "win";
-  return (
-    <span
-      className={`inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full border px-1.5 text-[0.68rem] font-medium ${
-        isWin
-          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
-          : "border-red-400/30 bg-red-500/10 text-red-200"
-      }`}
-    >
-      {isWin ? "W" : "L"}
-    </span>
   );
 }
 
@@ -110,6 +97,7 @@ function UpcomingEventsCard({ events, openTasksByEvent, rsvpCountsByEvent, rsvpS
                       Fills needed
                     </span>
                   ) : null}
+                  <RsvpCountStrip counts={rsvpCounts} compact />
                 </div>
               </div>
               <p className="m-0 mt-2 text-[0.72rem] text-white/40">
@@ -331,14 +319,8 @@ function RankedScrollList({ rows, emptyLabel, valueFn, onSelect }) {
   );
 }
 
-function AttendancePulseCard({ nextEvent, rsvpData, participation, rows }) {
-  const counts = rsvpData?.counts;
-  const seats = rsvpData?.seats;
-  const hasRsvps = counts && counts.total > 0;
+function AttendancePulseCard({ nextEvent, seats, participation, rows }) {
   const list = (rows || []).filter((row) => row.gamesPlayed > 0);
-  const rainchecks = (rsvpData?.rsvps || []).filter(
-    (row) => row.status === "declined" && row.reasonCode
-  );
 
   return (
     <div className="flex min-h-0 flex-col gap-2">
@@ -346,46 +328,21 @@ function AttendancePulseCard({ nextEvent, rsvpData, participation, rows }) {
         <p className="m-0 shrink-0 rounded-lg border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[0.72rem] text-amber-50/90">
           Looking for fills
           {seats.target != null ? ` · ${seats.confirmed}/${seats.target}` : ""}
-        </p>
-      ) : null}
-      {hasRsvps && nextEvent ? (
-        <div className="shrink-0">
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              ["In", counts.confirmed, "text-emerald-200"],
-              ["Wait", counts.waitlist || 0, "text-sky-200"],
-              ["Out", counts.declined, "text-red-200"],
-              ["N/A", counts.unavailable, "text-white/55"],
-            ].map(([label, value, color]) => (
-              <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1">
-                <p className="m-0 text-[0.55rem] uppercase tracking-[0.1em] text-white/40">{label}</p>
-                <p className={`m-0 text-[0.95rem] font-medium tabular-nums ${color}`}>{value}</p>
-              </div>
-            ))}
-          </div>
-          {rainchecks.length > 0 ? (
-            <p className="m-0 mt-2 text-[0.68rem] text-white/45">
-              {rainchecks.length} raincheck{rainchecks.length === 1 ? "" : "s"} — see{" "}
-              <Link
-                to={`/events/${nextEvent.id}`}
-                className="text-sky-200/90 no-underline hover:text-sky-100"
-              >
-                Brief
-              </Link>
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <p className="m-0 shrink-0 text-[0.68rem] text-white/40">
-          {participation?.poolSize || 0} comps in period
           {nextEvent ? (
             <>
               {" · "}
-              <Link to={`/events/${nextEvent.id}`} className="text-sky-200/90 no-underline hover:text-sky-100">
-                RSVP
+              <Link
+                to={`/events/${nextEvent.id}`}
+                className="text-amber-50 no-underline hover:underline"
+              >
+                Brief
               </Link>
             </>
           ) : null}
+        </p>
+      ) : (
+        <p className="m-0 shrink-0 text-[0.68rem] text-white/40">
+          {participation?.poolSize || 0} comps in period
         </p>
       )}
 
@@ -419,54 +376,50 @@ function PlayerFormBoard({ rows, onSelect }) {
   );
 }
 
-function SeasonPulseCard({ pulse }) {
-  return (
-    <div className="flex h-full flex-col gap-2">
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">Win %</p>
-          <p className="m-0 mt-1 text-[1.15rem] font-medium text-white">{pulse.winRateLabel}</p>
-        </div>
-        <div>
-          <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">Record</p>
-          <p className="m-0 mt-1 text-[1.15rem] font-medium text-white">{pulse.recordLabel || "—"}</p>
-        </div>
-        <div>
-          <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">Form</p>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {(pulse.form || []).length
-              ? pulse.form.map((result, index) => (
-                  <FormBadge key={`${result}-${index}`} result={result} />
-                ))
-              : <span className="text-[0.85rem] text-white/45">—</span>}
-          </div>
-        </div>
+function DeservesCard({ rows, isLoading }) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2 text-white/45">
+        <Spinner />
+        <span className="text-[0.78rem]">Loading loyalty…</span>
       </div>
-      <p className="m-0 mt-auto text-[0.72rem] text-white/40">
-        {pulse.nextOpponent ? (
-          <>
-            Next opponent: <span className="text-white/75">{pulse.nextOpponent}</span>
-            {pulse.nextEventId ? (
-              <>
-                {" · "}
-                <Link
-                  to={`/events/${pulse.nextEventId}`}
-                  className="text-sky-200/90 no-underline hover:text-sky-100"
-                >
-                  Brief
-                </Link>
-              </>
-            ) : null}
-          </>
-        ) : (
-          "No upcoming opponent set"
-        )}
-        {" · "}
-        <Link to="/management#analytics" className="text-sky-200/90 no-underline hover:text-sky-100">
-          Analytics
-        </Link>
+    );
+  }
+
+  if (!rows?.length) {
+    return (
+      <p className="m-0 text-[0.78rem] text-white/40">
+        No signup/bench history yet. Stats appear after LineUps are locked.
       </p>
-    </div>
+    );
+  }
+
+  return (
+    <ul className="glass-scroll m-0 max-h-[9rem] list-none space-y-1 overflow-y-auto overscroll-contain p-0 pr-1">
+      {rows.map((row, index) => (
+        <li key={row.steamId} className="rounded-lg px-1 py-1">
+          <div className="flex items-center gap-2 text-[0.78rem]">
+            <span className="w-5 shrink-0 text-right tabular-nums text-white/35">{index + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-white/85">{row.displayName}</span>
+            <span className="shrink-0 tabular-nums text-white/45">
+              {row.benchDebt} · {row.confirmedRsvpCount}r / {row.playedCount}p / {row.reserveCount}b
+            </span>
+          </div>
+          {row.warnings?.length ? (
+            <div className="ml-7 mt-1 flex flex-wrap gap-1">
+              {row.warnings.map((warn) => (
+                <span
+                  key={warn.id}
+                  className="rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[0.58rem] uppercase tracking-[0.06em] text-amber-100"
+                >
+                  {warn.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -533,6 +486,7 @@ export function OverviewSection() {
   const [pulsePeriod, setPulsePeriod] = useState("30d");
   const [attendanceRank, setAttendanceRank] = useState("best");
   const [formRank, setFormRank] = useState("best");
+  const [deservesRank, setDeservesRank] = useState("best");
 
   const range = useMemo(() => {
     const now = new Date();
@@ -556,13 +510,15 @@ export function OverviewSection() {
   }, [rostersQuery.data]);
 
   const membersQuery = useRosterMembersQuery(defaultRosterId);
+  const fairnessQuery = useRosterFairnessQuery(defaultRosterId);
   const events = useMemo(() => {
     const list = [...(upcomingRange.data?.events || [])];
     list.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
     return list.slice(0, 6);
   }, [upcomingRange.data]);
   const nextEvent = events[0] || null;
-  const nextRsvpQuery = useEventRsvpsQuery(nextEvent?.id, Boolean(nextEvent?.id));
+  const eventIds = useMemo(() => events.map((e) => e.id).filter(Boolean), [events]);
+  const eventsRsvpQuery = useEventsRsvpsQuery(eventIds);
 
   const members = membersQuery.data?.members || [];
   const steamIds = useMemo(
@@ -580,22 +536,9 @@ export function OverviewSection() {
     return map;
   }, [openTasks]);
 
-  const rsvpCountsByEvent = useMemo(() => {
-    const map = new Map();
-    if (nextEvent?.id && nextRsvpQuery.data?.counts) {
-      map.set(nextEvent.id, nextRsvpQuery.data.counts);
-    }
-    return map;
-  }, [nextEvent?.id, nextRsvpQuery.data]);
-
-  const rsvpSeatsByEvent = useMemo(() => {
-    const map = new Map();
-    if (nextEvent?.id && nextRsvpQuery.data?.seats) {
-      map.set(nextEvent.id, nextRsvpQuery.data.seats);
-    }
-    return map;
-  }, [nextEvent?.id, nextRsvpQuery.data]);
-
+  const rsvpCountsByEvent = eventsRsvpQuery.counts;
+  const rsvpSeatsByEvent = eventsRsvpQuery.seats;
+  const nextSeats = nextEvent?.id ? rsvpSeatsByEvent.get(nextEvent.id) || null : null;
   const periodEvents = useMemo(
     () => filterEventsByPeriod(historyQuery.data || [], pulsePeriod),
     [historyQuery.data, pulsePeriod]
@@ -620,13 +563,17 @@ export function OverviewSection() {
     );
   }, [participation.rows, combatQuery.data, formRank]);
 
-  const seasonPulse = useMemo(
-    () => buildSeasonPulse(periodEvents, events),
-    [periodEvents, events]
+  const deservesBoard = useMemo(
+    () => buildDeservesBoard(members, fairnessQuery.data?.statsBySteamId || {}),
+    [members, fairnessQuery.data]
+  );
+
+  const deservesRows = useMemo(
+    () => applyRankFilter(deservesBoard.rows, deservesRank, "benchDebt"),
+    [deservesBoard.rows, deservesRank]
   );
 
   const roleDepth = useMemo(() => buildRoleDepth(members), [members]);
-
   const loading =
     upcomingRange.isLoading ||
     historyQuery.isLoading ||
@@ -694,7 +641,7 @@ export function OverviewSection() {
             <div className="mt-3 min-h-0">
               <AttendancePulseCard
                 nextEvent={nextEvent}
-                rsvpData={nextRsvpQuery.data}
+                seats={nextSeats}
                 participation={participation}
                 rows={attendanceRows}
               />
@@ -715,10 +662,17 @@ export function OverviewSection() {
           </div>
 
           <div className="glass-surface flex min-h-[9rem] flex-col rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
-            <h3 className="m-0 text-[0.88rem] font-medium text-white">Season pulse</h3>
-            <p className="m-0 mt-1 text-[0.7rem] text-white/40">{periodLabel} team results</p>
-            <div className="mt-3">
-              <SeasonPulseCard pulse={seasonPulse} />
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="m-0 text-[0.88rem] font-medium text-white">Deserves</h3>
+                <p className="m-0 mt-1 text-[0.7rem] text-white/40">
+                  Bench debt · loyalty warnings
+                </p>
+              </div>
+              <RankToggle value={deservesRank} onChange={setDeservesRank} />
+            </div>
+            <div className="mt-3 min-h-0">
+              <DeservesCard rows={deservesRows} isLoading={fairnessQuery.isLoading} />
             </div>
           </div>
         </div>

@@ -17,6 +17,15 @@ export function useRosterMembersQuery(rosterId) {
   });
 }
 
+export function useRosterFairnessQuery(rosterId) {
+  return useQuery({
+    queryKey: queryKeys.rosters.fairness(rosterId),
+    queryFn: () => apiClient(`/rosters/${rosterId}/fairness`),
+    enabled: Boolean(rosterId),
+    staleTime: 60_000,
+  });
+}
+
 export function useCreateRosterMutation() {
   const queryClient = useQueryClient();
 

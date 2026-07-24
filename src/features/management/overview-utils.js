@@ -137,6 +137,12 @@ export function applyRankFilter(rows, rank = "best", metric = "gamesPlayed") {
   const list = [...(rows || [])];
   const dir = rank === "worst" ? 1 : -1;
   list.sort((a, b) => {
+    if (metric === "benchDebt") {
+      const ad = a.benchDebt ?? 0;
+      const bd = b.benchDebt ?? 0;
+      if (ad !== bd) return dir * (ad - bd);
+      return dir * ((a.confirmedRsvpCount ?? 0) - (b.confirmedRsvpCount ?? 0));
+    }
     if (metric === "winRate") {
       const aw = a.winRate ?? -1;
       const bw = b.winRate ?? -1;
@@ -147,6 +153,53 @@ export function applyRankFilter(rows, rank = "best", metric = "gamesPlayed") {
     return dir * ((a.winRate ?? -1) - (b.winRate ?? -1));
   });
   return list;
+}
+
+/**
+ * Bench debt + loyalty warning chips from lineup attendance fairness stats.
+ * Score: confirmedRsvpCount - playedCount (fallback reserveCount when confirmed is 0).
+ * Warnings: chronic bench, loyal unused. Ghost risk deferred (needs raincheck streak).
+ */
+export function buildDeservesBoard(members, statsBySteamId = {}) {
+  const rows = (members || [])
+    .filter((m) => m?.steamId && isPoolStatus(m.status))
+    .map((member) => {
+      const steamId = String(member.steamId);
+      const stats = statsBySteamId[steamId] || {};
+      const confirmed = Number(stats.confirmedRsvpCount) || 0;
+      const played = Number(stats.playedCount) || 0;
+      const reserve = Number(stats.reserveCount) || 0;
+      const benchDebt = confirmed > 0 ? confirmed - played : reserve;
+
+      const warnings = [];
+      if (reserve >= 3 && reserve / Math.max(confirmed, 1) >= 0.4) {
+        warnings.push({ id: "chronic", label: "Chronic bench" });
+      }
+      if (confirmed >= 5 && played / confirmed < 0.5) {
+        warnings.push({ id: "loyal", label: "Loyal unused" });
+      }
+      // Ghost risk: deferred until raincheck streak window exists.
+
+      return {
+        memberId: member.id,
+        steamId,
+        displayName: member.displayName || steamId,
+        avatarUrl: member.avatarUrl || null,
+        rosterRole: member.rosterRole || null,
+        confirmedRsvpCount: confirmed,
+        playedCount: played,
+        reserveCount: reserve,
+        benchDebt,
+        warnings,
+      };
+    })
+    .filter((row) => row.confirmedRsvpCount > 0 || row.reserveCount > 0 || row.playedCount > 0)
+    .sort((a, b) => {
+      if (b.benchDebt !== a.benchDebt) return b.benchDebt - a.benchDebt;
+      return b.confirmedRsvpCount - a.confirmedRsvpCount;
+    });
+
+  return { rows };
 }
 
 /** Merge combat aggregates onto participation rows when stats are available. */
