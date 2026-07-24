@@ -159,21 +159,7 @@ Responsibilities:
 * Authenticate clients
 * Persist snapshots
 * Maintain awareness information
-
-JWT payload:
-```json
-{
-  "roomId": "...",
-  "steamId": "...",
-  "role": "...",
-  "exp": "..."
-}
-```
-Snapshots are saved:
-* After 30 seconds of inactivity
-* When the user clicks **Save**
-* Before the room shuts down
----
+* Snapshots are saved
 
 ## Authentication Flow
 
@@ -223,78 +209,17 @@ When the final user leaves:
 * Keep room in memory for five minutes
 * Remove inactive room afterwards
 
-This approach typically reduces persistence to only **1–2 KV writes per editing session**.
-
----
-
 # 5. Backend & Database
 
-## Why Migrate to D1?
-Current implementation:
-* Entire map stored as one KV JSON document
-* Every modification rewrites the entire file
-
-Problems:
-* Expensive writes
-* Poor scalability
-* Increasing latency
-
-Using D1 enables:
+## SQL Database
 * Row-level updates
 * SQL queries
-* Better indexing
+*  indexing
 * Reduced write amplification
 * Future analytics and reporting
 
----
-
-## Example Schema
-```sql
-CREATE TABLE pins (
-    id TEXT PRIMARY KEY,
-    map_id TEXT NOT NULL,
-    title TEXT,
-    x REAL,
-    y REAL,
-    tag TEXT,
-    faction TEXT,
-    video_url TEXT,
-    description TEXT,
-    created_by TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX idx_pins_map
-ON pins(map_id);
-```
-Slides and drawing objects remain JSON while searchable metadata becomes relational.
----
-
-## API Layer
-The frontend remains unchanged.
-Current implementation:
-```text
-KV.get()
-KV.put()
-```
-New implementation:
-```text
-SELECT
-INSERT
-UPDATE
-DELETE
-```
-
-Migration process:
-1. Read existing KV blobs.
-2. Parse JSON.
-3. Insert structured data into D1.
-4. Keep KV snapshots as backup.
----
-
 ## KV Responsibilities
-KV becomes responsible only for:
+KV  responsible only for:
 * Serialized Yjs snapshots
 * Temporary collaboration state
 ---
@@ -414,7 +339,7 @@ project-root/
 ## Conventions
 * No barrel files — import directly from the source file.
 * Feature co‑location — all code for a feature lives inside features/<name>/.
-* Files ≤ 150 lines — split if longer; the agent must read any file in one context window.
+* Files ≤ 200 lines — split if longer; the agent must read any file in one context window.
 * No cross‑feature imports — use shared/ or an explicit public API.
 * Shared UI only in shared/ — buttons, modals, spinners, etc.
 * map-kernel/ is pure vanilla JS — never imports React.
