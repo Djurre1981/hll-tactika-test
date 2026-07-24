@@ -42,9 +42,10 @@ Furthermore, access is fully controlled: Steam sign-in, an approved-member allow
 - Multi-media pins with image/video carousel
 - Viewer and Editor modes: place pins on the map, drag, undo/redo
 - **Steam sign-in** with role-based allowlist
-- **Role-based permissions**: Comp Member, Comp Advisor, Comp Assist, Comp Admin, Owner. See [docs/roles.md](docs/roles.md)
+- **Role-based permissions**: Comp Member, Comp Advisor, Comp Assist, Comp Admin, Owner. See [docs/roles.md](docs/roles.md) (climbing-guide legacy notes: [docs/legacy/roles.md](docs/legacy/roles.md))
 - Protected pin data served only to authenticated, approved users
 - Admin panel for member management
+- **V2 hub** (staging): Match Brief, Calendar (**Circle** + **Circle Jr**), HeLO history, RSVP/raincheck, Management Match + Strat history — see [docs/tactika-features-summary.md](docs/tactika-features-summary.md)
 
 ## Strats mode (map-based planning)
 
@@ -517,7 +518,8 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | **T10** Team KPIs / charts | ✅ |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |
-| T6/T7 RSVP + hub next-match card | ⬜ |
+| T6/T7 RSVP + hub next-match card | ✅ |
+| T6b Raincheck + waitlist fill | ✅ (web; Discord notify via T0e later) |
 | T0a–T0e Discord membership + roster sync | ⬜ |
 
 ## Roadmap
@@ -532,6 +534,7 @@ There are a lot of ideas (Planning section for rostering etc.?, More Guides? Tan
 
 - [User & editor guide](docs/user-guide.md) — for members and pin contributors
 - [Project overview](docs/project-overview.md)
+- [Member wiki](https://github.com/Djurre1981/hll-tactika-test/wiki) — user guide, full feature list, tools
 - [Feature summary](docs/tactika-features-summary.md) — shipped vs planned
 - [HeLO calendar import](docs/helo-import.md) — Circle history → events / My matches
 - [Folder structure](docs/folder-structure.md)

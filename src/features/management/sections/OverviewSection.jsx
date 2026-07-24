@@ -50,7 +50,7 @@ function FormBadge({ result }) {
   );
 }
 
-function UpcomingEventsCard({ events, openTasksByEvent, rsvpCountsByEvent }) {
+function UpcomingEventsCard({ events, openTasksByEvent, rsvpCountsByEvent, rsvpSeatsByEvent }) {
   if (!events.length) {
     return (
       <p className="m-0 text-[0.85rem] text-white/45">
@@ -67,9 +67,11 @@ function UpcomingEventsCard({ events, openTasksByEvent, rsvpCountsByEvent }) {
       {events.map((event) => {
         const openCount = openTasksByEvent.get(event.id) || 0;
         const rsvpCounts = rsvpCountsByEvent.get(event.id) || null;
+        const seats = rsvpSeatsByEvent?.get(event.id) || null;
         const score = computeEventReadiness(event, {
           openPrepCount: openCount,
           rsvpCounts,
+          seats,
         });
         const matchLine = [
           event.match?.opponent ? `vs ${event.match.opponent}` : null,
@@ -96,15 +98,23 @@ function UpcomingEventsCard({ events, openTasksByEvent, rsvpCountsByEvent }) {
                     {matchLine ? ` · ${matchLine}` : ""}
                   </p>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.1em] ${readinessClass(score)}`}
-                  title={`Readiness ${score}%`}
-                >
-                  {readinessLabel(score)} · {score}%
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.1em] ${readinessClass(score)}`}
+                    title={`Readiness ${score}%`}
+                  >
+                    {readinessLabel(score)} · {score}%
+                  </span>
+                  {seats?.lookingForFills ? (
+                    <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.08em] text-amber-100">
+                      Fills needed
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <p className="m-0 mt-2 text-[0.72rem] text-white/40">
                 {openCount} open task{openCount === 1 ? "" : "s"}
+                {seats?.target != null ? ` · ${seats.confirmed}/${seats.target} seats` : ""}
                 {event.match?.crconUrl ? " · CRCON linked" : ""}
               </p>
             </Link>
@@ -323,17 +333,27 @@ function RankedScrollList({ rows, emptyLabel, valueFn, onSelect }) {
 
 function AttendancePulseCard({ nextEvent, rsvpData, participation, rows }) {
   const counts = rsvpData?.counts;
+  const seats = rsvpData?.seats;
   const hasRsvps = counts && counts.total > 0;
   const list = (rows || []).filter((row) => row.gamesPlayed > 0);
+  const rainchecks = (rsvpData?.rsvps || []).filter(
+    (row) => row.status === "declined" && row.reasonCode
+  );
 
   return (
     <div className="flex min-h-0 flex-col gap-2">
+      {seats?.lookingForFills ? (
+        <p className="m-0 shrink-0 rounded-lg border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[0.72rem] text-amber-50/90">
+          Looking for fills
+          {seats.target != null ? ` · ${seats.confirmed}/${seats.target}` : ""}
+        </p>
+      ) : null}
       {hasRsvps && nextEvent ? (
         <div className="shrink-0">
           <div className="grid grid-cols-4 gap-1.5">
             {[
               ["In", counts.confirmed, "text-emerald-200"],
-              ["Maybe", counts.tentative, "text-amber-100"],
+              ["Wait", counts.waitlist || 0, "text-sky-200"],
               ["Out", counts.declined, "text-red-200"],
               ["N/A", counts.unavailable, "text-white/55"],
             ].map(([label, value, color]) => (
@@ -343,6 +363,17 @@ function AttendancePulseCard({ nextEvent, rsvpData, participation, rows }) {
               </div>
             ))}
           </div>
+          {rainchecks.length > 0 ? (
+            <p className="m-0 mt-2 text-[0.68rem] text-white/45">
+              {rainchecks.length} raincheck{rainchecks.length === 1 ? "" : "s"} — see{" "}
+              <Link
+                to={`/events/${nextEvent.id}`}
+                className="text-sky-200/90 no-underline hover:text-sky-100"
+              >
+                Brief
+              </Link>
+            </p>
+          ) : null}
         </div>
       ) : (
         <p className="m-0 shrink-0 text-[0.68rem] text-white/40">
@@ -557,6 +588,14 @@ export function OverviewSection() {
     return map;
   }, [nextEvent?.id, nextRsvpQuery.data]);
 
+  const rsvpSeatsByEvent = useMemo(() => {
+    const map = new Map();
+    if (nextEvent?.id && nextRsvpQuery.data?.seats) {
+      map.set(nextEvent.id, nextRsvpQuery.data.seats);
+    }
+    return map;
+  }, [nextEvent?.id, nextRsvpQuery.data]);
+
   const periodEvents = useMemo(
     () => filterEventsByPeriod(historyQuery.data || [], pulsePeriod),
     [historyQuery.data, pulsePeriod]
@@ -622,6 +661,7 @@ export function OverviewSection() {
               events={events}
               openTasksByEvent={openTasksByEvent}
               rsvpCountsByEvent={rsvpCountsByEvent}
+              rsvpSeatsByEvent={rsvpSeatsByEvent}
             />
           </Panel>
 

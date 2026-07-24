@@ -7,6 +7,7 @@ import {
   sanitizeEventComponents,
   sanitizeEventMatch,
 } from "../lib/events-store.js";
+import { defaultSignupTarget, sanitizeSignupTarget } from "../lib/rsvp-reasons.js";
 import { errorResponse, json } from "../lib/response.js";
 
 const EVENT_TYPES = ["scrim", "comp", "practice", "other"];
@@ -88,6 +89,14 @@ function sanitizeEventBody(body, { partial = false } = {}) {
     event.match = sanitizeEventMatch(body.match);
   } else if (!partial) {
     event.match = emptyEventMatch();
+  }
+
+  if (Object.hasOwn(body, "signupTarget")) {
+    const seats = sanitizeSignupTarget(body.signupTarget);
+    if (seats.error) return { error: seats.error };
+    event.signupTarget = seats.signupTarget;
+  } else if (!partial) {
+    event.signupTarget = defaultSignupTarget(event.eventType);
   }
 
   return { event };

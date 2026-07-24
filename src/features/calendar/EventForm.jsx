@@ -6,6 +6,7 @@ import { COMP_TEAMS } from "../../../functions/lib/comp-teams.js";
 import { EventLockBadge, EventLockIcon } from "../events/EventLockBadge.jsx";
 import { eventLockLabel } from "../events/event-lock.js";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
+import { defaultSignupTarget } from "../../../functions/lib/rsvp-reasons.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
 import {
   endDateTimeFromStart,
@@ -90,6 +91,12 @@ export function EventForm({
   const initialStartsAt = localDateTimeValue(baseDate);
   const [title, setTitle] = useState(initialEvent?.title || "");
   const [eventType, setEventType] = useState(initialEvent?.eventType || "scrim");
+  const [signupTarget, setSignupTarget] = useState(() => {
+    if (initialEvent && Object.hasOwn(initialEvent, "signupTarget")) {
+      return initialEvent.signupTarget == null ? "" : String(initialEvent.signupTarget);
+    }
+    return String(defaultSignupTarget(initialEvent?.eventType || "scrim") ?? "");
+  });
   const [startsAt, setStartsAt] = useState(initialStartsAt);
   const [endsAt, setEndsAt] = useState(
     initialEvent?.endsAt
@@ -135,6 +142,7 @@ export function EventForm({
       endsAt: endsAt ? new Date(endsAt).toISOString() : "",
       description: description.trim(),
       match: showMatchFields ? match : emptyMatchState(),
+      signupTarget: signupTarget === "" ? null : Number(signupTarget),
     };
     const overlaps = findOverlappingEvents(existingEvents, payload, initialEvent?.id || null);
     if (overlaps.length) {
@@ -245,6 +253,23 @@ export function EventForm({
               disabled={inputDisabled}
               onChange={(event) => setEndsAt(event.target.value)}
             />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">RSVP seats</span>
+            <input
+              className="glass-input w-full"
+              type="number"
+              min="0"
+              max="200"
+              inputMode="numeric"
+              placeholder="e.g. 50"
+              value={signupTarget}
+              disabled={inputDisabled}
+              onChange={(event) => setSignupTarget(event.target.value)}
+            />
+            <span className="mt-1 block text-[0.72rem] text-white/35">
+              Confirmed RSVP capacity. Extra signups go to the waitlist.
+            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Notes</span>
