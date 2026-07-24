@@ -1,246 +1,193 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { GlassSelect } from "../../shared/GlassSelect.jsx";
-import { Spinner } from "../../shared/Spinner.jsx";
-import { RosterTable } from "./RosterTable.jsx";
-import {
-  useAddTeamMemberMutation,
-  useExportD1SqlMutation,
-  useExportKvMutation,
-  useExportPinsMutation,
-  useRemoveTeamMemberMutation,
-  useTeamQuery,
-  useTestDiscordAlertMutation,
-  useUpdateTeamMemberRoleMutation,
-} from "./hooks/useTeamQuery.js";
+import { useHub } from "../home/HubContext.jsx";
+import { AdminNav, sectionsForPanel } from "./AdminNav.jsx";
+import { FeedbackSection } from "./sections/FeedbackSection.jsx";
+import { MembersSection } from "./sections/MembersSection.jsx";
+import { OverviewSection } from "./sections/OverviewSection.jsx";
+import { OwnerMetricsSection } from "./sections/OwnerMetricsSection.jsx";
+import { OwnerToolsSection } from "./sections/OwnerToolsSection.jsx";
 
-const ROLE_FILTERS = ["all", "owner", "admin", "assist", "editor", "viewer"];
-const roleFilterOptions = ROLE_FILTERS.map((role) => ({ value: role, label: role }));
+const ADMIN_SECTIONS = sectionsForPanel("admin");
+const OWNER_SECTIONS = sectionsForPanel("owner");
+const ALL_SECTIONS = new Set([...ADMIN_SECTIONS, ...OWNER_SECTIONS]);
+
+function panelFromHash(hash, isOwner) {
+  const id = String(hash || "").replace(/^#/, "");
+  if (OWNER_SECTIONS.includes(id)) {
+    return isOwner ? "owner" : "admin";
+  }
+  return "admin";
+}
+
+function sectionFromHash(hash, panel, isOwner) {
+  const id = String(hash || "").replace(/^#/, "");
+  if (!ALL_SECTIONS.has(id)) {
+    return panel === "owner" ? "metrics" : "overview";
+  }
+  if (OWNER_SECTIONS.includes(id) && !isOwner) {
+    return "overview";
+  }
+  if (panel === "owner" && !OWNER_SECTIONS.includes(id)) {
+    return "metrics";
+  }
+  if (panel === "admin" && !ADMIN_SECTIONS.includes(id)) {
+    return "overview";
+  }
+  return id;
+}
+
+const SECTION_VIEWS = [
+  { id: "overview", panel: "admin", render: (onPlaceholder) => <OverviewSection onPlaceholder={onPlaceholder} /> },
+  { id: "members", panel: "admin", render: () => <MembersSection /> },
+  { id: "feedback", panel: "admin", render: (onPlaceholder) => <FeedbackSection onPlaceholder={onPlaceholder} /> },
+  { id: "metrics", panel: "owner", render: (onPlaceholder) => <OwnerMetricsSection onPlaceholder={onPlaceholder} /> },
+  { id: "tools", panel: "owner", render: (onPlaceholder) => <OwnerToolsSection onPlaceholder={onPlaceholder} /> },
+];
+
+function PanelToggle({ panel, isOwner, onChange }) {
+  if (!isOwner) {
+    return null;
+  }
+
+  const index = panel === "owner" ? 1 : 0;
+
+  return (
+    <div
+      className="relative grid w-full max-w-md grid-cols-2 gap-0 rounded-full border border-white/10 bg-white/[0.065] p-0.5 shadow-glass backdrop-blur-xl"
+      role="tablist"
+      aria-label="Website admin panel"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={panel === "admin"}
+        className="relative z-[1] cursor-pointer rounded-full border-0 bg-transparent px-3 py-2 text-[0.68rem] font-light uppercase tracking-[0.1em] text-white/55 transition-colors hover:text-white/80 aria-selected:text-white sm:text-[0.72rem]"
+        onClick={() => onChange("admin")}
+      >
+        Admin Panel
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={panel === "owner"}
+        className="relative z-[1] cursor-pointer rounded-full border-0 bg-transparent px-3 py-2 text-[0.68rem] font-light uppercase tracking-[0.1em] text-white/55 transition-colors hover:text-white/80 aria-selected:text-white sm:text-[0.72rem]"
+        onClick={() => onChange("owner")}
+      >
+        Owner Panel
+      </button>
+      <span
+        className="pointer-events-none absolute left-0.5 top-0.5 h-[calc(100%-0.25rem)] w-[calc(50%-0.25rem)] rounded-full border border-white/15 bg-white/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ transform: `translateX(${index * 100}%)` }}
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
 
 export function TeamPage({ hub = false }) {
   const currentUser = useAuth();
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [steamId, setSteamId] = useState("");
-  const [actionStatus, setActionStatus] = useState({ message: "", isError: false });
-  const team = useTeamQuery();
-  const addMember = useAddTeamMemberMutation();
-  const updateRole = useUpdateTeamMemberRoleMutation();
-  const removeMember = useRemoveTeamMemberMutation();
-  const exportPins = useExportPinsMutation();
-  const exportD1 = useExportD1SqlMutation();
-  const exportKv = useExportKvMutation();
-  const testAlert = useTestDiscordAlertMutation();
-  const users = team.data?.users || [];
+  const location = useLocation();
   const isOwner = currentUser.role === "owner";
-  const filteredUsers = useMemo(
-    () => users.filter((user) => roleFilter === "all" || user.role === roleFilter),
-    [users, roleFilter],
+  const { setRail, showToast } = useHub();
+  const [panel, setPanel] = useState(() => panelFromHash(location.hash, isOwner));
+  const [activeSection, setActiveSection] = useState(() =>
+    sectionFromHash(location.hash, panelFromHash(location.hash, isOwner), isOwner),
   );
-  const actionPending =
-    addMember.isPending ||
-    updateRole.isPending ||
-    removeMember.isPending ||
-    exportPins.isPending ||
-    exportD1.isPending ||
-    exportKv.isPending ||
-    testAlert.isPending;
 
-  function handleAdd(event) {
-    event.preventDefault();
-    setActionStatus({ message: "", isError: false });
-    addMember.mutate(steamId.trim(), {
-      onSuccess: () => setSteamId(""),
-    });
-  }
+  useEffect(() => {
+    const nextPanel = panelFromHash(location.hash, isOwner);
+    const nextSection = sectionFromHash(location.hash, nextPanel, isOwner);
+    setPanel(nextPanel);
+    setActiveSection(nextSection);
+  }, [location.hash, isOwner]);
 
-  function handleRoleChange(targetSteamId, role) {
-    updateRole.mutate({ steamId: targetSteamId, role });
-  }
-
-  function handleRemove(targetSteamId) {
-    if (window.confirm("Remove this member from the roster?")) {
-      removeMember.mutate(targetSteamId);
+  function writeHash(sectionId) {
+    if (window.location.hash !== `#${sectionId}`) {
+      window.history.replaceState(null, "", `#${sectionId}`);
     }
   }
 
-  function handleExportPins() {
-    setActionStatus({ message: "Preparing pin backup…", isError: false });
-    exportPins.mutate(undefined, {
-      onSuccess: (data) =>
-        setActionStatus({
-          message: `Pin backup downloaded (${data?.pinCount ?? "?"} pins).`,
-          isError: false,
-        }),
-      onError: (error) =>
-        setActionStatus({ message: error.message || "Could not export pins", isError: true }),
-    });
+  function selectPanel(nextPanel) {
+    if (nextPanel === "owner" && !isOwner) return;
+    const fallback = nextPanel === "owner" ? "metrics" : "overview";
+    const keep =
+      SECTION_VIEWS.find((view) => view.id === activeSection && view.panel === nextPanel)?.id ||
+      fallback;
+    setPanel(nextPanel);
+    setActiveSection(keep);
+    writeHash(keep);
   }
 
-  function handleExportD1() {
-    setActionStatus({ message: "Preparing full D1 SQL backup…", isError: false });
-    exportD1.mutate(undefined, {
-      onSuccess: () =>
-        setActionStatus({
-          message: "Full D1 SQL backup downloaded.",
-          isError: false,
-        }),
-      onError: (error) =>
-        setActionStatus({ message: error.message || "Could not export D1 backup", isError: true }),
-    });
-  }
+  useEffect(() => {
+    function onSelect(id) {
+      const allowed = sectionsForPanel(panel);
+      if (!allowed.includes(id)) return;
+      setActiveSection(id);
+      writeHash(id);
+    }
 
-  function handleExportKv() {
-    setActionStatus({ message: "Preparing KV JSON backup…", isError: false });
-    exportKv.mutate(undefined, {
-      onSuccess: (data) =>
-        setActionStatus({
-          message: `KV backup downloaded (${data?.keyCount ?? "?"} keys, skipped ${data?.skippedCount ?? 0}).`,
-          isError: false,
-        }),
-      onError: (error) =>
-        setActionStatus({ message: error.message || "Could not export KV backup", isError: true }),
-    });
-  }
+    setRail(
+      <AdminNav panel={panel} activeSection={activeSection} onSelect={onSelect} />,
+    );
+    return () => setRail(null);
+  }, [panel, activeSection, setRail]);
 
-  function handleTestAlert() {
-    setActionStatus({ message: "Sending Discord probe…", isError: false });
-    testAlert.mutate(undefined, {
-      onSuccess: (result) => {
-        const count = result.sent || result.webhookCount || 1;
-        setActionStatus({
-          message:
-            count > 1
-              ? `Discord probe sent to ${count} webhooks.`
-              : "Discord probe sent. Check your alert channel.",
-          isError: false,
-        });
-      },
-      onError: (error) =>
-        setActionStatus({ message: error.message || "Alert test failed", isError: true }),
-    });
-  }
+  const visibleViews = useMemo(
+    () => SECTION_VIEWS.filter((view) => view.panel === panel && (view.panel !== "owner" || isOwner)),
+    [panel, isOwner],
+  );
 
-  const error =
-    team.error?.message ||
-    addMember.error?.message ||
-    updateRole.error?.message ||
-    removeMember.error?.message;
+  const activeIndex = Math.max(
+    0,
+    visibleViews.findIndex((view) => view.id === activeSection),
+  );
+
+  function onPlaceholder(label) {
+    showToast(`${label} — coming soon`);
+  }
 
   const content = (
-    <>
-      <header className="flex flex-col gap-1">
-        <h1 className="m-0 text-[clamp(1.55rem,2.2vw,2rem)] font-medium tracking-wide text-white">
-          Admin Panel
-        </h1>
-        <p className="m-0 max-w-xl text-[0.88rem] font-light tracking-wide text-white/50">
-          {isOwner
-            ? "Add or remove circle members. Owners can change roles, export backups, and test Discord alerts."
-            : "Add or remove circle members and manage access."}
-        </p>
-      </header>
-
-      {isOwner ? (
-        <div className="mb-4 flex flex-wrap gap-2.5">
-          <button
-            type="button"
-            className="glass-control"
-            onClick={handleExportD1}
-            disabled={actionPending}
-          >
-            Export full D1 SQL
-          </button>
-          <button
-            type="button"
-            className="glass-control"
-            onClick={handleExportKv}
-            disabled={actionPending}
-          >
-            Export KV JSON
-          </button>
-          <button
-            type="button"
-            className="glass-control"
-            onClick={handleExportPins}
-            disabled={actionPending}
-          >
-            Export D1 pin backup
-          </button>
-          <button
-            type="button"
-            className="glass-control"
-            onClick={handleTestAlert}
-            disabled={actionPending}
-          >
-            Test Discord alert
-          </button>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden" data-hub-fill>
+      <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="m-0 text-[clamp(1.35rem,2vw,1.75rem)] font-medium tracking-wide text-white">
+            Website Admin
+          </h1>
+          <p className="m-0 mt-1 text-[0.8rem] font-light tracking-wide text-white/45">
+            {isOwner ? "Admin and owner controls" : "Comp Admin controls"}
+          </p>
         </div>
-      ) : null}
-
-      {actionStatus.message ? (
-        <p className={`mb-3 min-h-[1.2rem] text-[0.82rem] text-white/55${actionStatus.isError ? " text-[#f0a8a8]" : ""}`}>
-          {actionStatus.message}
-        </p>
-      ) : null}
-
-      <form className="mb-4 flex flex-wrap items-end gap-3" onSubmit={handleAdd}>
-        <label className="min-w-[14rem] flex-1 text-sm text-white/55">
-          <span className="mb-1 block tracking-[0.08em]">Steam ID64</span>
-          <input
-            className="glass-input w-full"
-            value={steamId}
-            onChange={(event) => setSteamId(event.target.value)}
-            placeholder="7656119..."
-            inputMode="numeric"
-          />
-        </label>
-        <button
-          type="submit"
-          className="glass-control"
-          disabled={!steamId.trim() || actionPending}
-        >
-          Add member
-        </button>
-      </form>
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-3 text-sm text-white/55">
-          Filter role
-          <GlassSelect
-            className="min-w-[7rem]"
-            value={roleFilter}
-            onChange={setRoleFilter}
-            placeholder=""
-            options={roleFilterOptions}
-          />
-        </label>
-        <span className="text-sm text-white/45">
-          {filteredUsers.length} of {users.length} members
-        </span>
+        <PanelToggle panel={panel} isOwner={isOwner} onChange={selectPanel} />
       </div>
 
-      {error ? (
-        <p className="mb-3 min-h-[1.2rem] text-[0.82rem] text-[#f0a8a8]">{error}</p>
-      ) : null}
-
-      {team.isLoading ? (
-        <div className="flex items-center gap-3 text-white/55">
-          <Spinner />
-          <span>Loading roster...</span>
-        </div>
-      ) : (
-        <RosterTable
-          users={filteredUsers}
-          currentRole={currentUser.role}
-          onRoleChange={handleRoleChange}
-          onRemove={handleRemove}
-          actionPending={actionPending}
-        />
-      )}
-    </>
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {visibleViews.map((view, index) => {
+          const offset = index - activeIndex;
+          const isActive = offset === 0;
+          return (
+            <div
+              key={view.id}
+              className={[
+                "absolute inset-0 flex min-h-0 flex-col transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
+                isActive ? "pointer-events-auto" : "pointer-events-none",
+              ].join(" ")}
+              style={{ transform: `translateY(${offset * 100}%)` }}
+              aria-hidden={!isActive}
+            >
+              <div className="box-border flex h-full min-h-0 flex-col overflow-hidden">
+                {view.render(onPlaceholder)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 
   if (hub) {
-    return <div className="min-h-0 flex-1 overflow-auto">{content}</div>;
+    return content;
   }
 
   return <section className="space-y-6">{content}</section>;

@@ -50,7 +50,7 @@ function StaffGate({ title, children }) {
 
 function StaffOnlyTeamPage({ hub = false }) {
   return (
-    <StaffGate title="Admin Panel">
+    <StaffGate title="Website Admin">
       <TeamPage hub={hub} />
     </StaffGate>
   );
