@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -10,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { Spinner } from "../../../shared/Spinner.jsx";
+import { useEventsRangeQuery } from "../../calendar/hooks/useEventsQuery.js";
 import { useMatchHistoryQuery } from "../../records/hooks/useMatchHistoryQuery.js";
 import {
   aggregateWinLossByMonth,
@@ -17,6 +20,7 @@ import {
   aggregateWinRateByOpponent,
   summarizeTeamKpis,
 } from "../../records/team-kpi-utils.js";
+import { buildSeasonPulse } from "../overview-utils.js";
 
 const CHART_MARGIN = { top: 8, right: 8, left: 0, bottom: 0 };
 
@@ -53,6 +57,21 @@ function SummaryChip({ label, value }) {
   );
 }
 
+function FormBadge({ result }) {
+  const isWin = result === "win";
+  return (
+    <span
+      className={`inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full border px-1.5 text-[0.68rem] font-medium ${
+        isWin
+          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+          : "border-red-400/30 bg-red-500/10 text-red-200"
+      }`}
+    >
+      {isWin ? "W" : "L"}
+    </span>
+  );
+}
+
 function winRateColor(rate) {
   if (rate == null) return "#94a3b8";
   if (rate >= 60) return "#34d399";
@@ -62,8 +81,26 @@ function winRateColor(rate) {
 
 export function AnalyticsSection() {
   const historyQuery = useMatchHistoryQuery();
+  const upcomingRange = useMemo(() => {
+    const now = new Date();
+    const toDate = new Date(now);
+    toDate.setUTCDate(toDate.getUTCDate() + 45);
+    return { from: now.toISOString(), to: toDate.toISOString() };
+  }, []);
+  const upcomingQuery = useEventsRangeQuery({ from: upcomingRange.from, to: upcomingRange.to });
+
   const events = historyQuery.data || [];
+  const upcomingEvents = useMemo(() => {
+    const list = [...(upcomingQuery.data?.events || [])];
+    list.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+    return list;
+  }, [upcomingQuery.data]);
+
   const kpis = summarizeTeamKpis(events);
+  const seasonPulse = useMemo(
+    () => buildSeasonPulse(events, upcomingEvents),
+    [events, upcomingEvents]
+  );
   const byMonth = aggregateWinLossByMonth(events);
   const byMap = aggregateWinRateByMap(events);
   const byOpponent = aggregateWinRateByOpponent(events);
@@ -104,6 +141,53 @@ export function AnalyticsSection() {
         <SummaryChip label="Wins" value={kpis.wins} />
         <SummaryChip label="Losses" value={kpis.losses} />
       </div>
+
+      <article className="rounded-[1.375rem] border border-white/10 bg-white/[0.04] p-4">
+        <header className="mb-3">
+          <h2 className="m-0 text-[1rem] font-medium text-white">Season pulse</h2>
+          <p className="m-0 mt-1 text-[0.78rem] text-white/45">Recent form and next opponent</p>
+        </header>
+        <div className="flex flex-wrap items-end gap-6">
+          <div>
+            <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">Form</p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {(seasonPulse.form || []).length
+                ? seasonPulse.form.map((result, index) => (
+                    <FormBadge key={`${result}-${index}`} result={result} />
+                  ))
+                : (
+                  <span className="text-[0.85rem] text-white/45">—</span>
+                )}
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="m-0 text-[0.62rem] uppercase tracking-[0.12em] text-white/40">Next opponent</p>
+            <p className="m-0 mt-1.5 text-[0.9rem] text-white/75">
+              {seasonPulse.nextOpponent ? (
+                <>
+                  <span className="text-white">{seasonPulse.nextOpponent}</span>
+                  {seasonPulse.nextTitle ? (
+                    <span className="text-white/45"> · {seasonPulse.nextTitle}</span>
+                  ) : null}
+                  {seasonPulse.nextEventId ? (
+                    <>
+                      {" · "}
+                      <Link
+                        to={`/events/${seasonPulse.nextEventId}`}
+                        className="text-sky-200/90 no-underline hover:text-sky-100"
+                      >
+                        Brief
+                      </Link>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                "No upcoming opponent set"
+              )}
+            </p>
+          </div>
+        </div>
+      </article>
 
       {!hasResults ? (
         <ChartCard

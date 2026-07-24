@@ -107,6 +107,7 @@ function rowToEvent(row) {
     lockOverride: Boolean(row.lock_override),
     lockedBy: row.locked_by || null,
     lockedAt: row.locked_at || null,
+    rsvpClosed: Boolean(row.rsvp_closed),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -119,7 +120,7 @@ function rowToEvent(row) {
 }
 
 const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, signup_target, roster_size, match_json, components_json,
-  locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at`;
+  locked, lock_override, locked_by, locked_at, rsvp_closed, created_by, created_at, updated_at`;
 
 function normalizeRosterSize(value) {
   if (value == null || value === "") return null;
@@ -148,6 +149,21 @@ export async function lockEvent(env, eventId, steamId) {
        WHERE id = ?`
     )
     .bind(steamId, now, now, eventId)
+    .run();
+
+  return { event: await getEvent(env, eventId) };
+}
+
+export async function closeEventRsvp(env, eventId) {
+  const existing = await getEvent(env, eventId);
+  if (!existing) return { error: "Event not found", status: 404 };
+  if (existing.rsvpClosed) return { event: existing };
+
+  const now = new Date().toISOString();
+  const db = requireDb(env);
+  await db
+    .prepare(`UPDATE events SET rsvp_closed = 1, updated_at = ? WHERE id = ?`)
+    .bind(now, eventId)
     .run();
 
   return { event: await getEvent(env, eventId) };

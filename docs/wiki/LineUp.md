@@ -4,33 +4,54 @@
 
 ## Where
 
-1. Set **LineUp size** on the calendar event: **49** (ECL), **36**, or **18**.
+1. Set **LineUp size** on the calendar event: **49** (ECL), **36**, or **18**.  
+   This is separate from optional **Max In signups** (RSVP cap).
 2. Open **Match Brief** → Linked tools → **Create LineUp** (Comp Admin / Owner).
 3. Open the LineUp board from the chip (`/lineups/:id`).
 
-## Board
+## Board layout
 
-- **Command:** Commander, Artillery (DAP squad).
-- **Streamers (external):** Streamer Axis + Streamer Allies + stream URL each (not roster slots; list picker later).
-- **Board grid:** (1A–1B) title · (1C) Command · (1D) Artillery · (2B–2D) Tank 1–3 · (3B–3D) North/West · Meat Grind · South/East · (4B–4D) Defence · Flex · Recon. Column A = RSVP pool + reserves.
-- **Reserves:** confirmed players not in a playing slot. When playing slots hit LineUp size (49/36/18), remaining confirmed RSVPs are **auto-filled into reserves**.
-- **Streamers:** header pulldown (left of Force RSVP) — Axis/Allies name + stream URL.
-- **Nodes:** Support/Engineer on infantry auto-fill the nodes overlay. Each assignee shows **SL for nodes** from their squad’s SL.
+Default boards start **sparse** (one squad per infantry / recon sector; Tank 1–3 for 36/49). Use **+** on a sector header to add another empty squad.
+
+| Area | Contents |
+|------|----------|
+| Header | Title, **players X/size** and **squads X/20** counters, Streamers pulldown, Force RSVP, Reset layout, Lock |
+| Command / Artillery | Commander + Artillery (DAP) |
+| Tanks | Tank 1–3 as separate cards (36/49) |
+| Infantry / recon sectors | North/West, Meat Grind, South/East, Defence, Flex, Recon |
+| Sidebar | **RSVP pool** (top) and **Reserves** (bottom) |
+
+**Streamers (external):** Axis / Allies name + stream URL in the header pulldown (left of Force RSVP). Not playing slots.
+
+**Nodes:** Support / Engineer on infantry auto-fill the nodes overlay. Each assignee can show **SL for nodes** from their squad’s SL. Nodes do not add roster slots.
 
 ## Assigning
 
-Drag confirmed players from the RSVP pool onto role slots (or reserves). Pool badges show lifetime **confirmed RSVP count / times benched** (`12r / 3b`) so admins can rotate fairly.
+1. Drag **In** (confirmed) RSVPs from the pool onto role slots (or reserves).
+2. Pool **role filters** (infantry / tanks / MG / squad lead) narrow the list using Comp Roster roles — click again to clear.
+3. Pool / reserve badges show lifetime **In RSVPs / times benched** (`12r / 3b`) for fair rotation.
+4. When playing slots hit LineUp size, remaining **In** players **auto-fill reserves**. If players and squads are both full, use **Fill reserves**.
+5. Full player count blocks dragging more from the pool; full squad count hides sector **+**.
 
 ## Fairness tracking
 
-On **Lock** (or auto-lock after match end), Tactika snapshots who confirmed, who played, and who sat reserve. Lifetime totals appear on the pool and reserve list.
+On **Lock** (or auto-lock after match end), Tactika snapshots who was **In**, who played, and who sat reserve. Lifetime totals power the `Nr / Nb` badges. Locking the LineUp also **closes RSVP** for the event.
+
+## Presence
+
+Manual **show / no-show** checkboxes on placed players (briefing attendance). Discord Briefing bot is planned later.
+
 ## Rules (blocked on save)
 
-- Playing slots ≤ LineUp size (streamers excluded); start sparse and add squads with **+**
+- Playing slots ≤ LineUp size (streamers excluded)
 - ≤ 20 squads (Commander does not count; Arty / tanks / recon / infantry do)
 - Infantry ≤6, armor ≤3, recon ≤2; ≤3 armor squads, ≤2 recon
-- Only **RSVP confirmed** players; Admin **Force RSVP** backdoor
+- Only **In** RSVP players in the pool; Admin **Force RSVP** backdoor
 - Nodes assignees must already sit on an infantry squad
+
+## Reset layout
+
+**Reset layout** rebuilds the default sparse board for the event’s LineUp size (clears assignments). Use after size changes or when an old dense layout needs refreshing.
 
 ## Lock
 
@@ -38,8 +59,8 @@ Admin can **lock / unlock**. LineUp also **auto-locks after match end time**.
 
 ## Permissions
 
-| Role | View | Edit / create / lock / force RSVP |
-|------|------|-----------------------------------|
+| Role | View | Edit / create / lock / force RSVP / reset |
+|------|------|-------------------------------------------|
 | Comp Member+ | Yes | No |
 | Comp Admin / Owner | Yes | Yes |
 

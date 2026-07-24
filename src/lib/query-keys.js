@@ -16,6 +16,7 @@ export const queryKeys = {
     root: ["rosters"],
     all: ["rosters", "list"],
     members: (rosterId) => ["rosters", rosterId, "members"],
+    fairness: (rosterId) => ["rosters", rosterId, "fairness"],
   },
   folders: {
     all: ["folders"],
@@ -52,6 +53,9 @@ export const queryKeys = {
     byEvent: (eventId) => ["prep-tasks", "event", eventId],
     mine: (from, to) => ["prep-tasks", "mine", from, to],
     open: (from, to) => ["prep-tasks", "open", from, to],
+  },
+  prepPlan: {
+    byEvent: (eventId) => ["prep-plan", "event", eventId],
   },
   rsvps: {
     root: ["rsvps"],

@@ -45,7 +45,7 @@ Furthermore, access is fully controlled: Steam sign-in, an approved-member allow
 - **Role-based permissions**: Comp Member, Comp Advisor, Comp Assist, Comp Admin, Owner. See [docs/roles.md](docs/roles.md) (climbing-guide legacy notes: [docs/legacy/roles.md](docs/legacy/roles.md))
 - Protected pin data served only to authenticated, approved users
 - Admin panel for member management
-- **V2 hub** (staging): Match Brief, Calendar (**Circle** + **Circle Jr**), HeLO history, RSVP/raincheck, Management Match + Strat history — see [docs/tactika-features-summary.md](docs/tactika-features-summary.md)
+- **V2 hub** (staging): Match Brief, Calendar (**Circle** + **Circle Jr**), HeLO history, RSVP (**In / Maybe / Out**), structured **event prep**, Management Match + Strat history — see [docs/tactika-features-summary.md](docs/tactika-features-summary.md)
 
 ## Strats mode (map-based planning)
 
@@ -423,18 +423,33 @@ Open from **Calendar** (click an event) or **Hub → Upcoming games**. The brief
 | Section | What it shows |
 |---------|----------------|
 | **Match details** | Opponent, map, faction, starting strongpoint, result (when set on the event) |
-| **Prep tasks** | Editor-assigned checklist items; assignees tick their own tasks complete |
+| **Event prep** | Structured checklist (9 types); primary + helpers; auto-progress from linked tools |
+| **RSVP** | In / Maybe / Out; optional signup cap; staff Close RSVP; raincheck after close |
 | **Linked tools** | Attached strats, route plans, whiteboards, roster — with Open / attach / detach (editors) |
 
 Editors link tools from their editors (Stratmaker, Routeplanner, Micro Prep) or **attach existing assets on the brief**. Route plans keep `eventId` in sync when attached from the brief.
 
-### Prep tasks
+### Prep tasks & event prep
 
-- **Editors** assign tasks to circle members (title + assignee picker).
-- **Assignees** mark their own tasks complete on the Match Brief (editors can complete any task).
-- **Hub → My tasks** (right sidebar) lists your open assignments across upcoming matches and links to each brief.
+**Structured checklist** (Jul 2026): nine fixed prep types on the event form and Match Brief — General / Tank / Defense / MG strat, Routes, Snipes, Commander prep, LineUps, Other. Each enabled row has a primary + up to two helpers from the comp roster. Progress auto-tracks when linked strats (via **Event prep role** on the strat), route plans, or LineUp are attached.
 
-Migration: `migrations/0017_prep_tasks.sql`.
+- **Editors** configure the checklist when creating/editing an event or on Match Brief.
+- **Assignees** mark their rows **Done**; status shows Not started → In progress → Done.
+- **Hub → My tasks** lists open prep rows across upcoming matches (plus any legacy free-text tasks).
+
+Migrations: `0027_strat_prep_category.sql`, `0028_event_prep_slots.sql`. API: `GET/PUT/PATCH /api/events/{eventId}/prep-plan`.
+
+Legacy free-text prep tasks (`migrations/0017_prep_tasks.sql`) remain in the API for older assignments.
+
+### RSVP
+
+- **In / Maybe / Out** while RSVP is open (replaces old I’m in / waitlist / raincheck-while-open model).
+- Optional **Max In signups** cap on the event (off by default); overflow **In** → **Maybe** with FIFO promotion.
+- **Close RSVP** (staff on Match Brief) or effective LineUp lock closes signup changes.
+- **Raincheck** (with reason) only after close, for players who were **In**.
+- Hub next-match hero and Match Brief **RSVP bar** show In / Maybe / Out counts.
+
+Migration: `0026_rsvp_closed.sql`.
 
 ### Event locking
 
@@ -494,11 +509,14 @@ Optional CRCON links (`match.crconUrl`) point at Circle stats hosts. Ops docs: [
 | `GET` | `/api/events/{eventId}` | Single event + `components` + `match` + lock state |
 | `PATCH` | `/api/events/{eventId}` | Update event (editor+); `{ lock: true }` manual lock; `{ unlock: true }` admin/owner only |
 | `POST` | `/api/events/{eventId}/components` | Attach/detach strat, routePlan, whiteboard, roster (editor+; blocked when locked) |
-| `GET` | `/api/events/{eventId}/prep-tasks` | List prep tasks for event |
-| `POST` | `/api/events/{eventId}/prep-tasks` | Create prep task (editor+) |
+| `GET` | `/api/events/{eventId}/prep-plan` | Structured event prep checklist |
+| `PUT` | `/api/events/{eventId}/prep-plan` | Save prep plan (editor+) |
+| `PATCH` | `/api/events/{eventId}/prep-plan` | Mark prep slot done |
+| `GET` | `/api/events/{eventId}/prep-tasks` | List legacy prep tasks for event |
+| `POST` | `/api/events/{eventId}/prep-tasks` | Create legacy prep task (editor+) |
 | `PATCH` | `/api/events/{eventId}/prep-tasks/{taskId}` | Assignee toggles `completed`; editor can edit fields |
-| `DELETE` | `/api/events/{eventId}/prep-tasks/{taskId}` | Remove task (editor+) |
-| `GET` | `/api/prep-tasks/mine?from=&to=` | Incomplete tasks for signed-in user |
+| `DELETE` | `/api/events/{eventId}/prep-tasks/{taskId}` | Remove legacy task (editor+) |
+| `GET` | `/api/prep-tasks/mine?from=&to=` | Open prep (structured slots + legacy tasks) |
 
 Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agentx/plans/closed-release-peer-playbook.md).
 
@@ -510,7 +528,9 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | T2 Match metadata on events | ✅ |
 | T3 Match Brief page | ✅ |
 | T5 Attach/detach tools on Brief | ✅ |
-| T9 Prep tasks | ✅ |
+| T9 Prep tasks (legacy + structured checklist) | ✅ |
+| RSVP rework (In/Maybe/Out, cap, Close RSVP) | ✅ |
+| Searchable GlassSelect dropdowns (type-ahead) | ✅ |
 | **T8** Match history | ✅ |
 | HeLO import + My matches | ✅ |
 | **Event lock** (calendar + linked tools) | ✅ |
@@ -518,8 +538,8 @@ Agent playbook: [`docs/agentx/plans/closed-release-peer-playbook.md`](docs/agent
 | **T10** Team KPIs / charts | ✅ |
 | **T0a** Discord bot skeleton | ⬜ next (parallel track) |
 | T4 Create-match wizard | ⬜ blocked on T0e notifications |
-| T6/T7 RSVP + hub next-match card | ✅ |
-| T6b Raincheck + waitlist fill | ✅ (web; Discord notify via T0e later) |
+| T6/T7 | **RSVP + Hub next-match card** — In / Maybe / Out | ✅ |
+| T6b | **Raincheck after close** + Maybe reserve queue | ✅ (web; Discord notify via T0e later) |
 | T0a–T0e Discord membership + roster sync | ⬜ |
 
 ## Roadmap

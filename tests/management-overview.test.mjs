@@ -164,8 +164,8 @@ describe("rsvps store sanitize", () => {
     assert.equal(sanitizeRsvpStatus("TENTATIVE").status, "tentative");
   });
 
-  it("accepts waitlist status", () => {
-    assert.equal(sanitizeRsvpStatus("waitlist").status, "waitlist");
+  it("maps legacy waitlist to tentative", () => {
+    assert.equal(sanitizeRsvpStatus("waitlist").status, "tentative");
   });
 
   it("rejects invalid status", () => {
@@ -184,7 +184,7 @@ describe("rsvps store sanitize", () => {
   });
 });
 
-describe("management migrations 0020–0023", () => {
+describe("management migrations 0020–0026", () => {
   it("creates rsvps table", () => {
     const sql = readFileSync(join(root, "migrations/0020_rsvps.sql"), "utf8");
     assert.match(sql, /CREATE TABLE IF NOT EXISTS rsvps/i);
@@ -206,5 +206,10 @@ describe("management migrations 0020–0023", () => {
     const sql = readFileSync(join(root, "migrations/0023_rsvp_raincheck.sql"), "utf8");
     assert.match(sql, /signup_target/i);
     assert.match(sql, /waitlist/);
+  });
+
+  it("adds rsvp_closed on events", () => {
+    const sql = readFileSync(join(root, "migrations/0026_rsvp_closed.sql"), "utf8");
+    assert.match(sql, /rsvp_closed/i);
   });
 });

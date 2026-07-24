@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../../auth/AuthGate.jsx";
 import { useEditorStore } from "../../../../lib/stores/useEditorStore.js";
@@ -16,6 +16,11 @@ import { canManageToolLock, isToolLocked } from "../../../../lib/tool-lock.js";
 import { getDefaultMapId, rememberMapId } from "../mapIds.js";
 import { STRAT_RASTER_FIT_DEFAULT } from "../stratBackground.js";
 import { prepareImageUpload, uploadImageFile } from "../../../../shared/prepareImageUpload.js";
+import {
+  discardDraftRequest,
+  stratSlidesAreEmpty,
+  useDiscardEmptyDraft,
+} from "../../../../shared/useDiscardEmptyDraft.js";
 
 function sortSlides(slides) {
   return [...(slides || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -27,9 +32,12 @@ export const STRAT_PANEL_WIDTH = "min(320px, calc(100vw - 3rem))";
 export function useStratEditor(stratId) {
   const user = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const kernelRef = useRef(null);
   const stratRef = useRef(null);
+  const discardIfEmpty = location.state?.discardIfEmpty === true;
+  const discardedRef = useRef(false);
   const shellRef = useRef(null);
   const leftRef = useRef(null);
   const rightRef = useRef(null);
@@ -271,6 +279,29 @@ export function useStratEditor(stratId) {
     seedObjects: slideObjects,
   });
 
+  useEffect(() => {
+    discardedRef.current = false;
+  }, [stratId]);
+
+  const draftEmptyRef = useRef(true);
+
+  useEffect(() => {
+    if (!discardIfEmpty) {
+      draftEmptyRef.current = true;
+      return undefined;
+    }
+    const tick = () => {
+      const currentSlides = localSlides || sortSlides(stratRef.current?.slides);
+      draftEmptyRef.current = stratSlidesAreEmpty(currentSlides, {
+        activeSlideId: activeSlide?.id,
+        kernel: kernelRef.current,
+      });
+    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [discardIfEmpty, dirty, localSlides, activeSlide?.id, slides, slideObjects]);
+
   useStratAutosave({
     enabled: canEdit && !collab.connected,
     kernelRef,
@@ -279,6 +310,41 @@ export function useStratEditor(stratId) {
     mutateAsync: mutation.mutateAsync,
   });
 
+  const isDraftEmpty = useCallback(() => {
+    const currentSlides = localSlides || sortSlides(stratRef.current?.slides);
+    if (kernelRef.current) {
+      return stratSlidesAreEmpty(currentSlides, {
+        activeSlideId: activeSlide?.id,
+        kernel: kernelRef.current,
+      });
+    }
+    return draftEmptyRef.current;
+  }, [localSlides, activeSlide?.id]);
+
+  const discardEmptyStrat = useCallback(
+    async ({ keepalive = false } = {}) => {
+      if (!stratId || discardedRef.current) return;
+      discardedRef.current = true;
+      await discardDraftRequest(`/strats/${stratId}`, { keepalive });
+      queryClient.removeQueries({ queryKey: queryKeys.strats.byId(stratId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
+      queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
+    },
+    [stratId, queryClient]
+  );
+
+  useDiscardEmptyDraft({
+    draftKey: stratId ? `strat:${stratId}` : null,
+    enabled: Boolean(
+      discardIfEmpty &&
+        canEdit &&
+        stratId &&
+        !linkedEvent &&
+        (collab.peers || []).length === 0
+    ),
+    isEmpty: isDraftEmpty,
+    discard: discardEmptyStrat,
+  });
 
   const persistSlides = async (nextSlides) => {
     setLocalSlides(nextSlides);
@@ -492,6 +558,9 @@ export function useStratEditor(stratId) {
     if (partial.match) {
       stratRef.current.match = { ...stratRef.current.match, ...partial.match };
     }
+    if (Object.prototype.hasOwnProperty.call(partial, "prepCategory")) {
+      stratRef.current.prepCategory = partial.prepCategory || null;
+    }
     await mutation.mutateAsync(partial);
   };
 
@@ -510,6 +579,7 @@ export function useStratEditor(stratId) {
 
   const handleDeleteStrat = async () => {
     if (!window.confirm("Delete this strat? This cannot be undone.")) return;
+    discardedRef.current = true;
     await apiClient(`/strats/${stratId}`, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
     queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
@@ -534,7 +604,7 @@ export function useStratEditor(stratId) {
     queryClient.setQueryData(queryKeys.strats.byId(id), data);
     queryClient.invalidateQueries({ queryKey: queryKeys.strats.meta });
     queryClient.invalidateQueries({ queryKey: queryKeys.strats.all });
-    navigate(`/strats/${id}`);
+    navigate(`/strats/${id}`, { state: { discardIfEmpty: true } });
   };
 
   return {

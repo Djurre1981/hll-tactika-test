@@ -1,7 +1,7 @@
 import { requireAuth, readJsonBody } from "../../lib/auth-request.js";
 import { canEnterEditorMode } from "../../lib/pin-permissions.js";
 import { getEvent } from "../../lib/events-store.js";
-import { presentRsvpPayload, upsertRsvp } from "../../lib/rsvps-store.js";
+import { presentRsvpPayload, submitRaincheck } from "../../lib/rsvps-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 /**
@@ -21,11 +21,9 @@ export async function onRequestPost(context) {
   const isEditor = canEnterEditorMode(auth.role);
 
   try {
-    const result = await upsertRsvp(context.env, eventId, auth.session.steamId, {
-      status: "declined",
+    const result = await submitRaincheck(context.env, eventId, auth.session.steamId, {
       reasonCode: parsed.body?.reasonCode,
       reasonNote: parsed.body?.reasonNote,
-      isEditor,
     });
     if (result.error) return errorResponse(result.error, result.status || 400);
 
@@ -38,6 +36,7 @@ export async function onRequestPost(context) {
         viewerSteamId: auth.session.steamId,
         canSeeAllReasons: isEditor,
         promoted: result.promoted,
+        env: context.env,
       }),
     });
   } catch (error) {

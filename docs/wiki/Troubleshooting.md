@@ -18,7 +18,18 @@ Management is **Admin / Owner** only. Use hub tools and Match Brief instead, or 
 
 ## Raincheck / RSVP button does nothing
 
-Refresh once; if it still fails, check you’re logged in and the event isn’t in a broken state. Report to Admin with the event name/time.
+Refresh once; if it still fails, check you’re logged in. **Raincheck** only appears after RSVP is **closed** and you were **In**. While RSVP is open, use **Out** instead. Report to Admin with the event name/time if errors persist.
+
+## Dropdown lists are long — how do I find someone?
+
+Open the menu and **type** to filter (player names, maps, etc.). **Enter** selects the highlighted row.
+
+## LineUp won’t create / board is empty
+
+- Comp **Admin / Owner** only can **Create LineUp** on Match Brief.
+- Set **LineUp size** (49 / 36 / 18) on the event first.
+- Pool only lists **In** RSVPs — use **Force RSVP** to pull someone in, or ask them to mark **In** on the brief.
+- After a size change or odd layout, use **Reset layout** on the board.
 
 ## “You played” / My matches is empty
 

@@ -1,5 +1,6 @@
 import { sanitizeStratObjects } from "./strat-objects.js";
 import { normalizeCompTeamId } from "./comp-teams.js";
+import { normalizePrepCategory } from "./prep-task-types.js";
 
 export const STRAT_TEAMS = ["jr", "sr"];
 export const STRAT_TYPES = ["friendly", "tournament"];
@@ -266,6 +267,10 @@ export function applyStratUpdates(existing, updates) {
 
   if (updates.folderId !== undefined) {
     merged.folderId = String(updates.folderId || "").trim() || null;
+  }
+
+  if (updates.prepCategory !== undefined) {
+    merged.prepCategory = normalizePrepCategory(updates.prepCategory);
   }
 
   return { strat: merged };

@@ -19,7 +19,7 @@ Open it anytime with the **?** next to your avatar (top right).
 
 - [Getting started](Getting-Started)
 - [Dashboard & hub](Dashboard)
-- [Calendar & Match Brief](Calendar-and-Match-Brief)
+- [Calendar & Match Brief](Calendar-and-Match-Brief) · [LineUp](LineUp)
 - [Stratmaker](Stratmaker) · [Routeplanner](Routeplanner) · [Micro Prep](Micro-Prep) · [Climbing Guide](Climbing-Guide)
 - [Management](Management) · [Records & HeLO](Records-and-HeLO)
 - [Roles & permissions](Roles-and-Permissions)

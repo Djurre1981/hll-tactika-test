@@ -1,4 +1,5 @@
 import { requireDb } from "./d1.js";
+import { normalizePrepCategory } from "./prep-task-types.js";
 
 function parseJson(raw, fallback) {
   if (raw == null || raw === "") return fallback;
@@ -18,6 +19,7 @@ function rowToStrat(row, { includeSlides = true } = {}) {
     notes: row.notes || "",
     match: parseJson(row.match_json, {}),
     folderId: row.folder_id || null,
+    prepCategory: normalizePrepCategory(row.prep_category),
     locked: Boolean(row.locked),
     lockedBy: row.locked_by || null,
     createdBy: row.created_by,
@@ -51,6 +53,7 @@ function bindStratColumns(strat) {
     strat.notes || "",
     JSON.stringify(strat.match || {}),
     strat.folderId || null,
+    strat.prepCategory || null,
     strat.locked ? 1 : 0,
     strat.lockedBy || null,
     JSON.stringify(strat.slides || []),
@@ -62,10 +65,10 @@ function bindStratColumns(strat) {
   ];
 }
 
-const FULL_COLUMNS = `id, title, tags, notes, match_json, folder_id, locked, locked_by,
+const FULL_COLUMNS = `id, title, tags, notes, match_json, folder_id, prep_category, locked, locked_by,
   slides, import_source, created_by, created_by_name, created_at, updated_at`;
 
-const META_COLUMNS = `id, title, tags, notes, match_json, folder_id, locked, locked_by,
+const META_COLUMNS = `id, title, tags, notes, match_json, folder_id, prep_category, locked, locked_by,
   import_source, created_by, created_by_name, created_at, updated_at,
   json_array_length(slides) AS slide_count`;
 
@@ -103,9 +106,9 @@ export async function createStrat(env, strat) {
   await db
     .prepare(
       `INSERT INTO strats
-       (id, title, tags, notes, match_json, folder_id, locked, locked_by,
+       (id, title, tags, notes, match_json, folder_id, prep_category, locked, locked_by,
         slides, import_source, created_by, created_by_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(...bindStratColumns(strat))
     .run();
@@ -118,7 +121,7 @@ export async function saveStrat(env, strat) {
   await db
     .prepare(
       `UPDATE strats
-       SET title = ?, tags = ?, notes = ?, match_json = ?, folder_id = ?,
+       SET title = ?, tags = ?, notes = ?, match_json = ?, folder_id = ?, prep_category = ?,
            locked = ?, locked_by = ?, slides = ?, import_source = ?,
            created_by_name = ?, updated_at = ?
        WHERE id = ?`
@@ -129,6 +132,7 @@ export async function saveStrat(env, strat) {
       strat.notes || "",
       JSON.stringify(strat.match || {}),
       strat.folderId || null,
+      strat.prepCategory || null,
       strat.locked ? 1 : 0,
       strat.lockedBy || null,
       JSON.stringify(strat.slides || []),

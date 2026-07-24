@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useEventRsvpsQuery, useUpsertRsvpMutation } from "../events/hooks/useRsvpsQuery.js";
 import { RaincheckFlow } from "../events/RaincheckFlow.jsx";
-import { isEventEffectivelyLocked } from "../events/event-lock.js";
 
 function formatCountdown(startsAt, nowMs) {
   const start = Date.parse(startsAt);
@@ -36,10 +35,10 @@ export function NextMatchHero({ event }) {
   const [nowMs] = useState(() => Date.now());
   const rsvpQuery = useEventRsvpsQuery(event?.id, Boolean(event?.id));
   const upsert = useUpsertRsvpMutation(event?.id);
-  const locked = event ? isEventEffectivelyLocked(event) : true;
 
   const seats = rsvpQuery.data?.seats;
   const mine = rsvpQuery.data?.mine?.status || null;
+  const rsvpClosed = Boolean(rsvpQuery.data?.rsvpClosed || event?.rsvpClosed);
   const countdown = useMemo(
     () => (event ? formatCountdown(event.startsAt, nowMs) : null),
     [event, nowMs]
@@ -72,9 +71,12 @@ export function NextMatchHero({ event }) {
   const seatLabel =
     seats?.target != null
       ? `${seats.confirmed} / ${seats.target} in`
-      : rsvpQuery.data?.counts
-        ? `${rsvpQuery.data.counts.confirmed} in`
+      : rsvpQuery.data?.uiCounts
+        ? `${rsvpQuery.data.uiCounts.in} in`
         : "…";
+
+  const mineUi =
+    mine === "waitlist" ? "tentative" : mine === "unavailable" ? "declined" : mine;
 
   return (
     <section
@@ -94,6 +96,7 @@ export function NextMatchHero({ event }) {
             {opponent ? ` · vs ${opponent}` : ""}
             {` · ${seatLabel}`}
             {seats?.lookingForFills ? " · looking for fills" : ""}
+            {rsvpClosed ? " · RSVP closed" : ""}
           </p>
         </div>
         <Link
@@ -105,32 +108,57 @@ export function NextMatchHero({ event }) {
       </div>
 
       <div className="mt-auto flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={upsert.isPending || locked}
-          className={`rounded-full border px-3.5 py-1.5 text-[0.8rem] transition disabled:opacity-45 ${
-            mine === "confirmed"
-              ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-100"
-              : "border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10"
-          }`}
-          onClick={() => upsert.mutate({ status: "confirmed" })}
-        >
-          I&apos;m in
-        </button>
-        <button
-          type="button"
-          disabled={locked}
-          className={`rounded-full border px-3.5 py-1.5 text-[0.8rem] transition disabled:opacity-45 ${
-            mine === "declined"
-              ? "border-red-400/40 bg-red-500/15 text-red-100"
-              : "border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10"
-          }`}
-          onClick={() => setRaincheckOpen(true)}
-        >
-          Raincheck
-        </button>
-        {mine === "waitlist" ? (
-          <span className="self-center text-[0.75rem] text-sky-200/80">On waitlist</span>
+        {!rsvpClosed ? (
+          <>
+            <button
+              type="button"
+              disabled={upsert.isPending}
+              className={`rounded-full border px-3.5 py-1.5 text-[0.8rem] transition disabled:opacity-45 ${
+                mineUi === "confirmed"
+                  ? "border-emerald-400/40 bg-emerald-400/15 text-emerald-100"
+                  : "border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10"
+              }`}
+              onClick={() => upsert.mutate({ status: "confirmed" })}
+            >
+              In
+            </button>
+            <button
+              type="button"
+              disabled={upsert.isPending}
+              className={`rounded-full border px-3.5 py-1.5 text-[0.8rem] transition disabled:opacity-45 ${
+                mineUi === "tentative"
+                  ? "border-amber-400/40 bg-amber-400/15 text-amber-100"
+                  : "border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10"
+              }`}
+              onClick={() => upsert.mutate({ status: "tentative" })}
+            >
+              Maybe
+            </button>
+            <button
+              type="button"
+              disabled={upsert.isPending}
+              className={`rounded-full border px-3.5 py-1.5 text-[0.8rem] transition disabled:opacity-45 ${
+                mineUi === "declined"
+                  ? "border-red-400/40 bg-red-500/15 text-red-100"
+                  : "border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/10"
+              }`}
+              onClick={() => upsert.mutate({ status: "declined" })}
+            >
+              Out
+            </button>
+          </>
+        ) : mine === "confirmed" ? (
+          <button
+            type="button"
+            className="rounded-full border border-red-400/40 bg-red-500/15 px-3.5 py-1.5 text-[0.8rem] text-red-100 transition hover:bg-red-500/22"
+            onClick={() => setRaincheckOpen(true)}
+          >
+            Raincheck
+          </button>
+        ) : mineUi ? (
+          <span className="self-center text-[0.75rem] text-white/55">
+            {mineUi === "confirmed" ? "In" : mineUi === "tentative" ? "Maybe" : "Out"}
+          </span>
         ) : null}
       </div>
 

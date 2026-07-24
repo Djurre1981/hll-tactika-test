@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../shared/Button.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
 import { COMP_TEAMS } from "../../../functions/lib/comp-teams.js";
 import { EventLockBadge, EventLockIcon } from "../events/EventLockBadge.jsx";
 import { eventLockLabel } from "../events/event-lock.js";
+import {
+  EventPrepChecklist,
+  emptySlotsForEventType,
+  prepSlotsPayload,
+} from "../events/EventPrepChecklist.jsx";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
-import { defaultSignupTarget } from "../../../functions/lib/rsvp-reasons.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
 import {
   endDateTimeFromStart,
@@ -95,7 +99,13 @@ export function EventForm({
     if (initialEvent && Object.hasOwn(initialEvent, "signupTarget")) {
       return initialEvent.signupTarget == null ? "" : String(initialEvent.signupTarget);
     }
-    return String(defaultSignupTarget(initialEvent?.eventType || "scrim") ?? "");
+    return "";
+  });
+  const [capEnabled, setCapEnabled] = useState(() => {
+    if (initialEvent && Object.hasOwn(initialEvent, "signupTarget")) {
+      return initialEvent.signupTarget != null;
+    }
+    return false;
   });
   const [rosterSize, setRosterSize] = useState(() =>
     initialEvent?.rosterSize ? String(initialEvent.rosterSize) : "36"
@@ -108,6 +118,13 @@ export function EventForm({
   );
   const [description, setDescription] = useState(initialEvent?.description || "");
   const [match, setMatch] = useState(initialEvent?.match || emptyMatchState());
+  const [prepSlots, setPrepSlots] = useState(() => emptySlotsForEventType(initialEvent?.eventType || "scrim"));
+
+  useEffect(() => {
+    if (!initialEvent) {
+      setPrepSlots(emptySlotsForEventType(eventType));
+    }
+  }, [eventType, initialEvent]);
 
   const showMatchFields = isMatchEventType(eventType);
   const startingPointOptions = match.mapId ? getMidpointsForMap(match.mapId) : [];
@@ -145,7 +162,7 @@ export function EventForm({
       endsAt: endsAt ? new Date(endsAt).toISOString() : "",
       description: description.trim(),
       match: showMatchFields ? match : emptyMatchState(),
-      signupTarget: signupTarget === "" ? null : Number(signupTarget),
+      signupTarget: capEnabled && signupTarget !== "" ? Number(signupTarget) : null,
       rosterSize: Number(rosterSize) || null,
     };
     const overlaps = findOverlappingEvents(existingEvents, payload, initialEvent?.id || null);
@@ -163,7 +180,7 @@ export function EventForm({
         return;
       }
     }
-    onSubmit(payload);
+    onSubmit({ ...payload, prepSlots: prepSlotsPayload(prepSlots) });
   }
 
   const lockLabel = eventLockLabel(lockReason);
@@ -258,23 +275,40 @@ export function EventForm({
               onChange={(event) => setEndsAt(event.target.value)}
             />
           </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted">RSVP seats</span>
+          <label className="flex items-start gap-3 text-sm">
             <input
-              className="glass-input w-full"
-              type="number"
-              min="0"
-              max="200"
-              inputMode="numeric"
-              placeholder="e.g. 50"
-              value={signupTarget}
+              type="checkbox"
+              className="mt-1"
+              checked={capEnabled}
               disabled={inputDisabled}
-              onChange={(event) => setSignupTarget(event.target.value)}
+              onChange={(event) => {
+                setCapEnabled(event.target.checked);
+                if (!event.target.checked) setSignupTarget("");
+              }}
             />
-            <span className="mt-1 block text-[0.72rem] text-white/35">
-              Confirmed RSVP capacity. Extra signups go to the waitlist.
+            <span>
+              <span className="mb-1 block text-muted">Limit RSVP signups</span>
+              <span className="block text-[0.72rem] text-white/35">
+                Optional cap on &quot;In&quot; responses. Overflow goes to Maybe (reserve list).
+              </span>
             </span>
           </label>
+          {capEnabled ? (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted">Max In signups</span>
+              <input
+                className="glass-input w-full"
+                type="number"
+                min="1"
+                max="200"
+                inputMode="numeric"
+                placeholder="e.g. 50"
+                value={signupTarget}
+                disabled={inputDisabled}
+                onChange={(event) => setSignupTarget(event.target.value)}
+              />
+            </label>
+          ) : null}
           <label className="block text-sm">
             <span className="mb-1 block text-muted">LineUp size</span>
             <GlassSelect
@@ -400,6 +434,15 @@ export function EventForm({
           </fieldset>
         ) : null}
       </div>
+
+      <EventPrepChecklist
+        eventId={initialEvent?.id || null}
+        eventType={eventType}
+        canEdit={!readOnly}
+        eventLocked={effectiveLocked}
+        embedded
+        onSlotsChange={setPrepSlots}
+      />
 
       <div className="flex flex-wrap justify-between gap-3">
         {canDelete && !readOnly ? (

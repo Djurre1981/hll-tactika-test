@@ -5,7 +5,6 @@ import { queryKeys } from "../../lib/query-keys.js";
 import { Button } from "../../shared/Button.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { Modal } from "../../shared/Modal.jsx";
-import { isEventEffectivelyLocked } from "./event-lock.js";
 import {
   RSVP_REASON_OPTIONS,
   RSVP_REASON_LABELS,
@@ -37,8 +36,7 @@ function useRaincheckEligibleEvents() {
       const search = new URLSearchParams({ from: range.from, to: range.to });
       return apiClient(`/events?${search.toString()}`);
     },
-    select: (data) =>
-      (data.events || []).filter((event) => !isEventEffectivelyLocked(event)),
+    select: (data) => (data.events || []).filter((event) => event.rsvpClosed),
     staleTime: 30_000,
   });
 }

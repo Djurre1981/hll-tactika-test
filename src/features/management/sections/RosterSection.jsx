@@ -988,11 +988,17 @@ export function RosterSection() {
             </form>
           ) : null}
 
-          {!activeRosterId ? (
+          {!activeRosterId && rostersQuery.isLoading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-white/55">
+              <Spinner />
+              <span className="text-[0.85rem]">Loading rosters…</span>
+            </div>
+          ) : !activeRosterId ? (
             <p className="my-8 text-center text-[0.92rem] text-white/45">Select or create a roster.</p>
           ) : membersQuery.isLoading ? (
-            <div className="flex justify-center py-10">
+            <div className="flex flex-col items-center justify-center gap-3 py-10 text-white/55">
               <Spinner />
+              <span className="text-[0.85rem]">Loading roster members…</span>
             </div>
           ) : (
             <RosterTable

@@ -1,5 +1,6 @@
 import { requireAuth, requireEditor, readJsonBody } from "../../lib/auth-request.js";
 import {
+  closeEventRsvp,
   deleteEvent,
   getEvent,
   lockEvent,
@@ -63,6 +64,17 @@ export async function onRequestPatch(context) {
     } catch (error) {
       console.error("PATCH /api/events/:eventId lock failed:", error);
       return errorResponse("Failed to lock event", 500);
+    }
+  }
+
+  if (body.closeRsvp === true) {
+    try {
+      const result = await closeEventRsvp(context.env, eventId);
+      if (result.error) return errorResponse(result.error, result.status || 400);
+      return json({ event: result.event });
+    } catch (error) {
+      console.error("PATCH /api/events/:eventId closeRsvp failed:", error);
+      return errorResponse("Failed to close RSVP", 500);
     }
   }
 

@@ -118,13 +118,14 @@ export function ManagementNav({ activeSection, onSelect, onPlaceholder }) {
           key={item.id}
           type="button"
           className={[
-            "grid h-9 w-9 place-items-center rounded-full border-0 bg-transparent text-white/70 transition hover:bg-white/[0.08] hover:text-white",
+            "group relative grid h-9 w-9 place-items-center rounded-full border-0 bg-transparent text-white/70 transition hover:bg-white/[0.08] hover:text-white",
             activeSection === item.id ? "bg-white/15 text-white" : "",
             item.placeholder ? "opacity-55" : "",
           ]
             .filter(Boolean)
             .join(" ")}
           aria-label={item.label}
+          title={item.label}
           aria-current={activeSection === item.id ? "page" : undefined}
           onClick={() => {
             if (item.placeholder) {
@@ -135,6 +136,12 @@ export function ManagementNav({ activeSection, onSelect, onPlaceholder }) {
           }}
         >
           <NavIcon name={item.icon} />
+          <span
+            className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[rgba(18,18,22,0.92)] px-2.5 py-1 text-[0.72rem] text-white/80 opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-visible:opacity-100 md:left-auto md:right-full md:top-1/2 md:mt-0 md:mr-3 md:-translate-y-1/2 md:translate-x-0"
+            role="tooltip"
+          >
+            {item.label}
+          </span>
         </button>
       ))}
     </nav>

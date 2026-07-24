@@ -22,7 +22,7 @@ import { createEvent } from "../functions/lib/events-store.js";
 import { createTestEnv } from "./helpers/memory-d1.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const NOW = "2026-07-23T18:00:00.000Z";
+const NOW = "2026-08-15T18:00:00.000Z";
 
 function baseEvent(overrides = {}) {
   return {
@@ -125,8 +125,8 @@ describe("T9 — prep task store integration", () => {
 
   it("lists incomplete tasks for assignee across upcoming events", async () => {
     const env = createTestEnv();
-    await createEvent(env, baseEvent({ id: "event-a", startsAt: "2026-07-25T18:00:00.000Z" }));
-    await createEvent(env, baseEvent({ id: "event-b", startsAt: "2026-08-01T18:00:00.000Z" }));
+    await createEvent(env, baseEvent({ id: "event-a", startsAt: "2026-08-20T18:00:00.000Z" }));
+    await createEvent(env, baseEvent({ id: "event-b", startsAt: "2026-08-25T18:00:00.000Z" }));
 
     const first = await createPrepTask(
       env,
@@ -143,7 +143,7 @@ describe("T9 — prep task store integration", () => {
     await updatePrepTask(env, "event-a", first.task.id, { completed: true });
 
     const mine = await listIncompletePrepTasksForAssignee(env, "76561198000000001", {
-      from: "2026-07-23T00:00:00.000Z",
+      from: "2026-08-15T00:00:00.000Z",
       to: "2026-09-01T00:00:00.000Z",
     });
 

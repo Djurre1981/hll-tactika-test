@@ -1,4 +1,5 @@
 import { requireAuth } from "../../lib/auth-request.js";
+import { listMyPrepSlotsInRange } from "../../lib/event-prep-store.js";
 import { listIncompletePrepTasksForAssignee } from "../../lib/prep-tasks-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
@@ -16,10 +17,11 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const tasks = await listIncompletePrepTasksForAssignee(context.env, auth.session.steamId, {
-      from,
-      to,
-    });
+    const [legacy, slots] = await Promise.all([
+      listIncompletePrepTasksForAssignee(context.env, auth.session.steamId, { from, to }),
+      listMyPrepSlotsInRange(context.env, auth.session.steamId, { from, to }),
+    ]);
+    const tasks = [...slots, ...legacy];
     return json({ tasks });
   } catch (error) {
     console.error("GET /api/prep-tasks/mine failed:", error);

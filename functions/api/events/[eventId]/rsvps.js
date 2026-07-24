@@ -28,11 +28,12 @@ export async function onRequestGet(context) {
     const rsvps = await listRsvpsForEvent(context.env, eventId);
     const canSeeAllReasons = canEnterEditorMode(auth.role);
     return json(
-      presentRsvpPayload({
+      await presentRsvpPayload({
         rsvps,
         event,
         viewerSteamId: auth.session.steamId,
         canSeeAllReasons,
+        env: context.env,
       })
     );
   } catch (error) {
@@ -77,13 +78,14 @@ async function upsertOwnOrEditorRsvp(context) {
     const event = await getEvent(context.env, eventId);
     return json({
       rsvp: result.rsvp,
-      ...presentRsvpPayload({
+      ...(await presentRsvpPayload({
         rsvps: result.rsvps,
         event,
         viewerSteamId: auth.session.steamId,
         canSeeAllReasons: isEditor,
         promoted: result.promoted,
-      }),
+        env: context.env,
+      })),
     });
   } catch (error) {
     console.error("RSVP upsert failed:", error);
