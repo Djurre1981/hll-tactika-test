@@ -70,6 +70,35 @@ function pickCompRosterId(rosters = []) {
   );
 }
 
+function PrepToggleGrid({ slots, canEdit, pending, onToggle }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {PREP_TASK_TYPES.map((meta) => {
+        const slot = slots.find((row) => row.taskType === meta.id);
+        const enabled = Boolean(slot?.enabled);
+        return (
+          <label
+            key={meta.id}
+            className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-[0.85rem] transition ${
+              enabled
+                ? "border-white/[0.12] bg-black/20 text-white"
+                : "border-white/[0.06] bg-black/10 text-white/55"
+            } ${!canEdit || pending ? "cursor-not-allowed opacity-60" : "hover:border-white/16"}`}
+          >
+            <input
+              type="checkbox"
+              checked={enabled}
+              disabled={!canEdit || pending}
+              onChange={(event) => onToggle(meta.id, event.target.checked)}
+            />
+            <span>{meta.label}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 function PrepSlotRow({
   slot,
   meta,
@@ -210,6 +239,7 @@ export function EventPrepChecklist({
   isEditor = false,
 }) {
   const editable = canEdit && !eventLocked;
+  const showAssignees = Boolean(eventId);
   const planQuery = useEventPrepPlanQuery(eventId, Boolean(eventId));
   const savePlan = useSaveEventPrepPlanMutation(eventId || "draft");
   const completeSlot = useCompletePrepSlotMutation(eventId);
@@ -314,7 +344,9 @@ export function EventPrepChecklist({
           </h2>
           {!compact ? (
             <p className="m-0 mt-1 text-[0.78rem] text-white/40">
-              Check required tasks and assign comp roster players. Strat tasks auto-start when a linked strat with the matching prep category is attached.
+              {showAssignees
+                ? "Assign comp roster players to each task. Strat tasks auto-start when a linked strat with the matching prep category is attached."
+                : "Choose which prep tasks apply. Assign players on Match Brief after saving."}
             </p>
           ) : null}
         </div>
@@ -327,6 +359,13 @@ export function EventPrepChecklist({
 
       {eventId && planQuery.isLoading ? (
         <p className="m-0 text-[0.85rem] text-white/45">Loading prep plan…</p>
+      ) : !showAssignees ? (
+        <PrepToggleGrid
+          slots={localSlots}
+          canEdit={editable}
+          pending={pending}
+          onToggle={(taskType, enabled) => patchSlot(taskType, { enabled })}
+        />
       ) : (
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {PREP_TASK_TYPES.map((meta) => {
