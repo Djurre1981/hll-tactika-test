@@ -5,7 +5,7 @@
 ## Where
 
 1. Set **LineUp size** on the calendar event: **49** (ECL), **36**, or **18**.  
-   This is separate from **RSVP seats** (signup capacity / waitlist).
+   This is separate from optional **Max In signups** (RSVP cap).
 2. Open **Match Brief** → Linked tools → **Create LineUp** (Comp Admin / Owner).
 3. Open the LineUp board from the chip (`/lineups/:id`).
 
@@ -27,15 +27,15 @@ Default boards start **sparse** (one squad per infantry / recon sector; Tank 1�
 
 ## Assigning
 
-1. Drag **confirmed** RSVPs from the pool onto role slots (or reserves).
+1. Drag **In** (confirmed) RSVPs from the pool onto role slots (or reserves).
 2. Pool **role filters** (infantry / tanks / MG / squad lead) narrow the list using Comp Roster roles — click again to clear.
-3. Pool / reserve badges show lifetime **confirmed RSVPs / times benched** (`12r / 3b`) for fair rotation.
-4. When playing slots hit LineUp size, remaining confirmed players **auto-fill reserves**. If players and squads are both full, use **Fill reserves**.
+3. Pool / reserve badges show lifetime **In RSVPs / times benched** (`12r / 3b`) for fair rotation.
+4. When playing slots hit LineUp size, remaining **In** players **auto-fill reserves**. If players and squads are both full, use **Fill reserves**.
 5. Full player count blocks dragging more from the pool; full squad count hides sector **+**.
 
 ## Fairness tracking
 
-On **Lock** (or auto-lock after match end), Tactika snapshots who confirmed, who played, and who sat reserve. Lifetime totals power the `Nr / Nb` badges.
+On **Lock** (or auto-lock after match end), Tactika snapshots who was **In**, who played, and who sat reserve. Lifetime totals power the `Nr / Nb` badges. Locking the LineUp also **closes RSVP** for the event.
 
 ## Presence
 
@@ -46,7 +46,7 @@ Manual **show / no-show** checkboxes on placed players (briefing attendance). Di
 - Playing slots ≤ LineUp size (streamers excluded)
 - ≤ 20 squads (Commander does not count; Arty / tanks / recon / infantry do)
 - Infantry ≤6, armor ≤3, recon ≤2; ≤3 armor squads, ≤2 recon
-- Only **RSVP confirmed** players; Admin **Force RSVP** backdoor
+- Only **In** RSVP players in the pool; Admin **Force RSVP** backdoor
 - Nodes assignees must already sit on an infantry squad
 
 ## Reset layout

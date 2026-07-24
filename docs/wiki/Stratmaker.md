@@ -10,6 +10,7 @@ Hub → **Stratmaker** (strat catalog), then open or create a strat. Editor chro
 
 - Folders, search, drag-and-drop organization
 - Metadata: title, team (jr/sr), type, notes, match info
+- **Event prep role** (General / Tank / Defense / MG) — links strat progress to Match Brief prep rows
 - Per-tool **lock** (creator / admin / owner) — view-only when locked
 
 ## Draw on a slide
