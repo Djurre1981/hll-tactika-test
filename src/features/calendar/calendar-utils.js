@@ -49,6 +49,33 @@ export function eventsForDay(events, day) {
   return events.filter((event) => sameDay(new Date(event.startsAt), day));
 }
 
+export const UPCOMING_PERIODS = [
+  { id: "7d", label: "Next 7 days", shortLabel: "7 days", days: 7 },
+  { id: "30d", label: "Next 30 days", shortLabel: "30 days", days: 30 },
+];
+
+/** Future events within a rolling window from now. */
+export function filterUpcomingEvents(events, { days = 7, now = new Date() } = {}) {
+  const start = now.getTime();
+  const end = start + days * 86_400_000;
+  return (events || [])
+    .filter((event) => {
+      const t = Date.parse(event.startsAt);
+      return Number.isFinite(t) && t >= start && t < end;
+    })
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+}
+
+export function formatEventStartsAt(iso) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 /** Half-open interval overlap: [start, end). Missing endsAt treated as start + default duration. */
 export function eventsOverlap(a, b) {
   const aStart = new Date(a.startsAt).getTime();

@@ -227,9 +227,7 @@ export function CalendarPage({ hub = false }) {
           </section>
           <DayDetails
             selectedDay={selectedDay}
-            events={events}
             canEdit={canEdit}
-            isLoading={eventsQuery.isLoading}
             onAdd={openCreate}
             onEditEvent={openEditEvent}
           />
