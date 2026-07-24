@@ -15,6 +15,7 @@ You are working under the **Agentx** playbook. Follow it unless the user explici
    - **Worktree** (`/worktree`) — when running 2+ agents locally that must not collide
    - **Cloud agent** — long, risky, or “run while I’m away” tasks that need full isolation
 8. **Prefer boring over clever.** Small PRs, clear names, fewer moving parts.
+9. **Strictly follow ai-context.md.** Project architecture & conventions
 
 ## Default workflow (most tasks)
 

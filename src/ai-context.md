@@ -19,14 +19,18 @@ root
 │   ├── app/             # Top-level shell, router, providers
 │   ├── features/        # Feature‑scoped code
 │   │   ├── auth/
-│   │   ├── home/        # Hub shell + dashboard home (+ presence)
 │   │   ├── calendar/
-│   │   ├── team/
-│   │   ├── management/  # Roster + folders (Phase 5)
+│   │   ├── events/         # Event management, match briefs, prep tasks, RSVPs
+│   │   ├── help/           # In-app wiki / help overlay
+│   │   ├── home/           # Hub shell + dashboard home (+ presence)
+│   │   ├── management/     # Roster + folders (Phase 5)
+│   │   ├── micro-prep/
+│   │   ├── records/        # Match history, HeLO tracking, team KPIs
+│   │   ├── routeplanner/   # Accessibility-aware route planning
 │   │   ├── strats/
 │   │   │   ├── browser/
 │   │   │   └── editor/
-│   │   └── micro-prep/
+│   │   └── team/
 │   ├── shared/
 │   ├── lib/             # includes lib/collab/ (Yjs provider + hooks)
 │   └── styles/
