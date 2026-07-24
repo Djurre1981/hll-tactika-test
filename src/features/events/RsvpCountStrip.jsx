@@ -1,15 +1,23 @@
 /**
- * Compact In / Wait / Out / N/A strip for event rows.
- * @param {{ counts?: { confirmed?: number, waitlist?: number, declined?: number, unavailable?: number, total?: number } | null, compact?: boolean, className?: string }} props
+ * Compact In / Maybe / Out strip for event rows.
+ * @param {{ counts?: { confirmed?: number, tentative?: number, waitlist?: number, declined?: number, unavailable?: number, total?: number } | null, uiCounts?: { in?: number, maybe?: number, out?: number, total?: number } | null, compact?: boolean, className?: string }} props
  */
-export function RsvpCountStrip({ counts, compact = false, className = "" }) {
-  if (!counts || !(counts.total > 0)) return null;
+export function RsvpCountStrip({ counts, uiCounts, compact = false, className = "" }) {
+  const resolved = uiCounts || (counts
+    ? {
+        in: counts.confirmed ?? 0,
+        maybe: (counts.tentative ?? 0) + (counts.waitlist ?? 0),
+        out: (counts.declined ?? 0) + (counts.unavailable ?? 0),
+        total: counts.total ?? 0,
+      }
+    : null);
+
+  if (!resolved || !(resolved.total > 0)) return null;
 
   const cells = [
-    ["In", counts.confirmed ?? 0, "text-emerald-200"],
-    ["Wait", counts.waitlist ?? 0, "text-sky-200"],
-    ["Out", counts.declined ?? 0, "text-red-200"],
-    ["N/A", counts.unavailable ?? 0, "text-white/55"],
+    ["In", resolved.in ?? 0, "text-emerald-200"],
+    ["Maybe", resolved.maybe ?? 0, "text-amber-200"],
+    ["Out", resolved.out ?? 0, "text-red-200"],
   ];
 
   if (compact) {
@@ -30,7 +38,7 @@ export function RsvpCountStrip({ counts, compact = false, className = "" }) {
   }
 
   return (
-    <div className={`grid grid-cols-4 gap-1.5 ${className}`.trim()}>
+    <div className={`grid grid-cols-3 gap-1.5 ${className}`.trim()}>
       {cells.map(([label, value, color]) => (
         <div key={label} className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1">
           <p className="m-0 text-[0.55rem] uppercase tracking-[0.1em] text-white/40">{label}</p>

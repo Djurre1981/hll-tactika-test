@@ -75,3 +75,11 @@ describe("Tool lock migration 0019_tool_lock", () => {
     assert.match(sql, /whiteboards ADD COLUMN locked/i);
   });
 });
+
+describe("RSVP close migration 0026_rsvp_closed", () => {
+  it("adds rsvp_closed on events", () => {
+    const sql = readFileSync(join(root, "migrations/0026_rsvp_closed.sql"), "utf8");
+    assert.match(sql, /rsvp_closed/i);
+    assert.match(sql, /ALTER TABLE events/i);
+  });
+});

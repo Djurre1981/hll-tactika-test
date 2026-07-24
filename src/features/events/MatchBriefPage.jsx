@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { Button } from "../../shared/Button.jsx";
 import { Spinner } from "../../shared/Spinner.jsx";
 import {
   FACTION_LABELS,
@@ -8,7 +9,7 @@ import {
   isMatchEventType,
 } from "../calendar/calendar-utils.js";
 import { compTeamLabel } from "../../../functions/lib/comp-teams.js";
-import { useEventQuery } from "../calendar/hooks/useEventsQuery.js";
+import { useEventQuery, useCloseRsvpMutation } from "../calendar/hooks/useEventsQuery.js";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { canManageTeam } from "../../lib/roles.js";
 import { getStartingPointLabel } from "../../shared/mapMidpoints.js";
@@ -18,6 +19,7 @@ import { EventLockBadge } from "./EventLockBadge.jsx";
 import { isEventEffectivelyLocked } from "./event-lock.js";
 import { PrepTasksPanel } from "./PrepTasksPanel.jsx";
 import { RsvpBar } from "./RsvpBar.jsx";
+import { useEventRsvpsQuery } from "./hooks/useRsvpsQuery.js";
 import { eventTypeLabel, formatEventSchedule } from "./event-brief-utils.js";
 import { eventHasParticipant } from "../records/match-history-utils.js";
 
@@ -122,6 +124,8 @@ export function MatchBriefPage() {
   const canEdit = canEditEvents(user?.role);
   const canAttachRoster = canManageTeam(user?.role);
   const eventQuery = useEventQuery(eventId);
+  const closeRsvp = useCloseRsvpMutation();
+  const rsvpQuery = useEventRsvpsQuery(eventId);
 
   if (eventQuery.isLoading) {
     return (
@@ -160,6 +164,8 @@ export function MatchBriefPage() {
 
   const eventLocked = isEventEffectivelyLocked(event);
   const canEditEvent = canEdit && !eventLocked;
+  const rsvpClosed = Boolean(rsvpQuery.data?.rsvpClosed || event.rsvpClosed);
+  const canCloseRsvp = canEdit && !rsvpClosed;
   const youPlayed = eventHasParticipant(event, user?.steamId);
 
   return (
@@ -215,6 +221,26 @@ export function MatchBriefPage() {
       ) : null}
 
       <MatchFacts event={event} />
+
+      {canCloseRsvp ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p className="m-0 text-[0.82rem] text-white/55">
+            RSVP is open. Close it when signups are final — confirmed players can then raincheck only.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={closeRsvp.isPending}
+            onClick={() => closeRsvp.mutate(event.id)}
+          >
+            {closeRsvp.isPending ? "Closing…" : "Close RSVP"}
+          </Button>
+        </div>
+      ) : rsvpClosed ? (
+        <p className="m-0 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.82rem] text-white/55">
+          RSVP is closed for this event.
+        </p>
+      ) : null}
 
       <RsvpBar eventId={event.id} event={event} />
 

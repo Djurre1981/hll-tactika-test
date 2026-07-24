@@ -246,8 +246,21 @@ export function createMemoryD1(seed = {}) {
               lock_override: lock_override ?? 0,
               locked_by: locked_by ?? null,
               locked_at: locked_at ?? null,
+              rsvp_closed: 0,
               created_by,
               created_at,
+              updated_at,
+            });
+            return { success: true };
+          }
+
+          if (/UPDATE events\b/i.test(sql) && /rsvp_closed = 1/i.test(sql)) {
+            const [updated_at, id] = binds;
+            const existing = findById("events", id);
+            if (!existing) return { success: false };
+            tables.events.set(id, {
+              ...existing,
+              rsvp_closed: 1,
               updated_at,
             });
             return { success: true };

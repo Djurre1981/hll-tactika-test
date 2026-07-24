@@ -3,26 +3,21 @@ import { Link } from "react-router-dom";
 import { RSVP_REASON_LABELS } from "../../../functions/lib/rsvp-reasons.js";
 import { canEnterEditorMode } from "../../lib/roles.js";
 import { useAuth } from "../auth/AuthGate.jsx";
-import { isEventEffectivelyLocked } from "./event-lock.js";
 import { RaincheckFlow } from "./RaincheckFlow.jsx";
 import { useEventRsvpsQuery, useUpsertRsvpMutation } from "./hooks/useRsvpsQuery.js";
 
-const QUICK_STATUSES = ["confirmed", "tentative", "unavailable"];
+const OPEN_STATUSES = ["confirmed", "tentative", "declined"];
 
 const STATUS_LABELS = {
   confirmed: "In",
   tentative: "Maybe",
-  declined: "Raincheck",
-  unavailable: "Unavailable",
-  waitlist: "Waitlist",
+  declined: "Out",
 };
 
 const STATUS_CLASSES = {
   confirmed: "border-emerald-400/35 bg-emerald-400/15 text-emerald-100",
   tentative: "border-amber-400/35 bg-amber-400/12 text-amber-100",
   declined: "border-red-400/30 bg-red-500/12 text-red-100",
-  unavailable: "border-white/15 bg-white/[0.06] text-white/60",
-  waitlist: "border-sky-400/30 bg-sky-400/12 text-sky-100",
 };
 
 function Segment({ label, count, total, className }) {
@@ -37,9 +32,9 @@ function Segment({ label, count, total, className }) {
   );
 }
 
-function waitlistPosition(rsvps, steamId) {
+function reservePosition(rsvps, steamId) {
   const queue = (rsvps || [])
-    .filter((row) => row.status === "waitlist")
+    .filter((row) => row.status === "tentative" || row.status === "waitlist")
     .slice()
     .sort((a, b) => {
       const aq = Date.parse(a.queuedAt || a.updatedAt || 0);
@@ -54,9 +49,7 @@ export function RsvpBar({ eventId, event = null }) {
   const user = useAuth();
   const rsvpQuery = useEventRsvpsQuery(eventId);
   const upsert = useUpsertRsvpMutation(eventId);
-  const [absenceOpen, setAbsenceOpen] = useState(false);
-  const [absenceStatus, setAbsenceStatus] = useState("declined");
-  const locked = event ? isEventEffectivelyLocked(event) : false;
+  const [raincheckOpen, setRaincheckOpen] = useState(false);
   const isEditor = canEnterEditorMode(user.role);
 
   if (rsvpQuery.isLoading) {
@@ -77,24 +70,31 @@ export function RsvpBar({ eventId, event = null }) {
     );
   }
 
-  const counts = rsvpQuery.data?.counts || {
-    confirmed: 0,
-    tentative: 0,
-    declined: 0,
-    unavailable: 0,
-    waitlist: 0,
+  const uiCounts = rsvpQuery.data?.uiCounts || {
+    in: 0,
+    maybe: 0,
+    out: 0,
     total: 0,
   };
   const seats = rsvpQuery.data?.seats || null;
   const mine = rsvpQuery.data?.mine || null;
   const mineStatus = mine?.status || null;
   const rsvps = rsvpQuery.data?.rsvps || [];
-  const total = Math.max(counts.total, 1);
-  const myWaitlistPos = mineStatus === "waitlist" ? waitlistPosition(rsvps, user.steamId) : null;
-  const writeBlocked = locked && !isEditor;
+  const rsvpClosed = Boolean(rsvpQuery.data?.rsvpClosed || event?.rsvpClosed);
+  const total = Math.max(uiCounts.total, 1);
+  const myReservePos =
+    mineStatus === "tentative" || mineStatus === "waitlist"
+      ? reservePosition(rsvps, user.steamId)
+      : null;
 
   const rainchecks = rsvps.filter((row) => row.status === "declined" && row.reasonCode);
   const showReasons = isEditor || (mineStatus === "declined" && mine?.reasonCode);
+  const mineUiStatus =
+    mineStatus === "waitlist" || mineStatus === "unavailable"
+      ? mineStatus === "waitlist"
+        ? "tentative"
+        : "declined"
+      : mineStatus;
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -103,27 +103,26 @@ export function RsvpBar({ eventId, event = null }) {
         <p className="m-0 text-[0.78rem] text-white/50">
           {seats?.target != null
             ? `${seats.confirmed} / ${seats.target} seats`
-            : `${counts.confirmed} confirmed · ${counts.total} responses`}
-          {counts.waitlist ? ` · ${counts.waitlist} waitlist` : ""}
+            : `${uiCounts.in} in · ${uiCounts.total} responses`}
+          {rsvpClosed ? " · closed" : ""}
         </p>
       </div>
 
       {seats?.lookingForFills ? (
         <p className="mt-2 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-1.5 text-[0.75rem] text-amber-50/90">
-          Looking for fills — under target with an empty waitlist.
+          Looking for fills — under target with no reserve list.
         </p>
       ) : null}
 
       <div className="mt-3 flex gap-2">
-        <Segment label="In" count={counts.confirmed} total={total} className="bg-emerald-400/70" />
-        <Segment label="Wait" count={counts.waitlist || 0} total={total} className="bg-sky-400/60" />
-        <Segment label="Maybe" count={counts.tentative} total={total} className="bg-amber-400/60" />
-        <Segment label="Out" count={counts.declined} total={total} className="bg-red-400/55" />
+        <Segment label="In" count={uiCounts.in} total={total} className="bg-emerald-400/70" />
+        <Segment label="Maybe" count={uiCounts.maybe} total={total} className="bg-amber-400/60" />
+        <Segment label="Out" count={uiCounts.out} total={total} className="bg-red-400/55" />
       </div>
 
-      {mineStatus === "waitlist" && myWaitlistPos ? (
-        <p className="m-0 mt-3 text-[0.8rem] text-sky-100/90">
-          You&apos;re #{myWaitlistPos} on the waitlist.
+      {myReservePos ? (
+        <p className="m-0 mt-3 text-[0.8rem] text-amber-100/90">
+          You&apos;re #{myReservePos} on the reserve list (Maybe).
         </p>
       ) : null}
 
@@ -135,53 +134,49 @@ export function RsvpBar({ eventId, event = null }) {
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {QUICK_STATUSES.map((status) => {
-          const active = mineStatus === status;
-          return (
-            <button
-              key={status}
-              type="button"
-              disabled={upsert.isPending || writeBlocked}
-              aria-pressed={active}
-              aria-label={STATUS_LABELS[status]}
-              className={`rounded-full border px-3 py-1.5 text-[0.78rem] transition disabled:opacity-50 ${
-                active
-                  ? STATUS_CLASSES[status]
-                  : "border-white/12 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
-              }`}
-              onClick={() => {
-                if (status === "unavailable") {
-                  setAbsenceStatus("unavailable");
-                  setAbsenceOpen(true);
-                  return;
-                }
-                upsert.mutate({ status });
-              }}
-            >
-              {STATUS_LABELS[status]}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          disabled={writeBlocked}
-          aria-pressed={mineStatus === "declined"}
-          className={`rounded-full border px-3 py-1.5 text-[0.78rem] transition disabled:opacity-50 ${
-            mineStatus === "declined"
-              ? STATUS_CLASSES.declined
-              : "border-white/12 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
-          }`}
-          onClick={() => {
-            setAbsenceStatus("declined");
-            setAbsenceOpen(true);
-          }}
-        >
-          Raincheck
-        </button>
+        {!rsvpClosed
+          ? OPEN_STATUSES.map((status) => {
+              const active = mineUiStatus === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={upsert.isPending}
+                  aria-pressed={active}
+                  aria-label={STATUS_LABELS[status]}
+                  className={`rounded-full border px-3 py-1.5 text-[0.78rem] transition disabled:opacity-50 ${
+                    active
+                      ? STATUS_CLASSES[status]
+                      : "border-white/12 bg-white/[0.04] text-white/70 hover:bg-white/[0.08]"
+                  }`}
+                  onClick={() => upsert.mutate({ status })}
+                >
+                  {STATUS_LABELS[status]}
+                </button>
+              );
+            })
+          : mineStatus === "confirmed"
+            ? (
+                <button
+                  type="button"
+                  aria-pressed={false}
+                  className="rounded-full border border-red-400/30 bg-red-500/12 px-3 py-1.5 text-[0.78rem] text-red-100 transition hover:bg-red-500/18"
+                  onClick={() => setRaincheckOpen(true)}
+                >
+                  Raincheck
+                </button>
+              )
+            : mineStatus
+              ? (
+                  <span className="self-center rounded-full border border-white/12 px-3 py-1.5 text-[0.78rem] text-white/55">
+                    {STATUS_LABELS[mineUiStatus] || mineStatus}
+                  </span>
+                )
+              : null}
       </div>
 
-      {writeBlocked ? (
-        <p className="m-0 mt-2 text-[0.75rem] text-white/40">RSVP is locked for this event.</p>
+      {rsvpClosed && mineStatus !== "confirmed" ? (
+        <p className="m-0 mt-2 text-[0.75rem] text-white/40">RSVP is closed for this event.</p>
       ) : null}
 
       {upsert.error ? (
@@ -217,10 +212,9 @@ export function RsvpBar({ eventId, event = null }) {
       </p>
 
       <RaincheckFlow
-        open={absenceOpen}
-        onClose={() => setAbsenceOpen(false)}
+        open={raincheckOpen}
+        onClose={() => setRaincheckOpen(false)}
         initialEventId={eventId}
-        status={absenceStatus}
       />
     </section>
   );

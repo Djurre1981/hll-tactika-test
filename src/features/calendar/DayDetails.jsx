@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { EventLockBadge } from "../events/EventLockBadge.jsx";
-import { isEventEffectivelyLocked } from "../events/event-lock.js";
 import { RaincheckFlow } from "../events/RaincheckFlow.jsx";
 import { RsvpCountStrip } from "../events/RsvpCountStrip.jsx";
 import { useEventsRsvpsQuery } from "../events/hooks/useEventsRsvpsQuery.js";
@@ -112,8 +111,10 @@ export function DayDetails({
         <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
           {upcomingEvents.map((event) => {
             const matchSummary = formatEventMatchSummary(event);
-            const canRaincheck = !isEventEffectivelyLocked(event);
-            const rsvpCounts = eventRsvps.counts.get(event.id) || null;
+            const payload = eventRsvps.payloads.get(event.id);
+            const rsvpCounts = payload?.uiCounts || eventRsvps.counts.get(event.id) || null;
+            const canRaincheck =
+              payload?.rsvpClosed && payload?.mine?.status === "confirmed";
             return (
               <li key={event.id}>
                 <div className="grid grid-cols-[1fr_auto] items-start gap-2 rounded-2xl border border-white/[0.08] bg-black/20 px-3.5 py-3.5 transition hover:border-white/15 hover:bg-white/[0.06]">

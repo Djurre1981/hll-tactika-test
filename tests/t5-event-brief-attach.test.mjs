@@ -80,7 +80,7 @@ describe("T5 — mutateEventComponent attach/detach (store integration)", () => 
       id: "event-t5-1",
       title: "T5 test",
       description: "",
-      startsAt: "2026-07-23T18:00:00.000Z",
+      startsAt: "2026-08-15T18:00:00.000Z",
       endsAt: "",
       eventType: "scrim",
       match: { opponent: "", mapId: "", faction: "", startingPoint: "", result: "" },
@@ -91,8 +91,8 @@ describe("T5 — mutateEventComponent attach/detach (store integration)", () => 
         rosterId: null,
       },
       createdBy: "76561198000000000",
-      createdAt: "2026-07-23T18:00:00.000Z",
-      updatedAt: "2026-07-23T18:00:00.000Z",
+      createdAt: "2026-08-15T18:00:00.000Z",
+      updatedAt: "2026-08-15T18:00:00.000Z",
     });
 
     const attached = await mutateEventComponent(env, created.id, {

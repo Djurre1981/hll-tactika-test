@@ -10,10 +10,12 @@ import {
 } from "../functions/lib/rsvp-reasons.js";
 import {
   computeSeats,
+  pickNextReserve,
   pickNextWaitlisted,
   resolveCapacityStatus,
   sanitizeRsvpStatus,
   summarizeRsvpCounts,
+  summarizeUiCounts,
 } from "../functions/lib/rsvps-store.js";
 import { enqueueNotification } from "../functions/lib/notifications.js";
 
@@ -37,9 +39,9 @@ describe("T6b raincheck reasons", () => {
     assert.equal(ok.reasonNote, null);
   });
 
-  it("defaults signup target by event type", () => {
-    assert.equal(defaultSignupTarget("scrim"), 50);
-    assert.equal(defaultSignupTarget("comp"), 50);
+  it("does not default signup target by event type", () => {
+    assert.equal(defaultSignupTarget("scrim"), null);
+    assert.equal(defaultSignupTarget("comp"), null);
     assert.equal(defaultSignupTarget("practice"), null);
   });
 
@@ -50,41 +52,54 @@ describe("T6b raincheck reasons", () => {
   });
 });
 
-describe("T6b seats and waitlist", () => {
-  it("includes waitlist in counts", () => {
+describe("RSVP seats and reserve list", () => {
+  it("includes reserve statuses in counts", () => {
     const counts = summarizeRsvpCounts([
       { status: "confirmed" },
+      { status: "tentative" },
       { status: "waitlist" },
       { status: "declined" },
     ]);
     assert.equal(counts.confirmed, 1);
+    assert.equal(counts.tentative, 1);
     assert.equal(counts.waitlist, 1);
-    assert.equal(counts.total, 3);
+    assert.equal(counts.total, 4);
+  });
+
+  it("maps UI counts to In / Maybe / Out", () => {
+    const ui = summarizeUiCounts({
+      confirmed: 10,
+      tentative: 3,
+      waitlist: 2,
+      declined: 4,
+      unavailable: 1,
+    });
+    assert.deepEqual(ui, { in: 10, maybe: 5, out: 5, total: 20 });
   });
 
   it("computes fill needed when under target", () => {
     const seats = computeSeats(
       { signupTarget: 50, effectiveLocked: false },
-      { confirmed: 48, waitlist: 0 }
+      { confirmed: 48, tentative: 0, waitlist: 0 }
     );
     assert.equal(seats.open, 2);
     assert.equal(seats.fillNeeded, true);
     assert.equal(seats.lookingForFills, true);
   });
 
-  it("queues confirmed when full", () => {
-    const seats = computeSeats({ signupTarget: 2 }, { confirmed: 2, waitlist: 0 });
+  it("overflow confirmed becomes Maybe (tentative)", () => {
+    const seats = computeSeats({ signupTarget: 2 }, { confirmed: 2, tentative: 0, waitlist: 0 });
     assert.deepEqual(resolveCapacityStatus("confirmed", seats), {
-      status: "waitlist",
+      status: "tentative",
       queued: true,
     });
   });
 
-  it("picks FIFO waitlist by queuedAt", () => {
-    const next = pickNextWaitlisted([
+  it("picks FIFO reserve by queuedAt", () => {
+    const next = pickNextReserve([
       {
         steamId: "b",
-        status: "waitlist",
+        status: "tentative",
         queuedAt: "2026-07-02T00:00:00.000Z",
       },
       {
@@ -97,8 +112,17 @@ describe("T6b seats and waitlist", () => {
     assert.equal(next.steamId, "a");
   });
 
-  it("accepts waitlist status", () => {
-    assert.equal(sanitizeRsvpStatus("waitlist").status, "waitlist");
+  it("pickNextWaitlisted alias still works", () => {
+    const next = pickNextWaitlisted([
+      { steamId: "a", status: "tentative", queuedAt: "2026-07-01T00:00:00.000Z" },
+    ]);
+    assert.equal(next.steamId, "a");
+  });
+
+  it("maps unavailable and waitlist signup statuses", () => {
+    assert.equal(sanitizeRsvpStatus("unavailable").status, "declined");
+    assert.equal(sanitizeRsvpStatus("waitlist").status, "tentative");
+    assert.equal(sanitizeRsvpStatus("confirmed").status, "confirmed");
   });
 });
 
@@ -116,5 +140,13 @@ describe("migration 0023", () => {
     assert.match(sql, /signup_target/i);
     assert.match(sql, /waitlist/);
     assert.match(sql, /reason_code/);
+  });
+});
+
+describe("migration 0026_rsvp_closed", () => {
+  it("adds rsvp_closed on events", () => {
+    const sql = readFileSync(join(root, "migrations/0026_rsvp_closed.sql"), "utf8");
+    assert.match(sql, /rsvp_closed/i);
+    assert.match(sql, /ALTER TABLE events/i);
   });
 });

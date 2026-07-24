@@ -166,6 +166,27 @@ export function useDeleteEventMutation() {
   });
 }
 
+export function useCloseRsvpMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) =>
+      apiClient(`/events/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ closeRsvp: true }),
+      }).then((data) => data.event),
+    onSuccess: (event) => {
+      if (!event?.id) return;
+      queryClient.setQueryData(queryKeys.events.byId(event.id), event);
+      patchEventsCaches(queryClient, (events) =>
+        events.map((item) => (item.id === event.id ? { ...item, ...event } : item))
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.rsvps.byEvent(event.id) });
+    },
+    onSettled: () => invalidateEvents(queryClient),
+  });
+}
+
 export function useEventLockMutation() {
   const queryClient = useQueryClient();
 

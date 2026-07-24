@@ -1,6 +1,6 @@
 import { requireDb } from "./d1.js";
-import { isEventEffectivelyLocked } from "./event-lock.js";
 import { getEvent } from "./events-store.js";
+import { isLineupAutoLocked } from "./lineup-validate.js";
 import { enqueueNotification } from "./notifications.js";
 import { sanitizeRsvpReason } from "./rsvp-reasons.js";
 
@@ -14,6 +14,7 @@ export const RSVP_STATUSES = [
 
 const ABSENCE_STATUSES = new Set(["declined", "unavailable"]);
 const SEAT_HOLDING = new Set(["confirmed"]);
+const RESERVE_STATUSES = new Set(["tentative", "waitlist"]);
 
 function rowToRsvp(row) {
   return {
@@ -27,12 +28,48 @@ function rowToRsvp(row) {
   };
 }
 
-export function sanitizeRsvpStatus(raw) {
+function parseLineupLayout(raw) {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function getLineupEffectivelyLocked(env, event) {
+  if (!event?.id) return false;
+  const db = requireDb(env);
+  const row = await db
+    .prepare(`SELECT locked, layout_json FROM lineups WHERE event_id = ?`)
+    .bind(event.id)
+    .first();
+  if (!row) return false;
+  const lineup = {
+    locked: Boolean(row.locked),
+    layout: parseLineupLayout(row.layout_json),
+    eventId: event.id,
+  };
+  return isLineupAutoLocked(lineup, event);
+}
+
+export async function isRsvpClosedForEvent(env, event) {
+  if (!event) return true;
+  if (event.rsvpClosed) return true;
+  return getLineupEffectivelyLocked(env, event);
+}
+
+export function normalizeSignupStatus(raw) {
   const status = String(raw || "").trim().toLowerCase();
-  if (!RSVP_STATUSES.includes(status)) {
-    return {
-      error: "status must be confirmed, tentative, declined, unavailable, or waitlist",
-    };
+  if (status === "unavailable") return "declined";
+  if (status === "waitlist") return "tentative";
+  return status;
+}
+
+export function sanitizeRsvpStatus(raw) {
+  const status = normalizeSignupStatus(raw);
+  if (!["confirmed", "tentative", "declined"].includes(status)) {
+    return { error: "status must be confirmed, tentative, or declined" };
   }
   return { status };
 }
@@ -55,35 +92,53 @@ export function summarizeRsvpCounts(rsvps = []) {
   return counts;
 }
 
+export function summarizeUiCounts(counts = {}) {
+  const confirmed = Number(counts.confirmed) || 0;
+  const tentative = Number(counts.tentative) || 0;
+  const waitlist = Number(counts.waitlist) || 0;
+  const declined = Number(counts.declined) || 0;
+  const unavailable = Number(counts.unavailable) || 0;
+  const maybe = tentative + waitlist;
+  const out = declined + unavailable;
+  return {
+    in: confirmed,
+    maybe,
+    out,
+    total: confirmed + maybe + out,
+  };
+}
+
 /**
  * @param {{ signupTarget?: number|null, locked?: boolean }} eventLike
  * @param {ReturnType<typeof summarizeRsvpCounts>} counts
  */
 export function computeSeats(eventLike, counts) {
   const target =
-    eventLike?.signupTarget == null || eventLike.signupTarget === ""
+    eventLike?.signupTarget == null || eventLike?.signupTarget === ""
       ? null
       : Number(eventLike.signupTarget);
   const confirmed = Number(counts?.confirmed) || 0;
-  const waitlist = Number(counts?.waitlist) || 0;
+  const reserve =
+    (Number(counts?.tentative) || 0) + (Number(counts?.waitlist) || 0);
   const hasTarget = Number.isInteger(target) && target >= 0;
   const open = hasTarget ? Math.max(0, target - confirmed) : null;
   const locked = Boolean(eventLike?.effectiveLocked ?? eventLike?.locked);
   const fillNeeded = hasTarget && confirmed < target && !locked;
-  const lookingForFills = fillNeeded && waitlist === 0;
+  const lookingForFills = fillNeeded && reserve === 0;
 
   return {
     target: hasTarget ? target : null,
     confirmed,
     open,
-    waitlist,
+    reserve,
+    waitlist: Number(counts?.waitlist) || 0,
     fillNeeded,
     lookingForFills,
   };
 }
 
 /**
- * Pure: if requesting confirmed and seats are full, become waitlist.
+ * Pure: if requesting confirmed and seats are full, become reserve (Maybe).
  * @returns {{ status: string, queued: boolean }}
  */
 export function resolveCapacityStatus(requestedStatus, seats) {
@@ -96,13 +151,13 @@ export function resolveCapacityStatus(requestedStatus, seats) {
   if ((seats.open ?? 0) > 0) {
     return { status: "confirmed", queued: false };
   }
-  return { status: "waitlist", queued: true };
+  return { status: "tentative", queued: true };
 }
 
-/** Pure FIFO pick from waitlisted rows. */
-export function pickNextWaitlisted(rsvps = []) {
+/** Pure FIFO pick from reserve rows (Maybe + legacy waitlist). */
+export function pickNextReserve(rsvps = []) {
   const queue = rsvps
-    .filter((row) => row.status === "waitlist")
+    .filter((row) => RESERVE_STATUSES.has(row.status))
     .slice()
     .sort((a, b) => {
       const aq = Date.parse(a.queuedAt || a.updatedAt || 0);
@@ -111,6 +166,11 @@ export function pickNextWaitlisted(rsvps = []) {
       return String(a.steamId).localeCompare(String(b.steamId));
     });
   return queue[0] || null;
+}
+
+/** @deprecated use pickNextReserve */
+export function pickNextWaitlisted(rsvps = []) {
+  return pickNextReserve(rsvps);
 }
 
 function redactReasons(rsvp, { viewerSteamId, canSeeAllReasons }) {
@@ -158,9 +218,9 @@ export async function getRsvp(env, eventId, steamId) {
   return row ? rowToRsvp(row) : null;
 }
 
-async function promoteNextWaitlisted(env, eventId) {
+async function promoteNextReserve(env, eventId) {
   const rsvps = await listRsvpsForEvent(env, eventId);
-  const next = pickNextWaitlisted(rsvps);
+  const next = pickNextReserve(rsvps);
   if (!next) return null;
 
   const now = new Date().toISOString();
@@ -169,7 +229,7 @@ async function promoteNextWaitlisted(env, eventId) {
     .prepare(
       `UPDATE rsvps
        SET status = 'confirmed', reason_code = NULL, reason_note = NULL, queued_at = NULL, updated_at = ?
-       WHERE event_id = ? AND steam_id = ? AND status = 'waitlist'`
+       WHERE event_id = ? AND steam_id = ? AND status IN ('tentative', 'waitlist')`
     )
     .bind(now, eventId, next.steamId)
     .run();
@@ -186,6 +246,24 @@ async function promoteNextWaitlisted(env, eventId) {
   return null;
 }
 
+async function persistRsvp(env, eventId, steamId, requestedStatus, reasonCode, reasonNote, queuedAt) {
+  const now = new Date().toISOString();
+  const db = requireDb(env);
+  await db
+    .prepare(
+      `INSERT INTO rsvps (event_id, steam_id, status, reason_code, reason_note, queued_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(event_id, steam_id) DO UPDATE SET
+         status = excluded.status,
+         reason_code = excluded.reason_code,
+         reason_note = excluded.reason_note,
+         queued_at = excluded.queued_at,
+         updated_at = excluded.updated_at`
+    )
+    .bind(eventId, steamId, requestedStatus, reasonCode, reasonNote, queuedAt, now)
+    .run();
+}
+
 /**
  * @param {object} env
  * @param {string} eventId
@@ -197,8 +275,9 @@ export async function upsertRsvp(env, eventId, steamId, options = {}) {
   if (!event) return { error: "Event not found", status: 404 };
 
   const isEditor = Boolean(options.isEditor);
-  if (isEventEffectivelyLocked(event) && !isEditor) {
-    return { error: "Event is locked", status: 423 };
+  const closed = await isRsvpClosedForEvent(env, event);
+  if (closed && !isEditor) {
+    return { error: "RSVP is closed", status: 423 };
   }
 
   const sanitized = sanitizeRsvpStatus(options.status);
@@ -208,7 +287,6 @@ export async function upsertRsvp(env, eventId, steamId, options = {}) {
   const previous = await getRsvp(env, eventId, steamId);
   const existing = await listRsvpsForEvent(env, eventId);
   const countsBefore = summarizeRsvpCounts(existing);
-  // When updating self who already holds a confirmed seat, treat that seat as free for capacity.
   const seatsBaseline = computeSeats(event, {
     ...countsBefore,
     confirmed:
@@ -226,32 +304,18 @@ export async function upsertRsvp(env, eventId, steamId, options = {}) {
 
   let reasonCode = null;
   let reasonNote = null;
-  if (ABSENCE_STATUSES.has(requestedStatus)) {
-    const reason = sanitizeRsvpReason(options.reasonCode, options.reasonNote, {
-      required: true,
-    });
-    if (reason.error) return { error: reason.error, status: 400 };
-    reasonCode = reason.reasonCode;
-    reasonNote = reason.reasonNote;
-  }
 
   const now = new Date().toISOString();
-  const queuedAt = requestedStatus === "waitlist" ? previous?.queuedAt || now : null;
+  let queuedAt = null;
+  if (requestedStatus === "tentative") {
+    if (previous?.status === "tentative" || previous?.status === "waitlist") {
+      queuedAt = previous.queuedAt || previous.updatedAt || now;
+    } else {
+      queuedAt = now;
+    }
+  }
 
-  const db = requireDb(env);
-  await db
-    .prepare(
-      `INSERT INTO rsvps (event_id, steam_id, status, reason_code, reason_note, queued_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(event_id, steam_id) DO UPDATE SET
-         status = excluded.status,
-         reason_code = excluded.reason_code,
-         reason_note = excluded.reason_note,
-         queued_at = excluded.queued_at,
-         updated_at = excluded.updated_at`
-    )
-    .bind(eventId, steamId, requestedStatus, reasonCode, reasonNote, queuedAt, now)
-    .run();
+  await persistRsvp(env, eventId, steamId, requestedStatus, reasonCode, reasonNote, queuedAt);
 
   let promoted = null;
   const freedSeat =
@@ -260,23 +324,13 @@ export async function upsertRsvp(env, eventId, steamId, options = {}) {
     !SEAT_HOLDING.has(requestedStatus);
 
   if (freedSeat && event.signupTarget != null) {
-    promoted = await promoteNextWaitlisted(env, eventId);
+    promoted = await promoteNextReserve(env, eventId);
   }
 
   const rsvp = await getRsvp(env, eventId, steamId);
   const rsvps = await listRsvpsForEvent(env, eventId);
   const counts = summarizeRsvpCounts(rsvps);
   const seats = computeSeats(event, counts);
-
-  if (ABSENCE_STATUSES.has(requestedStatus)) {
-    await enqueueNotification(env, {
-      type: "raincheck",
-      eventId,
-      steamId,
-      reasonCode,
-      reasonNote,
-    });
-  }
 
   if (seats.lookingForFills && freedSeat) {
     await enqueueNotification(env, {
@@ -286,7 +340,55 @@ export async function upsertRsvp(env, eventId, steamId, options = {}) {
     });
   }
 
-  return { rsvp, rsvps, counts, seats, promoted };
+  return { rsvp, rsvps, counts, seats, promoted, rsvpClosed: closed };
+}
+
+export async function submitRaincheck(env, eventId, steamId, options = {}) {
+  const event = await getEvent(env, eventId);
+  if (!event) return { error: "Event not found", status: 404 };
+
+  const closed = await isRsvpClosedForEvent(env, event);
+  if (!closed) {
+    return { error: "Raincheck is only available after RSVP closes", status: 400 };
+  }
+
+  const previous = await getRsvp(env, eventId, steamId);
+  if (previous?.status !== "confirmed") {
+    return { error: "Raincheck is only for confirmed players", status: 400 };
+  }
+
+  const reason = sanitizeRsvpReason(options.reasonCode, options.reasonNote, { required: true });
+  if (reason.error) return { error: reason.error, status: 400 };
+
+  await persistRsvp(
+    env,
+    eventId,
+    steamId,
+    "declined",
+    reason.reasonCode,
+    reason.reasonNote,
+    null
+  );
+
+  let promoted = null;
+  if (event.signupTarget != null) {
+    promoted = await promoteNextReserve(env, eventId);
+  }
+
+  await enqueueNotification(env, {
+    type: "raincheck",
+    eventId,
+    steamId,
+    reasonCode: reason.reasonCode,
+    reasonNote: reason.reasonNote,
+  });
+
+  const rsvp = await getRsvp(env, eventId, steamId);
+  const rsvps = await listRsvpsForEvent(env, eventId);
+  const counts = summarizeRsvpCounts(rsvps);
+  const seats = computeSeats(event, counts);
+
+  return { rsvp, rsvps, counts, seats, promoted, rsvpClosed: closed };
 }
 
 export async function deleteRsvp(env, eventId, steamId) {
@@ -317,24 +419,30 @@ export async function listRsvpsForEvents(env, eventIds) {
   return (result.results || []).map(rowToRsvp);
 }
 
-export function presentRsvpPayload({
+export async function presentRsvpPayload({
   rsvps,
   event,
   viewerSteamId,
   canSeeAllReasons,
   promoted = null,
+  env = null,
 }) {
   const counts = summarizeRsvpCounts(rsvps);
   const seats = computeSeats(event, counts);
+  const uiCounts = summarizeUiCounts(counts);
   const visible = rsvps.map((row) =>
     redactReasons(row, { viewerSteamId, canSeeAllReasons })
   );
   const mine = visible.find((row) => row.steamId === viewerSteamId) || null;
+  const rsvpClosed =
+    env && event ? await isRsvpClosedForEvent(env, event) : Boolean(event?.rsvpClosed);
   return {
     rsvps: visible,
     counts,
+    uiCounts,
     seats,
     mine,
+    rsvpClosed,
     promoted: promoted
       ? redactReasons(promoted, { viewerSteamId, canSeeAllReasons })
       : null,

@@ -59,15 +59,16 @@ export function computeEventReadiness(
   if (rsvpCounts && typeof rsvpCounts === "object") {
     const confirmed = Number(rsvpCounts.confirmed) || 0;
     const tentative = Number(rsvpCounts.tentative) || 0;
+    const waitlist = Number(rsvpCounts.waitlist) || 0;
     const declined = Number(rsvpCounts.declined) || 0;
     const unavailable = Number(rsvpCounts.unavailable) || 0;
-    const waitlist = Number(rsvpCounts.waitlist) || 0;
-    const total = confirmed + tentative + declined + unavailable + waitlist;
+    const maybe = tentative + waitlist;
+    const total = confirmed + maybe + declined + unavailable;
 
     if (Number.isInteger(target) && target > 0) {
-      rsvpScore = Math.min(30, (confirmed / target) * 30 + Math.min(tentative, 5));
+      rsvpScore = Math.min(30, (confirmed / target) * 30 + Math.min(maybe, 5));
     } else if (total > 0) {
-      rsvpScore = Math.min(30, (confirmed / Math.max(total, 1)) * 30 + Math.min(tentative, 5));
+      rsvpScore = Math.min(30, (confirmed / Math.max(total, 1)) * 30 + Math.min(maybe, 5));
     } else {
       rsvpScore = 0;
     }

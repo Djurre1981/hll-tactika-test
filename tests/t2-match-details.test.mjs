@@ -12,7 +12,7 @@ import {
 } from "../functions/lib/events-store.js";
 import { createTestEnv } from "./helpers/memory-d1.mjs";
 
-const NOW = "2026-07-23T18:00:00.000Z";
+const NOW = "2026-08-15T18:00:00.000Z";
 
 function baseEvent(overrides = {}) {
   return {

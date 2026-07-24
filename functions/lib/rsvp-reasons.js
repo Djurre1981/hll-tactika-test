@@ -51,9 +51,7 @@ export function sanitizeRsvpReason(reasonCode, reasonNote, { required = false } 
   };
 }
 
-export function defaultSignupTarget(eventType) {
-  const type = String(eventType || "").trim().toLowerCase();
-  if (type === "scrim" || type === "comp") return 50;
+export function defaultSignupTarget(_eventType) {
   return null;
 }
 
