@@ -4,6 +4,7 @@ export function emptyEventComponents() {
     routePlanIds: [],
     whiteboardIds: [],
     rosterId: null,
+    lineupId: null,
   };
 }
 
@@ -40,6 +41,17 @@ export const COMPONENT_KINDS = {
     pickTitle: (body) => body?.roster?.name,
     fallbackTitle: "Linked roster",
   },
+  lineup: {
+    label: "LineUp",
+    plural: "LineUp",
+    href: (id) => `/lineups/${id}`,
+    fetchPath: (id) => `/lineups/${id}`,
+    pickTitle: (body) =>
+      body?.lineup?.rosterSize
+        ? `LineUp (${body.lineup.rosterSize})`
+        : "LineUp",
+    fallbackTitle: "LineUp",
+  },
 };
 
 const TYPE_LABELS = {
@@ -59,6 +71,7 @@ export function normalizeEventComponents(components) {
     routePlanIds: [],
     whiteboardIds: [],
     rosterId: null,
+    lineupId: null,
     ...(components || emptyEventComponents()),
   };
 }
@@ -79,6 +92,9 @@ export function listEventComponentSlots(components) {
   }
   if (normalized.rosterId) {
     slots.push({ kind: "roster", id: normalized.rosterId });
+  }
+  if (normalized.lineupId) {
+    slots.push({ kind: "lineup", id: normalized.lineupId });
   }
   return slots;
 }
@@ -141,6 +157,7 @@ export function groupSlotsByKind(slots) {
     routePlan: [],
     whiteboard: [],
     roster: [],
+    lineup: [],
   };
   for (const slot of slots) {
     groups[slot.kind]?.push(slot);

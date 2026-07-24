@@ -23,16 +23,21 @@ Open an event from Calendar or hub → **Match Brief** (`/events/:id`).
 | Block | Purpose |
 |-------|---------|
 | **Match facts** | Opponent, map, faction, Circle / Circle Jr, notes |
-| **Linked tools** | Strat, route plan, whiteboard, roster chips + deep links |
+| **Linked tools** | Strat, route plan, whiteboard, roster, **LineUp** chips + deep links |
 | **Prep tasks** | Assignments; assignees check them off |
 | **RSVP** | I’m in / Raincheck |
 | **You played** | Shown when your Steam ID is on our side of imported history |
 
+### LineUp size
+
+When creating/editing an event, set **LineUp size** (49 / 36 / 18). This is separate from **Signup target (seats)** (RSVP capacity). See [LineUp](LineUp).
+
 ### Attach prep (Advisor+)
 
 1. On Match Brief, use attach controls for strat / route / whiteboard / roster.
-2. Or link the event from inside Stratmaker, Routeplanner, or Micro Prep side panels.
-3. Detach when the link is wrong — the tool itself is not deleted.
+2. Comp Admin/Owner can **Create LineUp** (uses the event LineUp size).
+3. Or link the event from inside Stratmaker, Routeplanner, or Micro Prep side panels.
+4. Detach when the link is wrong — the tool itself is not deleted.
 
 ![Match Brief layout](placeholder)
 

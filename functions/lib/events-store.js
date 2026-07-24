@@ -8,13 +8,17 @@ import { getStrat } from "./strats-store.js";
 import { getRoutePlan } from "./route-plans-store.js";
 import { getWhiteboard } from "./whiteboards-store.js";
 import { getRoster } from "./rosters-store.js";
+import { sanitizeRosterSize } from "./lineup-layouts.js";
 
 const COMPONENT_TYPES = {
   strat: "stratIds",
   routePlan: "routePlanIds",
   whiteboard: "whiteboardIds",
   roster: "rosterId",
+  lineup: "lineupId",
 };
+
+const SINGLE_ID_TYPES = new Set(["roster", "lineup"]);
 
 export function emptyEventComponents() {
   return {
@@ -22,6 +26,7 @@ export function emptyEventComponents() {
     routePlanIds: [],
     whiteboardIds: [],
     rosterId: null,
+    lineupId: null,
   };
 }
 
@@ -61,6 +66,10 @@ export function sanitizeEventComponents(input) {
       input.rosterId == null || input.rosterId === ""
         ? null
         : String(input.rosterId).trim() || null,
+    lineupId:
+      input.lineupId == null || input.lineupId === ""
+        ? null
+        : String(input.lineupId).trim() || null,
   };
 }
 
@@ -90,6 +99,7 @@ function rowToEvent(row) {
     startsAt: row.starts_at,
     endsAt: row.ends_at || "",
     eventType: row.event_type,
+    rosterSize: row.roster_size == null ? null : Number(row.roster_size),
     match: parseMatchJson(row.match_json),
     components: parseComponentsJson(row.components_json),
     locked: Boolean(row.locked),
@@ -100,11 +110,19 @@ function rowToEvent(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (![18, 36, 49].includes(event.rosterSize)) event.rosterSize = null;
   return enrichEventLockState(event);
 }
 
-const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, match_json, components_json,
+const EVENT_SELECT = `id, title, description, starts_at, ends_at, event_type, roster_size, match_json, components_json,
   locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at`;
+
+function normalizeRosterSize(value) {
+  if (value == null || value === "") return null;
+  const check = sanitizeRosterSize(value);
+  if (check.error) return { error: check.error };
+  return check.rosterSize;
+}
 
 export function assertEventEditable(event) {
   if (isEventEffectivelyLocked(event)) {
@@ -182,12 +200,17 @@ export async function createEvent(env, event) {
   const db = requireDb(env);
   const components = sanitizeEventComponents(event.components);
   const match = sanitizeEventMatch(event.match);
+  const rosterSize = normalizeRosterSize(event.rosterSize);
+  if (rosterSize?.error) {
+    throw new Error(rosterSize.error);
+  }
+
   await db
     .prepare(
       `INSERT INTO events
-       (id, title, description, starts_at, ends_at, event_type, match_json, components_json,
+       (id, title, description, starts_at, ends_at, event_type, roster_size, match_json, components_json,
         locked, lock_override, locked_by, locked_at, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       event.id,
@@ -196,6 +219,7 @@ export async function createEvent(env, event) {
       event.startsAt,
       event.endsAt || null,
       event.eventType,
+      rosterSize,
       JSON.stringify(match),
       JSON.stringify(components),
       0,
@@ -220,6 +244,15 @@ export async function updateEvent(env, eventId, updates) {
     return { error: editable.error, status: editable.status };
   }
 
+  let rosterSize = existing.rosterSize;
+  if (updates.rosterSize !== undefined) {
+    const normalized = normalizeRosterSize(updates.rosterSize);
+    if (normalized?.error) {
+      return { error: normalized.error, status: 400 };
+    }
+    rosterSize = normalized;
+  }
+
   const next = {
     ...existing,
     ...updates,
@@ -229,6 +262,7 @@ export async function updateEvent(env, eventId, updates) {
         : existing.components,
     match:
       updates.match !== undefined ? sanitizeEventMatch(updates.match) : existing.match,
+    rosterSize,
     updatedAt: new Date().toISOString(),
   };
 
@@ -236,7 +270,8 @@ export async function updateEvent(env, eventId, updates) {
   await db
     .prepare(
       `UPDATE events
-       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, match_json = ?, components_json = ?,
+       SET title = ?, description = ?, starts_at = ?, ends_at = ?, event_type = ?, roster_size = ?,
+           match_json = ?, components_json = ?,
            locked = ?, lock_override = ?, locked_by = ?, locked_at = ?, updated_at = ?
        WHERE id = ?`
     )
@@ -246,6 +281,7 @@ export async function updateEvent(env, eventId, updates) {
       next.startsAt,
       next.endsAt || null,
       next.eventType,
+      next.rosterSize,
       JSON.stringify(sanitizeEventMatch(next.match)),
       JSON.stringify(sanitizeEventComponents(next.components)),
       next.locked ? 1 : 0,
@@ -295,12 +331,21 @@ async function assertComponentExists(env, type, id) {
     if (!roster) return { error: "Roster not found", status: 404 };
     return { ok: true };
   }
+  if (type === "lineup") {
+    const db = requireDb(env);
+    const row = await db
+      .prepare("SELECT id FROM lineups WHERE id = ?")
+      .bind(id)
+      .first();
+    if (!row) return { error: "Lineup not found", status: 404 };
+    return { ok: true };
+  }
   return { error: "Invalid component type", status: 400 };
 }
 
 /**
  * Attach or detach a component id on an event.
- * @param {{ action: 'attach'|'detach', type: 'strat'|'routePlan'|'whiteboard'|'roster', id: string }} payload
+ * @param {{ action: 'attach'|'detach', type: 'strat'|'routePlan'|'whiteboard'|'roster'|'lineup', id: string }} payload
  */
 export async function mutateEventComponent(env, eventId, payload) {
   const event = await getEvent(env, eventId);
@@ -317,7 +362,10 @@ export async function mutateEventComponent(env, eventId, payload) {
     return { error: "action must be attach or detach", status: 400 };
   }
   if (!COMPONENT_TYPES[type]) {
-    return { error: "type must be strat, routePlan, whiteboard, or roster", status: 400 };
+    return {
+      error: "type must be strat, routePlan, whiteboard, roster, or lineup",
+      status: 400,
+    };
   }
   if (!id) {
     return { error: "id is required", status: 400 };
@@ -330,11 +378,12 @@ export async function mutateEventComponent(env, eventId, payload) {
 
   const components = sanitizeEventComponents(event.components);
 
-  if (type === "roster") {
+  if (SINGLE_ID_TYPES.has(type)) {
+    const key = COMPONENT_TYPES[type];
     if (action === "attach") {
-      components.rosterId = id;
-    } else if (components.rosterId === id) {
-      components.rosterId = null;
+      components[key] = id;
+    } else if (components[key] === id) {
+      components[key] = null;
     }
   } else {
     const key = COMPONENT_TYPES[type];

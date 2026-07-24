@@ -5,6 +5,7 @@
 **How-to**
 * [Dashboard & hub](Dashboard)
 * [Calendar & Match Brief](Calendar-and-Match-Brief)
+* [LineUp](LineUp)
 * [Climbing Guide](Climbing-Guide)
 * [Stratmaker](Stratmaker)
 * [Routeplanner](Routeplanner)

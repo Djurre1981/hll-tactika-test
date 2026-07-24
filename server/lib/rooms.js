@@ -93,6 +93,13 @@ async function persistRoom(room) {
   } else if (room.id.startsWith("wb:")) {
     const scene = getSceneFromDoc(room.doc);
     if (scene && typeof scene === "object") meta.scene = scene;
+  } else if (room.id.startsWith("lineup:")) {
+    try {
+      const layout = room.doc.getMap("lineup").get("layout");
+      if (layout && typeof layout === "object") meta.layout = layout;
+    } catch {
+      /* ignore */
+    }
   }
   await saveRoomSnapshot(room.id, update, meta);
   room.dirty = false;

@@ -29,6 +29,9 @@ export const queryKeys = {
     history: (from, to) => ["events", "history", from, to],
     byId: (id) => ["events", "id", id],
   },
+  lineups: {
+    byId: (id) => ["lineups", id],
+  },
   users: {
     me: ["users", "me"],
   },

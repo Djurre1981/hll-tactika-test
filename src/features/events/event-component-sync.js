@@ -51,12 +51,16 @@ export const COMPONENT_API_TYPES = {
   routePlan: "routePlan",
   whiteboard: "whiteboard",
   roster: "roster",
+  lineup: "lineup",
 };
 
 export function linkedIdsForKind(components, kind) {
   const normalized = components || {};
   if (kind === "roster") {
     return normalized.rosterId ? [normalized.rosterId] : [];
+  }
+  if (kind === "lineup") {
+    return normalized.lineupId ? [normalized.lineupId] : [];
   }
   const key =
     kind === "strat"

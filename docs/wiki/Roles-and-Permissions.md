@@ -18,7 +18,7 @@ Not on the allowlist: Steam sign-in may work, but the app returns **forbidden**.
 |-----|--------|
 | Hub, Calendar, Records, Match Briefs (view) | Create/edit events, strats, or climb pins |
 | RSVP / raincheck | Open Management or Team admin |
-| Browse/open strats, routes, whiteboards | Climb editor mode |
+| Browse/open strats, routes, whiteboards, **LineUp (view)** | Climb editor mode |
 | View climbing map & pins | |
 
 ## Comp Advisor (`editor`)
@@ -48,6 +48,7 @@ Not on the allowlist: Steam sign-in may work, but the app returns **forbidden**.
 | Everything Assist can | Change member roles (Owner only) |
 | Management (roster, history, analytics, folders) | Remove other Admins or Owners |
 | Comp Roster import/seed | |
+| **LineUp** create/edit/lock + force RSVP | |
 | Team panel: add/remove Members, Advisors, Assists | |
 | Delete any strat; manage tool locks | |
 

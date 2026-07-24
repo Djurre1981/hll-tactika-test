@@ -18,6 +18,14 @@ describe("T1 migration 0014_event_components", () => {
   });
 });
 
+describe("LineUp migration 0024_lineups", () => {
+  it("adds roster_size and lineups table", () => {
+    const sql = readFileSync(join(root, "migrations/0024_lineups.sql"), "utf8");
+    assert.match(sql, /roster_size/i);
+    assert.match(sql, /CREATE TABLE IF NOT EXISTS lineups/i);
+  });
+});
+
 describe("PR #34 migration 0015_strat_folders_sort_order", () => {
   it("adds sort_order expected by folders-store", () => {
     const sql = readFileSync(join(root, "migrations/0015_strat_folders_sort_order.sql"), "utf8");

@@ -1,4 +1,8 @@
 import { Link } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../../lib/api-client.js";
+import { queryKeys } from "../../lib/query-keys.js";
 import {
   COMPONENT_KINDS,
   SCHEDULE_COMPONENT_KINDS,
@@ -103,14 +107,35 @@ export function EventComponentsPanel({
   components,
   canEdit = false,
   canAttachRoster = false,
+  canAttachLineup = false,
   eventLocked = false,
 }) {
+  const queryClient = useQueryClient();
   const { resolved, isLoading } = useResolvedEventComponents(components);
   const grouped = groupSlotsByKind(resolved);
   const linked = hasLinkedComponents(components);
   const actions = useEventComponentActions(canEdit && !eventLocked ? eventId : null);
+  const [lineupPending, setLineupPending] = useState(false);
+  const [lineupError, setLineupError] = useState("");
 
   const showAttach = canEdit && eventId && !eventLocked;
+
+  const createLineup = useCallback(async () => {
+    if (!eventId) return;
+    setLineupError("");
+    setLineupPending(true);
+    try {
+      await apiClient("/lineups", {
+        method: "POST",
+        body: JSON.stringify({ eventId }),
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.events.byId(eventId) });
+    } catch (error) {
+      setLineupError(error?.message || "Could not create LineUp.");
+    } finally {
+      setLineupPending(false);
+    }
+  }, [eventId, queryClient]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -119,14 +144,17 @@ export function EventComponentsPanel({
           components={components}
           canEdit={canEdit}
           canAttachRoster={canAttachRoster}
+          canAttachLineup={canAttachLineup}
           pending={actions.pending}
           onAttach={actions.attach}
+          onCreateLineup={createLineup}
+          lineupPending={lineupPending}
         />
       ) : null}
 
-      {actions.error ? (
+      {actions.error || lineupError ? (
         <p className="m-0 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-[0.85rem] text-red-100">
-          {actions.error}
+          {actions.error || lineupError}
         </p>
       ) : null}
 
@@ -151,6 +179,13 @@ export function EventComponentsPanel({
 
       {linked ? (
         <div className="flex flex-col gap-5">
+          <ComponentGroup
+            kind="lineup"
+            items={grouped.lineup}
+            canEdit={canEdit && !eventLocked}
+            pending={actions.pending}
+            onDetach={actions.detach}
+          />
           <ComponentGroup
             kind="strat"
             items={grouped.strat}

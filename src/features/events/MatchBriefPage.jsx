@@ -216,7 +216,7 @@ export function MatchBriefPage() {
 
       <MatchFacts event={event} />
 
-      <RsvpBar eventId={event.id} />
+      <RsvpBar eventId={event.id} event={event} />
 
       <PrepTasksPanel eventId={event.id} canEdit={canEditEvent} eventLocked={eventLocked} />
 
@@ -229,6 +229,7 @@ export function MatchBriefPage() {
           components={event.components}
           canEdit={canEditEvent}
           canAttachRoster={canAttachRoster && !eventLocked}
+          canAttachLineup={canAttachRoster && !eventLocked}
           eventLocked={eventLocked}
         />
       </section>

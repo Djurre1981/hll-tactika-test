@@ -6,6 +6,7 @@ import {
 import { parseRoomId } from "../../lib/collab-rooms.js";
 import { getStrat } from "../../lib/strats-store.js";
 import { getWhiteboard } from "../../lib/whiteboards-store.js";
+import { getLineup } from "../../lib/lineups-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
 async function authorizeRoom(env, roomId, auth) {
@@ -27,6 +28,12 @@ async function authorizeRoom(env, roomId, auth) {
     const board = await getWhiteboard(env, parsed.whiteboardId);
     if (!board) return { error: errorResponse("Whiteboard not found", 404) };
     return { ok: true, board };
+  }
+
+  if (parsed.type === "lineup") {
+    const lineup = await getLineup(env, parsed.lineupId);
+    if (!lineup) return { error: errorResponse("Lineup not found", 404) };
+    return { ok: true, lineup };
   }
 
   return { error: errorResponse("Invalid room id", 400) };

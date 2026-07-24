@@ -44,7 +44,7 @@ function useOptionsForKind(kind, components, canAttachRoster) {
       loadError = rostersQuery.error;
     }
 
-    const options = items
+    const options = (Array.isArray(items) ? items : [])
       .filter((item) => kind === "roster" || !linked.includes(item.id))
       .map((item) => ({
         value: item.id,
@@ -130,10 +130,15 @@ export function EventComponentAttachSection({
   components,
   canEdit,
   canAttachRoster,
+  canAttachLineup = false,
   pending,
   onAttach,
+  onCreateLineup,
+  lineupPending = false,
 }) {
   if (!canEdit) return null;
+
+  const hasLineup = Boolean(components?.lineupId);
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -167,6 +172,21 @@ export function EventComponentAttachSection({
           onAttach={onAttach}
         />
       </div>
+      {canAttachLineup && !hasLineup ? (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <button
+            type="button"
+            disabled={pending || lineupPending}
+            onClick={() => onCreateLineup?.()}
+            className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-[0.82rem] text-emerald-100 transition hover:border-emerald-300/45 hover:bg-emerald-500/15 disabled:opacity-50"
+          >
+            Create LineUp
+          </button>
+          <p className="m-0 mt-1.5 text-[0.72rem] text-white/40">
+            Uses the event LineUp size (49 / 36 / 18). Set size on the calendar event first.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

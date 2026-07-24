@@ -90,6 +90,9 @@ export function EventForm({
   const initialStartsAt = localDateTimeValue(baseDate);
   const [title, setTitle] = useState(initialEvent?.title || "");
   const [eventType, setEventType] = useState(initialEvent?.eventType || "scrim");
+  const [rosterSize, setRosterSize] = useState(() =>
+    initialEvent?.rosterSize ? String(initialEvent.rosterSize) : "36"
+  );
   const [startsAt, setStartsAt] = useState(initialStartsAt);
   const [endsAt, setEndsAt] = useState(
     initialEvent?.endsAt
@@ -135,6 +138,7 @@ export function EventForm({
       endsAt: endsAt ? new Date(endsAt).toISOString() : "",
       description: description.trim(),
       match: showMatchFields ? match : emptyMatchState(),
+      rosterSize: Number(rosterSize) || null,
     };
     const overlaps = findOverlappingEvents(existingEvents, payload, initialEvent?.id || null);
     if (overlaps.length) {
@@ -245,6 +249,23 @@ export function EventForm({
               disabled={inputDisabled}
               onChange={(event) => setEndsAt(event.target.value)}
             />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted">LineUp size</span>
+            <GlassSelect
+              value={rosterSize}
+              onChange={setRosterSize}
+              options={[
+                { value: "49", label: "49 (ECL)" },
+                { value: "36", label: "36" },
+                { value: "18", label: "18" },
+              ]}
+              placeholder=""
+              disabled={inputDisabled}
+            />
+            <span className="mt-1 block text-[0.72rem] text-white/35">
+              Playing slots for the LineUp board.
+            </span>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted">Notes</span>

@@ -22,7 +22,9 @@ export function useEventComponentActions(eventId) {
             ? "whiteboard"
             : kind === "roster"
               ? "roster"
-              : null;
+              : kind === "lineup"
+                ? "lineup"
+                : null;
 
     if (!apiType) return;
 
@@ -57,7 +59,9 @@ export function useEventComponentActions(eventId) {
             ? "whiteboard"
             : kind === "roster"
               ? "roster"
-              : null;
+              : kind === "lineup"
+                ? "lineup"
+                : null;
 
     if (!apiType) return;
 

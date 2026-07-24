@@ -7,6 +7,7 @@ import {
   sanitizeEventComponents,
   sanitizeEventMatch,
 } from "../lib/events-store.js";
+import { sanitizeRosterSize } from "../lib/lineup-layouts.js";
 import { errorResponse, json } from "../lib/response.js";
 
 const EVENT_TYPES = ["scrim", "comp", "practice", "other"];
@@ -88,6 +89,18 @@ function sanitizeEventBody(body, { partial = false } = {}) {
     event.match = sanitizeEventMatch(body.match);
   } else if (!partial) {
     event.match = emptyEventMatch();
+  }
+
+  if (Object.hasOwn(body, "rosterSize")) {
+    if (body.rosterSize == null || body.rosterSize === "") {
+      event.rosterSize = null;
+    } else {
+      const size = sanitizeRosterSize(body.rosterSize);
+      if (size.error) return { error: size.error };
+      event.rosterSize = size.rosterSize;
+    }
+  } else if (!partial) {
+    event.rosterSize = null;
   }
 
   return { event };

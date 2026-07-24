@@ -16,6 +16,9 @@ export function parseRoomId(roomId) {
   if (id.startsWith("wb:")) {
     return { type: "whiteboard", roomId: id, whiteboardId: id.slice(3) };
   }
+  if (id.startsWith("lineup:")) {
+    return { type: "lineup", roomId: id, lineupId: id.slice(7) };
+  }
   const stratMatch = /^strat:([^:]+):slide:([^:]+)$/.exec(id);
   if (stratMatch) {
     return {
