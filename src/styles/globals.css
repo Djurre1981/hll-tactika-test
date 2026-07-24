@@ -104,6 +104,14 @@ body {
     @apply bg-accent/30 text-accent;
   }
 
+  .glass-select-option-active {
+    @apply bg-white/[0.09] text-white;
+  }
+
+  .glass-select-option-selected.glass-select-option-active {
+    @apply bg-accent/30 text-accent;
+  }
+
   /* Native fallback when GlassSelect is not used yet */
   .glass-select option {
     background-color: rgb(14, 14, 16);
