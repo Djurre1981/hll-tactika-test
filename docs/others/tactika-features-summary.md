@@ -12,8 +12,9 @@
 | **Security** | Protected pin data, hybrid marker/detail split, audit hooks |
 | **Hub** | Dashboard with upcoming events, **team KPI strip** (win rate, record, form), **My matches** + **My tasks** widgets, tool launcher, online presence |
 | **Calendar** | Month view, event CRUD (scrim / comp / practice / other), match metadata (opponent, map, faction, **team** Circle / Circle Jr, result), **HeLO/CRCON links**, **event locking** |
-| **Match Brief** | `/events/:id` — match details (incl. team), linked tools, prep task checklist, RSVP / raincheck, **You played** when your Steam ID is on our side |
-| **Event hub** | `components` on events: stratIds, routePlanIds, whiteboardIds, rosterId; attach/detach on Brief |
+| **Match Brief** | `/events/:id` — match details (incl. team), linked tools (**incl. LineUp**), prep task checklist, RSVP / raincheck / waitlist, **You played** when your Steam ID is on our side |
+| **Event hub** | `components` on events: stratIds, routePlanIds, whiteboardIds, rosterId, **lineupId**; attach/detach on Brief |
+| **LineUp** | Match Brief board: sector squads, RSVP pool, reserves, nodes overlay, presence, lock, live collab; event **LineUp size** 49/36/18 (separate from RSVP seats) |
 | **Prep tasks** | Per-event assignments; assignees complete on Brief; Hub “My tasks” sidebar |
 | **Team / roster** | Site access roster, shared Comp Roster (Circle + Circle Jr pool), drag-and-drop, multiple named rosters |
 | **Management** | Staff section: Overview, Roster, Folders, **History** (Match + **Strat history** tabs), **Analytics** (win/loss charts) |
@@ -44,21 +45,24 @@ Closed-release work ([#33](https://github.com/Djurre1981/hll-tactika-test/issues
 | — | **Tool lock** — lock strats, routes, slideshows in-editor | ✅ |
 | T10 | **Team KPIs** — Hub strip + Management Analytics charts | ✅ |
 | T6/T7 | **RSVP + Hub next-match hero** — I’m in / Raincheck (web) | ✅ |
-| T6b | **Raincheck flow** — match + reason; modal portals above hub chrome | ✅ |
+| T6b | **Raincheck flow** — match + reason; waitlist seats; modal portals above hub chrome | ✅ |
+| — | **Match LineUp** — Brief-attached board, sparse defaults, auto-reserves, fairness badges, role filters, live collab ([#43](https://github.com/Djurre1981/hll-tactika-test/issues/43)) | ✅ |
 
 ### Match Brief UX
 
 - Open from Calendar or Hub upcoming games
 - Match facts (incl. **Circle / Circle Jr**), notes, linked-tool chips + deep links
-- Editors attach/detach existing strats, route plans, whiteboards, rosters
+- Editors attach/detach existing strats, route plans, whiteboards, rosters; Admins **Create LineUp**
+- Event form: **RSVP seats** (capacity / waitlist) vs **LineUp size** (49 / 36 / 18 playing slots)
 - Tool editors (Stratmaker, Routeplanner, Micro Prep) can link events from their side panels
 - **Prep tasks:** editors assign; assignees checkbox-complete; **Home → My tasks** for open items
-- **Locking:** events auto-lock when past or win/loss recorded; per-tool lock in Stratmaker / Routeplanner / Micro Prep
+- **Locking:** events auto-lock when past or win/loss recorded; per-tool lock in Stratmaker / Routeplanner / Micro Prep / LineUp
 - **Analytics:** Home **Season at a glance** KPIs; **Management → Analytics** (`/management#analytics`) — monthly W/L, win rate by map/opponent (Recharts)
 - **History import:** Circle + Circle Jr matches from [HeLO](https://helo-system.de/) on v2 calendar; optional CRCON game links; see [`helo-import.md`](./helo-import.md)
 - **My matches:** Hub widget + Records filter + Brief **You played** (Steam64 ↔ HeLO our-side `player_stats`). Spreadsheet rosters are reference-only — **do not** auto-grant site access from them
 - **Strat history:** Management → History → Strat history tab (search + structured filters/sort)
 - **Hub next match:** countdown, seats, I’m in / Raincheck
+- **LineUp board:** RSVP pool + role filters, sector squads (+ add squad), tanks, reserves auto-fill, fairness `Nr/Nb` badges, Force RSVP, Reset layout, presence checkboxes, Yjs live edit
 
 ### Still planned (RallyPoint / #23)
 
@@ -217,14 +221,14 @@ Phases **0–8** are done (D1, React shell, auth, dashboard, calendar, Strat bro
 | Environment | Contents |
 |-------------|----------|
 | **V1 (`hll-tactika`)** | Climbing guide (production) |
-| **V2 (`hll-tactika-test`)** | Full React hub + Strats + Micro Prep + **Routeplanner** + Match Brief + **Circle + Circle Jr HeLO history** + RSVP/raincheck |
+| **V2 (`hll-tactika-test`)** | Full React hub + Strats + Micro Prep + **Routeplanner** + Match Brief + **LineUp** + **Circle + Circle Jr HeLO history** + RSVP/raincheck/waitlist |
 
 ---
 
 ## Summary
 
-**Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab, plus a **Match Brief** hub for match-night prep (linked tools + prep tasks), **imported HeLO history for Circle and Circle Jr**, per-player **My matches** / combat form, Hub RSVP, and Management **Match + Strat history**.
+**Tactika today** is a four-tool suite (Climbing Guide, Stratmaker, Micro Prep, Routeplanner) on a shared auth/hub/calendar/roster stack with live collab, plus a **Match Brief** hub for match-night prep (linked tools + prep tasks + **LineUp board**), **imported HeLO history for Circle and Circle Jr**, per-player **My matches** / combat form, Hub RSVP (raincheck / waitlist), and Management **Match + Strat history**.
 
 **Planned work** clusters around Discord bot/membership sync, create-match wizard, deeper CRCON/HLLRecords profile links, and cross-linking — see [#33](https://github.com/Djurre1981/hll-tactika-test/issues/33) for the ordered checklist. **Member wiki:** in-app **?** help (source `docs/wiki`) · Roles: [`roles.md`](./roles.md).
 
-*Updated July 23, 2026*
+*Updated July 24, 2026*

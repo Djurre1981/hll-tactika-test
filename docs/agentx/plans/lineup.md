@@ -60,6 +60,13 @@ Who merges / in what order:
 - [x] Tests + wiki updated
 - [x] Discord bot + merc auth **not** in this release
 
+## Shipped follow-ups (post-v1 polish, Jul 2026)
+- Sparse default layouts + sector **+** add squad; **Reset layout**
+- Auto-fill reserves when playing slots full; **Fill reserves**; fairness `Nr/Nb` badges (`0025`)
+- Header counters (players / squads); RSVP pool role filters; streamers in header pulldown
+- Merged with RSVP seats / raincheck / waitlist (`signup_target` vs `rosterSize` labeled on Event form)
+- Live on V2 (`main`); remote migrations `0024` + `0025` applied
+
 ## Risks
 - Yjs vs D1 dual source of truth — follow whiteboard pattern (collab live + periodic/explicit save to D1).
 - Confusing `signup_target` vs `rosterSize` — label clearly in Event form (“RSVP seats” vs “LineUp size”).

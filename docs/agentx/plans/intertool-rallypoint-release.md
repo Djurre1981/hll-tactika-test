@@ -98,6 +98,7 @@ T1 Event hub schema+API
 | T6 | RSVP table + Brief bar | `rsvps` migration/store/API | T1, T0c | member RSVP; counts | ✅ |
 | T6b | Raincheck + waitlist fill | `0023_rsvp_raincheck.sql`, RaincheckFlow, seats | T6 | raincheck reason flow; promote waitlist | ✅ web (T0e notify stub) |
 | T7 | Hub next-match hero | `HomePage.jsx`, `NextMatchHero.jsx` | T3, T6 | countdown; RSVP; Brief link | ✅ |
+| — | **Match LineUp** (Brief board) | `0024`/`0025`, `src/features/lineup/**`, wiki LineUp | T3, T6 | create from Brief; assign RSVPs; lock | ✅ web |
 | T8 | Match reports / history | `src/features/records/` or management | T2 | past results list |
 | T9 | Prep tasks | `prep_tasks` migration/store/API + Brief | T1, T3 | assign/complete |
 | T10 | KPIs + analytics charts | Hub KPI + AnalyticsSection | T2 | empty-safe |

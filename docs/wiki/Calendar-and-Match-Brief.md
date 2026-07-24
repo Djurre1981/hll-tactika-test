@@ -25,17 +25,24 @@ Open an event from Calendar or hub → **Match Brief** (`/events/:id`).
 | **Match facts** | Opponent, map, faction, Circle / Circle Jr, notes |
 | **Linked tools** | Strat, route plan, whiteboard, roster, **LineUp** chips + deep links |
 | **Prep tasks** | Assignments; assignees check them off |
-| **RSVP** | I’m in / Raincheck |
+| **RSVP** | I’m in / Raincheck / waitlist (seats); see seats on the bar |
 | **You played** | Shown when your Steam ID is on our side of imported history |
 
-### LineUp size
+### RSVP seats vs LineUp size
 
-When creating/editing an event, set **LineUp size** (49 / 36 / 18). This is separate from **Signup target (seats)** (RSVP capacity). See [LineUp](LineUp).
+When creating/editing an event:
+
+| Field | Meaning |
+|-------|---------|
+| **RSVP seats** | Confirmed signup capacity; extras go to **waitlist** |
+| **LineUp size** | Playing slots on the LineUp board (**49** / **36** / **18**) |
+
+See [LineUp](LineUp) for the board.
 
 ### Attach prep (Advisor+)
 
 1. On Match Brief, use attach controls for strat / route / whiteboard / roster.
-2. Comp Admin/Owner can **Create LineUp** (uses the event LineUp size).
+2. Comp Admin/Owner can **Create LineUp** (uses the event LineUp size), then open the board chip.
 3. Or link the event from inside Stratmaker, Routeplanner, or Micro Prep side panels.
 4. Detach when the link is wrong — the tool itself is not deleted.
 
@@ -57,5 +64,5 @@ When creating/editing an event, set **LineUp size** (49 / 36 / 18). This is sepa
 
 ## Related
 
-- [Stratmaker](Stratmaker) · [Routeplanner](Routeplanner) · [Micro Prep](Micro-Prep)
+- [Stratmaker](Stratmaker) · [Routeplanner](Routeplanner) · [Micro Prep](Micro-Prep) · [LineUp](LineUp)
 - [Records & HeLO](Records-and-HeLO)

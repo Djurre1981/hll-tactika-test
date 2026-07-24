@@ -23,9 +23,9 @@ After login you land on the **Dashboard** (home). From here you can:
 ## 3. Match-night path (recommended)
 
 1. Open the upcoming event from the hub or **Calendar**.
-2. On **Match Brief**, confirm map / faction / team and linked prep.
-3. Open attached **Strat**, **Route plan**, or **Micro Prep** whiteboard from the brief chips.
-4. Tick your **prep tasks** when done.
+2. On **Match Brief**, confirm map / faction / team and linked prep; **RSVP** (I’m in / Raincheck).
+3. Open attached **Strat**, **Route plan**, **Micro Prep**, or **LineUp** from the brief chips.
+4. Tick your **prep tasks** when done. Comp Members can view LineUp; Admins fill squads from the RSVP pool.
 
 ## 4. Know your role
 
@@ -35,4 +35,5 @@ Site access is role-based (Comp Member → Owner). Read [Roles & permissions](Ro
 
 - [Dashboard & hub](Dashboard) — widgets and KPI strip  
 - [Calendar & Match Brief](Calendar-and-Match-Brief) — events and prep checklist  
+- [LineUp](LineUp) — who plays where for the match  
 - [Troubleshooting](Troubleshooting) — can’t edit / can’t open Management  
