@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { GlassSelect } from "../../../shared/GlassSelect.jsx";
+import { PREP_STRAT_CATEGORIES } from "../../../../functions/lib/prep-task-types.js";
 import { STRAT_MAP_IDS } from "./mapIds.js";
 import { StratEventLinker } from "./StratEventLinker.jsx";
 import { ToolLockControl } from "../../events/ToolLockControl.jsx";
@@ -122,6 +123,10 @@ export function StratDetailsPanel({
   const matchSummary =
     [match.date, match.mapId, match.opponent].filter(Boolean).join(" · ") || "None";
   const notesSummary = (strat?.notes || "").trim() ? "Has notes" : "None";
+  const prepCategory = strat?.prepCategory || "";
+  const prepSummary =
+    PREP_STRAT_CATEGORIES.find((row) => row === prepCategory)?.replace(/^./, (c) => c.toUpperCase()) ||
+    "General (default)";
 
   const patchTags = (partial) => {
     onPatchStrat?.({
@@ -206,6 +211,25 @@ export function StratDetailsPanel({
               ]}
             />
           </div>
+        </Accordion>
+
+        <Accordion label="Event prep role" value={prepSummary}>
+          <p className="m-0 text-[0.72rem] text-white/45">
+            Used to auto-detect event prep progress when this strat is linked on a match brief.
+          </p>
+          <GlassSelect
+            value={prepCategory}
+            disabled={!canEdit}
+            onChange={(value) => onPatchStrat?.({ prepCategory: value || null })}
+            placeholder="General (default)"
+            options={[
+              { value: "", label: "General (default)" },
+              ...PREP_STRAT_CATEGORIES.map((row) => ({
+                value: row,
+                label: row.charAt(0).toUpperCase() + row.slice(1),
+              })),
+            ]}
+          />
         </Accordion>
 
         <Accordion label="Match details" value={matchSummary}>

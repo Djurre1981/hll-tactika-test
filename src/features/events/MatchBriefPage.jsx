@@ -244,7 +244,12 @@ export function MatchBriefPage() {
 
       <RsvpBar eventId={event.id} event={event} />
 
-      <PrepTasksPanel eventId={event.id} canEdit={canEditEvent} eventLocked={eventLocked} />
+      <PrepTasksPanel
+        eventId={event.id}
+        canEdit={canEditEvent}
+        eventLocked={eventLocked}
+        eventType={event.eventType}
+      />
 
       <section>
         <h2 className="m-0 mb-3 text-[0.72rem] uppercase tracking-[0.16em] text-white/45">

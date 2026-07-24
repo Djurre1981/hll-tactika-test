@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../shared/Button.jsx";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import { getMidpointsForMap, isValidStartingPoint } from "../../shared/mapMidpoints.js";
 import { COMP_TEAMS } from "../../../functions/lib/comp-teams.js";
 import { EventLockBadge, EventLockIcon } from "../events/EventLockBadge.jsx";
 import { eventLockLabel } from "../events/event-lock.js";
+import {
+  EventPrepChecklist,
+  emptySlotsForEventType,
+  prepSlotsPayload,
+} from "../events/EventPrepChecklist.jsx";
 import { STRAT_MAP_IDS } from "../strats/editor/mapIds.js";
 import { EVENT_TYPES } from "./hooks/useEventsQuery.js";
 import {
@@ -113,6 +118,13 @@ export function EventForm({
   );
   const [description, setDescription] = useState(initialEvent?.description || "");
   const [match, setMatch] = useState(initialEvent?.match || emptyMatchState());
+  const [prepSlots, setPrepSlots] = useState(() => emptySlotsForEventType(initialEvent?.eventType || "scrim"));
+
+  useEffect(() => {
+    if (!initialEvent) {
+      setPrepSlots(emptySlotsForEventType(eventType));
+    }
+  }, [eventType, initialEvent]);
 
   const showMatchFields = isMatchEventType(eventType);
   const startingPointOptions = match.mapId ? getMidpointsForMap(match.mapId) : [];
@@ -168,7 +180,7 @@ export function EventForm({
         return;
       }
     }
-    onSubmit(payload);
+    onSubmit({ ...payload, prepSlots: prepSlotsPayload(prepSlots) });
   }
 
   const lockLabel = eventLockLabel(lockReason);
@@ -422,6 +434,15 @@ export function EventForm({
           </fieldset>
         ) : null}
       </div>
+
+      <EventPrepChecklist
+        eventId={initialEvent?.id || null}
+        eventType={eventType}
+        canEdit={!readOnly}
+        eventLocked={effectiveLocked}
+        embedded
+        onSlotsChange={setPrepSlots}
+      />
 
       <div className="flex flex-wrap justify-between gap-3">
         {canDelete && !readOnly ? (

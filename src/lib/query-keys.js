@@ -54,6 +54,9 @@ export const queryKeys = {
     mine: (from, to) => ["prep-tasks", "mine", from, to],
     open: (from, to) => ["prep-tasks", "open", from, to],
   },
+  prepPlan: {
+    byEvent: (eventId) => ["prep-plan", "event", eventId],
+  },
   rsvps: {
     root: ["rsvps"],
     byEvent: (eventId) => ["rsvps", "event", eventId],

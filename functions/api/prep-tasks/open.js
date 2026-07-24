@@ -1,4 +1,5 @@
 import { requireAdmin } from "../../lib/auth-request.js";
+import { listOpenPrepSlotsInRange } from "../../lib/event-prep-store.js";
 import { listOpenPrepTasksInRange } from "../../lib/prep-tasks-store.js";
 import { errorResponse, json } from "../../lib/response.js";
 
@@ -16,7 +17,11 @@ export async function onRequestGet(context) {
   }
 
   try {
-    const tasks = await listOpenPrepTasksInRange(context.env, { from, to });
+    const [legacy, slots] = await Promise.all([
+      listOpenPrepTasksInRange(context.env, { from, to }),
+      listOpenPrepSlotsInRange(context.env, { from, to }),
+    ]);
+    const tasks = [...slots, ...legacy];
     return json({ tasks });
   } catch (error) {
     console.error("GET /api/prep-tasks/open failed:", error);

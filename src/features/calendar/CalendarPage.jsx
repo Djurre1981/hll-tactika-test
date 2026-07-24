@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../../lib/api-client.js";
 import { useAuth } from "../auth/AuthGate.jsx";
 import { useFadeIn } from "../../shared/hooks/useFadeIn.js";
 import { Button } from "../../shared/Button.jsx";
@@ -30,6 +32,7 @@ const navBtnClass =
 
 export function CalendarPage({ hub = false }) {
   const user = useAuth();
+  const queryClient = useQueryClient();
   const canEdit = canEditEvents(user.role);
   const [monthDate, setMonthDate] = useState(startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => new Date());
@@ -75,12 +78,42 @@ export function CalendarPage({ hub = false }) {
     setModalState(null);
   }
 
-  function submitEvent(event) {
+  async function savePrepPlan(eventId, prepSlots) {
+    if (!eventId || !prepSlots?.length) return;
+    await apiClient(`/events/${eventId}/prep-plan`, {
+      method: "PUT",
+      body: JSON.stringify({ slots: prepSlots }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["prep-plan", "event", eventId] });
+    queryClient.invalidateQueries({ queryKey: ["prep-tasks"] });
+  }
+
+  function submitEvent(eventPayload) {
+    const { prepSlots, ...event } = eventPayload;
     if (modalState?.mode === "edit") {
-      updateEvent.mutate({ id: modalState.event.id, event }, { onSuccess: closeModal });
+      updateEvent.mutate(
+        { id: modalState.event.id, event },
+        {
+          onSuccess: async () => {
+            try {
+              await savePrepPlan(modalState.event.id, prepSlots);
+            } finally {
+              closeModal();
+            }
+          },
+        }
+      );
       return;
     }
-    createEvent.mutate(event, { onSuccess: closeModal });
+    createEvent.mutate(event, {
+      onSuccess: async (data) => {
+        try {
+          await savePrepPlan(data?.event?.id, prepSlots);
+        } finally {
+          closeModal();
+        }
+      },
+    });
   }
 
   function handleDelete() {
