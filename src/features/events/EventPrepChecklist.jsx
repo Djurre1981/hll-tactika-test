@@ -3,8 +3,8 @@ import {
   PREP_TASK_TYPES,
   defaultEnabledPrepTypes,
 } from "../../../functions/lib/prep-task-types.js";
-import { isPoolStatus } from "../../management/rosterRoles.js";
-import { useRosterMembersQuery, useRostersQuery } from "../../management/hooks/useRostersQuery.js";
+import { isPoolStatus } from "../management/rosterRoles.js";
+import { useRosterMembersQuery, useRostersQuery } from "../management/hooks/useRostersQuery.js";
 import { GlassSelect } from "../../shared/GlassSelect.jsx";
 import {
   useCompletePrepSlotMutation,
